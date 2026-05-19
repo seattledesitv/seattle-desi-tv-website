@@ -6,9 +6,9 @@ import { createClient } from "@supabase/supabase-js";
 type AnyRecord = Record<string, any>;
 type TabId = "home" | "tv" | "radio" | "events" | "businesses" | "team" | "studio" | "donate" | "contact" | "login";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || "";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
 const YOUTUBE_HANDLE = process.env.NEXT_PUBLIC_YOUTUBE_HANDLE || "seattledesitv";
 const LIVE365_META_URL = process.env.NEXT_PUBLIC_LIVE365_META_URL || "https://api.live365.com/stations/a45587/nowplaying";
 const LIVE365_STREAM_URL = process.env.NEXT_PUBLIC_LIVE365_STREAM_URL || "https://das-edge17-live365-dal02.cdnstream.com/a45587";
