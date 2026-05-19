@@ -18,11 +18,11 @@
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
-    "autoprefixer": "latest",
+    "autoprefixer": "10.4.20",
     "eslint": "latest",
     "eslint-config-next": "latest",
-    "postcss": "latest",
-    "tailwindcss": "latest",
+    "tailwindcss": "3.4.17",
+    "postcss": "8.4.49",
     "typescript": "latest"
   }
 }
