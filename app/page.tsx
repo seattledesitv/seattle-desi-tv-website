@@ -175,6 +175,7 @@ function AuthPanel({
 }
 export default function Page() {
   const [tab, setTab] = useState<TabId>("home");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [designMode, setDesignMode] = useState<"broadcast" | "classic">("broadcast");
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState("");
@@ -585,34 +586,106 @@ export default function Page() {
   }, [tab]);
 
   const Header = () => (
-    <>
-      <div className="bg-[#050b18] text-white text-sm px-7 py-2 flex flex-wrap items-center justify-between gap-3 shadow-md">
-        <div className="flex items-center gap-4 flex-wrap">
-          <span>Follow Us:</span>
-          <a href="https://seattledesitv.com" target="_blank" rel="noreferrer" className="hover:text-pink-400">🌐 Website</a>
-          <a href="https://www.youtube.com/@SeattleDesiTV" target="_blank" rel="noreferrer" className="hover:text-pink-400">▶ YouTube</a>
-          <a href="https://instagram.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-400">📸 Instagram</a>
-          <a href="https://www.tiktok.com/@seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-400">🎵 TikTok</a>
-          <a href="https://www.facebook.com/search/top?q=Seattle%20Desi%20TV" target="_blank" rel="noreferrer" className="hover:text-pink-400">📘 Facebook</a>
-          <a href="mailto:info@seattledesitv.com" className="hover:text-pink-400">✉ Email</a>
-        </div>
-        <span>📻 Listen Live: <b className="text-yellow-400">Seattle Desi Radio</b> <span className="bg-red-600 px-3 py-1 rounded-md text-xs font-bold">LIVE</span></span>
+  <>
+    <div className="bg-[#050b18] text-white text-sm px-4 md:px-7 py-2 flex flex-wrap items-center justify-between gap-3 shadow-md">
+      <div className="flex items-center gap-4 flex-wrap">
+        <span>Follow Us:</span>
+        <a href="https://seattledesitv.com" target="_blank" rel="noreferrer" className="hover:text-pink-400">🌐 Website</a>
+        <a href="https://www.youtube.com/@SeattleDesiTV" target="_blank" rel="noreferrer" className="hover:text-pink-400">▶ YouTube</a>
+        <a href="https://instagram.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-400">📸 Instagram</a>
+        <a href="https://www.tiktok.com/@seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-400">🎵 TikTok</a>
+        <a href="mailto:info@seattledesitv.com" className="hover:text-pink-400">✉ Email</a>
       </div>
-      <header className="bg-white/95 backdrop-blur text-[#080d1d] px-6 md:px-12 py-5 flex items-center justify-between gap-5 shadow-sm sticky top-0 z-50">
-        <button type="button" onClick={() => setTab("home")} className="flex items-center -my-4"><img src={LOGO_SRC} alt="Seattle Desi TV" className="h-28 md:h-36 w-auto object-contain" /></button>
+      <span>📻 Listen Live: <b className="text-yellow-400">Seattle Desi Radio</b> <span className="bg-red-600 px-3 py-1 rounded-md text-xs font-bold">LIVE</span></span>
+    </div>
+
+    <header className="bg-white/95 backdrop-blur text-[#080d1d] px-4 md:px-12 py-4 shadow-sm sticky top-0 z-50">
+      <div className="flex items-center justify-between gap-4">
+        <button type="button" onClick={() => { setTab("home"); setMobileMenuOpen(false); }} className="flex items-center -my-3">
+          <img src={LOGO_SRC} alt="Seattle Desi TV" className="h-24 md:h-36 w-auto object-contain" />
+        </button>
+
         <nav className="hidden lg:flex items-center gap-3 font-bold">
           {navItems.map(([id, label]) => (
-            <button key={id} type="button" onClick={() => (id === "studio" && !canAccessAdminArea ? openLogin() : setTab(id))} className={`px-4 py-3 rounded-2xl transition ${tab === id ? "text-pink-600 bg-pink-50 shadow border-b-2 border-pink-600" : "hover:text-pink-600 hover:bg-pink-50"}`}>{label}</button>
+            <button
+              key={id}
+              type="button"
+              onClick={() => {
+                if (id === "studio" && !canAccessAdminArea) openLogin();
+                else setTab(id);
+              }}
+              className={`px-4 py-3 rounded-2xl transition ${tab === id ? "text-pink-600 bg-pink-50 shadow border-b-2 border-pink-600" : "hover:text-pink-600 hover:bg-pink-50"}`}
+            >
+              {label}
+            </button>
           ))}
         </nav>
-        <div className="flex items-center gap-3">
-          <button type="button" onClick={() => setDesignMode(designMode === "broadcast" ? "classic" : "broadcast")} className="hidden md:block border border-pink-600 text-pink-600 px-4 py-3 rounded-xl font-bold bg-white">{designMode === "broadcast" ? "Switch Classic" : "Switch Broadcast"}</button>
-          <button type="button" onClick={() => setTab("tv")} className="hidden md:block bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-xl font-black shadow">▶ Watch TV</button>
-          {user ? <button type="button" onClick={signOut} className="border px-5 py-3 rounded-xl font-semibold">Logout</button> : <button type="button" onClick={openLogin} className="border border-gray-400 px-5 py-3 rounded-xl font-semibold">Login</button>}
+
+        <div className="hidden lg:flex items-center gap-3">
+          <button type="button" onClick={() => setDesignMode(designMode === "broadcast" ? "classic" : "broadcast")} className="border border-pink-600 text-pink-600 px-4 py-3 rounded-xl font-bold bg-white">
+            {designMode === "broadcast" ? "Switch Classic" : "Switch Broadcast"}
+          </button>
+          <button type="button" onClick={() => setTab("tv")} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-black shadow">▶ Watch TV</button>
+          {user ? (
+            <button type="button" onClick={signOut} className="border px-5 py-3 rounded-xl font-semibold">Logout</button>
+          ) : (
+            <button type="button" onClick={openLogin} className="border border-gray-400 px-5 py-3 rounded-xl font-semibold">Login</button>
+          )}
         </div>
-      </header>
-    </>
-  );
+
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen((open) => !open)}
+          className="lg:hidden border border-gray-300 rounded-xl px-4 py-3 font-black text-2xl"
+          aria-label="Open menu"
+        >
+          {mobileMenuOpen ? "✕" : "☰"}
+        </button>
+      </div>
+
+      {mobileMenuOpen && (
+        <div className="lg:hidden mt-4 border-t pt-4 bg-white">
+          <div className="grid gap-2 font-bold">
+            {navItems.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (id === "studio" && !canAccessAdminArea) openLogin();
+                  else setTab(id);
+                }}
+                className={`text-left px-4 py-3 rounded-xl ${tab === id ? "text-pink-600 bg-pink-50" : "hover:bg-pink-50"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid gap-2 mt-4">
+            <button type="button" onClick={() => { setMobileMenuOpen(false); setDesignMode(designMode === "broadcast" ? "classic" : "broadcast"); }} className="border border-pink-600 text-pink-600 px-4 py-3 rounded-xl font-bold bg-white">
+              {designMode === "broadcast" ? "Switch Classic" : "Switch Broadcast"}
+            </button>
+
+            <button type="button" onClick={() => { setMobileMenuOpen(false); setTab("tv"); }} className="bg-pink-600 text-white px-4 py-3 rounded-xl font-black">
+              ▶ Watch TV
+            </button>
+
+            {user ? (
+              <button type="button" onClick={() => { setMobileMenuOpen(false); signOut(); }} className="border px-4 py-3 rounded-xl font-semibold">
+                Logout
+              </button>
+            ) : (
+              <button type="button" onClick={() => { setMobileMenuOpen(false); openLogin(); }} className="border border-gray-400 px-4 py-3 rounded-xl font-semibold">
+                Login
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </header>
+  </>
+);
 
 
   const Hero = () => (
