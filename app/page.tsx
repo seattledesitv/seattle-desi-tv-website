@@ -77,6 +77,24 @@ function filterEventsByMonthYear(events: AnyRecord[], month: string, year: strin
   });
 }
 
+function LoginRequiredNotice({ title, message }: { title: string; message: string }) {
+  return (
+    <main className="bg-white text-[#081024] px-8 md:px-14 py-20">
+      <div className="max-w-xl mx-auto border rounded-2xl p-8 text-center shadow-sm bg-white">
+        <h1 className="text-3xl font-black">{title}</h1>
+        <p className="text-gray-500 mt-3">{message}</p>
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("open-sdtv-login"))}
+          className="mt-6 bg-pink-600 text-white px-6 py-3 rounded-xl font-bold"
+        >
+          Login / Create Account
+        </button>
+      </div>
+    </main>
+  );
+}
+
 async function withTimeout<T>(
   promiseLike: PromiseLike<T>,
   ms: number,
@@ -258,6 +276,19 @@ export default function Page() {
     setTab("login");
   };
 
+  const goToProtectedTab = (id: TabId) => {
+  if ((id === "events" || id === "businesses") && !user) {
+    openLogin();
+    return;
+  }
+
+  if (id === "studio" && !canAccessAdminArea) {
+    openLogin();
+    return;
+  }
+
+  goToProtectedTab(id);
+};
   const uploadFileToBucket = async (file: File, bucket: string) => {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
     const path = `${Date.now()}-${safeName}`;
@@ -611,7 +642,7 @@ export default function Page() {
               type="button"
               onClick={() => {
                 if (id === "studio" && !canAccessAdminArea) openLogin();
-                else setTab(id);
+                else goToProtectedTab(id);
               }}
               className={`px-4 py-3 rounded-2xl transition ${tab === id ? "text-pink-600 bg-pink-50 shadow border-b-2 border-pink-600" : "hover:text-pink-600 hover:bg-pink-50"}`}
             >
@@ -711,7 +742,7 @@ export default function Page() {
       onClick={() => {
         setMobileMenuOpen(false);
         if (id === "studio" && !canAccessAdminArea) openLogin();
-        else setTab(id);
+        else goToProtectedTab(id);
       }}
       className={`text-left px-4 py-3 rounded-xl ${
         tab === id ? "text-pink-600 bg-pink-50" : "hover:bg-pink-50"
@@ -782,7 +813,7 @@ export default function Page() {
 
   const VideoCard = ({ video }: { video: AnyRecord }) => <a href={video.url} target="_blank" rel="noreferrer" className="block group"><div className="rounded-xl overflow-hidden bg-gray-200 aspect-video">{video.thumbnail ? <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition" /> : <div className="w-full h-full bg-gray-300" />}</div><h3 className="mt-3 text-sm font-bold leading-snug">{video.title}</h3><p className="text-xs text-gray-500 mt-1">Seattle Desi TV • Latest</p></a>;
 
-  const EventsHomeList = () => <div><div className="flex items-center justify-between mb-4"><h3 className="text-xl font-black flex items-center gap-2"><span className="text-pink-600">📅</span> Upcoming Events</h3><button type="button" onClick={() => setTab("events")} className="border px-3 py-1 rounded-lg text-xs font-bold">View All</button></div>{events.slice(0, 3).map((event) => { const d = event.date ? new Date(`${String(event.date).split("T")[0]}T00:00:00`) : null; return <div key={event.id} className="flex gap-4 border-b py-4 last:border-b-0"><div className="bg-pink-50 rounded-xl px-4 py-2 text-center min-w-20 shadow-sm"><p className="text-pink-600 text-xs font-black uppercase">{d ? d.toLocaleString("en", { month: "short" }) : "TBA"}</p><p className="text-3xl font-black">{d ? d.getDate() : ""}</p></div><div><p className="font-black text-sm">{event.title}</p><p className="text-sm text-gray-500">{d ? d.toLocaleDateString() : event.date} · {event.location || "Seattle, WA"}</p></div></div>; })}{events.length === 0 && <p className="text-gray-500 text-sm">No events added yet.</p>}</div>;
+  const EventsHomeList = () => <div><div className="flex items-center justify-between mb-4"><h3 className="text-xl font-black flex items-center gap-2"><span className="text-pink-600">📅</span> Upcoming Events</h3><button type="button" onClick={() => goToProtectedTab("events")} className="border px-3 py-1 rounded-lg text-xs font-bold">View All</button></div>{events.slice(0, 3).map((event) => { const d = event.date ? new Date(`${String(event.date).split("T")[0]}T00:00:00`) : null; return <div key={event.id} className="flex gap-4 border-b py-4 last:border-b-0"><div className="bg-pink-50 rounded-xl px-4 py-2 text-center min-w-20 shadow-sm"><p className="text-pink-600 text-xs font-black uppercase">{d ? d.toLocaleString("en", { month: "short" }) : "TBA"}</p><p className="text-3xl font-black">{d ? d.getDate() : ""}</p></div><div><p className="font-black text-sm">{event.title}</p><p className="text-sm text-gray-500">{d ? d.toLocaleDateString() : event.date} · {event.location || "Seattle, WA"}</p></div></div>; })}{events.length === 0 && <p className="text-gray-500 text-sm">No events added yet.</p>}</div>;
 
   const HomePage = () => (
     <>
@@ -832,8 +863,24 @@ export default function Page() {
 
       {tab === "radio" && <main className="bg-white text-[#081024] px-8 md:px-14 py-10 space-y-10"><section className="bg-[#081024] text-white rounded-3xl p-10 max-w-6xl mx-auto"><div className="grid lg:grid-cols-[220px_1fr] gap-8 items-center"><div className="w-full aspect-square rounded-3xl bg-white/10 overflow-hidden grid place-items-center">{radioMeta?.artwork ? <img src={radioMeta.artwork} alt="Now playing" className="w-full h-full object-cover" /> : <div className="text-center p-6"><div className="text-5xl">🎧</div><p className="mt-3 font-black">Seattle Desi Radio</p></div>}</div><div><div className="flex flex-wrap items-center gap-3 mb-4"><span className="bg-green-500 text-black px-3 py-1 rounded-full text-xs font-black">● LIVE</span><span className="text-sm text-gray-300">Updated: {radioMetaUpdatedAt || "Loading..."}</span></div><h1 className="text-5xl font-black">{radioMeta?.stationName || "Seattle Desi Radio"}</h1><p className="mt-4 text-gray-300">Live South Asian music, interviews, culture, and community stories.</p><div className="mt-6 bg-white/10 rounded-2xl p-5"><p className="text-sm text-gray-300 uppercase tracking-wide">Now Playing</p><h2 className="text-3xl font-black mt-1">{radioMeta?.title || "Seattle Desi Radio Live"}</h2>{radioMeta?.artist && <p className="text-xl text-yellow-300 mt-1">{radioMeta.artist}</p>}</div><audio controls className="w-full mt-8"><source src={LIVE365_STREAM_URL} type="audio/mpeg" /></audio></div></div></section><section className="max-w-6xl mx-auto grid lg:grid-cols-[420px_1fr] gap-8">{canAccessAdminArea && <div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Admin: Add Radio Team / Host</h2><input className="w-full border rounded-lg p-3 mb-3" placeholder="Name" value={radioTeamName} onChange={(e) => setRadioTeamName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Title / Role" value={radioTeamTitle} onChange={(e) => setRadioTeamTitle(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Segment name" value={radioSegmentName} onChange={(e) => setRadioSegmentName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setRadioTeamImageFile(e.target.files?.[0] || null)} />{radioTeamMessage && <p className="text-sm text-orange-600 mb-3">{radioTeamMessage}</p>}<button type="button" onClick={createRadioTeamMember} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full">Add Radio Team Member</button></div>}<div className={canAccessAdminArea ? "" : "lg:col-span-2"}><h2 className="text-3xl font-black mb-5">Radio Team & Segments</h2>{radioTeamMembers.length === 0 ? <div className="border rounded-2xl p-8 text-gray-500">No radio team members added yet.</div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">{radioTeamMembers.map((member) => <TeamCard key={member.id} member={member} segment={member.segment_name} />)}</div>}</div></section></main>}
 
-      {tab === "events" && <main className="bg-white text-[#081024] px-8 md:px-14 py-10"><div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8"><div><h1 className="text-4xl font-black">Community Events</h1><p className="text-gray-500 mt-2">Add events, upload posters, and showcase them on Seattle Desi TV.</p></div>{!user && <button type="button" onClick={openLogin} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold">Login to Add Event</button>}</div><section className="grid lg:grid-cols-[420px_1fr] gap-8"><EventForm /><EventsList /></section></main>}
-      {tab === "businesses" && <BusinessesPage />}
+      {tab === "events" && (
+  !user ? (
+    <LoginRequiredNotice
+      title="Login Required"
+      message="Please login or create an account to view community events."
+    />
+  ) : ( <main className="bg-white text-[#081024] px-8 md:px-14 py-10"><div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8"><div><h1 className="text-4xl font-black">Community Events</h1><p className="text-gray-500 mt-2">Add events, upload posters, and showcase them on Seattle Desi TV.</p></div>{!user && <button type="button" onClick={openLogin} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold">Login to Add Event</button>}</div><section className="grid lg:grid-cols-[420px_1fr] gap-8"><EventForm /><EventsList /></section></main>)
+)}
+      {tab === "businesses" && (
+  !user ? (
+    <LoginRequiredNotice
+      title="Login Required"
+      message="Please login or create an account to view the local business directory."
+    />
+  ) : (
+    <BusinessesPage />
+  )
+)}
       {tab === "team" && <TeamPage />}
       {tab === "studio" && <StudioPage />}
       {tab === "donate" && <main className="bg-white text-[#081024] px-8 md:px-14 py-20 text-center"><h1 className="text-5xl font-black">Support Seattle Desi TV</h1><p className="mt-4 text-gray-600 max-w-2xl mx-auto">Your support helps us amplify South Asian voices, arts, culture, and community stories.</p><button type="button" className="mt-8 bg-pink-600 text-white px-8 py-4 rounded-xl font-bold">Donate Now</button></main>}
