@@ -14,8 +14,8 @@ const LIVE365_META_URL = process.env.NEXT_PUBLIC_LIVE365_META_URL || "https://ap
 const LIVE365_STREAM_URL = process.env.NEXT_PUBLIC_LIVE365_STREAM_URL || "https://das-edge17-live365-dal02.cdnstream.com/a45587";
 
 const LOGO_SRC = "/sdtv-logo.png";
-const HERO_IMAGE = "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=2200&q=90";
-
+//const HERO_IMAGE = "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=2200&q=90";
+const HERO_IMAGE = "/hero-sdtv.png?auto=format&fit=crop&w=2200&q=90";
 const EVENT_BUCKET = "event-images";
 const BUSINESS_BUCKET = "business-images";
 const TEAM_BUCKET = "team-images";
