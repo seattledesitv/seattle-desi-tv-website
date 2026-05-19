@@ -801,7 +801,7 @@ export default function Page() {
 
   const Hero = () => (
     <section className="relative min-h-[380px] flex items-center overflow-hidden bg-cover bg-center" style={{ backgroundImage: `linear-gradient(90deg, rgba(2,6,28,.98) 0%, rgba(2,6,28,.88) 36%, rgba(2,6,28,.25) 100%), url(${HERO_IMAGE})` }}>
-      <div className="absolute -left-24 top-0 bottom-0 w-48 bg-pink-600 rounded-r-full border-r-8 border-yellow-400 opacity-95" />
+      <div className="absolute -left-28 top-0 bottom-0 w-36 bg-pink-600 rounded-r-full border-r-4 border-yellow-400 opacity-95" />
       <div className="px-8 md:px-16 py-16 max-w-4xl relative z-10 text-white">
         <h1 className="text-5xl md:text-6xl font-black uppercase leading-tight tracking-tight drop-shadow">Voice of the <br /><span className="text-yellow-400">Desi Community</span></h1>
         <div className="w-16 h-2 bg-pink-600 rounded-full mt-3" />
