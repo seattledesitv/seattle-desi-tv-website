@@ -78,11 +78,22 @@ function filterEventsByMonthYear(events: AnyRecord[], month: string, year: strin
   });
 }
 
-async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+async function withTimeout<T>(
+  promiseLike: PromiseLike<T>,
+  ms: number,
+  label: string
+): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
+
+  const promise = Promise.resolve(promiseLike);
+
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    timer = setTimeout(
+      () => reject(new Error(`${label} timed out after ${ms}ms`)),
+      ms
+    );
   });
+
   try {
     return await Promise.race([promise, timeout]);
   } finally {
