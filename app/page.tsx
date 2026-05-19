@@ -1,0 +1,644 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+type AnyRecord = Record<string, any>;
+type TabId = "home" | "tv" | "radio" | "events" | "businesses" | "team" | "studio" | "donate" | "contact" | "login";
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || "";
+const YOUTUBE_HANDLE = process.env.NEXT_PUBLIC_YOUTUBE_HANDLE || "seattledesitv";
+const LIVE365_META_URL = process.env.NEXT_PUBLIC_LIVE365_META_URL || "https://api.live365.com/stations/a45587/nowplaying";
+const LIVE365_STREAM_URL = process.env.NEXT_PUBLIC_LIVE365_STREAM_URL || "https://das-edge17-live365-dal02.cdnstream.com/a45587";
+
+const LOGO_SRC = "/sdtv-logo.png";
+const HERO_IMAGE = "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=2200&q=90";
+
+const EVENT_BUCKET = "event-images";
+const BUSINESS_BUCKET = "business-images";
+const TEAM_BUCKET = "team-images";
+const RADIO_TEAM_BUCKET = "radio-team-images";
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+});
+
+const navItems: Array<[TabId, string]> = [
+  ["home", "🏠 Home"],
+  ["tv", "🖥️ TV"],
+  ["radio", "🎧 Radio"],
+  ["events", "📅 Events"],
+  ["businesses", "🏪 Businesses"],
+  ["team", "👥 Team"],
+  ["studio", "🎬 Studio"],
+  ["donate", "💝 Donate"],
+  ["contact", "📞 Contact"]
+];
+
+function getDateValue(event: AnyRecord) {
+  return event.date || event.event_date || event.start_date || "";
+}
+
+function normalizeEvent(event: AnyRecord) {
+  return {
+    ...event,
+    title: event.title || event.name || event.event_name || "Untitled Event",
+    date: getDateValue(event),
+    location: event.location || event.venue || event.address || "",
+    description: event.description || event.details || "",
+    image: event.image || event.image_url || event.poster || event.poster_url || "",
+    ticket_url: event.ticket_url || event.tickets || event.registration_url || event.url || "",
+    crew_member_ids: Array.isArray(event.crew_member_ids) ? event.crew_member_ids : []
+  };
+}
+
+function getMonthYear(value: string | undefined | null) {
+  if (!value) return { month: "", year: "" };
+  const d = new Date(`${String(value).split("T")[0]}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return { month: "", year: "" };
+  return { month: String(d.getMonth() + 1), year: String(d.getFullYear()) };
+}
+
+function roleContainsAdmin(role: string) {
+  return role.toLowerCase().includes("admin");
+}
+
+function roleContainsCrew(role: string) {
+  const lower = role.toLowerCase();
+  return lower.includes("crew") || lower.includes("admin");
+}
+
+function filterEventsByMonthYear(events: AnyRecord[], month: string, year: string) {
+  return events.filter((event) => {
+    if (month === "all" && year === "all") return true;
+    const parsed = getMonthYear(event.date);
+    return Boolean(parsed.month && parsed.year) && (month === "all" || month === parsed.month) && (year === "all" || year === parsed.year);
+  });
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer!);
+  }
+}
+
+export default function Page() {
+  const [tab, setTab] = useState<TabId>("home");
+  const [designMode, setDesignMode] = useState<"broadcast" | "classic">("broadcast");
+  const [user, setUser] = useState<any>(null);
+  const [userRole, setUserRole] = useState("");
+  const [adminChecked, setAdminChecked] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
+
+  const [videos, setVideos] = useState<AnyRecord[]>([]);
+  const [events, setEvents] = useState<AnyRecord[]>([]);
+  const [businesses, setBusinesses] = useState<AnyRecord[]>([]);
+  const [teamMembers, setTeamMembers] = useState<AnyRecord[]>([]);
+  const [radioTeamMembers, setRadioTeamMembers] = useState<AnyRecord[]>([]);
+  const [eventCrewAssignments, setEventCrewAssignments] = useState<AnyRecord[]>([]);
+  const [radioMeta, setRadioMeta] = useState<AnyRecord | null>(null);
+  const [radioMetaUpdatedAt, setRadioMetaUpdatedAt] = useState("");
+  const [youtubeLoadMessage, setYoutubeLoadMessage] = useState("");
+
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [eventLocation, setEventLocation] = useState("");
+  const [eventDescription, setEventDescription] = useState("");
+  const [eventTicketUrl, setEventTicketUrl] = useState("");
+  const [eventPocEmail, setEventPocEmail] = useState("");
+  const [eventPocPhone, setEventPocPhone] = useState("");
+  const [eventImageFile, setEventImageFile] = useState<File | null>(null);
+  const [eventMonthFilter, setEventMonthFilter] = useState("all");
+  const [eventYearFilter, setEventYearFilter] = useState("all");
+  const [eventMessage, setEventMessage] = useState("");
+  const [eventSaving, setEventSaving] = useState(false);
+  const [selectedEventCrewIds, setSelectedEventCrewIds] = useState<string[]>([]);
+  const [assignCrewEventId, setAssignCrewEventId] = useState<string | null>(null);
+  const [assignCrewMemberIds, setAssignCrewMemberIds] = useState<string[]>([]);
+  const [eventCrewMessage, setEventCrewMessage] = useState("");
+
+  const [businessName, setBusinessName] = useState("");
+  const [businessAddress, setBusinessAddress] = useState("");
+  const [businessWebsite, setBusinessWebsite] = useState("");
+  const [businessCategory, setBusinessCategory] = useState("");
+  const [businessDiscount, setBusinessDiscount] = useState("");
+  const [businessOffer, setBusinessOffer] = useState("");
+  const [businessPocName, setBusinessPocName] = useState("");
+  const [businessPocEmail, setBusinessPocEmail] = useState("");
+  const [businessPocPhone, setBusinessPocPhone] = useState("");
+  const [businessImageFile, setBusinessImageFile] = useState<File | null>(null);
+  const [businessCategoryFilter, setBusinessCategoryFilter] = useState("all");
+  const [businessMessage, setBusinessMessage] = useState("");
+
+  const [teamName, setTeamName] = useState("");
+  const [teamTitle, setTeamTitle] = useState("");
+  const [teamImageFile, setTeamImageFile] = useState<File | null>(null);
+  const [teamMessage, setTeamMessage] = useState("");
+
+  const [radioTeamName, setRadioTeamName] = useState("");
+  const [radioTeamTitle, setRadioTeamTitle] = useState("");
+  const [radioSegmentName, setRadioSegmentName] = useState("");
+  const [radioTeamImageFile, setRadioTeamImageFile] = useState<File | null>(null);
+  const [radioTeamMessage, setRadioTeamMessage] = useState("");
+
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactInterest, setContactInterest] = useState("volunteer");
+  const [contactMessage, setContactMessage] = useState("");
+  const [contactStatus, setContactStatus] = useState("");
+
+  const isAdmin = useMemo(() => roleContainsAdmin(userRole), [userRole]);
+  const isCrew = useMemo(() => roleContainsCrew(userRole), [userRole]);
+  const canAccessAdminArea = Boolean(user && adminChecked && isAdmin);
+  const canChooseCrew = Boolean(user && adminChecked && isCrew);
+
+  const filteredEvents = useMemo(() => filterEventsByMonthYear(events, eventMonthFilter, eventYearFilter), [events, eventMonthFilter, eventYearFilter]);
+  const availableEventYears = useMemo(() => Array.from(new Set(events.map((event) => getMonthYear(event.date).year).filter(Boolean))).sort(), [events]);
+  const filteredBusinesses = useMemo(() => businesses.filter((business) => businessCategoryFilter === "all" || business.category === businessCategoryFilter), [businesses, businessCategoryFilter]);
+  const availableBusinessCategories = useMemo(() => Array.from(new Set(businesses.map((business) => business.category).filter(Boolean))).sort(), [businesses]);
+
+  const openLogin = () => {
+    setAuthMode("login");
+    setAuthMessage("");
+    setTab("login");
+  };
+
+  const uploadFileToBucket = async (file: File, bucket: string) => {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+    const path = `${Date.now()}-${safeName}`;
+    const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: false });
+    if (error) throw error;
+    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+    return data.publicUrl;
+  };
+
+  const loadAdminRole = async (currentUser: any) => {
+    setAdminChecked(false);
+    if (!currentUser?.id) {
+      setUserRole("");
+      setAdminChecked(true);
+      return;
+    }
+    try {
+      const byUserId = await withTimeout(
+        supabase.from("admins").select("user_id,email,role").eq("user_id", currentUser.id).maybeSingle(),
+        8000,
+        "Admin lookup"
+      );
+      if (byUserId.error) throw byUserId.error;
+      let row = byUserId.data;
+      if (!row && currentUser.email) {
+        const byEmail = await withTimeout(
+          supabase.from("admins").select("user_id,email,role").eq("email", currentUser.email).maybeSingle(),
+          8000,
+          "Admin lookup by email"
+        );
+        if (byEmail.error) throw byEmail.error;
+        row = byEmail.data;
+      }
+      setUserRole(row?.role || "");
+    } finally {
+      setAdminChecked(true);
+    }
+  };
+
+  const signIn = async () => {
+    setAuthMessage("");
+    if (!email || !password) return setAuthMessage("Please enter email and password.");
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return setAuthMessage(error.message);
+    if (data?.user) {
+      setUser(data.user);
+      setPassword("");
+      setTab("home");
+      await loadAdminRole(data.user);
+    }
+  };
+
+  const signUp = async () => {
+    setAuthMessage("");
+    if (!email || !password) return setAuthMessage("Please enter email and password.");
+    const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
+    if (error) return setAuthMessage(error.message);
+    if (data?.user && data?.session) {
+      setUser(data.user);
+      setTab("home");
+      await loadAdminRole(data.user);
+    } else {
+      setAuthMessage("Account created. Please check your email to verify your account.");
+    }
+  };
+
+  const resetPassword = async () => {
+    if (!email) return setAuthMessage("Enter your email first, then click Reset Password.");
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+    setAuthMessage(error ? error.message : "Password reset email sent.");
+  };
+
+  const magicLinkLogin = async () => {
+    if (!email) return setAuthMessage("Enter your email first, then click Magic Link.");
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } });
+    setAuthMessage(error ? error.message : "Magic login link sent.");
+  };
+
+  const signOut = async () => {
+    setUser(null);
+    setUserRole("");
+    setAdminChecked(true);
+    setPassword("");
+    setTab("login");
+    await supabase.auth.signOut({ scope: "global" });
+  };
+
+  const fetchYouTubeVideos = async () => {
+    if (!YOUTUBE_API_KEY) {
+      setYoutubeLoadMessage("YouTube API key missing. Add NEXT_PUBLIC_YOUTUBE_API_KEY to .env.local.");
+      return [];
+    }
+    setYoutubeLoadMessage("Loading YouTube videos...");
+    try {
+      const channelRes = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails,snippet&forHandle=${encodeURIComponent(YOUTUBE_HANDLE)}&key=${YOUTUBE_API_KEY}`);
+      const channelData = await channelRes.json();
+      let uploads = channelData?.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+      if (!uploads) {
+        const searchRes = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(YOUTUBE_HANDLE)}&key=${YOUTUBE_API_KEY}`);
+        const searchData = await searchRes.json();
+        const channelId = searchData?.items?.[0]?.snippet?.channelId;
+        if (channelId) {
+          const byIdRes = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${channelId}&key=${YOUTUBE_API_KEY}`);
+          const byId = await byIdRes.json();
+          uploads = byId?.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+        }
+      }
+      if (!uploads) {
+        setYoutubeLoadMessage("Could not find YouTube uploads playlist.");
+        return [];
+      }
+      const playlistRes = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=12&playlistId=${uploads}&key=${YOUTUBE_API_KEY}`);
+      const playlistData = await playlistRes.json();
+      const items = (playlistData.items || []).map((item: AnyRecord) => {
+        const videoId = item.snippet.resourceId.videoId;
+        return {
+          id: videoId,
+          title: item.snippet.title,
+          thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.medium?.url,
+          url: `https://www.youtube.com/watch?v=${videoId}`
+        };
+      });
+      setVideos(items);
+      setYoutubeLoadMessage(items.length ? `Loaded ${items.length} YouTube video(s).` : "No YouTube videos returned.");
+      return items;
+    } catch (error: any) {
+      setYoutubeLoadMessage(error?.message || "Could not load YouTube videos.");
+      return [];
+    }
+  };
+
+  const fetchRadioMetadata = async () => {
+    try {
+      const res = await fetch(LIVE365_META_URL, { cache: "no-store" });
+      const data = await res.json();
+      const current = data?.current || data?.now_playing?.song || data?.now_playing || {};
+      setRadioMeta({
+        title: current?.title || data?.title || "Seattle Desi Radio Live",
+        artist: current?.artist || data?.artist || "",
+        album: current?.album || data?.album || "",
+        artwork: current?.art || current?.artwork || current?.image || data?.station?.logo || "",
+        stationName: data?.station?.name || "Seattle Desi Radio"
+      });
+      setRadioMetaUpdatedAt(new Date().toLocaleTimeString());
+    } catch {
+      setRadioMeta({ title: "Seattle Desi Radio Live", artist: "", album: "", artwork: "", stationName: "Seattle Desi Radio" });
+      setRadioMetaUpdatedAt(new Date().toLocaleTimeString());
+    }
+  };
+
+  const loadEventCrewAssignments = async () => {
+    const { data } = await supabase.from("event_crew_assignments").select("*, team_members(name,title,image)");
+    setEventCrewAssignments(data || []);
+  };
+
+  const loadEventsOnly = async () => {
+    const result = await supabase.from("events").select("*").order("created_at", { ascending: false });
+    setEvents((result.data || []).map(normalizeEvent));
+    await loadEventCrewAssignments();
+  };
+
+  const loadData = async () => {
+    const [businessRows, teamRows, radioTeamRows] = await Promise.all([
+      supabase.from("local_businesses").select("*").order("created_at", { ascending: false }),
+      supabase.from("team_members").select("*").order("created_at", { ascending: true }),
+      supabase.from("radio_team_members").select("*").order("created_at", { ascending: true })
+    ]);
+    setBusinesses(businessRows.data || []);
+    setTeamMembers(teamRows.data || []);
+    setRadioTeamMembers(radioTeamRows.data || []);
+    await loadEventsOnly();
+    await fetchYouTubeVideos();
+  };
+
+  const createEvent = async () => {
+    setEventMessage("");
+    if (!user?.id) {
+      openLogin();
+      return setEventMessage("Please login first.");
+    }
+    if (!eventTitle || !eventDate || !eventLocation) return setEventMessage("Please enter event title, date, and location.");
+    setEventSaving(true);
+    try {
+      const imageUrl = eventImageFile ? await uploadFileToBucket(eventImageFile, EVENT_BUCKET) : "";
+      const { error } = await supabase.from("events").insert({
+        title: eventTitle,
+        date: eventDate,
+        location: eventLocation,
+        description: eventDescription || null,
+        ticket_url: eventTicketUrl || null,
+        poc_email: eventPocEmail || null,
+        poc_phone: eventPocPhone || null,
+        image: imageUrl || null,
+        crew_member_ids: selectedEventCrewIds,
+        created_by: user.id
+      });
+      if (error) throw error;
+      setEventTitle(""); setEventDate(""); setEventLocation(""); setEventDescription(""); setEventTicketUrl(""); setEventPocEmail(""); setEventPocPhone(""); setEventImageFile(null); setSelectedEventCrewIds([]);
+      setEventMessage("Event added successfully.");
+      await loadEventsOnly();
+    } catch (error: any) {
+      setEventMessage(error.message || "Could not add event.");
+    } finally {
+      setEventSaving(false);
+    }
+  };
+
+  const openAssignCrewForEvent = (event: AnyRecord) => {
+    setAssignCrewEventId(event.id);
+    setAssignCrewMemberIds(Array.isArray(event.crew_member_ids) ? event.crew_member_ids : []);
+    setEventCrewMessage("");
+  };
+
+  const saveAssignedCrewForEvent = async (eventId: string) => {
+    if (!canAccessAdminArea) return setEventCrewMessage("Only admins can assign Desi TV crew to events.");
+    const { error } = await supabase.from("events").update({ crew_member_ids: assignCrewMemberIds }).eq("id", eventId);
+    if (error) return setEventCrewMessage(error.message || "Could not assign crew.");
+    setAssignCrewEventId(null);
+    setAssignCrewMemberIds([]);
+    setEventCrewMessage("Desi TV Crew assigned successfully.");
+    await loadEventsOnly();
+  };
+
+  const volunteerForEventCrew = async (eventId: string) => {
+    if (!user?.id) {
+      openLogin();
+      return setEventCrewMessage("Please login before joining crew.");
+    }
+    if (!canChooseCrew) return setEventCrewMessage("Only users with a role containing crew can join as crew.");
+    const { error } = await supabase.from("event_crew_assignments").insert({ event_id: eventId, user_id: user.id, assignment_type: "self_selected" });
+    if (error) return setEventCrewMessage(error.message || "Could not join crew.");
+    setEventCrewMessage("You joined as Desi TV Crew.");
+    await loadEventCrewAssignments();
+  };
+
+  const createBusiness = async () => {
+    setBusinessMessage("");
+    if (!user?.id) return openLogin();
+    if (!businessName || !businessAddress || !businessCategory) return setBusinessMessage("Please enter name, address and category.");
+    const imageUrl = businessImageFile ? await uploadFileToBucket(businessImageFile, BUSINESS_BUCKET) : "";
+    const { error } = await supabase.from("local_businesses").insert({
+      name: businessName,
+      address: businessAddress,
+      website: businessWebsite,
+      category: businessCategory,
+      discount: businessDiscount,
+      offer: businessOffer,
+      poc_name: businessPocName,
+      poc_email: businessPocEmail,
+      poc_phone: businessPocPhone,
+      image: imageUrl,
+      created_by: user.id
+    });
+    if (error) return setBusinessMessage(error.message);
+    setBusinessName(""); setBusinessAddress(""); setBusinessWebsite(""); setBusinessCategory(""); setBusinessDiscount(""); setBusinessOffer(""); setBusinessPocName(""); setBusinessPocEmail(""); setBusinessPocPhone(""); setBusinessImageFile(null);
+    setBusinessMessage("Business added successfully.");
+    await loadData();
+  };
+
+  const createTeamMember = async () => {
+    setTeamMessage("");
+    if (!canAccessAdminArea) return setTeamMessage("Only admins can add team members.");
+    if (!teamName || !teamTitle) return setTeamMessage("Please enter name and title.");
+    const imageUrl = teamImageFile ? await uploadFileToBucket(teamImageFile, TEAM_BUCKET) : "";
+    const { error } = await supabase.from("team_members").insert({ name: teamName, title: teamTitle, image: imageUrl, created_by: user.id });
+    if (error) return setTeamMessage(error.message);
+    setTeamName(""); setTeamTitle(""); setTeamImageFile(null); setTeamMessage("Team member added.");
+    await loadData();
+  };
+
+  const createRadioTeamMember = async () => {
+    setRadioTeamMessage("");
+    if (!canAccessAdminArea) return setRadioTeamMessage("Only admins can add radio team members.");
+    if (!radioTeamName || !radioTeamTitle || !radioSegmentName) return setRadioTeamMessage("Please enter name, title and segment.");
+    const imageUrl = radioTeamImageFile ? await uploadFileToBucket(radioTeamImageFile, RADIO_TEAM_BUCKET) : "";
+    const { error } = await supabase.from("radio_team_members").insert({ name: radioTeamName, title: radioTeamTitle, segment_name: radioSegmentName, image: imageUrl, created_by: user.id });
+    if (error) return setRadioTeamMessage(error.message);
+    setRadioTeamName(""); setRadioTeamTitle(""); setRadioSegmentName(""); setRadioTeamImageFile(null); setRadioTeamMessage("Radio team member added.");
+    await loadData();
+  };
+
+  const submitContactRequest = async () => {
+    if (!contactName || !contactEmail || !contactInterest) return setContactStatus("Please enter your name, email and reason.");
+    const { error } = await supabase.from("contact_requests").insert({ name: contactName, email: contactEmail, phone: contactPhone, interest: contactInterest, message: contactMessage });
+    if (error) return setContactStatus(error.message);
+    setContactName(""); setContactEmail(""); setContactPhone(""); setContactInterest("volunteer"); setContactMessage(""); setContactStatus("Thank you. Your request has been submitted.");
+  };
+
+  useEffect(() => {
+    const init = async () => {
+      const { data } = await supabase.auth.getUser();
+      const currentUser = data?.user || null;
+      setUser(currentUser);
+      if (currentUser) await loadAdminRole(currentUser);
+      else setAdminChecked(true);
+    };
+    init();
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const currentUser = session?.user || null;
+      setUser(currentUser);
+      if (currentUser) {
+        setTab("home");
+        await loadAdminRole(currentUser);
+      } else {
+        setUserRole("");
+        setAdminChecked(true);
+      }
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    loadData();
+    fetchRadioMetadata();
+    const interval = setInterval(() => {
+      loadData();
+      fetchRadioMetadata();
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (tab === "events") loadEventsOnly();
+    if (tab === "tv" || tab === "home") fetchYouTubeVideos();
+  }, [tab]);
+
+  const Header = () => (
+    <>
+      <div className="bg-[#050b18] text-white text-sm px-7 py-2 flex flex-wrap items-center justify-between gap-3 shadow-md">
+        <div className="flex items-center gap-4 flex-wrap">
+          <span>Follow Us:</span>
+          <a href="https://seattledesitv.com" target="_blank" rel="noreferrer" className="hover:text-pink-400">🌐 Website</a>
+          <a href="https://www.youtube.com/@SeattleDesiTV" target="_blank" rel="noreferrer" className="hover:text-pink-400">▶ YouTube</a>
+          <a href="https://instagram.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-400">📸 Instagram</a>
+          <a href="https://www.tiktok.com/@seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-400">🎵 TikTok</a>
+          <a href="https://www.facebook.com/search/top?q=Seattle%20Desi%20TV" target="_blank" rel="noreferrer" className="hover:text-pink-400">📘 Facebook</a>
+          <a href="mailto:info@seattledesitv.com" className="hover:text-pink-400">✉ Email</a>
+        </div>
+        <span>📻 Listen Live: <b className="text-yellow-400">Seattle Desi Radio</b> <span className="bg-red-600 px-3 py-1 rounded-md text-xs font-bold">LIVE</span></span>
+      </div>
+      <header className="bg-white/95 backdrop-blur text-[#080d1d] px-6 md:px-12 py-5 flex items-center justify-between gap-5 shadow-sm sticky top-0 z-50">
+        <button type="button" onClick={() => setTab("home")} className="flex items-center -my-4"><img src={LOGO_SRC} alt="Seattle Desi TV" className="h-28 md:h-36 w-auto object-contain" /></button>
+        <nav className="hidden lg:flex items-center gap-3 font-bold">
+          {navItems.map(([id, label]) => (
+            <button key={id} type="button" onClick={() => (id === "studio" && !canAccessAdminArea ? openLogin() : setTab(id))} className={`px-4 py-3 rounded-2xl transition ${tab === id ? "text-pink-600 bg-pink-50 shadow border-b-2 border-pink-600" : "hover:text-pink-600 hover:bg-pink-50"}`}>{label}</button>
+          ))}
+        </nav>
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => setDesignMode(designMode === "broadcast" ? "classic" : "broadcast")} className="hidden md:block border border-pink-600 text-pink-600 px-4 py-3 rounded-xl font-bold bg-white">{designMode === "broadcast" ? "Switch Classic" : "Switch Broadcast"}</button>
+          <button type="button" onClick={() => setTab("tv")} className="hidden md:block bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-xl font-black shadow">▶ Watch TV</button>
+          {user ? <button type="button" onClick={signOut} className="border px-5 py-3 rounded-xl font-semibold">Logout</button> : <button type="button" onClick={openLogin} className="border border-gray-400 px-5 py-3 rounded-xl font-semibold">Login</button>}
+        </div>
+      </header>
+    </>
+  );
+
+  const AuthPanel = () => (
+    <div className="bg-white text-black rounded-2xl p-6 w-full max-w-md shadow-2xl">
+      <h2 className="text-2xl font-bold mb-4">{authMode === "login" ? "Login" : "Create Account"}</h2>
+      <input className="w-full p-3 mb-3 border rounded-lg" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input className="w-full p-3 mb-3 border rounded-lg" placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      {authMessage && <p className="text-sm text-orange-600 mb-3">{authMessage}</p>}
+      {authMode === "login" ? <button type="button" onClick={signIn} className="bg-pink-600 text-white px-4 py-3 w-full rounded-lg font-bold">Login</button> : <button type="button" onClick={signUp} className="bg-pink-600 text-white px-4 py-3 w-full rounded-lg font-bold">Sign Up</button>}
+      <div className="grid gap-2 mt-4 text-sm">
+        <button type="button" onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")} className="text-blue-600">{authMode === "login" ? "Need an account? Sign up" : "Already have an account? Login"}</button>
+        <button type="button" onClick={resetPassword} className="text-orange-600">Reset Password</button>
+        <button type="button" onClick={magicLinkLogin} className="text-green-700">Email Magic Link</button>
+      </div>
+    </div>
+  );
+
+  const Hero = () => (
+    <section className="relative min-h-[380px] flex items-center overflow-hidden bg-cover bg-center" style={{ backgroundImage: `linear-gradient(90deg, rgba(2,6,28,.98) 0%, rgba(2,6,28,.88) 36%, rgba(2,6,28,.25) 100%), url(${HERO_IMAGE})` }}>
+      <div className="absolute -left-24 top-0 bottom-0 w-48 bg-pink-600 rounded-r-full border-r-8 border-yellow-400 opacity-95" />
+      <div className="px-8 md:px-16 py-16 max-w-4xl relative z-10 text-white">
+        <h1 className="text-5xl md:text-6xl font-black uppercase leading-tight tracking-tight drop-shadow">Voice of the <br /><span className="text-yellow-400">Desi Community</span></h1>
+        <div className="w-16 h-2 bg-pink-600 rounded-full mt-3" />
+        <p className="mt-6 text-lg max-w-xl leading-relaxed">Seattle Desi TV is your source for news, entertainment, culture, and community stories across the Pacific Northwest and beyond.</p>
+        <div className="mt-8 flex flex-wrap gap-4"><button type="button" onClick={() => setTab("tv")} className="bg-pink-600 hover:bg-pink-700 px-7 py-4 rounded-lg font-bold shadow-lg">▶ Watch Live TV</button><button type="button" onClick={() => setTab("radio")} className="border border-white/80 bg-black/20 px-7 py-4 rounded-lg font-bold">🎧 Listen Live Radio</button></div>
+      </div>
+    </section>
+  );
+
+  const VideoCard = ({ video }: { video: AnyRecord }) => <a href={video.url} target="_blank" rel="noreferrer" className="block group"><div className="rounded-xl overflow-hidden bg-gray-200 aspect-video">{video.thumbnail ? <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition" /> : <div className="w-full h-full bg-gray-300" />}</div><h3 className="mt-3 text-sm font-bold leading-snug">{video.title}</h3><p className="text-xs text-gray-500 mt-1">Seattle Desi TV • Latest</p></a>;
+
+  const EventsHomeList = () => <div><div className="flex items-center justify-between mb-4"><h3 className="text-xl font-black flex items-center gap-2"><span className="text-pink-600">📅</span> Upcoming Events</h3><button type="button" onClick={() => setTab("events")} className="border px-3 py-1 rounded-lg text-xs font-bold">View All</button></div>{events.slice(0, 3).map((event) => { const d = event.date ? new Date(`${String(event.date).split("T")[0]}T00:00:00`) : null; return <div key={event.id} className="flex gap-4 border-b py-4 last:border-b-0"><div className="bg-pink-50 rounded-xl px-4 py-2 text-center min-w-20 shadow-sm"><p className="text-pink-600 text-xs font-black uppercase">{d ? d.toLocaleString("en", { month: "short" }) : "TBA"}</p><p className="text-3xl font-black">{d ? d.getDate() : ""}</p></div><div><p className="font-black text-sm">{event.title}</p><p className="text-sm text-gray-500">{d ? d.toLocaleDateString() : event.date} · {event.location || "Seattle, WA"}</p></div></div>; })}{events.length === 0 && <p className="text-gray-500 text-sm">No events added yet.</p>}</div>;
+
+  const HomePage = () => (
+    <>
+      <Hero />
+      <main className={designMode === "broadcast" ? "bg-gradient-to-b from-white to-gray-50 text-[#081024] px-6 md:px-10 py-8 space-y-8" : "bg-white text-[#081024] px-8 md:px-14 py-10 space-y-12"}>
+        <section className={designMode === "broadcast" ? "grid xl:grid-cols-[1fr_360px_300px] gap-6 items-stretch" : "space-y-8"}>
+          <div className="bg-white rounded-2xl shadow-xl border p-6">
+            <div className="flex items-center justify-between mb-5"><h2 className="text-2xl font-black flex items-center gap-3"><span className="bg-red-600 text-white rounded-lg px-3 py-2">▶</span> Latest Videos</h2><button type="button" onClick={() => setTab("tv")} className="border border-pink-600 text-pink-600 px-5 py-2 rounded-lg font-bold">View All</button></div>
+            {videos.length === 0 ? <div className="text-gray-500"><p>{youtubeLoadMessage || "Loading latest videos..."}</p><a href="https://www.youtube.com/@SeattleDesiTV" target="_blank" rel="noreferrer" className="inline-block mt-3 bg-pink-600 text-white px-4 py-2 rounded-lg font-bold">Open YouTube</a></div> : <div className="grid md:grid-cols-3 xl:grid-cols-5 gap-5">{videos.slice(0, 5).map((video) => <VideoCard key={video.id} video={video} />)}</div>}
+          </div>
+          <div className="bg-white rounded-2xl shadow-xl border p-5"><EventsHomeList /></div>
+          <div className="bg-[#071123] text-white rounded-2xl shadow-xl p-6 text-center flex flex-col items-center justify-center"><h3 className="text-2xl font-black">SEATTLE DESI RADIO</h3><span className="bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-black mt-5">ON AIR</span><div className="text-7xl my-7">🎙️</div><p className="text-gray-200">24/7 Bollywood, Bhangra & Desi Hits!</p><button type="button" onClick={() => setTab("radio")} className="mt-6 border border-white/70 bg-purple-900/60 px-8 py-3 rounded-xl font-bold">🎧 Listen Live</button></div>
+        </section>
+        <ContactSection compact />
+      </main>
+    </>
+  );
+
+  const ContactSection = ({ compact = false }: { compact?: boolean }) => <section className={`${compact ? "" : "max-w-6xl mx-auto"} bg-[#071123] text-white rounded-2xl p-8 grid lg:grid-cols-[1fr_520px] gap-8 items-start`}><div><h2 className="text-3xl font-black">Get Involved with Seattle Desi TV</h2><p className="text-gray-300 mt-3">Reach out to volunteer, intern, become an RJ/VJ, partner with us, or learn about sponsorship opportunities.</p><div className="grid md:grid-cols-2 gap-3 mt-6 text-sm text-gray-300"><div className="bg-white/10 rounded-xl p-4">🤝 Volunteer</div><div className="bg-white/10 rounded-xl p-4">🎓 Internship</div><div className="bg-white/10 rounded-xl p-4">🎙 RJ</div><div className="bg-white/10 rounded-xl p-4">🎥 VJ</div><div className="bg-white/10 rounded-xl p-4">💼 Sponsorship</div><div className="bg-white/10 rounded-xl p-4">📺 Media Partnership</div></div></div><div className="bg-white text-[#081024] rounded-2xl p-5 shadow-xl"><input className="w-full border rounded-lg p-3 mb-3" placeholder="Your name" value={contactName} onChange={(e) => setContactName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Email" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Phone number" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} /><select className="w-full border rounded-lg p-3 mb-3" value={contactInterest} onChange={(e) => setContactInterest(e.target.value)}><option value="volunteer">I want to volunteer</option><option value="intern">I am interested in an internship</option><option value="rj">I want to be an RJ</option><option value="vj">I want to be a VJ</option><option value="sponsorship">I want sponsorship details</option><option value="media-partner">Media partnership</option><option value="general">General enquiry</option></select><textarea className="w-full border rounded-lg p-3 mb-3 min-h-28" placeholder="Tell us more" value={contactMessage} onChange={(e) => setContactMessage(e.target.value)} />{contactStatus && <p className="text-sm text-orange-600 mb-3">{contactStatus}</p>}<button type="button" onClick={submitContactRequest} className="bg-pink-600 text-white px-6 py-3 rounded-lg font-bold w-full">Submit Request</button></div></section>;
+
+  const CrewBadges = ({ event }: { event: AnyRecord }) => {
+    const assigned = teamMembers.filter((member) => event.crew_member_ids?.includes(member.id));
+    const volunteers = eventCrewAssignments.filter((assignment) => assignment.event_id === event.id);
+    return <>{assigned.length > 0 && <div className="mt-4 bg-gray-50 rounded-xl p-3"><p className="text-xs font-black text-gray-500 uppercase">Desi TV Crew</p><div className="flex flex-wrap gap-2 mt-2">{assigned.map((member) => <span key={member.id} className="bg-pink-50 text-pink-600 px-3 py-1 rounded-full text-xs font-bold">{member.name}</span>)}</div></div>}{volunteers.length > 0 && <div className="mt-3 bg-blue-50 rounded-xl p-3"><p className="text-xs font-black text-blue-700 uppercase">Crew Volunteers</p><p className="text-xs text-blue-700 mt-1">{volunteers.length} crew member(s) joined</p></div>}</>;
+  };
+
+  return (
+    <div className="min-h-screen bg-white">
+      <Header />
+      {tab === "login" && <main className="bg-[#071123] min-h-[650px] flex items-center justify-center px-8 py-16"><div><div className="text-center text-white mb-6"><h1 className="text-3xl font-black">Seattle Desi TV Login</h1><p className="text-gray-300 mt-2">Login, sign up, reset password, or use magic link.</p></div><AuthPanel /></div></main>}
+      {tab === "home" && <HomePage />}
+      {tab === "tv" && <main className="bg-white text-[#081024] px-8 md:px-14 py-10"><h1 className="text-4xl font-black mb-2">Seattle Desi TV Videos</h1>{youtubeLoadMessage && <p className="text-sm text-gray-500 mb-6">{youtubeLoadMessage}</p>}<div className="grid md:grid-cols-3 xl:grid-cols-4 gap-6">{videos.map((video) => <VideoCard key={video.id} video={video} />)}</div></main>}
+
+      {tab === "radio" && <main className="bg-white text-[#081024] px-8 md:px-14 py-10 space-y-10"><section className="bg-[#081024] text-white rounded-3xl p-10 max-w-6xl mx-auto"><div className="grid lg:grid-cols-[220px_1fr] gap-8 items-center"><div className="w-full aspect-square rounded-3xl bg-white/10 overflow-hidden grid place-items-center">{radioMeta?.artwork ? <img src={radioMeta.artwork} alt="Now playing" className="w-full h-full object-cover" /> : <div className="text-center p-6"><div className="text-5xl">🎧</div><p className="mt-3 font-black">Seattle Desi Radio</p></div>}</div><div><div className="flex flex-wrap items-center gap-3 mb-4"><span className="bg-green-500 text-black px-3 py-1 rounded-full text-xs font-black">● LIVE</span><span className="text-sm text-gray-300">Updated: {radioMetaUpdatedAt || "Loading..."}</span></div><h1 className="text-5xl font-black">{radioMeta?.stationName || "Seattle Desi Radio"}</h1><p className="mt-4 text-gray-300">Live South Asian music, interviews, culture, and community stories.</p><div className="mt-6 bg-white/10 rounded-2xl p-5"><p className="text-sm text-gray-300 uppercase tracking-wide">Now Playing</p><h2 className="text-3xl font-black mt-1">{radioMeta?.title || "Seattle Desi Radio Live"}</h2>{radioMeta?.artist && <p className="text-xl text-yellow-300 mt-1">{radioMeta.artist}</p>}</div><audio controls className="w-full mt-8"><source src={LIVE365_STREAM_URL} type="audio/mpeg" /></audio></div></div></section><section className="max-w-6xl mx-auto grid lg:grid-cols-[420px_1fr] gap-8">{canAccessAdminArea && <div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Admin: Add Radio Team / Host</h2><input className="w-full border rounded-lg p-3 mb-3" placeholder="Name" value={radioTeamName} onChange={(e) => setRadioTeamName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Title / Role" value={radioTeamTitle} onChange={(e) => setRadioTeamTitle(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Segment name" value={radioSegmentName} onChange={(e) => setRadioSegmentName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setRadioTeamImageFile(e.target.files?.[0] || null)} />{radioTeamMessage && <p className="text-sm text-orange-600 mb-3">{radioTeamMessage}</p>}<button type="button" onClick={createRadioTeamMember} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full">Add Radio Team Member</button></div>}<div className={canAccessAdminArea ? "" : "lg:col-span-2"}><h2 className="text-3xl font-black mb-5">Radio Team & Segments</h2>{radioTeamMembers.length === 0 ? <div className="border rounded-2xl p-8 text-gray-500">No radio team members added yet.</div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">{radioTeamMembers.map((member) => <TeamCard key={member.id} member={member} segment={member.segment_name} />)}</div>}</div></section></main>}
+
+      {tab === "events" && <main className="bg-white text-[#081024] px-8 md:px-14 py-10"><div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8"><div><h1 className="text-4xl font-black">Community Events</h1><p className="text-gray-500 mt-2">Add events, upload posters, and showcase them on Seattle Desi TV.</p></div>{!user && <button type="button" onClick={openLogin} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold">Login to Add Event</button>}</div><section className="grid lg:grid-cols-[420px_1fr] gap-8"><EventForm /><EventsList /></section></main>}
+      {tab === "businesses" && <BusinessesPage />}
+      {tab === "team" && <TeamPage />}
+      {tab === "studio" && <StudioPage />}
+      {tab === "donate" && <main className="bg-white text-[#081024] px-8 md:px-14 py-20 text-center"><h1 className="text-5xl font-black">Support Seattle Desi TV</h1><p className="mt-4 text-gray-600 max-w-2xl mx-auto">Your support helps us amplify South Asian voices, arts, culture, and community stories.</p><button type="button" className="mt-8 bg-pink-600 text-white px-8 py-4 rounded-xl font-bold">Donate Now</button></main>}
+      {tab === "contact" && <main className="bg-white text-[#081024] px-8 md:px-14 py-10"><ContactSection /></main>}
+      <Footer />
+    </div>
+  );
+
+  function EventForm() {
+    return <div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Add New Event</h2>{!user && <div className="bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-xl p-3 mb-3 text-sm">Login is required to add events.</div>}<input className="w-full border rounded-lg p-3 mb-3" placeholder="Event title" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Location" value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} /><textarea className="w-full border rounded-lg p-3 mb-3 min-h-28" placeholder="Event description" value={eventDescription} onChange={(e) => setEventDescription(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Ticket link / registration URL" value={eventTicketUrl} onChange={(e) => setEventTicketUrl(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC email (internal only)" type="email" value={eventPocEmail} onChange={(e) => setEventPocEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC phone (internal only)" value={eventPocPhone} onChange={(e) => setEventPocPhone(e.target.value)} />{canAccessAdminArea && <CrewSelector selected={selectedEventCrewIds} onToggle={(id) => setSelectedEventCrewIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} />}<label className="block text-sm font-bold mb-2">Upload event image / poster</label><input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setEventImageFile(e.target.files?.[0] || null)} />{eventMessage && <p className="text-sm text-orange-600 mb-3">{eventMessage}</p>}<button type="button" onClick={createEvent} disabled={eventSaving || !user} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full disabled:opacity-60">{eventSaving ? "Saving Event..." : "Add Event"}</button></div>;
+  }
+
+  function CrewSelector({ selected, onToggle }: { selected: string[]; onToggle: (id: string) => void }) {
+    return <div className="border rounded-xl p-3 mb-3 bg-pink-50"><p className="font-black text-sm mb-2">Assign Desi TV Crew</p>{teamMembers.length === 0 ? <p className="text-xs text-gray-500">No team members available yet.</p> : <div className="space-y-2 max-h-48 overflow-auto">{teamMembers.map((member) => <label key={member.id} className="flex items-center gap-2 text-sm bg-white rounded-lg p-2 border"><input type="checkbox" checked={selected.includes(member.id)} onChange={() => onToggle(member.id)} /><span className="font-semibold">{member.name}</span><span className="text-gray-500">{member.title}</span></label>)}</div>}</div>;
+  }
+
+  function EventsList() {
+    return <div><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4"><div><h2 className="text-2xl font-black">Published Events</h2>{eventCrewMessage && <p className="text-sm text-blue-700 mt-2">{eventCrewMessage}</p>}<p className="text-xs text-gray-500 mt-1">Loaded events: {events.length}</p></div><div className="flex gap-3 flex-wrap"><button type="button" onClick={loadEventsOnly} className="border border-pink-600 text-pink-600 px-4 py-3 rounded-lg font-bold">Refresh Events</button><select className="border rounded-lg p-3" value={eventMonthFilter} onChange={(e) => setEventMonthFilter(e.target.value)}><option value="all">All Months</option>{["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((m, i) => <option key={m} value={String(i + 1)}>{m}</option>)}</select><select className="border rounded-lg p-3" value={eventYearFilter} onChange={(e) => setEventYearFilter(e.target.value)}><option value="all">All Years</option>{availableEventYears.map((year) => <option key={year} value={year}>{year}</option>)}</select></div></div>{events.length === 0 ? <div className="border rounded-2xl p-8 text-gray-500">No events added yet.</div> : filteredEvents.length === 0 ? <div className="border rounded-2xl p-8 text-gray-500">No events match the selected filters.</div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">{filteredEvents.map((event) => <EventCard key={event.id} event={event} />)}</div>}</div>;
+  }
+
+  function EventCard({ event }: { event: AnyRecord }) {
+    return <div className="border rounded-2xl overflow-hidden shadow-sm bg-white">{event.image ? <img src={event.image} alt={event.title} className="w-full h-48 object-cover" /> : <div className="w-full h-48 bg-pink-50 grid place-items-center text-pink-600 font-black">Seattle Desi TV</div>}<div className="p-5"><h3 className="text-xl font-black">{event.title}</h3><p className="text-gray-500 mt-1">{event.date}</p><p className="text-gray-500">{event.location}</p>{event.description && <p className="text-sm text-gray-600 mt-3">{event.description}</p>}<CrewBadges event={event} />{canAccessAdminArea && <button type="button" onClick={() => openAssignCrewForEvent(event)} className="inline-block mt-4 mr-2 bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Assign Desi TV Crew</button>}{canChooseCrew && <button type="button" onClick={() => volunteerForEventCrew(event.id)} className="inline-block mt-4 mr-2 bg-[#071123] text-white px-4 py-2 rounded-lg font-bold text-sm">Join as Desi TV Crew</button>}{assignCrewEventId === event.id && <div className="mt-4 border rounded-xl p-3 bg-purple-50"><CrewSelector selected={assignCrewMemberIds} onToggle={(id) => setAssignCrewMemberIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} /><div className="flex gap-2"><button type="button" onClick={() => saveAssignedCrewForEvent(event.id)} className="bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Save Crew</button><button type="button" onClick={() => setAssignCrewEventId(null)} className="border px-4 py-2 rounded-lg font-bold text-sm">Cancel</button></div></div>}{event.ticket_url && <a href={event.ticket_url} target="_blank" rel="noreferrer" className="inline-block mt-4 bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Tickets / Register</a>}</div></div>;
+  }
+
+  function BusinessesPage() {
+    return <main className="bg-white text-[#081024] px-8 md:px-14 py-10"><div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8"><div><h1 className="text-4xl font-black">Local Business Directory</h1><p className="text-gray-500 mt-2">Add local businesses, upload images, publish offers, and help the community discover trusted services.</p></div>{!user && <button type="button" onClick={openLogin} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold">Login to Add Business</button>}</div><section className="grid lg:grid-cols-[420px_1fr] gap-8"><div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Add Local Business</h2><input className="w-full border rounded-lg p-3 mb-3" placeholder="Business name" value={businessName} onChange={(e) => setBusinessName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Business address" value={businessAddress} onChange={(e) => setBusinessAddress(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Website URL" value={businessWebsite} onChange={(e) => setBusinessWebsite(e.target.value)} /><select className="w-full border rounded-lg p-3 mb-3" value={businessCategory} onChange={(e) => setBusinessCategory(e.target.value)}><option value="">Select category</option>{["restaurant", "grocery", "beauty", "legal", "real-estate", "finance", "health", "education", "events", "other"].map((c) => <option key={c} value={c}>{c}</option>)}</select><input className="w-full border rounded-lg p-3 mb-3" placeholder="Discount" value={businessDiscount} onChange={(e) => setBusinessDiscount(e.target.value)} /><textarea className="w-full border rounded-lg p-3 mb-3 min-h-24" placeholder="Current offers / specials" value={businessOffer} onChange={(e) => setBusinessOffer(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC name (internal only)" value={businessPocName} onChange={(e) => setBusinessPocName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC email (internal only)" value={businessPocEmail} onChange={(e) => setBusinessPocEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC phone (internal only)" value={businessPocPhone} onChange={(e) => setBusinessPocPhone(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setBusinessImageFile(e.target.files?.[0] || null)} />{businessMessage && <p className="text-sm text-orange-600 mb-3">{businessMessage}</p>}<button type="button" onClick={createBusiness} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full">Add Business</button></div><div><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4"><h2 className="text-2xl font-black">Published Businesses</h2><select className="border rounded-lg p-3" value={businessCategoryFilter} onChange={(e) => setBusinessCategoryFilter(e.target.value)}><option value="all">All Categories</option>{availableBusinessCategories.map((category) => <option key={category} value={category}>{category}</option>)}</select></div>{businesses.length === 0 ? <div className="border rounded-2xl p-8 text-gray-500">No businesses added yet.</div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">{filteredBusinesses.map((business) => <div key={business.id} className="border rounded-2xl overflow-hidden shadow-sm bg-white">{business.image ? <img src={business.image} alt={business.name} className="w-full h-48 object-cover" /> : <div className="w-full h-48 bg-pink-50 grid place-items-center text-pink-600 font-black">Local Business</div>}<div className="p-5"><h3 className="text-xl font-black">{business.name}</h3><p className="text-gray-500 mt-2">{business.address}</p>{business.discount && <p className="mt-3 font-bold text-green-700">Discount: {business.discount}</p>}{business.offer && <p className="text-sm text-gray-600 mt-2">{business.offer}</p>}{business.website && <a href={business.website} target="_blank" rel="noreferrer" className="inline-block mt-4 bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Visit Website</a>}</div></div>)}</div>}</div></section></main>;
+  }
+
+  function TeamCard({ member, segment }: { member: AnyRecord; segment?: string }) {
+    return <div className="border rounded-2xl overflow-hidden shadow-sm bg-white text-center">{member.image ? <img src={member.image} alt={member.name} className="w-full h-64 object-cover" /> : <div className="w-full h-64 bg-pink-50 grid place-items-center text-pink-600 font-black">SDTV</div>}<div className="p-5"><h3 className="text-xl font-black">{member.name}</h3><p className="text-gray-500 mt-1">{member.title}</p>{segment && <p className="mt-3 inline-block bg-pink-50 text-pink-600 px-3 py-1 rounded-full text-sm font-bold">{segment}</p>}</div></div>;
+  }
+
+  function TeamPage() {
+    return <main className="bg-white text-[#081024] px-8 md:px-14 py-10"><div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8"><div><h1 className="text-4xl font-black">Seattle Desi TV Team</h1><p className="text-gray-500 mt-2">Meet the people helping build Seattle Desi TV, Radio, events, and community media.</p></div></div>{canAccessAdminArea && <section className="border rounded-2xl p-6 shadow-sm bg-white mb-10 max-w-xl"><h2 className="text-2xl font-black mb-4">Admin: Add Team Member</h2><input className="w-full border rounded-lg p-3 mb-3" placeholder="Team member name" value={teamName} onChange={(e) => setTeamName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Title / Role" value={teamTitle} onChange={(e) => setTeamTitle(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setTeamImageFile(e.target.files?.[0] || null)} />{teamMessage && <p className="text-sm text-orange-600 mb-3">{teamMessage}</p>}<button type="button" onClick={createTeamMember} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full">Add Team Member</button></section>}<section><h2 className="text-2xl font-black mb-5">Our Team</h2>{teamMembers.length === 0 ? <div className="border rounded-2xl p-8 text-gray-500">No team members added yet.</div> : <div className="grid md:grid-cols-3 xl:grid-cols-4 gap-6">{teamMembers.map((member) => <TeamCard key={member.id} member={member} />)}</div>}</section></main>;
+  }
+
+  function StudioPage() {
+    return <main className="bg-white text-[#081024] px-8 md:px-14 py-10">{!user ? <div className="max-w-xl mx-auto border rounded-2xl p-8 text-center"><h1 className="text-3xl font-black">Admin Login Required</h1><p className="text-gray-500 mt-3">Please login with an admin account to access Studio.</p><button type="button" onClick={openLogin} className="mt-6 bg-pink-600 text-white px-6 py-3 rounded-xl font-bold">Login</button></div> : !canAccessAdminArea ? <div className="max-w-xl mx-auto bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-2xl p-8 text-center"><h1 className="text-3xl font-black">Access Restricted</h1><p className="mt-3">You are logged in, but your role does not include admin access.</p><p className="mt-2 text-sm">Current role: {userRole || "No admin role assigned"}</p></div> : <div><h1 className="text-4xl font-black mb-2">Seattle Desi TV Studio</h1><p className="text-gray-500 mb-8">Admin control center for managing the media platform.</p><div className="grid md:grid-cols-3 gap-6 mb-10"><div className="border rounded-2xl p-6 shadow-sm"><p className="text-gray-500">Videos</p><h2 className="text-4xl font-black">{videos.length}</h2></div><div className="border rounded-2xl p-6 shadow-sm"><p className="text-gray-500">Events</p><h2 className="text-4xl font-black">{events.length}</h2></div><div className="border rounded-2xl p-6 shadow-sm"><p className="text-gray-500">Team Members</p><h2 className="text-4xl font-black">{teamMembers.length}</h2></div></div><div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">{[["events", "📅", "Manage Events"], ["businesses", "🏪", "Manage Businesses"], ["team", "👥", "Manage Team"], ["tv", "📊", "Videos"]].map(([id, icon, title]) => <button key={id} type="button" onClick={() => setTab(id as TabId)} className="text-left border rounded-2xl p-6 hover:shadow-lg"><div className="text-4xl">{icon}</div><h3 className="font-black mt-3">{title}</h3></button>)}</div></div>}</main>;
+  }
+
+  function Footer() {
+    return <footer className="bg-[#050b18] text-white px-8 md:px-14 py-10"><div className="grid md:grid-cols-3 gap-8"><div><img src={LOGO_SRC} alt="Seattle Desi TV" className="h-20 mb-4" /><p className="text-gray-300 text-sm">Voice of the Desi Community across TV, Radio, Events and Local Stories.</p></div><div><h3 className="font-black mb-3">Connect</h3><div className="space-y-2 text-sm text-gray-300"><p><a href="https://seattledesitv.com" target="_blank" rel="noreferrer" className="hover:text-pink-400">🌐 Website: seattledesitv.com</a></p><p><a href="https://www.youtube.com/@SeattleDesiTV" target="_blank" rel="noreferrer" className="hover:text-pink-400">▶ YouTube: @SeattleDesiTV</a></p><p><a href="https://instagram.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-400">📸 Instagram: @seattledesitv</a></p><p><a href="https://www.tiktok.com/@seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-400">🎵 TikTok: @seattledesitv</a></p><p><a href="https://www.facebook.com/search/top?q=Seattle%20Desi%20TV" target="_blank" rel="noreferrer" className="hover:text-pink-400">📘 Facebook: Seattle Desi TV Page</a></p><p><a href="mailto:info@seattledesitv.com" className="hover:text-pink-400">✉ Email: info@seattledesitv.com</a></p></div></div><div><h3 className="font-black mb-3">Quick Links</h3><div className="space-y-2 text-sm text-gray-300">{["home", "tv", "radio", "events", "businesses"].map((id) => <button key={id} type="button" onClick={() => setTab(id as TabId)} className="block hover:text-pink-400 capitalize">{id}</button>)}</div></div></div><div className="border-t border-white/10 mt-8 pt-6 text-sm flex flex-col md:flex-row justify-between gap-3"><p>© 2026 Seattle Desi TV. All Rights Reserved.</p><p>Built with ❤️ for the community</p></div></footer>;
+  }
+}
