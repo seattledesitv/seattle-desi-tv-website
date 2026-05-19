@@ -645,52 +645,13 @@ export default function Page() {
 
       {mobileMenuOpen && (
         <div className="lg:hidden mt-4 border-t pt-4 bg-white">
-          <div className="grid gap-2 font-bold">
-            {navItems.map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  if (id === "studio" && !canAccessAdminArea) openLogin();
-                  else setTab(id);
-                }}
-                className={`text-left px-4 py-3 rounded-xl ${tab === id ? "text-pink-600 bg-pink-50" : "hover:bg-pink-50"}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+         <div className="grid gap-2 mb-4">
+  {user ? (
+    <>
+      <p className="text-xs text-gray-500 px-2">
+        Logged in as {user.email || "user"}
+      </p>
 
-       <div className="grid gap-2 mt-4">
-        <button
-          type="button"
-          onClick={() => {
-            setMobileMenuOpen(false);
-            setDesignMode(designMode === "broadcast" ? "classic" : "broadcast");
-          }}
-          className="border border-pink-600 text-pink-600 px-4 py-3 rounded-xl font-bold bg-white"
-        >
-          {designMode === "broadcast" ? "Switch Classic" : "Switch Broadcast"}
-        </button>
-      
-        <button
-          type="button"
-          onClick={() => {
-            setMobileMenuOpen(false);
-            setTab("tv");
-          }}
-          className="bg-pink-600 text-white px-4 py-3 rounded-xl font-black"
-        >
-          ▶ Watch Live TV
-        </button>
-      
-      
-     <p className="text-xs text-gray-500 px-2">
-  {user ? `Logged in: ${user.email}` : "Not logged in"}
-</p>
-
-    {user ? (
       <button
         type="button"
         onClick={() => {
@@ -701,33 +662,77 @@ export default function Page() {
       >
         Logout
       </button>
-    ) : (
-      <>
-        <button
-          type="button"
-          onClick={() => {
-            setMobileMenuOpen(false);
-            openLogin();
-          }}
-          className="border border-gray-400 px-4 py-3 rounded-xl font-semibold"
-        >
-          Login
-        </button>
-    
-        <button
-          type="button"
-          onClick={() => {
-            setMobileMenuOpen(false);
-            setAuthMode("signup");
-            setTab("login");
-          }}
-          className="bg-pink-600 text-white px-4 py-3 rounded-xl font-bold"
-        >
-          👥 Sign Up
-        </button>
-      </>
-    )}
-      </div>
+    </>
+  ) : (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          setMobileMenuOpen(false);
+          openLogin();
+        }}
+        className="bg-pink-600 text-white px-4 py-3 rounded-xl font-bold"
+      >
+        Login
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setMobileMenuOpen(false);
+          setAuthMode("signup");
+          setTab("login");
+        }}
+        className="border border-pink-600 text-pink-600 px-4 py-3 rounded-xl font-bold bg-white"
+      >
+        👥 Sign Up
+      </button>
+    </>
+  )}
+</div>
+
+<div className="grid gap-2 font-bold">
+  {navItems.map(([id, label]) => (
+    <button
+      key={id}
+      type="button"
+      onClick={() => {
+        setMobileMenuOpen(false);
+        if (id === "studio" && !canAccessAdminArea) openLogin();
+        else setTab(id);
+      }}
+      className={`text-left px-4 py-3 rounded-xl ${
+        tab === id ? "text-pink-600 bg-pink-50" : "hover:bg-pink-50"
+      }`}
+    >
+      {label}
+    </button>
+  ))}
+</div>
+
+<div className="grid gap-2 mt-4">
+  <button
+    type="button"
+    onClick={() => {
+      setMobileMenuOpen(false);
+      setDesignMode(designMode === "broadcast" ? "classic" : "broadcast");
+    }}
+    className="border border-pink-600 text-pink-600 px-4 py-3 rounded-xl font-bold bg-white"
+  >
+    {designMode === "broadcast" ? "Switch Classic" : "Switch Broadcast"}
+  </button>
+
+  <button
+    type="button"
+    onClick={() => {
+      setMobileMenuOpen(false);
+      setTab("tv");
+    }}
+    className="bg-[#071123] text-white px-4 py-3 rounded-xl font-black"
+  >
+    ▶ Watch Live TV
+  </button>
+</div>
       </div>
       )}
     </header>
