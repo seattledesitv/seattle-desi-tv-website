@@ -662,26 +662,66 @@ export default function Page() {
             ))}
           </div>
 
-          <div className="grid gap-2 mt-4">
-            <button type="button" onClick={() => { setMobileMenuOpen(false); setDesignMode(designMode === "broadcast" ? "classic" : "broadcast"); }} className="border border-pink-600 text-pink-600 px-4 py-3 rounded-xl font-bold bg-white">
-              {designMode === "broadcast" ? "Switch Classic" : "Switch Broadcast"}
-            </button>
-
-            <button type="button" onClick={() => { setMobileMenuOpen(false); setTab("tv"); }} className="bg-pink-600 text-white px-4 py-3 rounded-xl font-black">
-              ▶ Watch TV
-            </button>
-
-            {user ? (
-              <button type="button" onClick={() => { setMobileMenuOpen(false); signOut(); }} className="border px-4 py-3 rounded-xl font-semibold">
-                Logout
-              </button>
-            ) : (
-              <button type="button" onClick={() => { setMobileMenuOpen(false); openLogin(); }} className="border border-gray-400 px-4 py-3 rounded-xl font-semibold">
-                Login
-              </button>
-            )}
-          </div>
-        </div>
+       <div className="grid gap-2 mt-4">
+        <button
+          type="button"
+          onClick={() => {
+            setMobileMenuOpen(false);
+            setDesignMode(designMode === "broadcast" ? "classic" : "broadcast");
+          }}
+          className="border border-pink-600 text-pink-600 px-4 py-3 rounded-xl font-bold bg-white"
+        >
+          {designMode === "broadcast" ? "Switch Classic" : "Switch Broadcast"}
+        </button>
+      
+        <button
+          type="button"
+          onClick={() => {
+            setMobileMenuOpen(false);
+            setTab("tv");
+          }}
+          className="bg-pink-600 text-white px-4 py-3 rounded-xl font-black"
+        >
+          ▶ Watch Live TV
+        </button>
+      
+        <button
+          type="button"
+          onClick={() => {
+            setMobileMenuOpen(false);
+            openLogin();
+          }}
+          className="border border-gray-400 px-4 py-3 rounded-xl font-semibold"
+        >
+          Login
+        </button>
+      
+        <button
+          type="button"
+          onClick={() => {
+            setMobileMenuOpen(false);
+            setAuthMode("signup");
+            setTab("login");
+          }}
+          className="bg-pink-600 text-white px-4 py-3 rounded-xl font-bold"
+        >
+          👥 Sign Up
+        </button>
+      
+        {user && (
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              signOut();
+            }}
+            className="border px-4 py-3 rounded-xl font-semibold"
+          >
+            Logout
+          </button>
+        )}
+      </div>
+      </div>
       )}
     </header>
   </>
