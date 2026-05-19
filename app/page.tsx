@@ -287,7 +287,7 @@ export default function Page() {
     return;
   }
 
-  goToProtectedTab(id);
+  setTab(id);
 };
   const uploadFileToBucket = async (file: File, bucket: string) => {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
