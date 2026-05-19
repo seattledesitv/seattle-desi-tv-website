@@ -101,6 +101,20 @@ async function withTimeout<T>(
   }
 }
 
+  const AuthPanel = () => (
+    <div className="bg-white text-black rounded-2xl p-6 w-full max-w-md shadow-2xl">
+      <h2 className="text-2xl font-bold mb-4">{authMode === "login" ? "Login" : "Create Account"}</h2>
+      <input className="w-full p-3 mb-3 border rounded-lg" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input className="w-full p-3 mb-3 border rounded-lg" placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      {authMessage && <p className="text-sm text-orange-600 mb-3">{authMessage}</p>}
+      {authMode === "login" ? <button type="button" onClick={signIn} className="bg-pink-600 text-white px-4 py-3 w-full rounded-lg font-bold">Login</button> : <button type="button" onClick={signUp} className="bg-pink-600 text-white px-4 py-3 w-full rounded-lg font-bold">Sign Up</button>}
+      <div className="grid gap-2 mt-4 text-sm">
+        <button type="button" onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")} className="text-blue-600">{authMode === "login" ? "Need an account? Sign up" : "Already have an account? Login"}</button>
+        <button type="button" onClick={resetPassword} className="text-orange-600">Reset Password</button>
+        <button type="button" onClick={magicLinkLogin} className="text-green-700">Email Magic Link</button>
+      </div>
+    </div>
+  );
 export default function Page() {
   const [tab, setTab] = useState<TabId>("home");
   const [designMode, setDesignMode] = useState<"broadcast" | "classic">("broadcast");
@@ -542,20 +556,6 @@ export default function Page() {
     </>
   );
 
-  const AuthPanel = () => (
-    <div className="bg-white text-black rounded-2xl p-6 w-full max-w-md shadow-2xl">
-      <h2 className="text-2xl font-bold mb-4">{authMode === "login" ? "Login" : "Create Account"}</h2>
-      <input className="w-full p-3 mb-3 border rounded-lg" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-      <input className="w-full p-3 mb-3 border rounded-lg" placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-      {authMessage && <p className="text-sm text-orange-600 mb-3">{authMessage}</p>}
-      {authMode === "login" ? <button type="button" onClick={signIn} className="bg-pink-600 text-white px-4 py-3 w-full rounded-lg font-bold">Login</button> : <button type="button" onClick={signUp} className="bg-pink-600 text-white px-4 py-3 w-full rounded-lg font-bold">Sign Up</button>}
-      <div className="grid gap-2 mt-4 text-sm">
-        <button type="button" onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")} className="text-blue-600">{authMode === "login" ? "Need an account? Sign up" : "Already have an account? Login"}</button>
-        <button type="button" onClick={resetPassword} className="text-orange-600">Reset Password</button>
-        <button type="button" onClick={magicLinkLogin} className="text-green-700">Email Magic Link</button>
-      </div>
-    </div>
-  );
 
   const Hero = () => (
     <section className="relative min-h-[380px] flex items-center overflow-hidden bg-cover bg-center" style={{ backgroundImage: `linear-gradient(90deg, rgba(2,6,28,.98) 0%, rgba(2,6,28,.88) 36%, rgba(2,6,28,.25) 100%), url(${HERO_IMAGE})` }}>
