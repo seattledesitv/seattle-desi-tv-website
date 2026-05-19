@@ -32,7 +32,6 @@ const navItems: Array<[TabId, string]> = [
   ["events", "📅 Events"],
   ["businesses", "🏪 Businesses"],
   ["team", "👥 Team"],
-  ["studio", "🎬 Studio"],
   ["donate", "💝 Donate"],
   ["contact", "📞 Contact"]
 ];
