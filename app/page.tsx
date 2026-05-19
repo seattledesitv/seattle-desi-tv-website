@@ -101,20 +101,78 @@ async function withTimeout<T>(
   }
 }
 
-  const AuthPanel = () => (
+type AuthPanelProps = {
+  email: string;
+  password: string;
+  authMode: "login" | "signup";
+  authMessage: string;
+  onEmailChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
+  onSignIn: () => void;
+  onSignUp: () => void;
+  onResetPassword: () => void;
+  onMagicLinkLogin: () => void;
+  onToggleMode: () => void;
+};
+
+function AuthPanel({
+  email,
+  password,
+  authMode,
+  authMessage,
+  onEmailChange,
+  onPasswordChange,
+  onSignIn,
+  onSignUp,
+  onResetPassword,
+  onMagicLinkLogin,
+  onToggleMode
+}: AuthPanelProps) {
+  return (
     <div className="bg-white text-black rounded-2xl p-6 w-full max-w-md shadow-2xl">
-      <h2 className="text-2xl font-bold mb-4">{authMode === "login" ? "Login" : "Create Account"}</h2>
-      <input className="w-full p-3 mb-3 border rounded-lg" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-      <input className="w-full p-3 mb-3 border rounded-lg" placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      <h2 className="text-2xl font-bold mb-4">
+        {authMode === "login" ? "Login" : "Create Account"}
+      </h2>
+
+      <input
+        className="w-full p-3 mb-3 border rounded-lg"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => onEmailChange(e.target.value)}
+        autoComplete="email"
+      />
+
+      <input
+        className="w-full p-3 mb-3 border rounded-lg"
+        placeholder="Password"
+        type="password"
+        value={password}
+        onChange={(e) => onPasswordChange(e.target.value)}
+        autoComplete={authMode === "login" ? "current-password" : "new-password"}
+      />
+
       {authMessage && <p className="text-sm text-orange-600 mb-3">{authMessage}</p>}
-      {authMode === "login" ? <button type="button" onClick={signIn} className="bg-pink-600 text-white px-4 py-3 w-full rounded-lg font-bold">Login</button> : <button type="button" onClick={signUp} className="bg-pink-600 text-white px-4 py-3 w-full rounded-lg font-bold">Sign Up</button>}
+
+      {authMode === "login" ? (
+        <button type="button" onClick={onSignIn} className="bg-pink-600 text-white px-4 py-3 w-full rounded-lg font-bold">
+          Login
+        </button>
+      ) : (
+        <button type="button" onClick={onSignUp} className="bg-pink-600 text-white px-4 py-3 w-full rounded-lg font-bold">
+          Sign Up
+        </button>
+      )}
+
       <div className="grid gap-2 mt-4 text-sm">
-        <button type="button" onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")} className="text-blue-600">{authMode === "login" ? "Need an account? Sign up" : "Already have an account? Login"}</button>
-        <button type="button" onClick={resetPassword} className="text-orange-600">Reset Password</button>
-        <button type="button" onClick={magicLinkLogin} className="text-green-700">Email Magic Link</button>
+        <button type="button" onClick={onToggleMode} className="text-blue-600">
+          {authMode === "login" ? "Need an account? Sign up" : "Already have an account? Login"}
+        </button>
+        <button type="button" onClick={onResetPassword} className="text-orange-600">Reset Password</button>
+        <button type="button" onClick={onMagicLinkLogin} className="text-green-700">Email Magic Link</button>
       </div>
     </div>
   );
+}
 export default function Page() {
   const [tab, setTab] = useState<TabId>("home");
   const [designMode, setDesignMode] = useState<"broadcast" | "classic">("broadcast");
@@ -598,10 +656,24 @@ export default function Page() {
     return <>{assigned.length > 0 && <div className="mt-4 bg-gray-50 rounded-xl p-3"><p className="text-xs font-black text-gray-500 uppercase">Desi TV Crew</p><div className="flex flex-wrap gap-2 mt-2">{assigned.map((member) => <span key={member.id} className="bg-pink-50 text-pink-600 px-3 py-1 rounded-full text-xs font-bold">{member.name}</span>)}</div></div>}{volunteers.length > 0 && <div className="mt-3 bg-blue-50 rounded-xl p-3"><p className="text-xs font-black text-blue-700 uppercase">Crew Volunteers</p><p className="text-xs text-blue-700 mt-1">{volunteers.length} crew member(s) joined</p></div>}</>;
   };
 
+  const authPanelProps = {
+    email,
+    password,
+    authMode,
+    authMessage,
+    onEmailChange: setEmail,
+    onPasswordChange: setPassword,
+    onSignIn: signIn,
+    onSignUp: signUp,
+    onResetPassword: resetPassword,
+    onMagicLinkLogin: magicLinkLogin,
+    onToggleMode: () => setAuthMode(authMode === "login" ? "signup" : "login")
+  };
+  
   return (
     <div className="min-h-screen bg-white">
       <Header />
-      {tab === "login" && <main className="bg-[#071123] min-h-[650px] flex items-center justify-center px-8 py-16"><div><div className="text-center text-white mb-6"><h1 className="text-3xl font-black">Seattle Desi TV Login</h1><p className="text-gray-300 mt-2">Login, sign up, reset password, or use magic link.</p></div><AuthPanel /></div></main>}
+      {tab === "login" && <main className="bg-[#071123] min-h-[650px] flex items-center justify-center px-8 py-16"><div><div className="text-center text-white mb-6"><h1 className="text-3xl font-black">Seattle Desi TV Login</h1><p className="text-gray-300 mt-2">Login, sign up, reset password, or use magic link.</p></div><AuthPanel {...authPanelProps}/></div></main>}
       {tab === "home" && <HomePage />}
       {tab === "tv" && <main className="bg-white text-[#081024] px-8 md:px-14 py-10"><h1 className="text-4xl font-black mb-2">Seattle Desi TV Videos</h1>{youtubeLoadMessage && <p className="text-sm text-gray-500 mb-6">{youtubeLoadMessage}</p>}<div className="grid md:grid-cols-3 xl:grid-cols-4 gap-6">{videos.map((video) => <VideoCard key={video.id} video={video} />)}</div></main>}
 
