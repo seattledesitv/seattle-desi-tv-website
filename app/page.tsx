@@ -618,6 +618,19 @@ export default function Page() {
               {label}
             </button>
           ))}
+          {canAccessAdminArea && (
+            <button
+              type="button"
+              onClick={() => setTab("studio")}
+              className={`px-5 py-4 rounded-2xl transition ${
+                tab === "studio"
+                  ? "text-pink-600 bg-pink-50 shadow-lg border-b-2 border-pink-600"
+                  : "hover:text-pink-600 hover:bg-pink-50"
+              }`}
+            >
+              🎬 Studio
+            </button>
+          )}
         </nav>
 
         <div className="hidden lg:flex items-center gap-3">
@@ -707,6 +720,22 @@ export default function Page() {
       {label}
     </button>
   ))}
+  {canAccessAdminArea && (
+  <button
+    type="button"
+    onClick={() => {
+      setMobileMenuOpen(false);
+      setTab("studio");
+    }}
+    className={`text-left px-4 py-3 rounded-xl ${
+      tab === "studio"
+        ? "text-pink-600 bg-pink-50"
+        : "hover:bg-pink-50"
+    }`}
+  >
+    🎬 Studio
+  </button>
+)}
 </div>
 
 <div className="grid gap-2 mt-4">
