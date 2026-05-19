@@ -685,6 +685,24 @@ export default function Page() {
           ▶ Watch Live TV
         </button>
       
+      
+     <p className="text-xs text-gray-500 px-2">
+  {user ? `Logged in: ${user.email}` : "Not logged in"}
+</p>
+
+    {user ? (
+      <button
+        type="button"
+        onClick={() => {
+          setMobileMenuOpen(false);
+          signOut();
+        }}
+        className="bg-red-600 text-white px-4 py-3 rounded-xl font-bold"
+      >
+        Logout
+      </button>
+    ) : (
+      <>
         <button
           type="button"
           onClick={() => {
@@ -695,7 +713,7 @@ export default function Page() {
         >
           Login
         </button>
-      
+    
         <button
           type="button"
           onClick={() => {
@@ -707,19 +725,8 @@ export default function Page() {
         >
           👥 Sign Up
         </button>
-      
-        {user && (
-          <button
-            type="button"
-            onClick={() => {
-              setMobileMenuOpen(false);
-              signOut();
-            }}
-            className="border px-4 py-3 rounded-xl font-semibold"
-          >
-            Logout
-          </button>
-        )}
+      </>
+    )}
       </div>
       </div>
       )}
