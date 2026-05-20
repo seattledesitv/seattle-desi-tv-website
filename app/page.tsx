@@ -634,29 +634,32 @@ console.log("Email debug:", emailDebug);
   }, [tab]);
 
 useEffect(() => {
+  let timer: ReturnType<typeof setInterval>;
+
   const renderTurnstile = () => {
-    console.log("Rendering Turnstile now", turnstileRef.current);
-    if (!turnstileRef.current || !(window as any).turnstile) return;
+    if (!turnstileRef.current) return;
+    if (!(window as any).turnstile) return;
 
-    if (turnstileWidgetId.current) {
-      try {
-        (window as any).turnstile.remove(turnstileWidgetId.current);
-      } catch {}
-      turnstileWidgetId.current = null;
-    }
+    // Prevent duplicate render
+    if (turnstileRef.current.dataset.rendered === "true") return;
 
-    turnstileWidgetId.current = (window as any).turnstile.render(
-      turnstileRef.current,
-      {
-        sitekey: "0x4AAAAAADS20gwFUGvkmywG",
-        callback: (token: string) => setCaptchaToken(token),
-        "expired-callback": () => setCaptchaToken(""),
-        "error-callback": () => setCaptchaToken("")
-      }
-    );
+    (window as any).turnstile.render(turnstileRef.current, {
+      sitekey: "YOUR_REAL_SITE_KEY",
+      callback: (token: string) => {
+        setCaptchaToken(token);
+      },
+      "expired-callback": () => {
+        setCaptchaToken("");
+      },
+      "error-callback": () => {
+        setCaptchaToken("");
+      },
+    });
+
+    turnstileRef.current.dataset.rendered = "true";
   };
 
-  const timer = setInterval(() => {
+  timer = setInterval(() => {
     if ((window as any).turnstile) {
       clearInterval(timer);
       renderTurnstile();
@@ -665,12 +668,6 @@ useEffect(() => {
 
   return () => {
     clearInterval(timer);
-    if (turnstileWidgetId.current && (window as any).turnstile) {
-      try {
-        (window as any).turnstile.remove(turnstileWidgetId.current);
-      } catch {}
-      turnstileWidgetId.current = null;
-    }
   };
 }, []);
   
