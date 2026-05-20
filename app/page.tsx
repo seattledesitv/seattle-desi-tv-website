@@ -863,7 +863,7 @@ const submitContactRequest = async () => {
     interest: contactInterest,
     message: contactMessage,
   });
-
+  alert("Supabase saved, now sending email")
   if (error) {
     setContactStatus(error.message || "Could not save your request.");
     return;
@@ -882,7 +882,8 @@ const submitContactRequest = async () => {
       message: contactMessage,
     }),
   });
-
+const emailDebug = await response.json();
+alert(JSON.stringify(emailDebug, null, 2));
   if (!response.ok) {
     setContactStatus("Saved your request, but email notification failed.");
     return;
