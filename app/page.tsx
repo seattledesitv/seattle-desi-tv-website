@@ -570,12 +570,23 @@ export default function Page() {
     await loadData();
   };
 
-  const submitContactRequest = async () => {
-    if (!contactName || !contactEmail || !contactInterest) return setContactStatus("Please enter your name, email and reason.");
-    const { error } = await supabase.from("contact_requests").insert({ name: contactName, email: contactEmail, phone: contactPhone, interest: contactInterest, message: contactMessage });
-    if (error) return setContactStatus(error.message);
-    setContactName(""); setContactEmail(""); setContactPhone(""); setContactInterest("volunteer"); setContactMessage(""); setContactStatus("Thank you. Your request has been submitted.");
-  };
+const submitContact = async () => {
+  const response = await fetch("/api/contact", {
+    method: "POST",
+    headers: {
+      "Content-Type":"application/json"
+    },
+    body: JSON.stringify({
+      name: contactName,
+      email: contactEmail,
+      message: contactMessage
+    })
+  });
+
+  if(response.ok){
+     setContactMessage("Message sent successfully");
+  }
+};
 
   useEffect(() => {
     const init = async () => {
