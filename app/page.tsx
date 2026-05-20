@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-const [captchaToken, setCaptchaToken] = useState("");
 import { createClient } from "@supabase/supabase-js";
 
 type AnyRecord = Record<string, any>;
@@ -193,6 +192,7 @@ function AuthPanel({
 }
 export default function Page() {
   const [tab, setTab] = useState<TabId>("home");
+  const [captchaToken, setCaptchaToken] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [designMode, setDesignMode] = useState<"broadcast" | "classic">("broadcast");
   const [user, setUser] = useState<any>(null);
