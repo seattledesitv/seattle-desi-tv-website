@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+const [captchaToken, setCaptchaToken] = useState("");
 import { createClient } from "@supabase/supabase-js";
 
 type AnyRecord = Record<string, any>;
@@ -630,6 +631,12 @@ console.log("Email debug:", emailDebug);
     if (tab === "tv" || tab === "home") fetchYouTubeVideos();
   }, [tab]);
 
+useEffect(() => {
+  (window as any).onTurnstileSuccess = (token: string) => {
+    setCaptchaToken(token);
+  };
+}, []);
+  
   const Header = () => (
   <>
     <div className="bg-[#050b18] text-white text-sm px-4 md:px-7 py-2 flex flex-wrap items-center justify-between gap-3 shadow-md">
@@ -868,7 +875,10 @@ const submitContactRequest = async () => {
     setContactStatus(error.message || "Could not save your request.");
     return;
   }
-
+if (!captchaToken) {
+  setContactStatus("Please complete the captcha before submitting.");
+  return;
+}
   const response = await fetch("/api/contact", {
     method: "POST",
     headers: {
@@ -880,6 +890,7 @@ const submitContactRequest = async () => {
       phone: contactPhone,
       interest: contactInterest,
       message: contactMessage,
+      captchaToken,
     }),
   });
 const emailDebug = await response.json();
