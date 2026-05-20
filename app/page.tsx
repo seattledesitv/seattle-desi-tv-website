@@ -582,7 +582,11 @@ const submitContact = async () => {
       message: contactMessage
     })
   });
+const emailDebug = await response.json();
 
+console.log("Email debug:", emailDebug);
+
+alert(JSON.stringify(emailDebug, null, 2));
   if(response.ok){
      setContactMessage("Message sent successfully");
   }
