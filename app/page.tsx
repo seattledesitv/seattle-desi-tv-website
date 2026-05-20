@@ -193,8 +193,6 @@ function AuthPanel({
 export default function Page() {
   const [tab, setTab] = useState<TabId>("home");
   const [captchaToken, setCaptchaToken] = useState("");
-  const turnstileRef = useRef<HTMLDivElement | null>(null);
-  const turnstileWidgetId = useRef<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [designMode, setDesignMode] = useState<"broadcast" | "classic">("broadcast");
   const [user, setUser] = useState<any>(null);
