@@ -635,6 +635,7 @@ console.log("Email debug:", emailDebug);
 
 useEffect(() => {
   const renderTurnstile = () => {
+    console.log("Rendering Turnstile now", turnstileRef.current);
     if (!turnstileRef.current || !(window as any).turnstile) return;
 
     if (turnstileWidgetId.current) {
