@@ -194,6 +194,7 @@ export default function Page() {
   const [tab, setTab] = useState<TabId>("home");
   const [captchaToken, setCaptchaToken] = useState("");
   const turnstileRef = useRef<HTMLDivElement | null>(null);
+  const turnstileWidgetId = useRef<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [designMode, setDesignMode] = useState<"broadcast" | "classic">("broadcast");
   const [user, setUser] = useState<any>(null);
@@ -636,17 +637,22 @@ useEffect(() => {
   const renderTurnstile = () => {
     if (!turnstileRef.current || !(window as any).turnstile) return;
 
-    turnstileRef.current.innerHTML = "";
+    if (turnstileWidgetId.current) {
+      try {
+        (window as any).turnstile.remove(turnstileWidgetId.current);
+      } catch {}
+      turnstileWidgetId.current = null;
+    }
 
-    (window as any).turnstile.render(turnstileRef.current, {
-      sitekey: "0x4AAAAAADS20gwFUGvkmywG",
-      callback: (token: string) => {
-        setCaptchaToken(token);
-      },
-      "expired-callback": () => {
-        setCaptchaToken("");
-      },
-    });
+    turnstileWidgetId.current = (window as any).turnstile.render(
+      turnstileRef.current,
+      {
+        sitekey: "0x4AAAAAADS20gwFUGvkmywG",
+        callback: (token: string) => setCaptchaToken(token),
+        "expired-callback": () => setCaptchaToken(""),
+        "error-callback": () => setCaptchaToken("")
+      }
+    );
   };
 
   const timer = setInterval(() => {
@@ -656,7 +662,15 @@ useEffect(() => {
     }
   }, 300);
 
-  return () => clearInterval(timer);
+  return () => {
+    clearInterval(timer);
+    if (turnstileWidgetId.current && (window as any).turnstile) {
+      try {
+        (window as any).turnstile.remove(turnstileWidgetId.current);
+      } catch {}
+      turnstileWidgetId.current = null;
+    }
+  };
 }, []);
   
   const Header = () => (
@@ -930,7 +944,7 @@ const emailDebug = await response.json();
   setContactStatus("Thank you. Your request has been submitted.");
 };
   
-  const renderContactSection = ({ compact = false }: { compact?: boolean }) => <section className={`${compact ? "" : "max-w-6xl mx-auto"} bg-[#071123] text-white rounded-2xl p-8 grid lg:grid-cols-[1fr_520px] gap-8 items-start`}><div><h2 className="text-3xl font-black">Get Involved with Seattle Desi TV</h2><p className="text-gray-300 mt-3">Reach out to volunteer, intern, become an RJ/VJ, partner with us, or learn about sponsorship opportunities.</p><div className="grid md:grid-cols-2 gap-3 mt-6 text-sm text-gray-300"><div className="bg-white/10 rounded-xl p-4">🤝 Volunteer</div><div className="bg-white/10 rounded-xl p-4">🎓 Internship</div><div className="bg-white/10 rounded-xl p-4">🎙 RJ</div><div className="bg-white/10 rounded-xl p-4">🎥 VJ</div><div className="bg-white/10 rounded-xl p-4">💼 Sponsorship</div><div className="bg-white/10 rounded-xl p-4">📺 Media Partnership</div></div></div><div className="bg-white text-[#081024] rounded-2xl p-5 shadow-xl"><input className="w-full border rounded-lg p-3 mb-3" placeholder="Your name" value={contactName} onChange={(e) => setContactName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Email" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Phone number" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} /><select className="w-full border rounded-lg p-3 mb-3" value={contactInterest} onChange={(e) => setContactInterest(e.target.value)}><option value="volunteer">I want to volunteer</option><option value="intern">I am interested in an internship</option><option value="rj">I want to be an RJ</option><option value="vj">I want to be a VJ</option><option value="sponsorship">I want sponsorship details</option><option value="media-partner">Media partnership</option><option value="general">General enquiry</option></select><textarea className="w-full border rounded-lg p-3 mb-3 min-h-28" placeholder="Tell us more" value={contactMessage} onChange={(e) => setContactMessage(e.target.value)} />{contactStatus && <p className="text-sm text-orange-600 mb-3">{contactStatus}</p>}<div ref={turnstileRef} className="mb-4" /><button type="button" onClick={submitContactRequest} className="bg-pink-600 text-white px-6 py-3 rounded-lg font-bold w-full">Submit Request</button></div></section>;
+  const renderContactSection = ({ compact = false }: { compact?: boolean }) => <section className={`${compact ? "" : "max-w-6xl mx-auto"} bg-[#071123] text-white rounded-2xl p-8 grid lg:grid-cols-[1fr_520px] gap-8 items-start`}><div><h2 className="text-3xl font-black">Get Involved with Seattle Desi TV</h2><p className="text-gray-300 mt-3">Reach out to volunteer, intern, become an RJ/VJ, partner with us, or learn about sponsorship opportunities.</p><div className="grid md:grid-cols-2 gap-3 mt-6 text-sm text-gray-300"><div className="bg-white/10 rounded-xl p-4">🤝 Volunteer</div><div className="bg-white/10 rounded-xl p-4">🎓 Internship</div><div className="bg-white/10 rounded-xl p-4">🎙 RJ</div><div className="bg-white/10 rounded-xl p-4">🎥 VJ</div><div className="bg-white/10 rounded-xl p-4">💼 Sponsorship</div><div className="bg-white/10 rounded-xl p-4">📺 Media Partnership</div></div></div><div className="bg-white text-[#081024] rounded-2xl p-5 shadow-xl"><input className="w-full border rounded-lg p-3 mb-3" placeholder="Your name" value={contactName} onChange={(e) => setContactName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Email" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Phone number" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} /><select className="w-full border rounded-lg p-3 mb-3" value={contactInterest} onChange={(e) => setContactInterest(e.target.value)}><option value="volunteer">I want to volunteer</option><option value="intern">I am interested in an internship</option><option value="rj">I want to be an RJ</option><option value="vj">I want to be a VJ</option><option value="sponsorship">I want sponsorship details</option><option value="media-partner">Media partnership</option><option value="general">General enquiry</option></select><textarea className="w-full border rounded-lg p-3 mb-3 min-h-28" placeholder="Tell us more" value={contactMessage} onChange={(e) => setContactMessage(e.target.value)} />{contactStatus && <p className="text-sm text-orange-600 mb-3">{contactStatus}</p>}<div ref={turnstileRef} className="mb-4 min-h-[70px]" /><button type="button" onClick={submitContactRequest} className="bg-pink-600 text-white px-6 py-3 rounded-lg font-bold w-full">Submit Request</button></div></section>;
 
   const CrewBadges = ({ event }: { event: AnyRecord }) => {
     const assigned = teamMembers.filter((member) => event.crew_member_ids?.includes(member.id));
