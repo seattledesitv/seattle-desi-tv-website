@@ -586,7 +586,7 @@ const emailDebug = await response.json();
 
 console.log("Email debug:", emailDebug);
 
-alert(JSON.stringify(emailDebug, null, 2));
+//alert(JSON.stringify(emailDebug, null, 2));
   if(response.ok){
      setContactMessage("Message sent successfully");
   }
@@ -848,7 +848,7 @@ alert(JSON.stringify(emailDebug, null, 2));
   );
 
 const submitContactRequest = async () => {
-   alert("submitContactRequest started");
+  // alert("submitContactRequest started");
   setContactStatus("");
 
   if (!contactName || !contactEmail || !contactInterest) {
@@ -863,7 +863,7 @@ const submitContactRequest = async () => {
     interest: contactInterest,
     message: contactMessage,
   });
-  alert("Supabase saved, now sending email")
+ // alert("Supabase saved, now sending email")
   if (error) {
     setContactStatus(error.message || "Could not save your request.");
     return;
@@ -883,7 +883,7 @@ const submitContactRequest = async () => {
     }),
   });
 const emailDebug = await response.json();
-alert(JSON.stringify(emailDebug, null, 2));
+//alert(JSON.stringify(emailDebug, null, 2));
   if (!response.ok) {
     setContactStatus("Saved your request, but email notification failed.");
     return;
