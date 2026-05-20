@@ -644,7 +644,7 @@ useEffect(() => {
     if (turnstileRef.current.dataset.rendered === "true") return;
 
     (window as any).turnstile.render(turnstileRef.current, {
-      sitekey: "YOUR_REAL_SITE_KEY",
+      sitekey: "0x4AAAAAADS20gwFUGvkmywG",
       callback: (token: string) => {
         setCaptchaToken(token);
       },
