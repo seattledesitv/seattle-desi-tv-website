@@ -848,6 +848,7 @@ alert(JSON.stringify(emailDebug, null, 2));
   );
 
 const submitContactRequest = async () => {
+   alert("submitContactRequest started");
   setContactStatus("");
 
   if (!contactName || !contactEmail || !contactInterest) {
