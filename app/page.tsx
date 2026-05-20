@@ -838,7 +838,7 @@ const submitContact = async () => {
           <div className="bg-white rounded-2xl shadow-xl border p-5"><EventsHomeList /></div>
           <div className="bg-[#071123] text-white rounded-2xl shadow-xl p-6 text-center flex flex-col items-center justify-center"><h3 className="text-2xl font-black">SEATTLE DESI RADIO</h3><span className="bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-black mt-5">ON AIR</span><div className="text-7xl my-7">🎙️</div><p className="text-gray-200">24/7 Bollywood, Bhangra & Desi Hits!</p><button type="button" onClick={() => setTab("radio")} className="mt-6 border border-white/70 bg-purple-900/60 px-8 py-3 rounded-xl font-bold">🎧 Listen Live</button></div>
         </section>
-       {renderContactSection(true)}
+       {renderContactSection({ compact: true })}
       </main>
     </>
   );
@@ -935,7 +935,7 @@ const submitContact = async () => {
     >
       ❤️ Donate Now
     </a></button></main>}
-      {tab === "contact" && <main className="bg-white text-[#081024] px-8 md:px-14 py-10">{renderContactSection(false)}</main>}
+      {tab === "contact" && <main className="bg-white text-[#081024] px-8 md:px-14 py-10">{renderContactSection({ compact: false })}</main>}
       <Footer />
     </div>
   );
