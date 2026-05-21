@@ -621,7 +621,7 @@ const TurnstileBox = ({
   <div
     key={id}
     className="cf-turnstile mb-4 min-h-[70px]"
-    data-sitekey={process.env.TURNSTILE_SECRET_KEY}
+    data-sitekey="0x4AAAAAADS20gwFUGvkmywG"
     data-callback={`onTurnstileSuccess_${id}`}
     data-expired-callback={`onTurnstileExpired_${id}`}
     data-error-callback={`onTurnstileExpired_${id}`}
