@@ -680,15 +680,7 @@ console.log("Email debug:", emailDebug);
      setContactMessage("Message sent successfully");
   }
 };
-const TurnstileBox = ({
-  id,
-  onVerify
-}: {
-  id: string;
-  onVerify: (token: string) => void;
-}) => (
 
-);
   useEffect(() => {
     const init = async () => {
       const { data } = await supabase.auth.getUser();
