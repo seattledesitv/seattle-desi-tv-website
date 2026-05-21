@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 type AnyRecord = Record<string, any>;
@@ -189,6 +189,75 @@ function AuthPanel({
       </div>
     </div>
   );
+}
+
+const TURNSTILE_SITE_KEY = "0x4AAAAAADS20gwFUGvkmywG";
+
+function TurnstileBox({
+  id,
+  onVerify,
+}: {
+  id: string;
+  onVerify: (token: string) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const widgetIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const renderWidget = () => {
+      const turnstile = (window as any).turnstile;
+
+      if (cancelled) return;
+      if (!containerRef.current) return;
+      if (!turnstile) return;
+      if (widgetIdRef.current) return;
+
+      console.log(`Rendering Turnstile: ${id}`);
+
+      widgetIdRef.current = turnstile.render(containerRef.current, {
+        sitekey: TURNSTILE_SITE_KEY,
+        callback: (token: string) => {
+          console.log(`Turnstile verified: ${id}`);
+          onVerify(token);
+        },
+        "expired-callback": () => {
+          console.log(`Turnstile expired: ${id}`);
+          onVerify("");
+        },
+        "error-callback": () => {
+          console.log(`Turnstile error: ${id}`);
+          onVerify("");
+        },
+      });
+    };
+
+    const timer = setInterval(() => {
+      if ((window as any).turnstile) {
+        clearInterval(timer);
+        renderWidget();
+      }
+    }, 300);
+
+    renderWidget();
+
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+
+      if (widgetIdRef.current && (window as any).turnstile) {
+        try {
+          (window as any).turnstile.remove(widgetIdRef.current);
+        } catch {
+          // ignore cleanup warning
+        }
+        widgetIdRef.current = null;
+      }
+    };
+  }, [id, onVerify]);
+
+  return <div ref={containerRef} className="mb-4 min-h-[70px]" />;
 }
 export default function Page() {
   const [tab, setTab] = useState<TabId>("home");
@@ -618,25 +687,7 @@ const TurnstileBox = ({
   id: string;
   onVerify: (token: string) => void;
 }) => (
-  <div
-    key={id}
-    className="cf-turnstile mb-4 min-h-[70px]"
-    data-sitekey="0x4AAAAAADS20gwFUGvkmywG"
-    data-callback={`onTurnstileSuccess_${id}`}
-    data-expired-callback={`onTurnstileExpired_${id}`}
-    data-error-callback={`onTurnstileExpired_${id}`}
-    ref={() => {
-      if (typeof window === "undefined") return;
 
-      (window as any)[`onTurnstileSuccess_${id}`] = (token: string) => {
-        onVerify(token);
-      };
-
-      (window as any)[`onTurnstileExpired_${id}`] = () => {
-        onVerify("");
-      };
-    }}
-  />
 );
   useEffect(() => {
     const init = async () => {
