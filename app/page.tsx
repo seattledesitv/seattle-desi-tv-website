@@ -672,7 +672,7 @@ const submitContact = async () => {
     })
   });
 const emailDebug = await response.json();
-
+alert(JSON.stringify(emailDebug, null, 2));
 console.log("Email debug:", emailDebug);
 
 //alert(JSON.stringify(emailDebug, null, 2));
