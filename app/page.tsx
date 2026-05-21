@@ -938,13 +938,19 @@ console.log("Email debug:", emailDebug);
   );
 
 const submitContactRequest = async () => {
-  // alert("submitContactRequest started");
-  setContactStatus("");
+  setContactStatus("Submit clicked...");
 
   if (!contactName || !contactEmail || !contactInterest) {
     setContactStatus("Please enter your name, email, and reason for reaching out.");
     return;
   }
+
+  if (!contactCaptchaToken) {
+    setContactStatus("Captcha token missing. Please complete the captcha.");
+    return;
+  }
+
+  setContactStatus("Captcha passed. Saving to Supabase...");
 
   const { error } = await supabase.from("contact_requests").insert({
     name: contactName,
@@ -953,15 +959,14 @@ const submitContactRequest = async () => {
     interest: contactInterest,
     message: contactMessage,
   });
- // alert("Supabase saved, now sending email")
+
   if (error) {
     setContactStatus(error.message || "Could not save your request.");
     return;
   }
-if (!contactCaptchaToken) {
-  setContactStatus("Please complete the captcha before submitting.");
-  return;
-}
+
+  setContactStatus("Saved to Supabase. Sending email...");
+
   const response = await fetch("/api/contact", {
     method: "POST",
     headers: {
@@ -976,8 +981,11 @@ if (!contactCaptchaToken) {
       captchaToken: contactCaptchaToken,
     }),
   });
-const emailDebug = await response.json();
-//alert(JSON.stringify(emailDebug, null, 2));
+
+  const emailDebug = await response.json();
+
+  alert(JSON.stringify(emailDebug, null, 2));
+
   if (!response.ok) {
     setContactStatus("Saved your request, but email notification failed.");
     return;
@@ -988,7 +996,7 @@ const emailDebug = await response.json();
   setContactPhone("");
   setContactInterest("volunteer");
   setContactMessage("");
-  setContactStatus("Thank you. Your request has been submitted.");
+  setContactStatus("Thank you. Your request has been submitted and email was sent.");
 };
   
   const renderContactSection = ({ compact = false }: { compact?: boolean }) => <section className={`${compact ? "" : "max-w-6xl mx-auto"} bg-[#071123] text-white rounded-2xl p-8 grid lg:grid-cols-[1fr_520px] gap-8 items-start`}><div><h2 className="text-3xl font-black">Get Involved with Seattle Desi TV</h2><p className="text-gray-300 mt-3">Reach out to volunteer, intern, become an RJ/VJ, partner with us, or learn about sponsorship opportunities.</p><div className="grid md:grid-cols-2 gap-3 mt-6 text-sm text-gray-300"><div className="bg-white/10 rounded-xl p-4">🤝 Volunteer</div><div className="bg-white/10 rounded-xl p-4">🎓 Internship</div><div className="bg-white/10 rounded-xl p-4">🎙 RJ</div><div className="bg-white/10 rounded-xl p-4">🎥 VJ</div><div className="bg-white/10 rounded-xl p-4">💼 Sponsorship</div><div className="bg-white/10 rounded-xl p-4">📺 Media Partnership</div></div></div><div className="bg-white text-[#081024] rounded-2xl p-5 shadow-xl"><input className="w-full border rounded-lg p-3 mb-3" placeholder="Your name" value={contactName} onChange={(e) => setContactName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Email" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Phone number" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} /><select className="w-full border rounded-lg p-3 mb-3" value={contactInterest} onChange={(e) => setContactInterest(e.target.value)}><option value="volunteer">I want to volunteer</option><option value="intern">I am interested in an internship</option><option value="rj">I want to be an RJ</option><option value="vj">I want to be a VJ</option><option value="sponsorship">I want sponsorship details</option><option value="media-partner">Media partnership</option><option value="general">General enquiry</option></select><textarea className="w-full border rounded-lg p-3 mb-3 min-h-28" placeholder="Tell us more" value={contactMessage} onChange={(e) => setContactMessage(e.target.value)} />{contactStatus && <p className="text-sm text-orange-600 mb-3">{contactStatus}</p>}<TurnstileBox id="contact" onVerify={setContactCaptchaToken} /><button type="button" onClick={submitContactRequest} className="bg-pink-600 text-white px-6 py-3 rounded-lg font-bold w-full">Submit Request</button></div></section>;
