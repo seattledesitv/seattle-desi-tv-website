@@ -192,7 +192,11 @@ function AuthPanel({
 }
 export default function Page() {
   const [tab, setTab] = useState<TabId>("home");
-  const [captchaToken, setCaptchaToken] = useState("");
+  const [contactCaptchaToken, setContactCaptchaToken] = useState("");
+const [eventCaptchaToken, setEventCaptchaToken] = useState("");
+const [businessCaptchaToken, setBusinessCaptchaToken] = useState("");
+const [teamCaptchaToken, setTeamCaptchaToken] = useState("");
+const [radioTeamCaptchaToken, setRadioTeamCaptchaToken] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [designMode, setDesignMode] = useState<"broadcast" | "classic">("broadcast");
   const [user, setUser] = useState<any>(null);
@@ -471,6 +475,11 @@ export default function Page() {
       return setEventMessage("Please login first.");
     }
     if (!eventTitle || !eventDate || !eventLocation) return setEventMessage("Please enter event title, date, and location.");
+     if (!eventCaptchaToken) {
+    setEventMessage("Please complete the captcha before submitting.");
+    return;
+  }
+
     setEventSaving(true);
     try {
       const imageUrl = eventImageFile ? await uploadFileToBucket(eventImageFile, EVENT_BUCKET) : "";
@@ -529,6 +538,10 @@ export default function Page() {
     setBusinessMessage("");
     if (!user?.id) return openLogin();
     if (!businessName || !businessAddress || !businessCategory) return setBusinessMessage("Please enter name, address and category.");
+     if (!businessCaptchaToken) {
+    setBusinessMessage("Please complete the captcha before submitting.");
+    return;
+  }
     const imageUrl = businessImageFile ? await uploadFileToBucket(businessImageFile, BUSINESS_BUCKET) : "";
     const { error } = await supabase.from("local_businesses").insert({
       name: businessName,
@@ -553,6 +566,12 @@ export default function Page() {
     setTeamMessage("");
     if (!canAccessAdminArea) return setTeamMessage("Only admins can add team members.");
     if (!teamName || !teamTitle) return setTeamMessage("Please enter name and title.");
+    if (!teamCaptchaToken) {
+   setTeamMessage(
+      "Please complete the captcha before submitting."
+   );
+   return;
+}
     const imageUrl = teamImageFile ? await uploadFileToBucket(teamImageFile, TEAM_BUCKET) : "";
     const { error } = await supabase.from("team_members").insert({ name: teamName, title: teamTitle, image: imageUrl, created_by: user.id });
     if (error) return setTeamMessage(error.message);
@@ -592,7 +611,33 @@ console.log("Email debug:", emailDebug);
      setContactMessage("Message sent successfully");
   }
 };
+const TurnstileBox = ({
+  id,
+  onVerify
+}: {
+  id: string;
+  onVerify: (token: string) => void;
+}) => (
+  <div
+    key={id}
+    className="cf-turnstile mb-4 min-h-[70px]"
+    data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+    data-callback={`onTurnstileSuccess_${id}`}
+    data-expired-callback={`onTurnstileExpired_${id}`}
+    data-error-callback={`onTurnstileExpired_${id}`}
+    ref={() => {
+      if (typeof window === "undefined") return;
 
+      (window as any)[`onTurnstileSuccess_${id}`] = (token: string) => {
+        onVerify(token);
+      };
+
+      (window as any)[`onTurnstileExpired_${id}`] = () => {
+        onVerify("");
+      };
+    }}
+  />
+);
   useEffect(() => {
     const init = async () => {
       const { data } = await supabase.auth.getUser();
@@ -631,16 +676,7 @@ console.log("Email debug:", emailDebug);
     if (tab === "tv" || tab === "home") fetchYouTubeVideos();
   }, [tab]);
 
-useEffect(() => {
-  (window as any).onTurnstileSuccess = (token: string) => {
-    setCaptchaToken(token);
-  };
 
-  (window as any).onTurnstileExpired = () => {
-    setCaptchaToken("");
-  };
-}, []);
-  
   const Header = () => (
   <>
     <div className="bg-[#050b18] text-white text-sm px-4 md:px-7 py-2 flex flex-wrap items-center justify-between gap-3 shadow-md">
@@ -879,7 +915,7 @@ const submitContactRequest = async () => {
     setContactStatus(error.message || "Could not save your request.");
     return;
   }
-if (!captchaToken) {
+if (!contactCaptchaToken) {
   setContactStatus("Please complete the captcha before submitting.");
   return;
 }
@@ -894,7 +930,7 @@ if (!captchaToken) {
       phone: contactPhone,
       interest: contactInterest,
       message: contactMessage,
-      captchaToken,
+      captchaToken: contactCaptchaToken,
     }),
   });
 const emailDebug = await response.json();
@@ -912,13 +948,7 @@ const emailDebug = await response.json();
   setContactStatus("Thank you. Your request has been submitted.");
 };
   
-  const renderContactSection = ({ compact = false }: { compact?: boolean }) => <section className={`${compact ? "" : "max-w-6xl mx-auto"} bg-[#071123] text-white rounded-2xl p-8 grid lg:grid-cols-[1fr_520px] gap-8 items-start`}><div><h2 className="text-3xl font-black">Get Involved with Seattle Desi TV</h2><p className="text-gray-300 mt-3">Reach out to volunteer, intern, become an RJ/VJ, partner with us, or learn about sponsorship opportunities.</p><div className="grid md:grid-cols-2 gap-3 mt-6 text-sm text-gray-300"><div className="bg-white/10 rounded-xl p-4">🤝 Volunteer</div><div className="bg-white/10 rounded-xl p-4">🎓 Internship</div><div className="bg-white/10 rounded-xl p-4">🎙 RJ</div><div className="bg-white/10 rounded-xl p-4">🎥 VJ</div><div className="bg-white/10 rounded-xl p-4">💼 Sponsorship</div><div className="bg-white/10 rounded-xl p-4">📺 Media Partnership</div></div></div><div className="bg-white text-[#081024] rounded-2xl p-5 shadow-xl"><input className="w-full border rounded-lg p-3 mb-3" placeholder="Your name" value={contactName} onChange={(e) => setContactName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Email" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Phone number" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} /><select className="w-full border rounded-lg p-3 mb-3" value={contactInterest} onChange={(e) => setContactInterest(e.target.value)}><option value="volunteer">I want to volunteer</option><option value="intern">I am interested in an internship</option><option value="rj">I want to be an RJ</option><option value="vj">I want to be a VJ</option><option value="sponsorship">I want sponsorship details</option><option value="media-partner">Media partnership</option><option value="general">General enquiry</option></select><textarea className="w-full border rounded-lg p-3 mb-3 min-h-28" placeholder="Tell us more" value={contactMessage} onChange={(e) => setContactMessage(e.target.value)} />{contactStatus && <p className="text-sm text-orange-600 mb-3">{contactStatus}</p>}<div
-  className="cf-turnstile mb-4 min-h-[70px]"
-  data-sitekey="0x4AAAAAADS20gwFUGvkmywG"
-  data-callback="onTurnstileSuccess"
-  data-expired-callback="onTurnstileExpired"
-  data-error-callback="onTurnstileExpired"
-/><button type="button" onClick={submitContactRequest} className="bg-pink-600 text-white px-6 py-3 rounded-lg font-bold w-full">Submit Request</button></div></section>;
+  const renderContactSection = ({ compact = false }: { compact?: boolean }) => <section className={`${compact ? "" : "max-w-6xl mx-auto"} bg-[#071123] text-white rounded-2xl p-8 grid lg:grid-cols-[1fr_520px] gap-8 items-start`}><div><h2 className="text-3xl font-black">Get Involved with Seattle Desi TV</h2><p className="text-gray-300 mt-3">Reach out to volunteer, intern, become an RJ/VJ, partner with us, or learn about sponsorship opportunities.</p><div className="grid md:grid-cols-2 gap-3 mt-6 text-sm text-gray-300"><div className="bg-white/10 rounded-xl p-4">🤝 Volunteer</div><div className="bg-white/10 rounded-xl p-4">🎓 Internship</div><div className="bg-white/10 rounded-xl p-4">🎙 RJ</div><div className="bg-white/10 rounded-xl p-4">🎥 VJ</div><div className="bg-white/10 rounded-xl p-4">💼 Sponsorship</div><div className="bg-white/10 rounded-xl p-4">📺 Media Partnership</div></div></div><div className="bg-white text-[#081024] rounded-2xl p-5 shadow-xl"><input className="w-full border rounded-lg p-3 mb-3" placeholder="Your name" value={contactName} onChange={(e) => setContactName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Email" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Phone number" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} /><select className="w-full border rounded-lg p-3 mb-3" value={contactInterest} onChange={(e) => setContactInterest(e.target.value)}><option value="volunteer">I want to volunteer</option><option value="intern">I am interested in an internship</option><option value="rj">I want to be an RJ</option><option value="vj">I want to be a VJ</option><option value="sponsorship">I want sponsorship details</option><option value="media-partner">Media partnership</option><option value="general">General enquiry</option></select><textarea className="w-full border rounded-lg p-3 mb-3 min-h-28" placeholder="Tell us more" value={contactMessage} onChange={(e) => setContactMessage(e.target.value)} />{contactStatus && <p className="text-sm text-orange-600 mb-3">{contactStatus}</p>}<TurnstileBox id="contact" onVerify={setContactCaptchaToken} /><button type="button" onClick={submitContactRequest} className="bg-pink-600 text-white px-6 py-3 rounded-lg font-bold w-full">Submit Request</button></div></section>;
 
   const CrewBadges = ({ event }: { event: AnyRecord }) => {
     const assigned = teamMembers.filter((member) => event.crew_member_ids?.includes(member.id));
@@ -947,7 +977,10 @@ const emailDebug = await response.json();
       {tab === "home" && <HomePage />}
       {tab === "tv" && <main className="bg-white text-[#081024] px-8 md:px-14 py-10"><h1 className="text-4xl font-black mb-2">Seattle Desi TV Videos</h1>{youtubeLoadMessage && <p className="text-sm text-gray-500 mb-6">{youtubeLoadMessage}</p>}<div className="grid md:grid-cols-3 xl:grid-cols-4 gap-6">{videos.map((video) => <VideoCard key={video.id} video={video} />)}</div></main>}
 
-      {tab === "radio" && <main className="bg-white text-[#081024] px-8 md:px-14 py-10 space-y-10"><section className="bg-[#081024] text-white rounded-3xl p-10 max-w-6xl mx-auto"><div className="grid lg:grid-cols-[220px_1fr] gap-8 items-center"><div className="w-full aspect-square rounded-3xl bg-white/10 overflow-hidden grid place-items-center">{radioMeta?.artwork ? <img src={radioMeta.artwork} alt="Now playing" className="w-full h-full object-cover" /> : <div className="text-center p-6"><div className="text-5xl">🎧</div><p className="mt-3 font-black">Seattle Desi Radio</p></div>}</div><div><div className="flex flex-wrap items-center gap-3 mb-4"><span className="bg-green-500 text-black px-3 py-1 rounded-full text-xs font-black">● LIVE</span><span className="text-sm text-gray-300">Updated: {radioMetaUpdatedAt || "Loading..."}</span></div><h1 className="text-5xl font-black">{radioMeta?.stationName || "Seattle Desi Radio"}</h1><p className="mt-4 text-gray-300">Live South Asian music, interviews, culture, and community stories.</p><div className="mt-6 bg-white/10 rounded-2xl p-5"><p className="text-sm text-gray-300 uppercase tracking-wide">Now Playing</p><h2 className="text-3xl font-black mt-1">{radioMeta?.title || "Seattle Desi Radio Live"}</h2>{radioMeta?.artist && <p className="text-xl text-yellow-300 mt-1">{radioMeta.artist}</p>}</div><audio controls className="w-full mt-8"><source src={LIVE365_STREAM_URL} type="audio/mpeg" /></audio></div></div></section><section className="max-w-6xl mx-auto grid lg:grid-cols-[420px_1fr] gap-8">{canAccessAdminArea && <div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Admin: Add Radio Team / Host</h2><input className="w-full border rounded-lg p-3 mb-3" placeholder="Name" value={radioTeamName} onChange={(e) => setRadioTeamName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Title / Role" value={radioTeamTitle} onChange={(e) => setRadioTeamTitle(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Segment name" value={radioSegmentName} onChange={(e) => setRadioSegmentName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setRadioTeamImageFile(e.target.files?.[0] || null)} />{radioTeamMessage && <p className="text-sm text-orange-600 mb-3">{radioTeamMessage}</p>}<button type="button" onClick={createRadioTeamMember} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full">Add Radio Team Member</button></div>}<div className={canAccessAdminArea ? "" : "lg:col-span-2"}><h2 className="text-3xl font-black mb-5">Radio Team & Segments</h2>{radioTeamMembers.length === 0 ? <div className="border rounded-2xl p-8 text-gray-500">No radio team members added yet.</div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">{radioTeamMembers.map((member) => <TeamCard key={member.id} member={member} segment={member.segment_name} />)}</div>}</div></section></main>}
+      {tab === "radio" && <main className="bg-white text-[#081024] px-8 md:px-14 py-10 space-y-10"><section className="bg-[#081024] text-white rounded-3xl p-10 max-w-6xl mx-auto"><div className="grid lg:grid-cols-[220px_1fr] gap-8 items-center"><div className="w-full aspect-square rounded-3xl bg-white/10 overflow-hidden grid place-items-center">{radioMeta?.artwork ? <img src={radioMeta.artwork} alt="Now playing" className="w-full h-full object-cover" /> : <div className="text-center p-6"><div className="text-5xl">🎧</div><p className="mt-3 font-black">Seattle Desi Radio</p></div>}</div><div><div className="flex flex-wrap items-center gap-3 mb-4"><span className="bg-green-500 text-black px-3 py-1 rounded-full text-xs font-black">● LIVE</span><span className="text-sm text-gray-300">Updated: {radioMetaUpdatedAt || "Loading..."}</span></div><h1 className="text-5xl font-black">{radioMeta?.stationName || "Seattle Desi Radio"}</h1><p className="mt-4 text-gray-300">Live South Asian music, interviews, culture, and community stories.</p><div className="mt-6 bg-white/10 rounded-2xl p-5"><p className="text-sm text-gray-300 uppercase tracking-wide">Now Playing</p><h2 className="text-3xl font-black mt-1">{radioMeta?.title || "Seattle Desi Radio Live"}</h2>{radioMeta?.artist && <p className="text-xl text-yellow-300 mt-1">{radioMeta.artist}</p>}</div><audio controls className="w-full mt-8"><source src={LIVE365_STREAM_URL} type="audio/mpeg" /></audio></div></div></section><section className="max-w-6xl mx-auto grid lg:grid-cols-[420px_1fr] gap-8">{canAccessAdminArea && <div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Admin: Add Radio Team / Host</h2><input className="w-full border rounded-lg p-3 mb-3" placeholder="Name" value={radioTeamName} onChange={(e) => setRadioTeamName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Title / Role" value={radioTeamTitle} onChange={(e) => setRadioTeamTitle(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Segment name" value={radioSegmentName} onChange={(e) => setRadioSegmentName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setRadioTeamImageFile(e.target.files?.[0] || null)} />{radioTeamMessage && <p className="text-sm text-orange-600 mb-3">{radioTeamMessage}</p>}<TurnstileBox
+   id="team"
+   onVerify={setTeamCaptchaToken}
+/><button type="button" onClick={createRadioTeamMember} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full">Add Radio Team Member</button></div>}<div className={canAccessAdminArea ? "" : "lg:col-span-2"}><h2 className="text-3xl font-black mb-5">Radio Team & Segments</h2>{radioTeamMembers.length === 0 ? <div className="border rounded-2xl p-8 text-gray-500">No radio team members added yet.</div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">{radioTeamMembers.map((member) => <TeamCard key={member.id} member={member} segment={member.segment_name} />)}</div>}</div></section></main>}
 
       {tab === "events" && (
   !user ? (
@@ -982,7 +1015,9 @@ const emailDebug = await response.json();
   );
 
   function EventForm() {
-    return <div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Add New Event</h2>{!user && <div className="bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-xl p-3 mb-3 text-sm">Login is required to add events.</div>}<input className="w-full border rounded-lg p-3 mb-3" placeholder="Event title" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Location" value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} /><textarea className="w-full border rounded-lg p-3 mb-3 min-h-28" placeholder="Event description" value={eventDescription} onChange={(e) => setEventDescription(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Ticket link / registration URL" value={eventTicketUrl} onChange={(e) => setEventTicketUrl(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC email (internal only)" type="email" value={eventPocEmail} onChange={(e) => setEventPocEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC phone (internal only)" value={eventPocPhone} onChange={(e) => setEventPocPhone(e.target.value)} />{canAccessAdminArea && <CrewSelector selected={selectedEventCrewIds} onToggle={(id) => setSelectedEventCrewIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} />}<label className="block text-sm font-bold mb-2">Upload event image / poster</label><input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setEventImageFile(e.target.files?.[0] || null)} />{eventMessage && <p className="text-sm text-orange-600 mb-3">{eventMessage}</p>}<button type="button" onClick={createEvent} disabled={eventSaving || !user} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full disabled:opacity-60">{eventSaving ? "Saving Event..." : "Add Event"}</button></div>;
+    return <div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Add New Event</h2>{!user && <div className="bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-xl p-3 mb-3 text-sm">Login is required to add events.</div>}<input className="w-full border rounded-lg p-3 mb-3" placeholder="Event title" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Location" value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} /><textarea className="w-full border rounded-lg p-3 mb-3 min-h-28" placeholder="Event description" value={eventDescription} onChange={(e) => setEventDescription(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Ticket link / registration URL" value={eventTicketUrl} onChange={(e) => setEventTicketUrl(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC email (internal only)" type="email" value={eventPocEmail} onChange={(e) => setEventPocEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC phone (internal only)" value={eventPocPhone} onChange={(e) => setEventPocPhone(e.target.value)} />{canAccessAdminArea && <CrewSelector selected={selectedEventCrewIds} onToggle={(id) => setSelectedEventCrewIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} />}<label className="block text-sm font-bold mb-2">Upload event image / poster</label><input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setEventImageFile(e.target.files?.[0] || null)} />{eventMessage && <p className="text-sm text-orange-600 mb-3">{eventMessage}</p>}
+<TurnstileBox id="event" onVerify={setEventCaptchaToken} />
+<button type="button" onClick={createEvent} disabled={eventSaving || !user} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full disabled:opacity-60">{eventSaving ? "Saving Event..." : "Add Event"}</button></div>;
   }
 
   function CrewSelector({ selected, onToggle }: { selected: string[]; onToggle: (id: string) => void }) {
@@ -998,7 +1033,10 @@ const emailDebug = await response.json();
   }
 
   function BusinessesPage() {
-    return <main className="bg-white text-[#081024] px-8 md:px-14 py-10"><div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8"><div><h1 className="text-4xl font-black">Local Business Directory</h1><p className="text-gray-500 mt-2">Add local businesses, upload images, publish offers, and help the community discover trusted services.</p></div>{!user && <button type="button" onClick={openLogin} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold">Login to Add Business</button>}</div><section className="grid lg:grid-cols-[420px_1fr] gap-8"><div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Add Local Business</h2><input className="w-full border rounded-lg p-3 mb-3" placeholder="Business name" value={businessName} onChange={(e) => setBusinessName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Business address" value={businessAddress} onChange={(e) => setBusinessAddress(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Website URL" value={businessWebsite} onChange={(e) => setBusinessWebsite(e.target.value)} /><select className="w-full border rounded-lg p-3 mb-3" value={businessCategory} onChange={(e) => setBusinessCategory(e.target.value)}><option value="">Select category</option>{["restaurant", "grocery", "beauty", "legal", "real-estate", "finance", "health", "education", "events", "other"].map((c) => <option key={c} value={c}>{c}</option>)}</select><input className="w-full border rounded-lg p-3 mb-3" placeholder="Discount" value={businessDiscount} onChange={(e) => setBusinessDiscount(e.target.value)} /><textarea className="w-full border rounded-lg p-3 mb-3 min-h-24" placeholder="Current offers / specials" value={businessOffer} onChange={(e) => setBusinessOffer(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC name (internal only)" value={businessPocName} onChange={(e) => setBusinessPocName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC email (internal only)" value={businessPocEmail} onChange={(e) => setBusinessPocEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC phone (internal only)" value={businessPocPhone} onChange={(e) => setBusinessPocPhone(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setBusinessImageFile(e.target.files?.[0] || null)} />{businessMessage && <p className="text-sm text-orange-600 mb-3">{businessMessage}</p>}<button type="button" onClick={createBusiness} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full">Add Business</button></div><div><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4"><h2 className="text-2xl font-black">Published Businesses</h2><select className="border rounded-lg p-3" value={businessCategoryFilter} onChange={(e) => setBusinessCategoryFilter(e.target.value)}><option value="all">All Categories</option>{availableBusinessCategories.map((category) => <option key={category} value={category}>{category}</option>)}</select></div>{businesses.length === 0 ? <div className="border rounded-2xl p-8 text-gray-500">No businesses added yet.</div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">{filteredBusinesses.map((business) => <div key={business.id} className="border rounded-2xl overflow-hidden shadow-sm bg-white">{business.image ? <img src={business.image} alt={business.name} className="w-full h-48 object-cover" /> : <div className="w-full h-48 bg-pink-50 grid place-items-center text-pink-600 font-black">Local Business</div>}<div className="p-5"><h3 className="text-xl font-black">{business.name}</h3><p className="text-gray-500 mt-2">{business.address}</p>{business.discount && <p className="mt-3 font-bold text-green-700">Discount: {business.discount}</p>}{business.offer && <p className="text-sm text-gray-600 mt-2">{business.offer}</p>}{business.website && <a href={business.website} target="_blank" rel="noreferrer" className="inline-block mt-4 bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Visit Website</a>}</div></div>)}</div>}</div></section></main>;
+    return <main className="bg-white text-[#081024] px-8 md:px-14 py-10"><div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8"><div><h1 className="text-4xl font-black">Local Business Directory</h1><p className="text-gray-500 mt-2">Add local businesses, upload images, publish offers, and help the community discover trusted services.</p></div>{!user && <button type="button" onClick={openLogin} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold">Login to Add Business</button>}</div><section className="grid lg:grid-cols-[420px_1fr] gap-8"><div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Add Local Business</h2><input className="w-full border rounded-lg p-3 mb-3" placeholder="Business name" value={businessName} onChange={(e) => setBusinessName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Business address" value={businessAddress} onChange={(e) => setBusinessAddress(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Website URL" value={businessWebsite} onChange={(e) => setBusinessWebsite(e.target.value)} /><select className="w-full border rounded-lg p-3 mb-3" value={businessCategory} onChange={(e) => setBusinessCategory(e.target.value)}><option value="">Select category</option>{["restaurant", "grocery", "beauty", "legal", "real-estate", "finance", "health", "education", "events", "other"].map((c) => <option key={c} value={c}>{c}</option>)}</select><input className="w-full border rounded-lg p-3 mb-3" placeholder="Discount" value={businessDiscount} onChange={(e) => setBusinessDiscount(e.target.value)} /><textarea className="w-full border rounded-lg p-3 mb-3 min-h-24" placeholder="Current offers / specials" value={businessOffer} onChange={(e) => setBusinessOffer(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC name (internal only)" value={businessPocName} onChange={(e) => setBusinessPocName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC email (internal only)" value={businessPocEmail} onChange={(e) => setBusinessPocEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC phone (internal only)" value={businessPocPhone} onChange={(e) => setBusinessPocPhone(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setBusinessImageFile(e.target.files?.[0] || null)} />{businessMessage && <p className="text-sm text-orange-600 mb-3">{businessMessage}</p>}<TurnstileBox
+   id="business"
+   onVerify={setBusinessCaptchaToken}
+/><button type="button" onClick={createBusiness} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full">Add Business</button></div><div><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4"><h2 className="text-2xl font-black">Published Businesses</h2><select className="border rounded-lg p-3" value={businessCategoryFilter} onChange={(e) => setBusinessCategoryFilter(e.target.value)}><option value="all">All Categories</option>{availableBusinessCategories.map((category) => <option key={category} value={category}>{category}</option>)}</select></div>{businesses.length === 0 ? <div className="border rounded-2xl p-8 text-gray-500">No businesses added yet.</div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">{filteredBusinesses.map((business) => <div key={business.id} className="border rounded-2xl overflow-hidden shadow-sm bg-white">{business.image ? <img src={business.image} alt={business.name} className="w-full h-48 object-cover" /> : <div className="w-full h-48 bg-pink-50 grid place-items-center text-pink-600 font-black">Local Business</div>}<div className="p-5"><h3 className="text-xl font-black">{business.name}</h3><p className="text-gray-500 mt-2">{business.address}</p>{business.discount && <p className="mt-3 font-bold text-green-700">Discount: {business.discount}</p>}{business.offer && <p className="text-sm text-gray-600 mt-2">{business.offer}</p>}{business.website && <a href={business.website} target="_blank" rel="noreferrer" className="inline-block mt-4 bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Visit Website</a>}</div></div>)}</div>}</div></section></main>;
   }
 
   function TeamCard({ member, segment }: { member: AnyRecord; segment?: string }) {
