@@ -51,7 +51,10 @@ export async function POST(req: Request) {
     const result = await resend.emails.send({
       from: "Seattle Desi TV <onboarding@resend.dev>",
       to: "seattledesitv@gmail.com",
-      replyTo: email,
+     replyTo:
+  email && email.includes("@")
+    ? `${name} <${email.trim()}>`
+    : undefined,
       subject: `New Contact Submission: ${name}`,
       html: `
         <h2>New Contact Submission</h2>
