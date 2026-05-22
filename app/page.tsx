@@ -1117,7 +1117,7 @@ if (contactPhone && !phonePattern.test(contactPhone.trim())) {
       message="Please login or create an account to view the local business directory."
     />
   ) : (
-    {renderBusinessesPage()}
+    renderBusinessesPage()
   )
 )}
       {tab === "team" && <TeamPage />}
