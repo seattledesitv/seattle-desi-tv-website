@@ -327,7 +327,7 @@ const [selectedCalendarDate, setSelectedCalendarDate] = useState("");
   const [radioSegmentName, setRadioSegmentName] = useState("");
   const [radioTeamImageFile, setRadioTeamImageFile] = useState<File | null>(null);
   const [radioTeamMessage, setRadioTeamMessage] = useState("");
-
+  const [spotifyEpisodes, setSpotifyEpisodes] = useState<any[]>([]);
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
@@ -494,7 +494,23 @@ const [selectedCalendarDate, setSelectedCalendarDate] = useState("");
       return [];
     }
   };
+  
+const loadSpotifyEpisodes = async () => {
+  try {
+    const rssUrl =
+      "https://anchor.fm/s/1102c5888/podcast/rss";
 
+    const api =
+      `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+
+    const response = await fetch(api);
+    const data = await response.json();
+
+    setSpotifyEpisodes(data.items?.slice(0, 6) || []);
+  } catch (e) {
+    console.error("Spotify load failed", e);
+  }
+};
   const fetchRadioMetadata = async () => {
     try {
       const res = await fetch(LIVE365_META_URL, { cache: "no-store" });
@@ -750,6 +766,7 @@ console.log("Email debug:", emailDebug);
   useEffect(() => {
     loadData();
     fetchRadioMetadata();
+    loadSpotifyEpisodes();
     const interval = setInterval(() => {
       loadData();
       fetchRadioMetadata();
@@ -975,6 +992,46 @@ console.log("Email debug:", emailDebug);
           <div className="bg-white rounded-2xl shadow-xl border p-5"><EventsHomeList /></div>
           <div className="bg-[#071123] text-white rounded-2xl shadow-xl p-6 text-center flex flex-col items-center justify-center"><h3 className="text-2xl font-black">SEATTLE DESI RADIO</h3><span className="bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-black mt-5">ON AIR</span><div className="text-7xl my-7">🎙️</div><p className="text-gray-200">24/7 Bollywood, Bhangra & Desi Hits!</p><button type="button" onClick={() => setTab("radio")} className="mt-6 border border-white/70 bg-purple-900/60 px-8 py-3 rounded-xl font-bold">🎧 Listen Live</button></div>
         </section>
+        <section className="bg-white rounded-2xl p-6 shadow-xl mt-8">
+  <h2 className="text-2xl font-black mb-5">
+    🎙 Latest Spotify Episodes
+  </h2>
+
+  <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+    {spotifyEpisodes.map((episode) => (
+      <div
+        key={episode.guid}
+        className="border rounded-2xl overflow-hidden shadow-sm"
+      >
+        {episode.thumbnail && (
+          <img
+            src={episode.thumbnail}
+            className="w-full h-48 object-cover"
+          />
+        )}
+
+        <div className="p-4">
+          <h3 className="font-black">
+            {episode.title}
+          </h3>
+
+          <p className="text-sm text-gray-500 mt-2 line-clamp-3">
+            {episode.description?.replace(/<[^>]*>/g, "")}
+          </p>
+
+          <a
+            href={episode.link}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block mt-4 bg-green-600 text-white px-4 py-2 rounded-lg font-bold"
+          >
+            Listen
+          </a>
+        </div>
+      </div>
+    ))}
+  </div>
+</section>
        {/* {renderContactSection({ compact: true })} */}
         <div className="max-w-5xl mx-auto bg-[#071123] text-white rounded-2xl shadow-xl p-6 text-center">
   <h3 className="text-2xl font-black">Get Involved with Seattle Desi TV</h3>
