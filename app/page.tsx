@@ -293,7 +293,7 @@ const [radioTeamCaptchaToken, setRadioTeamCaptchaToken] = useState("");
   const [eventTicketUrl, setEventTicketUrl] = useState("");
   const [eventPocEmail, setEventPocEmail] = useState("");
   const [eventPocPhone, setEventPocPhone] = useState("");
-  const [eventImageFile, setEventImageFile] = useState<File | null>(null);
+  const [eventImageFiles, setEventImageFiles] = useState<File[]>([]);
   const [eventMonthFilter, setEventMonthFilter] = useState("all");
   const [eventYearFilter, setEventYearFilter] = useState("all");
   const [eventMessage, setEventMessage] = useState("");
@@ -548,7 +548,13 @@ const [radioTeamCaptchaToken, setRadioTeamCaptchaToken] = useState("");
 
     setEventSaving(true);
     try {
-      const imageUrl = eventImageFile ? await uploadFileToBucket(eventImageFile, EVENT_BUCKET) : "";
+      const imageUrls = eventImageFiles.length
+        ? await Promise.all(
+            eventImageFiles.map((file) => uploadFileToBucket(file, EVENT_BUCKET))
+          )
+        : [];
+      
+      const imageUrl = imageUrls[0] || "";
       const { error } = await supabase.from("events").insert({
         title: eventTitle,
         date: eventDate,
@@ -558,11 +564,12 @@ const [radioTeamCaptchaToken, setRadioTeamCaptchaToken] = useState("");
         poc_email: eventPocEmail || null,
         poc_phone: eventPocPhone || null,
         image: imageUrl || null,
+        image_urls: imageUrls,
         crew_member_ids: selectedEventCrewIds,
         created_by: user.id
       });
       if (error) throw error;
-      setEventTitle(""); setEventDate(""); setEventLocation(""); setEventDescription(""); setEventTicketUrl(""); setEventPocEmail(""); setEventPocPhone(""); setEventImageFile(null); setSelectedEventCrewIds([]);
+      setEventTitle(""); setEventDate(""); setEventLocation(""); setEventDescription(""); setEventTicketUrl(""); setEventPocEmail(""); setEventPocPhone(""); setEventImageFiles([]); setSelectedEventCrewIds([]);
       setEventMessage("Event added successfully.");
       await loadEventsOnly();
     } catch (error: any) {
@@ -1094,8 +1101,73 @@ if (contactPhone && !phonePattern.test(contactPhone.trim())) {
     </div>
   );
 
+  function EventImageSlider({ event }: { event: AnyRecord }) {
+  const images =
+    Array.isArray(event.image_urls) && event.image_urls.length > 0
+      ? event.image_urls
+      : event.image
+      ? [event.image]
+      : [];
+
+  const [index, setIndex] = useState(0);
+
+  if (images.length === 0) {
+    return (
+      <div className="w-full h-48 bg-pink-50 grid place-items-center text-pink-600 font-black">
+        Seattle Desi TV
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-full h-48 overflow-hidden">
+      <img
+        src={images[index]}
+        alt={event.title}
+        className="w-full h-full object-cover"
+      />
+
+      {images.length > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={() =>
+              setIndex(index === 0 ? images.length - 1 : index - 1)
+            }
+            className="absolute left-2 top-1/2 bg-black/60 text-white rounded-full w-8 h-8"
+          >
+            ‹
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              setIndex(index === images.length - 1 ? 0 : index + 1)
+            }
+            className="absolute right-2 top-1/2 bg-black/60 text-white rounded-full w-8 h-8"
+          >
+            ›
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
   function EventForm() {
-    return <div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Add New Event</h2>{!user && <div className="bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-xl p-3 mb-3 text-sm">Login is required to add events.</div>}<input className="w-full border rounded-lg p-3 mb-3" placeholder="Event title" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Location" value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} /><textarea className="w-full border rounded-lg p-3 mb-3 min-h-28" placeholder="Event description" value={eventDescription} onChange={(e) => setEventDescription(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Ticket link / registration URL" value={eventTicketUrl} onChange={(e) => setEventTicketUrl(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC email (internal only)" type="email" value={eventPocEmail} onChange={(e) => setEventPocEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC phone (internal only)" value={eventPocPhone} onChange={(e) => setEventPocPhone(e.target.value)} />{canAccessAdminArea && <CrewSelector selected={selectedEventCrewIds} onToggle={(id) => setSelectedEventCrewIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} />}<label className="block text-sm font-bold mb-2">Upload event image / poster</label><input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setEventImageFile(e.target.files?.[0] || null)} />{eventMessage && <p className="text-sm text-orange-600 mb-3">{eventMessage}</p>}
+    return <div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Add New Event</h2>{!user && <div className="bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-xl p-3 mb-3 text-sm">Login is required to add events.</div>}<input className="w-full border rounded-lg p-3 mb-3" placeholder="Event title" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Location" value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} /><textarea className="w-full border rounded-lg p-3 mb-3 min-h-28" placeholder="Event description" value={eventDescription} onChange={(e) => setEventDescription(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Ticket link / registration URL" value={eventTicketUrl} onChange={(e) => setEventTicketUrl(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC email (internal only)" type="email" value={eventPocEmail} onChange={(e) => setEventPocEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC phone (internal only)" value={eventPocPhone} onChange={(e) => setEventPocPhone(e.target.value)} />{canAccessAdminArea && <CrewSelector selected={selectedEventCrewIds} onToggle={(id) => setSelectedEventCrewIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} />}<label className="block text-sm font-bold mb-2">Upload event image / poster</label><input
+  className="w-full border rounded-lg p-3 mb-3"
+  type="file"
+  accept="image/*"
+  multiple
+  onChange={(e) => setEventImageFiles(Array.from(e.target.files || []))}
+/>
+
+{eventImageFiles.length > 0 && (
+  <p className="text-xs text-gray-500 mb-3">
+    Selected {eventImageFiles.length} image(s)
+  </p>
+)}{eventMessage && <p className="text-sm text-orange-600 mb-3">{eventMessage}</p>}
 <button type="button" onClick={createEvent} disabled={eventSaving || !user} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full disabled:opacity-60">{eventSaving ? "Saving Event..." : "Add Event"}</button></div>;
   }
 
@@ -1108,7 +1180,7 @@ if (contactPhone && !phonePattern.test(contactPhone.trim())) {
   }
 
   function EventCard({ event }: { event: AnyRecord }) {
-    return <div className="border rounded-2xl overflow-hidden shadow-sm bg-white">{event.image ? <img src={event.image} alt={event.title} className="w-full h-48 object-cover" /> : <div className="w-full h-48 bg-pink-50 grid place-items-center text-pink-600 font-black">Seattle Desi TV</div>}<div className="p-5"><h3 className="text-xl font-black">{event.title}</h3><p className="text-gray-500 mt-1">{event.date}</p><p className="text-gray-500">{event.location}</p>{event.description && <p className="text-sm text-gray-600 mt-3">{event.description}</p>}<CrewBadges event={event} />{canAccessAdminArea && <button type="button" onClick={() => openAssignCrewForEvent(event)} className="inline-block mt-4 mr-2 bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Assign Desi TV Crew</button>}{canChooseCrew && <button type="button" onClick={() => volunteerForEventCrew(event.id)} className="inline-block mt-4 mr-2 bg-[#071123] text-white px-4 py-2 rounded-lg font-bold text-sm">Join as Desi TV Crew</button>}{assignCrewEventId === event.id && <div className="mt-4 border rounded-xl p-3 bg-purple-50"><CrewSelector selected={assignCrewMemberIds} onToggle={(id) => setAssignCrewMemberIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} /><div className="flex gap-2"><button type="button" onClick={() => saveAssignedCrewForEvent(event.id)} className="bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Save Crew</button><button type="button" onClick={() => setAssignCrewEventId(null)} className="border px-4 py-2 rounded-lg font-bold text-sm">Cancel</button></div></div>}{event.ticket_url && <a href={event.ticket_url} target="_blank" rel="noreferrer" className="inline-block mt-4 bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Tickets / Register</a>}</div></div>;
+    return <div className="border rounded-2xl overflow-hidden shadow-sm bg-white"><EventImageSlider event={event} /><div className="p-5"><h3 className="text-xl font-black">{event.title}</h3><p className="text-gray-500 mt-1">{event.date}</p><p className="text-gray-500">{event.location}</p>{event.description && <p className="text-sm text-gray-600 mt-3">{event.description}</p>}<CrewBadges event={event} />{canAccessAdminArea && <button type="button" onClick={() => openAssignCrewForEvent(event)} className="inline-block mt-4 mr-2 bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Assign Desi TV Crew</button>}{canChooseCrew && <button type="button" onClick={() => volunteerForEventCrew(event.id)} className="inline-block mt-4 mr-2 bg-[#071123] text-white px-4 py-2 rounded-lg font-bold text-sm">Join as Desi TV Crew</button>}{assignCrewEventId === event.id && <div className="mt-4 border rounded-xl p-3 bg-purple-50"><CrewSelector selected={assignCrewMemberIds} onToggle={(id) => setAssignCrewMemberIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} /><div className="flex gap-2"><button type="button" onClick={() => saveAssignedCrewForEvent(event.id)} className="bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Save Crew</button><button type="button" onClick={() => setAssignCrewEventId(null)} className="border px-4 py-2 rounded-lg font-bold text-sm">Cancel</button></div></div>}{event.ticket_url && <a href={event.ticket_url} target="_blank" rel="noreferrer" className="inline-block mt-4 bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Tickets / Register</a>}</div></div>;
   }
 
   function BusinessesPage() {
