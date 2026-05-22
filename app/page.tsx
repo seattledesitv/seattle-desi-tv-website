@@ -613,7 +613,31 @@ const [selectedCalendarDate, setSelectedCalendarDate] = useState("");
     setBusinessMessage("");
     if (!user?.id) return openLogin();
     if (!businessName || !businessAddress || !businessCategory) return setBusinessMessage("Please enter name, address and category.");
-    
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const phonePattern = /^[0-9+\-() ]{7,20}$/;
+
+if (businessPocEmail && !emailPattern.test(businessPocEmail.trim())) {
+  setBusinessMessage("Please enter a valid POC email address.");
+  return;
+}
+
+if (businessPocPhone && !phonePattern.test(businessPocPhone.trim())) {
+  setBusinessMessage("Please enter a valid POC phone number. Use only numbers, spaces, +, -, or brackets.");
+  return;
+}
+
+if (businessWebsite) {
+  try {
+    new URL(
+      businessWebsite.startsWith("http")
+        ? businessWebsite
+        : `https://${businessWebsite}`
+    );
+  } catch {
+    setBusinessMessage("Please enter a valid website URL.");
+    return;
+  }
+}
     const imageUrl = businessImageFile ? await uploadFileToBucket(businessImageFile, BUSINESS_BUCKET) : "";
     const { error } = await supabase.from("local_businesses").insert({
       name: businessName,
@@ -1093,7 +1117,7 @@ if (contactPhone && !phonePattern.test(contactPhone.trim())) {
       message="Please login or create an account to view the local business directory."
     />
   ) : (
-    <BusinessesPage />
+    {renderBusinessesPage()}
   )
 )}
       {tab === "team" && <TeamPage />}
@@ -1560,8 +1584,16 @@ function renderEventForm() {
 </button>{event.ticket_url && <a href={event.ticket_url} target="_blank" rel="noreferrer" className="inline-block mt-4 bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Tickets / Register</a>}</div></div>;
   }
 
-  function BusinessesPage() {
-    return <main className="bg-white text-[#081024] px-8 md:px-14 py-10"><div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8"><div><h1 className="text-4xl font-black">Local Business Directory</h1><p className="text-gray-500 mt-2">Add local businesses, upload images, publish offers, and help the community discover trusted services.</p></div>{!user && <button type="button" onClick={openLogin} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold">Login to Add Business</button>}</div><section className="grid lg:grid-cols-[420px_1fr] gap-8"><div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Add Local Business</h2><input className="w-full border rounded-lg p-3 mb-3" placeholder="Business name" value={businessName} onChange={(e) => setBusinessName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Business address" value={businessAddress} onChange={(e) => setBusinessAddress(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Website URL" value={businessWebsite} onChange={(e) => setBusinessWebsite(e.target.value)} /><select className="w-full border rounded-lg p-3 mb-3" value={businessCategory} onChange={(e) => setBusinessCategory(e.target.value)}><option value="">Select category</option>{["restaurant", "grocery", "beauty", "legal", "real-estate", "finance", "health", "education", "events", "other"].map((c) => <option key={c} value={c}>{c}</option>)}</select><input className="w-full border rounded-lg p-3 mb-3" placeholder="Discount" value={businessDiscount} onChange={(e) => setBusinessDiscount(e.target.value)} /><textarea className="w-full border rounded-lg p-3 mb-3 min-h-24" placeholder="Current offers / specials" value={businessOffer} onChange={(e) => setBusinessOffer(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC name (internal only)" value={businessPocName} onChange={(e) => setBusinessPocName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC email (internal only)" value={businessPocEmail} onChange={(e) => setBusinessPocEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC phone (internal only)" value={businessPocPhone} onChange={(e) => setBusinessPocPhone(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setBusinessImageFile(e.target.files?.[0] || null)} />{businessMessage && <p className="text-sm text-orange-600 mb-3">{businessMessage}</p>}<button type="button" onClick={createBusiness} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full">Add Business</button></div><div><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4"><h2 className="text-2xl font-black">Published Businesses</h2><select className="border rounded-lg p-3" value={businessCategoryFilter} onChange={(e) => setBusinessCategoryFilter(e.target.value)}><option value="all">All Categories</option>{availableBusinessCategories.map((category) => <option key={category} value={category}>{category}</option>)}</select></div>{businesses.length === 0 ? <div className="border rounded-2xl p-8 text-gray-500">No businesses added yet.</div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">{filteredBusinesses.map((business) => <div key={business.id} className="border rounded-2xl overflow-hidden shadow-sm bg-white">{business.image ? <img src={business.image} alt={business.name} className="w-full h-48 object-cover" /> : <div className="w-full h-48 bg-pink-50 grid place-items-center text-pink-600 font-black">Local Business</div>}<div className="p-5"><h3 className="text-xl font-black">{business.name}</h3><p className="text-gray-500 mt-2">{business.address}</p>{business.discount && <p className="mt-3 font-bold text-green-700">Discount: {business.discount}</p>}{business.offer && <p className="text-sm text-gray-600 mt-2">{business.offer}</p>}{business.website && <a href={business.website} target="_blank" rel="noreferrer" className="inline-block mt-4 bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Visit Website</a>}</div></div>)}</div>}</div></section></main>;
+  function renderBusinessesPage() {
+    return <main className="bg-white text-[#081024] px-8 md:px-14 py-10"><div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8"><div><h1 className="text-4xl font-black">Local Business Directory</h1><p className="text-gray-500 mt-2">Add local businesses, upload images, publish offers, and help the community discover trusted services.</p></div>{!user && <button type="button" onClick={openLogin} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold">Login to Add Business</button>}</div><section className="grid lg:grid-cols-[420px_1fr] gap-8"><div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Add Local Business</h2><input className="w-full border rounded-lg p-3 mb-3" placeholder="Business name" value={businessName} onChange={(e) => setBusinessName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Business address" value={businessAddress} onChange={(e) => setBusinessAddress(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Website URL" value={businessWebsite} onChange={(e) => setBusinessWebsite(e.target.value)} /><select className="w-full border rounded-lg p-3 mb-3" value={businessCategory} onChange={(e) => setBusinessCategory(e.target.value)}><option value="">Select category</option>{["restaurant", "grocery", "beauty", "legal", "real-estate", "finance", "health", "education", "events", "other"].map((c) => <option key={c} value={c}>{c}</option>)}</select><input className="w-full border rounded-lg p-3 mb-3" placeholder="Discount" value={businessDiscount} onChange={(e) => setBusinessDiscount(e.target.value)} /><textarea className="w-full border rounded-lg p-3 mb-3 min-h-24" placeholder="Current offers / specials" value={businessOffer} onChange={(e) => setBusinessOffer(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC name (internal only)" value={businessPocName} onChange={(e) => setBusinessPocName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC email (internal only)" value={businessPocEmail} onChange={(e) => setBusinessPocEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC phone (internal only)" value=<input
+  className="w-full border rounded-lg p-3 mb-3"
+  placeholder="POC phone (internal only)"
+  value={businessPocPhone}
+  onChange={(e) => {
+    const cleaned = e.target.value.replace(/[^0-9+\-() ]/g, "");
+    setBusinessPocPhone(cleaned);
+  }}
+/> onChange={(e) => setBusinessPocPhone(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setBusinessImageFile(e.target.files?.[0] || null)} />{businessMessage && <p className="text-sm text-orange-600 mb-3">{businessMessage}</p>}<button type="button" onClick={createBusiness} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full">Add Business</button></div><div><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4"><h2 className="text-2xl font-black">Published Businesses</h2><select className="border rounded-lg p-3" value={businessCategoryFilter} onChange={(e) => setBusinessCategoryFilter(e.target.value)}><option value="all">All Categories</option>{availableBusinessCategories.map((category) => <option key={category} value={category}>{category}</option>)}</select></div>{businesses.length === 0 ? <div className="border rounded-2xl p-8 text-gray-500">No businesses added yet.</div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">{filteredBusinesses.map((business) => <div key={business.id} className="border rounded-2xl overflow-hidden shadow-sm bg-white">{business.image ? <img src={business.image} alt={business.name} className="w-full h-48 object-cover" /> : <div className="w-full h-48 bg-pink-50 grid place-items-center text-pink-600 font-black">Local Business</div>}<div className="p-5"><h3 className="text-xl font-black">{business.name}</h3><p className="text-gray-500 mt-2">{business.address}</p>{business.discount && <p className="mt-3 font-bold text-green-700">Discount: {business.discount}</p>}{business.offer && <p className="text-sm text-gray-600 mt-2">{business.offer}</p>}{business.website && <a href={business.website} target="_blank" rel="noreferrer" className="inline-block mt-4 bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Visit Website</a>}</div></div>)}</div>}</div></section></main>;
   }
 
   function TeamCard({ member, segment }: { member: AnyRecord; segment?: string }) {
