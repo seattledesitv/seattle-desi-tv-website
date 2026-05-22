@@ -666,7 +666,7 @@ const submitContact = async () => {
     })
   });
 const emailDebug = await response.json();
-alert(JSON.stringify(emailDebug, null, 2));
+//alert(JSON.stringify(emailDebug, null, 2));
 console.log("Email debug:", emailDebug);
 
 //alert(JSON.stringify(emailDebug, null, 2));
@@ -926,7 +926,7 @@ console.log("Email debug:", emailDebug);
           <div className="bg-white rounded-2xl shadow-xl border p-5"><EventsHomeList /></div>
           <div className="bg-[#071123] text-white rounded-2xl shadow-xl p-6 text-center flex flex-col items-center justify-center"><h3 className="text-2xl font-black">SEATTLE DESI RADIO</h3><span className="bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-black mt-5">ON AIR</span><div className="text-7xl my-7">🎙️</div><p className="text-gray-200">24/7 Bollywood, Bhangra & Desi Hits!</p><button type="button" onClick={() => setTab("radio")} className="mt-6 border border-white/70 bg-purple-900/60 px-8 py-3 rounded-xl font-bold">🎧 Listen Live</button></div>
         </section>
-       // {renderContactSection({ compact: true })}
+       {/* {renderContactSection({ compact: true })} */}
       </main>
     </>
   );
@@ -990,7 +990,7 @@ if (contactPhone && !phonePattern.test(contactPhone.trim())) {
 
   const emailDebug = await response.json();
 
-  alert(JSON.stringify(emailDebug, null, 2));
+  //alert(JSON.stringify(emailDebug, null, 2));
 
   if (!response.ok) {
     setContactStatus("Saved your request, but email notification failed.");
@@ -1002,7 +1002,7 @@ if (contactPhone && !phonePattern.test(contactPhone.trim())) {
   setContactPhone("");
   setContactInterest("volunteer");
   setContactMessage("");
-  setContactStatus("Thank you. Your request has been submitted and email was sent.");
+  setContactStatus("Thank you. Your request has been submitted.");
 };
   
   const renderContactSection = ({ compact = false }: { compact?: boolean }) => <section className={`${compact ? "" : "max-w-6xl mx-auto"} bg-[#071123] text-white rounded-2xl p-8 grid lg:grid-cols-[1fr_520px] gap-8 items-start`}><div><h2 className="text-3xl font-black">Get Involved with Seattle Desi TV</h2><p className="text-gray-300 mt-3">Reach out to volunteer, intern, become an RJ/VJ, partner with us, or learn about sponsorship opportunities.</p><div className="grid md:grid-cols-2 gap-3 mt-6 text-sm text-gray-300"><div className="bg-white/10 rounded-xl p-4">🤝 Volunteer</div><div className="bg-white/10 rounded-xl p-4">🎓 Internship</div><div className="bg-white/10 rounded-xl p-4">🎙 RJ</div><div className="bg-white/10 rounded-xl p-4">🎥 VJ</div><div className="bg-white/10 rounded-xl p-4">💼 Sponsorship</div><div className="bg-white/10 rounded-xl p-4">📺 Media Partnership</div></div></div><div className="bg-white text-[#081024] rounded-2xl p-5 shadow-xl"><input className="w-full border rounded-lg p-3 mb-3" placeholder="Your name" value={contactName} onChange={(e) => setContactName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Email" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} /><input
