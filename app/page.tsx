@@ -275,7 +275,9 @@ const [radioTeamCaptchaToken, setRadioTeamCaptchaToken] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authMessage, setAuthMessage] = useState("");
-
+const [eventViewMode, setEventViewMode] = useState<"list" | "calendar">("list");
+const [calendarDate, setCalendarDate] = useState(new Date());
+const [selectedCalendarDate, setSelectedCalendarDate] = useState("");
   const [videos, setVideos] = useState<AnyRecord[]>([]);
   const [events, setEvents] = useState<AnyRecord[]>([]);
   const [businesses, setBusinesses] = useState<AnyRecord[]>([]);
@@ -1219,6 +1221,110 @@ function EventDetailView({ event }: { event: AnyRecord }) {
     </main>
   );
 }
+
+  function EventsCalendarView() {
+  const year = calendarDate.getFullYear();
+  const month = calendarDate.getMonth();
+
+  const firstDay = new Date(year, month, 1);
+  const startDay = firstDay.getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const cells = [
+    ...Array(startDay).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+
+  const selectedEvents = selectedCalendarDate
+    ? filteredEvents.filter(
+        (event) => String(event.date).split("T")[0] === selectedCalendarDate
+      )
+    : [];
+
+  return (
+    <div className="border rounded-2xl p-6 bg-white shadow-sm">
+      <div className="flex items-center justify-between mb-5">
+        <button
+          type="button"
+          onClick={() => setCalendarDate(new Date(year, month - 1, 1))}
+          className="border px-4 py-2 rounded-lg font-bold"
+        >
+          ← Prev
+        </button>
+
+        <h2 className="text-2xl font-black">
+          {calendarDate.toLocaleString("en", { month: "long", year: "numeric" })}
+        </h2>
+
+        <button
+          type="button"
+          onClick={() => setCalendarDate(new Date(year, month + 1, 1))}
+          className="border px-4 py-2 rounded-lg font-bold"
+        >
+          Next →
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-2 text-center text-sm font-black text-gray-500 mb-2">
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+          <div key={day}>{day}</div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-2">
+        {cells.map((day, index) => {
+          if (!day) return <div key={index} />;
+
+          const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(
+            day
+          ).padStart(2, "0")}`;
+
+          const dayEvents = filteredEvents.filter(
+            (event) => String(event.date).split("T")[0] === dateKey
+          );
+
+          return (
+            <button
+              key={dateKey}
+              type="button"
+              onClick={() => setSelectedCalendarDate(dateKey)}
+              className={`min-h-24 rounded-xl border p-2 text-left ${
+                selectedCalendarDate === dateKey
+                  ? "border-pink-600 bg-pink-50"
+                  : "hover:bg-gray-50"
+              }`}
+            >
+              <div className="font-black">{day}</div>
+              {dayEvents.length > 0 && (
+                <div className="mt-2 text-xs text-pink-600 font-bold">
+                  {dayEvents.length} event(s)
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {selectedCalendarDate && (
+        <div className="mt-8">
+          <h3 className="text-xl font-black mb-4">
+            Events on {selectedCalendarDate}
+          </h3>
+
+          {selectedEvents.length === 0 ? (
+            <p className="text-gray-500">No events on this date.</p>
+          ) : (
+            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {selectedEvents.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
   function EventForm() {
     return <div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Add New Event</h2>{!user && <div className="bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-xl p-3 mb-3 text-sm">Login is required to add events.</div>}<input className="w-full border rounded-lg p-3 mb-3" placeholder="Event title" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Location" value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} /><textarea className="w-full border rounded-lg p-3 mb-3 min-h-28" placeholder="Event description" value={eventDescription} onChange={(e) => setEventDescription(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Ticket link / registration URL" value={eventTicketUrl} onChange={(e) => setEventTicketUrl(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC email (internal only)" type="email" value={eventPocEmail} onChange={(e) => setEventPocEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC phone (internal only)" value={eventPocPhone} onChange={(e) => setEventPocPhone(e.target.value)} />{canAccessAdminArea && <CrewSelector selected={selectedEventCrewIds} onToggle={(id) => setSelectedEventCrewIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} />}<label className="block text-sm font-bold mb-2">Upload event image / poster</label><input
   className="w-full border rounded-lg p-3 mb-3"
@@ -1241,7 +1347,47 @@ function EventDetailView({ event }: { event: AnyRecord }) {
   }
 
   function EventsList() {
-    return <div><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4"><div><h2 className="text-2xl font-black">Published Events</h2>{eventCrewMessage && <p className="text-sm text-blue-700 mt-2">{eventCrewMessage}</p>}<p className="text-xs text-gray-500 mt-1">Loaded events: {events.length}</p></div><div className="flex gap-3 flex-wrap"><button type="button" onClick={loadEventsOnly} className="border border-pink-600 text-pink-600 px-4 py-3 rounded-lg font-bold">Refresh Events</button><select className="border rounded-lg p-3" value={eventMonthFilter} onChange={(e) => setEventMonthFilter(e.target.value)}><option value="all">All Months</option>{["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((m, i) => <option key={m} value={String(i + 1)}>{m}</option>)}</select><select className="border rounded-lg p-3" value={eventYearFilter} onChange={(e) => setEventYearFilter(e.target.value)}><option value="all">All Years</option>{availableEventYears.map((year) => <option key={year} value={year}>{year}</option>)}</select></div></div>{events.length === 0 ? <div className="border rounded-2xl p-8 text-gray-500">No events added yet.</div> : filteredEvents.length === 0 ? <div className="border rounded-2xl p-8 text-gray-500">No events match the selected filters.</div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">{filteredEvents.map((event) => <EventCard key={event.id} event={event} />)}</div>}</div>;
+    return <div><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4"><div><h2 className="text-2xl font-black">Published Events</h2><div className="flex gap-2 mt-3">
+  <button
+    type="button"
+    onClick={() => setEventViewMode("list")}
+    className={`px-4 py-2 rounded-lg font-bold ${
+      eventViewMode === "list" ? "bg-pink-600 text-white" : "border"
+    }`}
+  >
+    List
+  </button>
+
+  <button
+    type="button"
+    onClick={() => setEventViewMode("calendar")}
+    className={`px-4 py-2 rounded-lg font-bold ${
+      eventViewMode === "calendar" ? "bg-pink-600 text-white" : "border"
+    }`}
+  >
+    Calendar
+  </button>
+</div>{eventCrewMessage && <p className="text-sm text-blue-700 mt-2">{eventCrewMessage}</p>}<p className="text-xs text-gray-500 mt-1">Loaded events: {events.length}</p></div><div className="flex gap-3 flex-wrap"><button type="button" onClick={loadEventsOnly} className="border border-pink-600 text-pink-600 px-4 py-3 rounded-lg font-bold">Refresh Events</button><select className="border rounded-lg p-3" value={eventMonthFilter} onChange={(e) => setEventMonthFilter(e.target.value)}><option value="all">All Months</option>{["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((m, i) => <option key={m} value={String(i + 1)}>{m}</option>)}</select><select className="border rounded-lg p-3" value={eventYearFilter} onChange={(e) => setEventYearFilter(e.target.value)}><option value="all">All Years</option>{availableEventYears.map((year) => <option key={year} value={year}>{year}</option>)}</select></div></div>{eventViewMode === "calendar" ? (
+  <EventsCalendarView />
+) : (
+  <>
+    {events.length === 0 ? (
+      <div className="border rounded-2xl p-8 text-gray-500">
+        No events added yet.
+      </div>
+    ) : filteredEvents.length === 0 ? (
+      <div className="border rounded-2xl p-8 text-gray-500">
+        No events match the selected filters.
+      </div>
+    ) : (
+      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {filteredEvents.map((event) => (
+          <EventCard key={event.id} event={event} />
+        ))}
+      </div>
+    )}
+  </>
+)}</div>}</div>;
   }
 
   function EventCard({ event }: { event: AnyRecord }) {
