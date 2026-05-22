@@ -1081,7 +1081,7 @@ if (contactPhone && !phonePattern.test(contactPhone.trim())) {
   <EventDetailView event={selectedEvent} />
 ) : (
   <section className="grid lg:grid-cols-[420px_1fr] gap-8">
-    <EventForm />
+   {renderEventForm()}
     <EventsList />
   </section>
 )}</main>)
@@ -1325,8 +1325,9 @@ function EventDetailView({ event }: { event: AnyRecord }) {
     </div>
   );
 }
-  function EventForm() {
-    return <div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Add New Event</h2>{!user && <div className="bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-xl p-3 mb-3 text-sm">Login is required to add events.</div>}<input className="w-full border rounded-lg p-3 mb-3" placeholder="Event title" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Location" value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} /><textarea className="w-full border rounded-lg p-3 mb-3 min-h-28" placeholder="Event description" value={eventDescription} onChange={(e) => setEventDescription(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Ticket link / registration URL" value={eventTicketUrl} onChange={(e) => setEventTicketUrl(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC email (internal only)" type="email" value={eventPocEmail} onChange={(e) => setEventPocEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC phone (internal only)" value={eventPocPhone} onChange={(e) => setEventPocPhone(e.target.value)} />{canAccessAdminArea && <CrewSelector selected={selectedEventCrewIds} onToggle={(id) => setSelectedEventCrewIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} />}<label className="block text-sm font-bold mb-2">Upload event image / poster</label><input
+const renderEventForm = () => (
+  <div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Add New Event</h2>{!user && <div className="bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-xl p-3 mb-3 text-sm">Login is required to add events.</div>
+);<input className="w-full border rounded-lg p-3 mb-3" placeholder="Event title" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Location" value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} /><textarea className="w-full border rounded-lg p-3 mb-3 min-h-28" placeholder="Event description" value={eventDescription} onChange={(e) => setEventDescription(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Ticket link / registration URL" value={eventTicketUrl} onChange={(e) => setEventTicketUrl(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC email (internal only)" type="email" value={eventPocEmail} onChange={(e) => setEventPocEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC phone (internal only)" value={eventPocPhone} onChange={(e) => setEventPocPhone(e.target.value)} />{canAccessAdminArea && <CrewSelector selected={selectedEventCrewIds} onToggle={(id) => setSelectedEventCrewIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} />}<label className="block text-sm font-bold mb-2">Upload event image / poster</label><input
   className="w-full border rounded-lg p-3 mb-3"
   type="file"
   accept="image/*"
