@@ -738,7 +738,6 @@ console.log("Email debug:", emailDebug);
       const currentUser = session?.user || null;
       setUser(currentUser);
       if (currentUser) {
-        setTab("home");
         await loadAdminRole(currentUser);
       } else {
         setUserRole("");
