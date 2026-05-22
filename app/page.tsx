@@ -927,6 +927,19 @@ console.log("Email debug:", emailDebug);
           <div className="bg-[#071123] text-white rounded-2xl shadow-xl p-6 text-center flex flex-col items-center justify-center"><h3 className="text-2xl font-black">SEATTLE DESI RADIO</h3><span className="bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-black mt-5">ON AIR</span><div className="text-7xl my-7">🎙️</div><p className="text-gray-200">24/7 Bollywood, Bhangra & Desi Hits!</p><button type="button" onClick={() => setTab("radio")} className="mt-6 border border-white/70 bg-purple-900/60 px-8 py-3 rounded-xl font-bold">🎧 Listen Live</button></div>
         </section>
        {/* {renderContactSection({ compact: true })} */}
+        <div className="max-w-5xl mx-auto bg-[#071123] text-white rounded-2xl shadow-xl p-6 text-center">
+  <h3 className="text-2xl font-black">Get Involved with Seattle Desi TV</h3>
+  <p className="text-gray-300 mt-2">
+    Volunteer, intern, become an RJ/VJ, partner with us, or learn about sponsorship.
+  </p>
+  <button
+    type="button"
+    onClick={() => setTab("contact")}
+    className="mt-5 bg-pink-600 text-white px-6 py-3 rounded-xl font-bold"
+  >
+    Contact Us
+  </button>
+</div>
       </main>
     </>
   );
