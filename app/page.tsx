@@ -1443,7 +1443,8 @@ function EventDetailView({ event }: { event: AnyRecord }) {
     </div>
   );
 }
-const renderEventForm = () => (
+function renderEventForm() {
+  return (
   <div className="border rounded-2xl p-6 shadow-sm bg-white">
     <h2 className="text-2xl font-black mb-4">Add New Event</h2>
 
@@ -1547,7 +1548,8 @@ const renderEventForm = () => (
       {eventSaving ? "Saving Event..." : "Add Event"}
     </button>
   </div>
-);
+ );
+}
   function EventCard({ event }: { event: AnyRecord }) {
     return <div className="border rounded-2xl overflow-hidden shadow-sm bg-white"><EventImageSlider event={event} /><div className="p-5"><h3 className="text-xl font-black">{event.title}</h3><p className="text-gray-500 mt-1">{event.date}</p><p className="text-gray-500">{event.location}</p>{event.description && <p className="text-sm text-gray-600 mt-3">{event.description}</p>}<CrewBadges event={event} />{canAccessAdminArea && <button type="button" onClick={() => openAssignCrewForEvent(event)} className="inline-block mt-4 mr-2 bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Assign Desi TV Crew</button>}{canChooseCrew && <button type="button" onClick={() => volunteerForEventCrew(event.id)} className="inline-block mt-4 mr-2 bg-[#071123] text-white px-4 py-2 rounded-lg font-bold text-sm">Join as Desi TV Crew</button>}{assignCrewEventId === event.id && <div className="mt-4 border rounded-xl p-3 bg-purple-50"><CrewSelector selected={assignCrewMemberIds} onToggle={(id) => setAssignCrewMemberIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} /><div className="flex gap-2"><button type="button" onClick={() => saveAssignedCrewForEvent(event.id)} className="bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Save Crew</button><button type="button" onClick={() => setAssignCrewEventId(null)} className="border px-4 py-2 rounded-lg font-bold text-sm">Cancel</button></div></div>}<button
   type="button"
