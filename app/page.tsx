@@ -12,7 +12,13 @@ const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY!;
 const YOUTUBE_HANDLE = process.env.NEXT_PUBLIC_YOUTUBE_HANDLE || "seattledesitv";
 const LIVE365_META_URL = process.env.NEXT_PUBLIC_LIVE365_META_URL || "https://api.live365.com/stations/a45587/nowplaying";
 const LIVE365_STREAM_URL = process.env.NEXT_PUBLIC_LIVE365_STREAM_URL || "https://das-edge17-live365-dal02.cdnstream.com/a45587";
-
+const SOCIAL_STATS = [
+  { platform: "YouTube", count: "15K", label: "Subscribers", icon: "▶️" },
+  { platform: "Instagram", count: "7.3K", label: "Followers", icon: "📸" },
+  { platform: "Facebook", count: "2.1K", label: "Followers", icon: "📘" },
+  { platform: "TikTok", count: "850", label: "Followers", icon: "🎵" },
+  { platform: "Spotify", count: "400", label: "Listeners", icon: "🎙️" },
+];
 const LOGO_SRC = "/sdtv-logo.png";
 //const HERO_IMAGE = "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=2200&q=90";
 const HERO_IMAGE = "/hero-sdtv.png?auto=format&fit=crop&w=2200&q=90";
@@ -992,6 +998,22 @@ console.log("Email debug:", emailDebug);
           <div className="bg-white rounded-2xl shadow-xl border p-5"><EventsHomeList /></div>
           <div className="bg-[#071123] text-white rounded-2xl shadow-xl p-6 text-center flex flex-col items-center justify-center"><h3 className="text-2xl font-black">SEATTLE DESI RADIO</h3><span className="bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-black mt-5">ON AIR</span><div className="text-7xl my-7">🎙️</div><p className="text-gray-200">24/7 Bollywood, Bhangra & Desi Hits!</p><button type="button" onClick={() => setTab("radio")} className="mt-6 border border-white/70 bg-purple-900/60 px-8 py-3 rounded-xl font-bold">🎧 Listen Live</button></div>
         </section>
+        <section className="bg-[#071123] text-white rounded-2xl shadow-xl p-6">
+  <h2 className="text-2xl font-black mb-5">
+    🌎 Seattle Desi TV Community Reach
+  </h2>
+
+  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+    {SOCIAL_STATS.map((item) => (
+      <div key={item.platform} className="bg-white/10 rounded-xl p-5 text-center">
+        <div className="text-3xl">{item.icon}</div>
+        <div className="text-3xl font-black mt-2">{item.count}</div>
+        <div className="text-sm text-gray-300">{item.platform}</div>
+        <div className="text-xs text-gray-400">{item.label}</div>
+      </div>
+    ))}
+  </div>
+</section>
         <section className="bg-white rounded-2xl p-6 shadow-xl mt-8">
   <h2 className="text-2xl font-black mb-5">
     🎙 Latest Spotify Episodes
