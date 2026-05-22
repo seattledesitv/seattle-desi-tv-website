@@ -302,7 +302,7 @@ const [radioTeamCaptchaToken, setRadioTeamCaptchaToken] = useState("");
   const [assignCrewEventId, setAssignCrewEventId] = useState<string | null>(null);
   const [assignCrewMemberIds, setAssignCrewMemberIds] = useState<string[]>([]);
   const [eventCrewMessage, setEventCrewMessage] = useState("");
-
+  const [selectedEvent, setSelectedEvent] = useState<AnyRecord | null>(null);
   const [businessName, setBusinessName] = useState("");
   const [businessAddress, setBusinessAddress] = useState("");
   const [businessWebsite, setBusinessWebsite] = useState("");
@@ -1075,7 +1075,14 @@ if (contactPhone && !phonePattern.test(contactPhone.trim())) {
       title="Login Required"
       message="Please login or create an account to view community events."
     />
-  ) : ( <main className="bg-white text-[#081024] px-8 md:px-14 py-10"><div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8"><div><h1 className="text-4xl font-black">Community Events</h1><p className="text-gray-500 mt-2">Add events, upload posters, and showcase them on Seattle Desi TV.</p></div>{!user && <button type="button" onClick={openLogin} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold">Login to Add Event</button>}</div><section className="grid lg:grid-cols-[420px_1fr] gap-8"><EventForm /><EventsList /></section></main>)
+  ) : ( <main className="bg-white text-[#081024] px-8 md:px-14 py-10"><div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8"><div><h1 className="text-4xl font-black">Community Events</h1><p className="text-gray-500 mt-2">Add events, upload posters, and showcase them on Seattle Desi TV.</p></div>{!user && <button type="button" onClick={openLogin} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold">Login to Add Event</button>}</div>{selectedEvent ? (
+  <EventDetailView event={selectedEvent} />
+) : (
+  <section className="grid lg:grid-cols-[420px_1fr] gap-8">
+    <EventForm />
+    <EventsList />
+  </section>
+)}</main>)
 )}
       {tab === "businesses" && (
   !user ? (
@@ -1153,7 +1160,65 @@ if (contactPhone && !phonePattern.test(contactPhone.trim())) {
     </div>
   );
 }
+function EventDetailView({ event }: { event: AnyRecord }) {
+  const images =
+    Array.isArray(event.image_urls) && event.image_urls.length > 0
+      ? event.image_urls
+      : event.image
+      ? [event.image]
+      : [];
 
+  return (
+    <main className="bg-white text-[#081024] px-8 md:px-14 py-10">
+      <button
+        type="button"
+        onClick={() => setSelectedEvent(null)}
+        className="mb-6 border px-4 py-2 rounded-lg font-bold"
+      >
+        ← Back to Events
+      </button>
+
+      <h1 className="text-5xl font-black">{event.title}</h1>
+      <p className="text-gray-500 mt-3">
+        {event.date} · {event.location}
+      </p>
+
+      <div className="mt-8 grid gap-6">
+        {images.map((image, index) => (
+          <img
+            key={image}
+            src={image}
+            alt={`${event.title} ${index + 1}`}
+            className="w-full max-h-[750px] object-contain rounded-2xl border bg-gray-50"
+          />
+        ))}
+      </div>
+
+      {event.description && (
+        <section className="mt-10 max-w-4xl">
+          <h2 className="text-3xl font-black mb-3">Event Details</h2>
+          <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+            {event.description}
+          </p>
+        </section>
+      )}
+
+      {event.location && (
+        <section className="mt-10">
+          <h2 className="text-3xl font-black mb-3">Location</h2>
+          <iframe
+            title="Event location map"
+            src={`https://www.google.com/maps?q=${encodeURIComponent(
+              event.location
+            )}&output=embed`}
+            className="w-full h-96 rounded-2xl border"
+            loading="lazy"
+          />
+        </section>
+      )}
+    </main>
+  );
+}
   function EventForm() {
     return <div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Add New Event</h2>{!user && <div className="bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-xl p-3 mb-3 text-sm">Login is required to add events.</div>}<input className="w-full border rounded-lg p-3 mb-3" placeholder="Event title" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Location" value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} /><textarea className="w-full border rounded-lg p-3 mb-3 min-h-28" placeholder="Event description" value={eventDescription} onChange={(e) => setEventDescription(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Ticket link / registration URL" value={eventTicketUrl} onChange={(e) => setEventTicketUrl(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC email (internal only)" type="email" value={eventPocEmail} onChange={(e) => setEventPocEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC phone (internal only)" value={eventPocPhone} onChange={(e) => setEventPocPhone(e.target.value)} />{canAccessAdminArea && <CrewSelector selected={selectedEventCrewIds} onToggle={(id) => setSelectedEventCrewIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} />}<label className="block text-sm font-bold mb-2">Upload event image / poster</label><input
   className="w-full border rounded-lg p-3 mb-3"
@@ -1180,7 +1245,13 @@ if (contactPhone && !phonePattern.test(contactPhone.trim())) {
   }
 
   function EventCard({ event }: { event: AnyRecord }) {
-    return <div className="border rounded-2xl overflow-hidden shadow-sm bg-white"><EventImageSlider event={event} /><div className="p-5"><h3 className="text-xl font-black">{event.title}</h3><p className="text-gray-500 mt-1">{event.date}</p><p className="text-gray-500">{event.location}</p>{event.description && <p className="text-sm text-gray-600 mt-3">{event.description}</p>}<CrewBadges event={event} />{canAccessAdminArea && <button type="button" onClick={() => openAssignCrewForEvent(event)} className="inline-block mt-4 mr-2 bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Assign Desi TV Crew</button>}{canChooseCrew && <button type="button" onClick={() => volunteerForEventCrew(event.id)} className="inline-block mt-4 mr-2 bg-[#071123] text-white px-4 py-2 rounded-lg font-bold text-sm">Join as Desi TV Crew</button>}{assignCrewEventId === event.id && <div className="mt-4 border rounded-xl p-3 bg-purple-50"><CrewSelector selected={assignCrewMemberIds} onToggle={(id) => setAssignCrewMemberIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} /><div className="flex gap-2"><button type="button" onClick={() => saveAssignedCrewForEvent(event.id)} className="bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Save Crew</button><button type="button" onClick={() => setAssignCrewEventId(null)} className="border px-4 py-2 rounded-lg font-bold text-sm">Cancel</button></div></div>}{event.ticket_url && <a href={event.ticket_url} target="_blank" rel="noreferrer" className="inline-block mt-4 bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Tickets / Register</a>}</div></div>;
+    return <div className="border rounded-2xl overflow-hidden shadow-sm bg-white"><EventImageSlider event={event} /><div className="p-5"><h3 className="text-xl font-black">{event.title}</h3><p className="text-gray-500 mt-1">{event.date}</p><p className="text-gray-500">{event.location}</p>{event.description && <p className="text-sm text-gray-600 mt-3">{event.description}</p>}<CrewBadges event={event} />{canAccessAdminArea && <button type="button" onClick={() => openAssignCrewForEvent(event)} className="inline-block mt-4 mr-2 bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Assign Desi TV Crew</button>}{canChooseCrew && <button type="button" onClick={() => volunteerForEventCrew(event.id)} className="inline-block mt-4 mr-2 bg-[#071123] text-white px-4 py-2 rounded-lg font-bold text-sm">Join as Desi TV Crew</button>}{assignCrewEventId === event.id && <div className="mt-4 border rounded-xl p-3 bg-purple-50"><CrewSelector selected={assignCrewMemberIds} onToggle={(id) => setAssignCrewMemberIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} /><div className="flex gap-2"><button type="button" onClick={() => saveAssignedCrewForEvent(event.id)} className="bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Save Crew</button><button type="button" onClick={() => setAssignCrewEventId(null)} className="border px-4 py-2 rounded-lg font-bold text-sm">Cancel</button></div></div>}<button
+  type="button"
+  onClick={() => setSelectedEvent(event)}
+  className="inline-block mt-4 mr-2 bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm"
+>
+  View Event
+</button>{event.ticket_url && <a href={event.ticket_url} target="_blank" rel="noreferrer" className="inline-block mt-4 bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Tickets / Register</a>}</div></div>;
   }
 
   function BusinessesPage() {
