@@ -690,9 +690,7 @@ if (businessWebsite) {
 
   await loadData();
 };
-    const imageUrl = teamImageFile ? await uploadFileToBucket(teamImageFile, TEAM_BUCKET) : "";
-    const { error } = await supabase.from("team_members").insert({ name: teamName, title: teamTitle, image: imageUrl, created_by: user.id });
-     };
+   
 
   const createRadioTeamMember = async () => {
     setRadioTeamMessage("");
