@@ -1326,22 +1326,110 @@ function EventDetailView({ event }: { event: AnyRecord }) {
   );
 }
 const renderEventForm = () => (
-  <div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Add New Event</h2>{!user && <div className="bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-xl p-3 mb-3 text-sm">Login is required to add events.</div>
-);<input className="w-full border rounded-lg p-3 mb-3" placeholder="Event title" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Location" value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} /><textarea className="w-full border rounded-lg p-3 mb-3 min-h-28" placeholder="Event description" value={eventDescription} onChange={(e) => setEventDescription(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Ticket link / registration URL" value={eventTicketUrl} onChange={(e) => setEventTicketUrl(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC email (internal only)" type="email" value={eventPocEmail} onChange={(e) => setEventPocEmail(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="POC phone (internal only)" value={eventPocPhone} onChange={(e) => setEventPocPhone(e.target.value)} />{canAccessAdminArea && <CrewSelector selected={selectedEventCrewIds} onToggle={(id) => setSelectedEventCrewIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} />}<label className="block text-sm font-bold mb-2">Upload event image / poster</label><input
-  className="w-full border rounded-lg p-3 mb-3"
-  type="file"
-  accept="image/*"
-  multiple
-  onChange={(e) => setEventImageFiles(Array.from(e.target.files || []))}
-/>
+  <div className="border rounded-2xl p-6 shadow-sm bg-white">
+    <h2 className="text-2xl font-black mb-4">Add New Event</h2>
 
-{eventImageFiles.length > 0 && (
-  <p className="text-xs text-gray-500 mb-3">
-    Selected {eventImageFiles.length} image(s)
-  </p>
-)}{eventMessage && <p className="text-sm text-orange-600 mb-3">{eventMessage}</p>}
-<button type="button" onClick={createEvent} disabled={eventSaving || !user} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full disabled:opacity-60">{eventSaving ? "Saving Event..." : "Add Event"}</button></div>;
-  }
+    {!user && (
+      <div className="bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-xl p-3 mb-3 text-sm">
+        Login is required to add events.
+      </div>
+    )}
+
+    <input
+      className="w-full border rounded-lg p-3 mb-3"
+      placeholder="Event title"
+      value={eventTitle}
+      onChange={(e) => setEventTitle(e.target.value)}
+    />
+
+    <input
+      className="w-full border rounded-lg p-3 mb-3"
+      type="date"
+      value={eventDate}
+      onChange={(e) => setEventDate(e.target.value)}
+    />
+
+    <input
+      className="w-full border rounded-lg p-3 mb-3"
+      placeholder="Location"
+      value={eventLocation}
+      onChange={(e) => setEventLocation(e.target.value)}
+    />
+
+    <textarea
+      className="w-full border rounded-lg p-3 mb-3 min-h-28"
+      placeholder="Event description"
+      value={eventDescription}
+      onChange={(e) => setEventDescription(e.target.value)}
+    />
+
+    <input
+      className="w-full border rounded-lg p-3 mb-3"
+      placeholder="Ticket link / registration URL"
+      value={eventTicketUrl}
+      onChange={(e) => setEventTicketUrl(e.target.value)}
+    />
+
+    <input
+      className="w-full border rounded-lg p-3 mb-3"
+      placeholder="POC email (internal only)"
+      type="email"
+      value={eventPocEmail}
+      onChange={(e) => setEventPocEmail(e.target.value)}
+    />
+
+    <input
+      className="w-full border rounded-lg p-3 mb-3"
+      placeholder="POC phone (internal only)"
+      value={eventPocPhone}
+      onChange={(e) => setEventPocPhone(e.target.value)}
+    />
+
+    {canAccessAdminArea && (
+      <CrewSelector
+        selected={selectedEventCrewIds}
+        onToggle={(id) =>
+          setSelectedEventCrewIds((current) =>
+            current.includes(id)
+              ? current.filter((x) => x !== id)
+              : [...current, id]
+          )
+        }
+      />
+    )}
+
+    <label className="block text-sm font-bold mb-2">
+      Upload event image / poster
+    </label>
+
+    <input
+      className="w-full border rounded-lg p-3 mb-3"
+      type="file"
+      accept="image/*"
+      multiple
+      onChange={(e) => setEventImageFiles(Array.from(e.target.files || []))}
+    />
+
+    {eventImageFiles.length > 0 && (
+      <p className="text-xs text-gray-500 mb-3">
+        Selected {eventImageFiles.length} image(s)
+      </p>
+    )}
+
+    {eventMessage && (
+      <p className="text-sm text-orange-600 mb-3">{eventMessage}</p>
+    )}
+
+    <button
+      type="button"
+      onClick={createEvent}
+      disabled={eventSaving || !user}
+      className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full disabled:opacity-60"
+    >
+      {eventSaving ? "Saving Event..." : "Add Event"}
+    </button>
+  </div>
+);
 
   function CrewSelector({ selected, onToggle }: { selected: string[]; onToggle: (id: string) => void }) {
     return <div className="border rounded-xl p-3 mb-3 bg-pink-50"><p className="font-black text-sm mb-2">Assign Desi TV Crew</p>{teamMembers.length === 0 ? <p className="text-xs text-gray-500">No team members available yet.</p> : <div className="space-y-2 max-h-48 overflow-auto">{teamMembers.map((member) => <label key={member.id} className="flex items-center gap-2 text-sm bg-white rounded-lg p-2 border"><input type="checkbox" checked={selected.includes(member.id)} onChange={() => onToggle(member.id)} /><span className="font-semibold">{member.name}</span><span className="text-gray-500">{member.title}</span></label>)}</div>}</div>;
