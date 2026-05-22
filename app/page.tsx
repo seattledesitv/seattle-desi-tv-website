@@ -1347,48 +1347,117 @@ function EventDetailView({ event }: { event: AnyRecord }) {
   }
 
   function EventsList() {
-    return <div><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4"><div><h2 className="text-2xl font-black">Published Events</h2><div className="flex gap-2 mt-3">
-  <button
-    type="button"
-    onClick={() => setEventViewMode("list")}
-    className={`px-4 py-2 rounded-lg font-bold ${
-      eventViewMode === "list" ? "bg-pink-600 text-white" : "border"
-    }`}
-  >
-    List
-  </button>
+  return (
+    <div>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+        <div>
+          <h2 className="text-2xl font-black">Published Events</h2>
 
-  <button
-    type="button"
-    onClick={() => setEventViewMode("calendar")}
-    className={`px-4 py-2 rounded-lg font-bold ${
-      eventViewMode === "calendar" ? "bg-pink-600 text-white" : "border"
-    }`}
-  >
-    Calendar
-  </button>
-</div>{eventCrewMessage && <p className="text-sm text-blue-700 mt-2">{eventCrewMessage}</p>}<p className="text-xs text-gray-500 mt-1">Loaded events: {events.length}</p></div><div className="flex gap-3 flex-wrap"><button type="button" onClick={loadEventsOnly} className="border border-pink-600 text-pink-600 px-4 py-3 rounded-lg font-bold">Refresh Events</button><select className="border rounded-lg p-3" value={eventMonthFilter} onChange={(e) => setEventMonthFilter(e.target.value)}><option value="all">All Months</option>{["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((m, i) => <option key={m} value={String(i + 1)}>{m}</option>)}</select><select className="border rounded-lg p-3" value={eventYearFilter} onChange={(e) => setEventYearFilter(e.target.value)}><option value="all">All Years</option>{availableEventYears.map((year) => <option key={year} value={year}>{year}</option>)}</select></div></div>{eventViewMode === "calendar" ? (
-  <EventsCalendarView />
-) : (
-  <>
-    {events.length === 0 ? (
-      <div className="border rounded-2xl p-8 text-gray-500">
-        No events added yet.
+          <div className="flex gap-2 mt-3">
+            <button
+              type="button"
+              onClick={() => setEventViewMode("list")}
+              className={`px-4 py-2 rounded-lg font-bold ${
+                eventViewMode === "list" ? "bg-pink-600 text-white" : "border"
+              }`}
+            >
+              List
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setEventViewMode("calendar")}
+              className={`px-4 py-2 rounded-lg font-bold ${
+                eventViewMode === "calendar" ? "bg-pink-600 text-white" : "border"
+              }`}
+            >
+              Calendar
+            </button>
+          </div>
+
+          {eventCrewMessage && (
+            <p className="text-sm text-blue-700 mt-2">{eventCrewMessage}</p>
+          )}
+
+          <p className="text-xs text-gray-500 mt-1">
+            Loaded events: {events.length}
+          </p>
+        </div>
+
+        <div className="flex gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={loadEventsOnly}
+            className="border border-pink-600 text-pink-600 px-4 py-3 rounded-lg font-bold"
+          >
+            Refresh Events
+          </button>
+
+          <select
+            className="border rounded-lg p-3"
+            value={eventMonthFilter}
+            onChange={(e) => setEventMonthFilter(e.target.value)}
+          >
+            <option value="all">All Months</option>
+            {[
+              "January",
+              "February",
+              "March",
+              "April",
+              "May",
+              "June",
+              "July",
+              "August",
+              "September",
+              "October",
+              "November",
+              "December",
+            ].map((m, i) => (
+              <option key={m} value={String(i + 1)}>
+                {m}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="border rounded-lg p-3"
+            value={eventYearFilter}
+            onChange={(e) => setEventYearFilter(e.target.value)}
+          >
+            <option value="all">All Years</option>
+            {availableEventYears.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
-    ) : filteredEvents.length === 0 ? (
-      <div className="border rounded-2xl p-8 text-gray-500">
-        No events match the selected filters.
-      </div>
-    ) : (
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredEvents.map((event) => (
-          <EventCard key={event.id} event={event} />
-        ))}
-      </div>
-    )}
-  </>
-)}</div>}</div>;
-  }
+
+      {eventViewMode === "calendar" ? (
+        <EventsCalendarView />
+      ) : (
+        <>
+          {events.length === 0 ? (
+            <div className="border rounded-2xl p-8 text-gray-500">
+              No events added yet.
+            </div>
+          ) : filteredEvents.length === 0 ? (
+            <div className="border rounded-2xl p-8 text-gray-500">
+              No events match the selected filters.
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {filteredEvents.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
   function EventCard({ event }: { event: AnyRecord }) {
     return <div className="border rounded-2xl overflow-hidden shadow-sm bg-white"><EventImageSlider event={event} /><div className="p-5"><h3 className="text-xl font-black">{event.title}</h3><p className="text-gray-500 mt-1">{event.date}</p><p className="text-gray-500">{event.location}</p>{event.description && <p className="text-sm text-gray-600 mt-3">{event.description}</p>}<CrewBadges event={event} />{canAccessAdminArea && <button type="button" onClick={() => openAssignCrewForEvent(event)} className="inline-block mt-4 mr-2 bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Assign Desi TV Crew</button>}{canChooseCrew && <button type="button" onClick={() => volunteerForEventCrew(event.id)} className="inline-block mt-4 mr-2 bg-[#071123] text-white px-4 py-2 rounded-lg font-bold text-sm">Join as Desi TV Crew</button>}{assignCrewEventId === event.id && <div className="mt-4 border rounded-xl p-3 bg-purple-50"><CrewSelector selected={assignCrewMemberIds} onToggle={(id) => setAssignCrewMemberIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id])} /><div className="flex gap-2"><button type="button" onClick={() => saveAssignedCrewForEvent(event.id)} className="bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Save Crew</button><button type="button" onClick={() => setAssignCrewEventId(null)} className="border px-4 py-2 rounded-lg font-bold text-sm">Cancel</button></div></div>}<button
