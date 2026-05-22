@@ -1120,7 +1120,7 @@ if (contactPhone && !phonePattern.test(contactPhone.trim())) {
     renderBusinessesPage()
   )
 )}
-      {tab === "team" && {renderTeamPage()}
+      {tab === "team" && renderTeamPage()}
       {tab === "studio" && <StudioPage />}
       {tab === "donate" && <main className="bg-white text-[#081024] px-8 md:px-14 py-20 text-center"><h1 className="text-5xl font-black">Support Seattle Desi TV</h1><p className="mt-4 text-gray-600 max-w-2xl mx-auto">Your support helps us amplify South Asian voices, arts, culture, and community stories.</p><button type="button" className="mt-8 bg-pink-600 text-white px-8 py-4 rounded-xl font-bold"> <a
       href="https://www.zeffy.com/en-US/donation-form/amplify-south-asian-stories"
