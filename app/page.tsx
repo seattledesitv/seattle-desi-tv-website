@@ -357,15 +357,30 @@ const [selectedCalendarDate, setSelectedCalendarDate] = useState("");
     setTab("login");
   };
 
-  const goToProtectedTab = (id: TabId) => {
+const goToProtectedTab = (id: TabId) => {
   if (id === "studio" && !canAccessAdminArea) {
     openLogin();
     return;
   }
 
   setTab(id);
-  window.history.pushState(null, "", `#${id}`);
+  window.history.pushState({ tab: id }, "", `#${id}`);
 };
+
+  const isValidTab = (value: string): value is TabId =>
+  [
+    "home",
+    "tv",
+    "radio",
+    "events",
+    "businesses",
+    "team",
+    "studio",
+    "donate",
+    "contact",
+    "login",
+  ].includes(value);
+  
   const uploadFileToBucket = async (file: File, bucket: string) => {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
     const path = `${Date.now()}-${safeName}`;
@@ -766,6 +781,22 @@ console.log("Email debug:", emailDebug);
   }, []);
 
 useEffect(() => {
+  const handlePopState = () => {
+    const hash = window.location.hash.replace("#", "") || "home";
+
+    if (isValidTab(hash)) {
+      setTab(hash);
+    }
+  };
+
+  window.addEventListener("popstate", handlePopState);
+
+  return () => {
+    window.removeEventListener("popstate", handlePopState);
+  };
+}, []);
+  
+useEffect(() => {
   const hash = window.location.hash.replace("#", "");
 
   if (
@@ -815,7 +846,7 @@ useEffect(() => {
 
     <header className="bg-white/95 backdrop-blur text-[#080d1d] px-4 md:px-12 py-4 shadow-sm sticky top-0 z-50">
       <div className="flex items-center justify-between gap-4">
-        <button type="button" onClick={() => { setTab("home"); setMobileMenuOpen(false); }} className="flex items-center -my-3">
+        <button type="button" onClick={() => { goToProtectedTab("home"); setMobileMenuOpen(false); }} className="flex items-center -my-3">
           <img src={LOGO_SRC} alt="Seattle Desi TV" className="h-24 md:h-36 w-auto object-contain" />
         </button>
 
@@ -836,7 +867,7 @@ useEffect(() => {
           {canAccessAdminArea && (
             <button
               type="button"
-              onClick={() => setTab("studio")}
+              onClick={() => goToProtectedTab("studio")}
               className={`px-5 py-4 rounded-2xl transition ${
                 tab === "studio"
                   ? "text-pink-600 bg-pink-50 shadow-lg border-b-2 border-pink-600"
@@ -852,7 +883,7 @@ useEffect(() => {
           <button type="button" onClick={() => setDesignMode(designMode === "broadcast" ? "classic" : "broadcast")} className="border border-pink-600 text-pink-600 px-4 py-3 rounded-xl font-bold bg-white">
             {designMode === "broadcast" ? "Switch Classic" : "Switch Broadcast"}
           </button>
-          <button type="button" onClick={() => setTab("tv")} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-black shadow">▶ Watch TV</button>
+          <button type="button" onClick={() => goToProtectedTab("tv")} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-black shadow">▶ Watch TV</button>
           {user ? (
             <button type="button" onClick={signOut} className="border px-5 py-3 rounded-xl font-semibold">Logout</button>
           ) : (
@@ -969,7 +1000,7 @@ useEffect(() => {
     type="button"
     onClick={() => {
       setMobileMenuOpen(false);
-      setTab("tv");
+      goToProtectedTab("tv");
     }}
     className="bg-[#071123] text-white px-4 py-3 rounded-xl font-black"
   >
@@ -990,7 +1021,7 @@ useEffect(() => {
         <h1 className="text-5xl md:text-6xl font-black uppercase leading-tight tracking-tight drop-shadow">Voice of the <br /><span className="text-yellow-400">Desi Community</span></h1>
         <div className="w-16 h-2 bg-pink-600 rounded-full mt-3" />
         <p className="mt-6 text-lg max-w-xl leading-relaxed">Seattle Desi TV is your source for news, entertainment, culture, and community stories across the Pacific Northwest and beyond.</p>
-        <div className="mt-8 flex flex-wrap gap-4"><button type="button" onClick={() => setTab("tv")} className="bg-pink-600 hover:bg-pink-700 px-7 py-4 rounded-lg font-bold shadow-lg">▶ Watch Live TV</button><button type="button" onClick={() => setTab("radio")} className="border border-white/80 bg-black/20 px-7 py-4 rounded-lg font-bold">🎧 Listen Live Radio</button></div>
+        <div className="mt-8 flex flex-wrap gap-4"><button type="button" onClick={() => goToProtectedTab("tv")} className="bg-pink-600 hover:bg-pink-700 px-7 py-4 rounded-lg font-bold shadow-lg">▶ Watch Live TV</button><button type="button" onClick={() => goToProtectedTab("radio")} className="border border-white/80 bg-black/20 px-7 py-4 rounded-lg font-bold">🎧 Listen Live Radio</button></div>
       </div>
     </section>
   );
@@ -1005,11 +1036,11 @@ useEffect(() => {
       <main className={designMode === "broadcast" ? "bg-gradient-to-b from-white to-gray-50 text-[#081024] px-6 md:px-10 py-8 space-y-8" : "bg-white text-[#081024] px-8 md:px-14 py-10 space-y-12"}>
         <section className={designMode === "broadcast" ? "grid xl:grid-cols-[1fr_360px_300px] gap-6 items-stretch" : "space-y-8"}>
           <div className="bg-white rounded-2xl shadow-xl border p-6">
-            <div className="flex items-center justify-between mb-5"><h2 className="text-2xl font-black flex items-center gap-3"><span className="bg-red-600 text-white rounded-lg px-3 py-2">▶</span> Latest Videos</h2><button type="button" onClick={() => setTab("tv")} className="border border-pink-600 text-pink-600 px-5 py-2 rounded-lg font-bold">View All</button></div>
+            <div className="flex items-center justify-between mb-5"><h2 className="text-2xl font-black flex items-center gap-3"><span className="bg-red-600 text-white rounded-lg px-3 py-2">▶</span> Latest Videos</h2><button type="button" onClick={() => goToProtectedTab("tv")} className="border border-pink-600 text-pink-600 px-5 py-2 rounded-lg font-bold">View All</button></div>
             {videos.length === 0 ? <div className="text-gray-500"><p>{youtubeLoadMessage || "Loading latest videos..."}</p><a href="https://www.youtube.com/@SeattleDesiTV" target="_blank" rel="noreferrer" className="inline-block mt-3 bg-pink-600 text-white px-4 py-2 rounded-lg font-bold">Open YouTube</a></div> : <div className="grid md:grid-cols-3 xl:grid-cols-5 gap-5">{videos.slice(0, 5).map((video) => <VideoCard key={video.id} video={video} />)}</div>}
           </div>
           <div className="bg-white rounded-2xl shadow-xl border p-5"><EventsHomeList /></div>
-          <div className="bg-[#071123] text-white rounded-2xl shadow-xl p-6 text-center flex flex-col items-center justify-center"><h3 className="text-2xl font-black">SEATTLE DESI RADIO</h3><span className="bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-black mt-5">ON AIR</span><div className="text-7xl my-7">🎙️</div><p className="text-gray-200">24/7 Bollywood, Bhangra & Desi Hits!</p><button type="button" onClick={() => setTab("radio")} className="mt-6 border border-white/70 bg-purple-900/60 px-8 py-3 rounded-xl font-bold">🎧 Listen Live</button></div>
+          <div className="bg-[#071123] text-white rounded-2xl shadow-xl p-6 text-center flex flex-col items-center justify-center"><h3 className="text-2xl font-black">SEATTLE DESI RADIO</h3><span className="bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-black mt-5">ON AIR</span><div className="text-7xl my-7">🎙️</div><p className="text-gray-200">24/7 Bollywood, Bhangra & Desi Hits!</p><button type="button" onClick={() => goToProtectedTab("radio")} className="mt-6 border border-white/70 bg-purple-900/60 px-8 py-3 rounded-xl font-bold">🎧 Listen Live</button></div>
         </section>
         <section className="bg-[#071123] text-white rounded-2xl shadow-xl p-6">
   <h2 className="text-2xl font-black mb-5">
@@ -1075,7 +1106,7 @@ useEffect(() => {
   </p>
   <button
     type="button"
-    onClick={() => setTab("contact")}
+    onClick={() => goToProtectedTab("contact")}
     className="mt-5 bg-pink-600 text-white px-6 py-3 rounded-xl font-bold"
   >
     Contact Us
