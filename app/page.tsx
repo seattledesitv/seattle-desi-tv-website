@@ -358,11 +358,6 @@ const [selectedCalendarDate, setSelectedCalendarDate] = useState("");
   };
 
   const goToProtectedTab = (id: TabId) => {
-  if ((id === "events" || id === "businesses") && !user) {
-    openLogin();
-    return;
-  }
-
   if (id === "studio" && !canAccessAdminArea) {
     openLogin();
     return;
@@ -1187,31 +1182,50 @@ if (contactPhone && !phonePattern.test(contactPhone.trim())) {
 
       {tab === "radio" && <main className="bg-white text-[#081024] px-8 md:px-14 py-10 space-y-10"><section className="bg-[#081024] text-white rounded-3xl p-10 max-w-6xl mx-auto"><div className="grid lg:grid-cols-[220px_1fr] gap-8 items-center"><div className="w-full aspect-square rounded-3xl bg-white/10 overflow-hidden grid place-items-center">{radioMeta?.artwork ? <img src={radioMeta.artwork} alt="Now playing" className="w-full h-full object-cover" /> : <div className="text-center p-6"><div className="text-5xl">🎧</div><p className="mt-3 font-black">Seattle Desi Radio</p></div>}</div><div><div className="flex flex-wrap items-center gap-3 mb-4"><span className="bg-green-500 text-black px-3 py-1 rounded-full text-xs font-black">● LIVE</span><span className="text-sm text-gray-300">Updated: {radioMetaUpdatedAt || "Loading..."}</span></div><h1 className="text-5xl font-black">{radioMeta?.stationName || "Seattle Desi Radio"}</h1><p className="mt-4 text-gray-300">Live South Asian music, interviews, culture, and community stories.</p><div className="mt-6 bg-white/10 rounded-2xl p-5"><p className="text-sm text-gray-300 uppercase tracking-wide">Now Playing</p><h2 className="text-3xl font-black mt-1">{radioMeta?.title || "Seattle Desi Radio Live"}</h2>{radioMeta?.artist && <p className="text-xl text-yellow-300 mt-1">{radioMeta.artist}</p>}</div><audio controls className="w-full mt-8"><source src={LIVE365_STREAM_URL} type="audio/mpeg" /></audio></div></div></section><section className="max-w-6xl mx-auto grid lg:grid-cols-[420px_1fr] gap-8">{canAccessAdminArea && <div className="border rounded-2xl p-6 shadow-sm bg-white"><h2 className="text-2xl font-black mb-4">Admin: Add Radio Team / Host</h2><input className="w-full border rounded-lg p-3 mb-3" placeholder="Name" value={radioTeamName} onChange={(e) => setRadioTeamName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Title / Role" value={radioTeamTitle} onChange={(e) => setRadioTeamTitle(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" placeholder="Segment name" value={radioSegmentName} onChange={(e) => setRadioSegmentName(e.target.value)} /><input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setRadioTeamImageFile(e.target.files?.[0] || null)} />{radioTeamMessage && <p className="text-sm text-orange-600 mb-3">{radioTeamMessage}</p>}<button type="button" onClick={createRadioTeamMember} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full">Add Radio Team Member</button></div>}<div className={canAccessAdminArea ? "" : "lg:col-span-2"}><h2 className="text-3xl font-black mb-5">Radio Team & Segments</h2>{radioTeamMembers.length === 0 ? <div className="border rounded-2xl p-8 text-gray-500">No radio team members added yet.</div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">{radioTeamMembers.map((member) => <TeamCard key={member.id} member={member} segment={member.segment_name} />)}</div>}</div></section></main>}
 
-      {tab === "events" && (
-  !user ? (
-    <LoginRequiredNotice
-      title="Login Required"
-      message="Please login or create an account to view community events."
-    />
-  ) : ( <main className="bg-white text-[#081024] px-8 md:px-14 py-10"><div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8"><div><h1 className="text-4xl font-black">Community Events</h1><p className="text-gray-500 mt-2">Add events, upload posters, and showcase them on Seattle Desi TV.</p></div>{!user && <button type="button" onClick={openLogin} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold">Login to Add Event</button>}</div>{selectedEvent ? (
-  <EventDetailView event={selectedEvent} />
-) : (
-  <section className="grid lg:grid-cols-[420px_1fr] gap-8">
-   {renderEventForm()}
-    <EventsList />
-  </section>
-)}</main>)
+  {tab === "events" && (
+  <main className="bg-white text-[#081024] px-8 md:px-14 py-10">
+    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
+      <div>
+        <h1 className="text-4xl font-black">Community Events</h1>
+        <p className="text-gray-500 mt-2">
+          View community events. Login is required only to add an event.
+        </p>
+      </div>
+      {!user && (
+        <button
+          type="button"
+          onClick={openLogin}
+          className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold"
+        >
+          Login to Add Event
+        </button>
+      )}
+    </div>
+
+    {selectedEvent ? (
+      <EventDetailView event={selectedEvent} />
+    ) : (
+      <section className="grid lg:grid-cols-[420px_1fr] gap-8">
+        {user ? renderEventForm() : (
+          <div className="border rounded-2xl p-6 bg-yellow-50 text-yellow-800">
+            <h2 className="text-2xl font-black mb-2">Want to add an event?</h2>
+            <p className="mb-4">Please login or create an account to submit community events.</p>
+            <button
+              type="button"
+              onClick={openLogin}
+              className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold"
+            >
+              Login / Create Account
+            </button>
+          </div>
+        )}
+        <EventsList />
+      </section>
+    )}
+  </main>
 )}
-      {tab === "businesses" && (
-  !user ? (
-    <LoginRequiredNotice
-      title="Login Required"
-      message="Please login or create an account to view the local business directory."
-    />
-  ) : (
-    renderBusinessesPage()
-  )
-)}
+{tab === "businesses" && renderBusinessesPage()}
+
       {tab === "team" && renderTeamPage()}
       {tab === "studio" && <StudioPage />}
       {tab === "donate" && <main className="bg-white text-[#081024] px-8 md:px-14 py-20 text-center"><h1 className="text-5xl font-black">Support Seattle Desi TV</h1><p className="mt-4 text-gray-600 max-w-2xl mx-auto">Your support helps us amplify South Asian voices, arts, culture, and community stories.</p><button type="button" className="mt-8 bg-pink-600 text-white px-8 py-4 rounded-xl font-bold"> <a
@@ -1689,6 +1703,7 @@ function renderBusinessesPage() {
       </div>
 
       <section className="grid lg:grid-cols-[420px_1fr] gap-8">
+          {user ? (
         <div className="border rounded-2xl p-6 shadow-sm bg-white">
           <h2 className="text-2xl font-black mb-4">Add Local Business</h2>
 
@@ -1731,7 +1746,19 @@ function renderBusinessesPage() {
             Add Business
           </button>
         </div>
-
+) : (
+  <div className="border rounded-2xl p-6 bg-yellow-50 text-yellow-800">
+    <h2 className="text-2xl font-black mb-2">Want to add a business?</h2>
+    <p className="mb-4">Please login or create an account to add a local business.</p>
+    <button
+      type="button"
+      onClick={openLogin}
+      className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold"
+    >
+      Login / Create Account
+    </button>
+  </div>
+)}
         <div>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
             <h2 className="text-2xl font-black">Published Businesses</h2>
