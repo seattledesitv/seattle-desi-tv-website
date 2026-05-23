@@ -364,6 +364,7 @@ const [selectedCalendarDate, setSelectedCalendarDate] = useState("");
   }
 
   setTab(id);
+  window.history.pushState(null, "", `#${id}`);
 };
   const uploadFileToBucket = async (file: File, bucket: string) => {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
@@ -764,6 +765,23 @@ console.log("Email debug:", emailDebug);
     return () => listener.subscription.unsubscribe();
   }, []);
 
+useEffect(() => {
+  const hash = window.location.hash.replace("#", "");
+
+  if (
+    hash === "home" ||
+    hash === "tv" ||
+    hash === "radio" ||
+    hash === "events" ||
+    hash === "businesses" ||
+    hash === "team" ||
+    hash === "donate" ||
+    hash === "contact"
+  ) {
+    setTab(hash as TabId);
+  }
+}, []);
+  
   useEffect(() => {
     loadData();
     fetchRadioMetadata();
