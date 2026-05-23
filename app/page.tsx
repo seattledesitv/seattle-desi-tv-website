@@ -552,11 +552,16 @@ const loadSpotifyEpisodes = async () => {
     setEventCrewAssignments(data || []);
   };
 
-  const loadEventsOnly = async () => {
-    const result = await supabase.from("events").select("*").order("created_at", { ascending: false });
-    setEvents((result.data || []).map(normalizeEvent));
-    await loadEventCrewAssignments();
-  };
+ const loadEventsOnly = async () => {
+  const result = await supabase
+    .from("events")
+    .select("*")
+    .eq("approved", true)
+    .order("created_at", { ascending: false });
+
+  setEvents((result.data || []).map(normalizeEvent));
+  await loadEventCrewAssignments();
+};
 
   const loadData = async () => {
     const [businessRows, teamRows, radioTeamRows] = await Promise.all([
