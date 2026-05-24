@@ -359,44 +359,49 @@ const [pendingBusinesses, setPendingBusinesses] = useState<any[]>([]);
   };
 
 const approveEvent = async (id: string) => {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("events")
     .update({ approved: true })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id,title,approved");
 
-  if (error) {
-    alert(error.message);
-    return;
-  }
+  alert(
+    JSON.stringify(
+      {
+        id,
+        error: error?.message || null,
+        data,
+      },
+      null,
+      2
+    )
+  );
 
-  alert("Event approved.");
   await loadPendingApprovals();
   await loadEventsOnly();
 };
 
 const approveBusiness = async (id: string) => {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("local_businesses")
     .update({ approved: true })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id,name,approved");
 
-  if (error) {
-    alert(error.message);
-    return;
-  }
+  alert(
+    JSON.stringify(
+      {
+        id,
+        error: error?.message || null,
+        data,
+      },
+      null,
+      2
+    )
+  );
 
-  alert("Business approved.");
   await loadPendingApprovals();
   await loadData();
-};
-const goToProtectedTab = (id: TabId) => {
-  if (id === "studio" && !canAccessAdminArea) {
-    openLogin();
-    return;
-  }
-
-  setTab(id);
-  window.history.pushState({ tab: id }, "", `#${id}`);
 };
 
   const isValidTab = (value: string): value is TabId =>
