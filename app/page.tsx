@@ -972,7 +972,16 @@ useEffect(() => {
     if (tab === "tv" || tab === "home") fetchYouTubeVideos();
   }, [tab]);
 
+const goToProtectedTab = (id: TabId) => {
+  if (id === "studio" && !canAccessAdminArea) {
+    openLogin();
+    return;
+  }
 
+  setTab(id);
+  window.history.pushState({ tab: id }, "", `#${id}`);
+};
+  
   const Header = () => (
   <>
     <div className="bg-[#050b18] text-white text-sm px-4 md:px-7 py-2 flex flex-wrap items-center justify-between gap-3 shadow-md">
