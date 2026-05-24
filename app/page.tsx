@@ -26,7 +26,6 @@ const EVENT_BUCKET = "event-images";
 const BUSINESS_BUCKET = "business-images";
 const TEAM_BUCKET = "team-images";
 const RADIO_TEAM_BUCKET = "radio-team-images";
-
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
 });
@@ -286,6 +285,8 @@ const [selectedCalendarDate, setSelectedCalendarDate] = useState("");
   const [videos, setVideos] = useState<AnyRecord[]>([]);
   const [events, setEvents] = useState<AnyRecord[]>([]);
   const [businesses, setBusinesses] = useState<AnyRecord[]>([]);
+  const [pendingEvents, setPendingEvents] = useState<any[]>([]);
+const [pendingBusinesses, setPendingBusinesses] = useState<any[]>([]);
   const [teamMembers, setTeamMembers] = useState<AnyRecord[]>([]);
   const [radioTeamMembers, setRadioTeamMembers] = useState<AnyRecord[]>([]);
   const [eventCrewAssignments, setEventCrewAssignments] = useState<AnyRecord[]>([]);
@@ -357,6 +358,29 @@ const [selectedCalendarDate, setSelectedCalendarDate] = useState("");
     setTab("login");
   };
 
+  const approveEvent = async (id: string) => {
+  await supabase
+    .from("events")
+    .update({
+      approved: true
+    })
+    .eq("id", id);
+
+  loadPendingApprovals();
+  loadEventsOnly();
+};
+
+const approveBusiness = async (id: string) => {
+  await supabase
+    .from("local_businesses")
+    .update({
+      approved: true
+    })
+    .eq("id", id);
+
+  loadPendingApprovals();
+  loadData();
+};
 const goToProtectedTab = (id: TabId) => {
   if (id === "studio" && !canAccessAdminArea) {
     openLogin();
@@ -565,7 +589,7 @@ const loadSpotifyEpisodes = async () => {
 
   const loadData = async () => {
     const [businessRows, teamRows, radioTeamRows] = await Promise.all([
-      supabase.from("local_businesses").select("*").order("created_at", { ascending: false }),
+      supabase.from("local_businesses").select("*").eq("approved", true).order("created_at", { ascending: false }),
       supabase.from("team_members").select("*").order("created_at", { ascending: true }),
       supabase.from("radio_team_members").select("*").order("created_at", { ascending: true })
     ]);
@@ -576,47 +600,99 @@ const loadSpotifyEpisodes = async () => {
     await fetchYouTubeVideos();
   };
 
-  const createEvent = async () => {
-    setEventMessage("");
-    if (!user?.id) {
-      openLogin();
-      return setEventMessage("Please login first.");
-    }
-    if (!eventTitle || !eventDate || !eventLocation) return setEventMessage("Please enter event title, date, and location.");
+  const loadPendingApprovals = async () => {
+  const { data: events } = await supabase
+    .from("events")
+    .select("*")
+    .eq("approved", false)
+    .order("created_at", { ascending: false });
 
+  const { data: businesses } = await supabase
+    .from("local_businesses")
+    .select("*")
+    .eq("approved", false)
+    .order("created_at", { ascending: false });
 
-    setEventSaving(true);
-    try {
-      const imageUrls = eventImageFiles.length
-        ? await Promise.all(
-            eventImageFiles.map((file) => uploadFileToBucket(file, EVENT_BUCKET))
-          )
-        : [];
-      
-      const imageUrl = imageUrls[0] || "";
-      const { error } = await supabase.from("events").insert({
-        title: eventTitle,
-        date: eventDate,
+  setPendingEvents(events || []);
+  setPendingBusinesses(businesses || []);
+};
+  
+const createEvent = async () => {
+  setEventMessage("");
+
+  if (!user?.id) {
+    openLogin();
+    return setEventMessage("Please login first.");
+  }
+
+  if (!eventTitle || !eventDate || !eventLocation) {
+    return setEventMessage("Please enter event title, date, and location.");
+  }
+
+  setEventSaving(true);
+
+  try {
+    const imageUrls = eventImageFiles.length
+      ? await Promise.all(
+          eventImageFiles.map((file) => uploadFileToBucket(file, EVENT_BUCKET))
+        )
+      : [];
+
+    const imageUrl = imageUrls[0] || "";
+
+    const { error } = await supabase.from("events").insert({
+      title: eventTitle,
+      date: eventDate,
+      location: eventLocation,
+      description: eventDescription || null,
+      ticket_url: eventTicketUrl || null,
+      poc_email: eventPocEmail || null,
+      poc_phone: eventPocPhone || null,
+      image: imageUrl || null,
+      image_urls: imageUrls,
+      crew_member_ids: selectedEventCrewIds,
+      created_by: user.id,
+      approved: false,
+    });
+
+    if (error) throw error;
+
+    await fetch("/api/admin-notify", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        type: "Event",
+        name: eventTitle,
+        description: eventDescription,
+        submitterEmail: user?.email,
+        phone: eventPocPhone,
         location: eventLocation,
-        description: eventDescription || null,
-        ticket_url: eventTicketUrl || null,
-        poc_email: eventPocEmail || null,
-        poc_phone: eventPocPhone || null,
-        image: imageUrl || null,
-        image_urls: imageUrls,
-        crew_member_ids: selectedEventCrewIds,
-        created_by: user.id
-      });
-      if (error) throw error;
-      setEventTitle(""); setEventDate(""); setEventLocation(""); setEventDescription(""); setEventTicketUrl(""); setEventPocEmail(""); setEventPocPhone(""); setEventImageFiles([]); setSelectedEventCrewIds([]);
-      setEventMessage("Event added successfully.");
-      await loadEventsOnly();
-    } catch (error: any) {
-      setEventMessage(error.message || "Could not add event.");
-    } finally {
-      setEventSaving(false);
-    }
-  };
+      }),
+    });
+
+    setEventTitle("");
+    setEventDate("");
+    setEventLocation("");
+    setEventDescription("");
+    setEventTicketUrl("");
+    setEventPocEmail("");
+    setEventPocPhone("");
+    setEventImageFiles([]);
+    setSelectedEventCrewIds([]);
+
+    setEventMessage(
+      "Event submitted successfully. It will be visible after admin approval."
+    );
+
+    await loadEventsOnly();
+  } catch (error: any) {
+    setEventMessage(error.message || "Could not add event.");
+  } finally {
+    setEventSaving(false);
+  }
+};
 
   const openAssignCrewForEvent = (event: AnyRecord) => {
     setAssignCrewEventId(event.id);
@@ -646,54 +722,101 @@ const loadSpotifyEpisodes = async () => {
     await loadEventCrewAssignments();
   };
 
-  const createBusiness = async () => {
-    setBusinessMessage("");
-    if (!user?.id) return openLogin();
-    if (!businessName || !businessAddress || !businessCategory) return setBusinessMessage("Please enter name, address and category.");
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const phonePattern = /^[0-9+\-() ]{7,20}$/;
+const createBusiness = async () => {
+  setBusinessMessage("");
 
-if (businessPocEmail && !emailPattern.test(businessPocEmail.trim())) {
-  setBusinessMessage("Please enter a valid POC email address.");
-  return;
-}
-
-if (businessPocPhone && !phonePattern.test(businessPocPhone.trim())) {
-  setBusinessMessage("Please enter a valid POC phone number. Use only numbers, spaces, +, -, or brackets.");
-  return;
-}
-
-if (businessWebsite) {
-  try {
-    new URL(
-      businessWebsite.startsWith("http")
-        ? businessWebsite
-        : `https://${businessWebsite}`
-    );
-  } catch {
-    setBusinessMessage("Please enter a valid website URL.");
+  if (!user?.id) {
+    openLogin();
     return;
   }
-}
-    const imageUrl = businessImageFile ? await uploadFileToBucket(businessImageFile, BUSINESS_BUCKET) : "";
-    const { error } = await supabase.from("local_businesses").insert({
+
+  if (!businessName || !businessAddress || !businessCategory) {
+    return setBusinessMessage("Please enter name, address and category.");
+  }
+
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const phonePattern = /^[0-9+\-() ]{7,20}$/;
+
+  if (businessPocEmail && !emailPattern.test(businessPocEmail.trim())) {
+    setBusinessMessage("Please enter a valid POC email address.");
+    return;
+  }
+
+  if (businessPocPhone && !phonePattern.test(businessPocPhone.trim())) {
+    setBusinessMessage(
+      "Please enter a valid POC phone number. Use only numbers, spaces, +, -, or brackets."
+    );
+    return;
+  }
+
+  if (businessWebsite) {
+    try {
+      new URL(
+        businessWebsite.startsWith("http")
+          ? businessWebsite
+          : `https://${businessWebsite}`
+      );
+    } catch {
+      setBusinessMessage("Please enter a valid website URL.");
+      return;
+    }
+  }
+
+  const imageUrl = businessImageFile
+    ? await uploadFileToBucket(businessImageFile, BUSINESS_BUCKET)
+    : "";
+
+  const { error } = await supabase.from("local_businesses").insert({
+    name: businessName,
+    address: businessAddress,
+    website: businessWebsite,
+    category: businessCategory,
+    discount: businessDiscount,
+    offer: businessOffer,
+    poc_name: businessPocName,
+    poc_email: businessPocEmail,
+    poc_phone: businessPocPhone,
+    image: imageUrl,
+    created_by: user.id,
+    approved: false,
+  });
+
+  if (error) {
+    return setBusinessMessage(error.message);
+  }
+
+  await fetch("/api/admin-notify", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "Business",
       name: businessName,
-      address: businessAddress,
-      website: businessWebsite,
-      category: businessCategory,
-      discount: businessDiscount,
-      offer: businessOffer,
-      poc_name: businessPocName,
-      poc_email: businessPocEmail,
-      poc_phone: businessPocPhone,
-      image: imageUrl,
-      created_by: user.id
-    });
-    if (error) return setBusinessMessage(error.message);
-    setBusinessName(""); setBusinessAddress(""); setBusinessWebsite(""); setBusinessCategory(""); setBusinessDiscount(""); setBusinessOffer(""); setBusinessPocName(""); setBusinessPocEmail(""); setBusinessPocPhone(""); setBusinessImageFile(null);
-    setBusinessMessage("Business added successfully.");
-    await loadData();
-  };
+      description: businessOffer,
+      submitterEmail: user?.email,
+      phone: businessPocPhone,
+      location: businessAddress,
+    }),
+  });
+
+  setBusinessName("");
+  setBusinessAddress("");
+  setBusinessWebsite("");
+  setBusinessCategory("");
+  setBusinessDiscount("");
+  setBusinessOffer("");
+  setBusinessPocName("");
+  setBusinessPocEmail("");
+  setBusinessPocPhone("");
+  setBusinessImageFile(null);
+
+  setBusinessMessage(
+    "Business submitted successfully. It will be visible after admin approval."
+  );
+
+  await loadData();
+};
 
  const createTeamMember = async () => {
   setTeamMessage("");
@@ -822,9 +945,11 @@ useEffect(() => {
     loadData();
     fetchRadioMetadata();
     loadSpotifyEpisodes();
+    loadPendingApprovals();
     const interval = setInterval(() => {
       loadData();
       fetchRadioMetadata();
+      loadPendingApprovals();
     }, 60000);
     return () => clearInterval(interval);
   }, []);
@@ -1934,8 +2059,135 @@ function renderTeamPage() {
 }
 
   function StudioPage() {
-    return <main className="bg-white text-[#081024] px-8 md:px-14 py-10">{!user ? <div className="max-w-xl mx-auto border rounded-2xl p-8 text-center"><h1 className="text-3xl font-black">Admin Login Required</h1><p className="text-gray-500 mt-3">Please login with an admin account to access Studio.</p><button type="button" onClick={openLogin} className="mt-6 bg-pink-600 text-white px-6 py-3 rounded-xl font-bold">Login</button></div> : !canAccessAdminArea ? <div className="max-w-xl mx-auto bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-2xl p-8 text-center"><h1 className="text-3xl font-black">Access Restricted</h1><p className="mt-3">You are logged in, but your role does not include admin access.</p><p className="mt-2 text-sm">Current role: {userRole || "No admin role assigned"}</p></div> : <div><h1 className="text-4xl font-black mb-2">Seattle Desi TV Studio</h1><p className="text-gray-500 mb-8">Admin control center for managing the media platform.</p><div className="grid md:grid-cols-3 gap-6 mb-10"><div className="border rounded-2xl p-6 shadow-sm"><p className="text-gray-500">Videos</p><h2 className="text-4xl font-black">{videos.length}</h2></div><div className="border rounded-2xl p-6 shadow-sm"><p className="text-gray-500">Events</p><h2 className="text-4xl font-black">{events.length}</h2></div><div className="border rounded-2xl p-6 shadow-sm"><p className="text-gray-500">Team Members</p><h2 className="text-4xl font-black">{teamMembers.length}</h2></div></div><div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">{[["events", "📅", "Manage Events"], ["businesses", "🏪", "Manage Businesses"], ["team", "👥", "Manage Team"], ["tv", "📊", "Videos"]].map(([id, icon, title]) => <button key={id} type="button" onClick={() => setTab(id as TabId)} className="text-left border rounded-2xl p-6 hover:shadow-lg"><div className="text-4xl">{icon}</div><h3 className="font-black mt-3">{title}</h3></button>)}</div></div>}</main>;
-  }
+  return (
+    <main className="bg-white text-[#081024] px-8 md:px-14 py-10">
+      {!user ? (
+        <div className="max-w-xl mx-auto border rounded-2xl p-8 text-center">
+          <h1 className="text-3xl font-black">Admin Login Required</h1>
+          <p className="text-gray-500 mt-3">
+            Please login with an admin account to access Studio.
+          </p>
+          <button
+            type="button"
+            onClick={openLogin}
+            className="mt-6 bg-pink-600 text-white px-6 py-3 rounded-xl font-bold"
+          >
+            Login
+          </button>
+        </div>
+      ) : !canAccessAdminArea ? (
+        <div className="max-w-xl mx-auto bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-2xl p-8 text-center">
+          <h1 className="text-3xl font-black">Access Restricted</h1>
+          <p className="mt-3">
+            You are logged in, but your role does not include admin access.
+          </p>
+          <p className="mt-2 text-sm">
+            Current role: {userRole || "No admin role assigned"}
+          </p>
+        </div>
+      ) : (
+        <div>
+          <h1 className="text-4xl font-black mb-2">Seattle Desi TV Studio</h1>
+          <p className="text-gray-500 mb-8">
+            Admin control center for managing the media platform.
+          </p>
+
+          <div className="grid md:grid-cols-3 gap-6 mb-10">
+            <div className="border rounded-2xl p-6 shadow-sm">
+              <p className="text-gray-500">Videos</p>
+              <h2 className="text-4xl font-black">{videos.length}</h2>
+            </div>
+            <div className="border rounded-2xl p-6 shadow-sm">
+              <p className="text-gray-500">Approved Events</p>
+              <h2 className="text-4xl font-black">{events.length}</h2>
+            </div>
+            <div className="border rounded-2xl p-6 shadow-sm">
+              <p className="text-gray-500">Team Members</p>
+              <h2 className="text-4xl font-black">{teamMembers.length}</h2>
+            </div>
+          </div>
+
+          <section className="border rounded-2xl p-6 shadow-sm mb-10 bg-white">
+            <h2 className="text-2xl font-black mb-5">Pending Approvals</h2>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="border rounded-xl p-4">
+                <h3 className="font-black mb-4">Pending Events</h3>
+
+                {pendingEvents.length === 0 ? (
+                  <p className="text-gray-500 text-sm">
+                    No pending events.
+                  </p>
+                ) : (
+                  pendingEvents.map((event) => (
+                    <div key={event.id} className="border-b py-3 last:border-b-0">
+                      <p className="font-bold">{event.title}</p>
+                      <p className="text-sm text-gray-500">{event.location}</p>
+                      <p className="text-sm text-gray-500">{event.date}</p>
+
+                      <button
+                        type="button"
+                        onClick={() => approveEvent(event.id)}
+                        className="bg-green-600 text-white px-3 py-2 rounded-lg mt-2 font-bold text-sm"
+                      >
+                        Approve Event
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="border rounded-xl p-4">
+                <h3 className="font-black mb-4">Pending Businesses</h3>
+
+                {pendingBusinesses.length === 0 ? (
+                  <p className="text-gray-500 text-sm">
+                    No pending businesses.
+                  </p>
+                ) : (
+                  pendingBusinesses.map((business) => (
+                    <div key={business.id} className="border-b py-3 last:border-b-0">
+                      <p className="font-bold">{business.name}</p>
+                      <p className="text-sm text-gray-500">{business.address}</p>
+                      <p className="text-sm text-gray-500">{business.category}</p>
+
+                      <button
+                        type="button"
+                        onClick={() => approveBusiness(business.id)}
+                        className="bg-green-600 text-white px-3 py-2 rounded-lg mt-2 font-bold text-sm"
+                      >
+                        Approve Business
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </section>
+
+          <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
+            {[
+              ["events", "📅", "Manage Events"],
+              ["businesses", "🏪", "Manage Businesses"],
+              ["team", "👥", "Manage Team"],
+              ["tv", "📊", "Videos"],
+            ].map(([id, icon, title]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => goToProtectedTab(id as TabId)}
+                className="text-left border rounded-2xl p-6 hover:shadow-lg"
+              >
+                <div className="text-4xl">{icon}</div>
+                <h3 className="font-black mt-3">{title}</h3>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
 
   function Footer() {
     return <footer className="bg-[#050b18] text-white px-8 md:px-14 py-10"><div className="grid md:grid-cols-3 gap-8"><div><img src={LOGO_SRC} alt="Seattle Desi TV" className="h-20 mb-4" /><p className="text-gray-300 text-sm">Voice of the Desi Community across TV, Radio, Events and Local Stories.</p></div><div><h3 className="font-black mb-3">Connect</h3><div className="space-y-2 text-sm text-gray-300"><p><a href="https://seattledesitv.com" target="_blank" rel="noreferrer" className="hover:text-pink-400">🌐 Website: seattledesitv.com</a></p><p><a href="https://www.youtube.com/@SeattleDesiTV" target="_blank" rel="noreferrer" className="hover:text-pink-400">▶ YouTube: @SeattleDesiTV</a></p><p><a href="https://instagram.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-400">📸 Instagram: @seattledesitv</a></p><p><a href="https://www.tiktok.com/@seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-400">🎵 TikTok: @seattledesitv</a></p><p><a href="https://www.facebook.com/search/top?q=Seattle%20Desi%20TV" target="_blank" rel="noreferrer" className="hover:text-pink-400">📘 Facebook: Seattle Desi TV Page</a></p><p><a href="mailto:info@seattledesitv.com" className="hover:text-pink-400">✉ Email: info@seattledesitv.com</a></p></div></div><div><h3 className="font-black mb-3">Quick Links</h3><div className="space-y-2 text-sm text-gray-300">{["home", "tv", "radio", "events", "businesses"].map((id) => <button key={id} type="button" onClick={() => setTab(id as TabId)} className="block hover:text-pink-400 capitalize">{id}</button>)}</div></div></div><div className="border-t border-white/10 mt-8 pt-6 text-sm flex flex-col md:flex-row justify-between gap-3"><p>© 2026 Seattle Desi TV. All Rights Reserved.</p><p>Built with ❤️ for the community</p></div></footer>;
