@@ -409,6 +409,35 @@ const approveBusiness = async (id: string) => {
   await loadData();
 };
 
+  const rejectEvent = async (id: string) => {
+  const { error } = await supabase
+    .from("events")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  alert("Event rejected and removed.");
+  await loadPendingApprovals();
+};
+
+const rejectBusiness = async (id: string) => {
+  const { error } = await supabase
+    .from("local_businesses")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  alert("Business rejected and removed.");
+  await loadPendingApprovals();
+};
   const isValidTab = (value: string): value is TabId =>
   [
     "home",
@@ -712,6 +741,7 @@ const createEvent = async () => {
   }
 };
 
+  
   const openAssignCrewForEvent = (event: AnyRecord) => {
     setAssignCrewEventId(event.id);
     setAssignCrewMemberIds(Array.isArray(event.crew_member_ids) ? event.crew_member_ids : []);
@@ -2159,6 +2189,13 @@ function renderTeamPage() {
                       >
                         Approve Event
                       </button>
+                      <button
+  type="button"
+  onClick={() => rejectEvent(event.id)}
+  className="bg-red-600 text-white px-3 py-2 rounded-lg mt-2 ml-2 font-bold text-sm"
+>
+  Reject Event
+</button>
                     </div>
                   ))
                 )}
@@ -2200,7 +2237,13 @@ function renderTeamPage() {
     >
       Approve Business
     </button>
-
+<button
+  type="button"
+  onClick={() => rejectBusiness(business.id)}
+  className="bg-red-600 text-white px-3 py-2 rounded-lg mt-2 ml-2 font-bold text-sm"
+>
+  Reject Business
+</button>
   </div>
 ))
                 )}
