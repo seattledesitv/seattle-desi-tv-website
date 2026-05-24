@@ -66,7 +66,12 @@ function getMonthYear(value: string | undefined | null) {
 }
 
 function roleContainsAdmin(role: string) {
-  return role.toLowerCase().includes("admin");
+  const normalized = String(role || "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "_");
+
+  return normalized.includes("admin");
 }
 
 function roleContainsCrew(role: string) {
