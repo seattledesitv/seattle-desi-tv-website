@@ -2089,9 +2089,9 @@ function renderTeamPage() {
           <p className="mt-3">
             You are logged in, but your role does not include admin access.
           </p>
-          <p className="mt-2 text-sm">
-            Current role: {userRole || "No admin role assigned"}
-          </p>
+         <p className="mt-2 text-sm">
+  Current role: [{userRole || "No admin role assigned"}]
+</p>
         </div>
       ) : (
         <div>
