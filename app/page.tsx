@@ -358,28 +358,36 @@ const [pendingBusinesses, setPendingBusinesses] = useState<any[]>([]);
     setTab("login");
   };
 
-  const approveEvent = async (id: string) => {
-  await supabase
+const approveEvent = async (id: string) => {
+  const { error } = await supabase
     .from("events")
-    .update({
-      approved: true
-    })
+    .update({ approved: true })
     .eq("id", id);
 
-  loadPendingApprovals();
-  loadEventsOnly();
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  alert("Event approved.");
+  await loadPendingApprovals();
+  await loadEventsOnly();
 };
 
 const approveBusiness = async (id: string) => {
-  await supabase
+  const { error } = await supabase
     .from("local_businesses")
-    .update({
-      approved: true
-    })
+    .update({ approved: true })
     .eq("id", id);
 
-  loadPendingApprovals();
-  loadData();
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  alert("Business approved.");
+  await loadPendingApprovals();
+  await loadData();
 };
 const goToProtectedTab = (id: TabId) => {
   if (id === "studio" && !canAccessAdminArea) {
@@ -2145,21 +2153,37 @@ function renderTeamPage() {
                     No pending businesses.
                   </p>
                 ) : (
-                  pendingBusinesses.map((business) => (
-                    <div key={business.id} className="border-b py-3 last:border-b-0">
-                      <p className="font-bold">{business.name}</p>
-                      <p className="text-sm text-gray-500">{business.address}</p>
-                      <p className="text-sm text-gray-500">{business.category}</p>
+               pendingBusinesses.map((business) => (
+  <div key={business.id} className="border-b py-3 last:border-b-0">
 
-                      <button
-                        type="button"
-                        onClick={() => approveBusiness(business.id)}
-                        className="bg-green-600 text-white px-3 py-2 rounded-lg mt-2 font-bold text-sm"
-                      >
-                        Approve Business
-                      </button>
-                    </div>
-                  ))
+    {business.image && (
+      <img
+        src={business.image}
+        alt={business.name}
+        className="w-full h-40 object-cover rounded-xl mb-3"
+      />
+    )}
+
+    <p className="font-bold">{business.name}</p>
+
+    <p className="text-sm text-gray-500">
+      {business.address}
+    </p>
+
+    <p className="text-sm text-gray-500">
+      {business.category}
+    </p>
+
+    <button
+      type="button"
+      onClick={() => approveBusiness(business.id)}
+      className="bg-green-600 text-white px-3 py-2 rounded-lg mt-2 font-bold text-sm"
+    >
+      Approve Business
+    </button>
+
+  </div>
+))
                 )}
               </div>
             </div>
