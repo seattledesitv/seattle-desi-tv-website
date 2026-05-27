@@ -66,12 +66,7 @@ function getMonthYear(value: string | undefined | null) {
 }
 
 function roleContainsAdmin(role: string) {
-  const normalized = String(role || "")
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, "_");
-
-  return normalized.includes("admin");
+  return String(role || "").toLowerCase().trim().includes("admin");
 }
 
 function roleContainsCrew(role: string) {
@@ -331,7 +326,10 @@ const [adminBusinesses, setAdminBusinesses] = useState<any[]>([]);
   const [businessImageFile, setBusinessImageFile] = useState<File | null>(null);
   const [businessCategoryFilter, setBusinessCategoryFilter] = useState("all");
   const [businessMessage, setBusinessMessage] = useState("");
-
+const [editingEventId, setEditingEventId] = useState<string | null>(null);
+const [editingBusinessId, setEditingBusinessId] = useState<string | null>(null);
+const [eventEditForm, setEventEditForm] = useState<any>({});
+const [businessEditForm, setBusinessEditForm] = useState<any>({});
   const [teamName, setTeamName] = useState("");
   const [teamTitle, setTeamTitle] = useState("");
   const [teamImageFile, setTeamImageFile] = useState<File | null>(null);
@@ -350,7 +348,10 @@ const [adminBusinesses, setAdminBusinesses] = useState<any[]>([]);
   const [contactMessage, setContactMessage] = useState("");
   const [contactStatus, setContactStatus] = useState("");
 
-  const isAdmin = useMemo(() => roleContainsAdmin(userRole), [userRole]);
+const isAdmin = useMemo(() => {
+  const role = String(userRole || "").toLowerCase().trim();
+  return role.includes("admin") || role.includes("super_admin");
+}, [userRole]);
   const isCrew = useMemo(() => roleContainsCrew(userRole), [userRole]);
   const canAccessAdminArea = Boolean(user && adminChecked && isAdmin);
   const canChooseCrew = Boolean(user && adminChecked && isCrew);
@@ -413,6 +414,68 @@ const updateBusinessStatus = async (id: string, status: string) => {
   await loadAdminDashboardData();
   await loadData();
 };
+
+const startEditEvent = (event: any) => {
+  setEditingEventId(event.id);
+  setEventEditForm({
+    title: event.title || "",
+    date: event.date || "",
+    location: event.location || "",
+    description: event.description || "",
+    ticket_url: event.ticket_url || "",
+  });
+};
+
+const saveEventEdit = async () => {
+  if (!editingEventId) return;
+
+  const { error } = await supabase
+    .from("events")
+    .update(eventEditForm)
+    .eq("id", editingEventId);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  setEditingEventId(null);
+  setEventEditForm({});
+  await loadAdminDashboardData();
+  await loadEventsOnly();
+};
+
+const startEditBusiness = (business: any) => {
+  setEditingBusinessId(business.id);
+  setBusinessEditForm({
+    name: business.name || "",
+    address: business.address || "",
+    website: business.website || "",
+    category: business.category || "",
+    discount: business.discount || "",
+    offer: business.offer || "",
+  });
+};
+
+const saveBusinessEdit = async () => {
+  if (!editingBusinessId) return;
+
+  const { error } = await supabase
+    .from("local_businesses")
+    .update(businessEditForm)
+    .eq("id", editingBusinessId);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  setEditingBusinessId(null);
+  setBusinessEditForm({});
+  await loadAdminDashboardData();
+  await loadData();
+};
+
   
 const holdEvent = async (id:string)=>{
 
@@ -2238,12 +2301,77 @@ function renderTeamPage() {
                     <p className="text-sm text-gray-500">{event.date}</p>
                     <p className="text-sm text-gray-500">{event.location}</p>
                     <p className="text-xs mt-2">Status: <b>{event.status || "pending"}</b></p>
+{editingEventId === event.id && (
+  <div className="mt-4 grid gap-2 bg-gray-50 p-3 rounded-xl">
+    <input
+      className="border rounded-lg p-2"
+      value={eventEditForm.title}
+      onChange={(e) =>
+        setEventEditForm({ ...eventEditForm, title: e.target.value })
+      }
+      placeholder="Event title"
+    />
 
+    <input
+      className="border rounded-lg p-2"
+      type="date"
+      value={eventEditForm.date}
+      onChange={(e) =>
+        setEventEditForm({ ...eventEditForm, date: e.target.value })
+      }
+    />
+
+    <input
+      className="border rounded-lg p-2"
+      value={eventEditForm.location}
+      onChange={(e) =>
+        setEventEditForm({ ...eventEditForm, location: e.target.value })
+      }
+      placeholder="Location"
+    />
+
+    <textarea
+      className="border rounded-lg p-2 min-h-24"
+      value={eventEditForm.description}
+      onChange={(e) =>
+        setEventEditForm({ ...eventEditForm, description: e.target.value })
+      }
+      placeholder="Description"
+    />
+
+    <input
+      className="border rounded-lg p-2"
+      value={eventEditForm.ticket_url}
+      onChange={(e) =>
+        setEventEditForm({ ...eventEditForm, ticket_url: e.target.value })
+      }
+      placeholder="Ticket URL"
+    />
+
+    <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={saveEventEdit}
+        className="bg-blue-600 text-white px-3 py-2 rounded-lg font-bold text-sm"
+      >
+        Save Changes
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setEditingEventId(null)}
+        className="border px-3 py-2 rounded-lg font-bold text-sm"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
                     <div className="flex flex-wrap gap-2 mt-3">
                       <button type="button" onClick={() => updateEventStatus(event.id, "approved")} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve</button>
                       <button type="button" onClick={() => updateEventStatus(event.id, "on_hold")} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">On Hold</button>
                       <button type="button" onClick={() => updateEventStatus(event.id, "rejected")} className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Reject</button>
-                      <button type="button" onClick={() => alert("Edit Event coming next")} className="border px-3 py-2 rounded-lg font-bold text-sm">Edit</button>
+                      <button type="button" onClick={() => startEditEvent(event)} className="border px-3 py-2 rounded-lg font-bold text-sm">Edit</button>
                     </div>
                   </div>
                 ))}
@@ -2273,12 +2401,86 @@ function renderTeamPage() {
                     <p className="text-sm text-gray-500">{business.address}</p>
                     <p className="text-sm text-gray-500">{business.category}</p>
                     <p className="text-xs mt-2">Status: <b>{business.status || "pending"}</b></p>
+{editingBusinessId === business.id && (
+  <div className="mt-4 grid gap-2 bg-gray-50 p-3 rounded-xl">
+    <input
+      className="border rounded-lg p-2"
+      value={businessEditForm.name}
+      onChange={(e) =>
+        setBusinessEditForm({ ...businessEditForm, name: e.target.value })
+      }
+      placeholder="Business name"
+    />
 
+    <input
+      className="border rounded-lg p-2"
+      value={businessEditForm.address}
+      onChange={(e) =>
+        setBusinessEditForm({ ...businessEditForm, address: e.target.value })
+      }
+      placeholder="Address"
+    />
+
+    <input
+      className="border rounded-lg p-2"
+      value={businessEditForm.website}
+      onChange={(e) =>
+        setBusinessEditForm({ ...businessEditForm, website: e.target.value })
+      }
+      placeholder="Website"
+    />
+
+    <input
+      className="border rounded-lg p-2"
+      value={businessEditForm.category}
+      onChange={(e) =>
+        setBusinessEditForm({ ...businessEditForm, category: e.target.value })
+      }
+      placeholder="Category"
+    />
+
+    <input
+      className="border rounded-lg p-2"
+      value={businessEditForm.discount}
+      onChange={(e) =>
+        setBusinessEditForm({ ...businessEditForm, discount: e.target.value })
+      }
+      placeholder="Discount"
+    />
+
+    <textarea
+      className="border rounded-lg p-2 min-h-24"
+      value={businessEditForm.offer}
+      onChange={(e) =>
+        setBusinessEditForm({ ...businessEditForm, offer: e.target.value })
+      }
+      placeholder="Offer / Details"
+    />
+
+    <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={saveBusinessEdit}
+        className="bg-blue-600 text-white px-3 py-2 rounded-lg font-bold text-sm"
+      >
+        Save Changes
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setEditingBusinessId(null)}
+        className="border px-3 py-2 rounded-lg font-bold text-sm"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
                     <div className="flex flex-wrap gap-2 mt-3">
                       <button type="button" onClick={() => updateBusinessStatus(business.id, "approved")} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve</button>
                       <button type="button" onClick={() => updateBusinessStatus(business.id, "on_hold")} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">On Hold</button>
                       <button type="button" onClick={() => updateBusinessStatus(business.id, "rejected")} className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Reject</button>
-                      <button type="button" onClick={() => alert("Edit Business coming next")} className="border px-3 py-2 rounded-lg font-bold text-sm">Edit</button>
+                      <button type="button" onClick={() => startEditBusiness(business)} className="border px-3 py-2 rounded-lg font-bold text-sm">Edit</button>
                     </div>
                   </div>
                 ))}
