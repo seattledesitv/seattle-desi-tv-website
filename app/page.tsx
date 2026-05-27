@@ -334,7 +334,9 @@ const [businessEditForm, setBusinessEditForm] = useState<any>({});
   const [teamTitle, setTeamTitle] = useState("");
   const [teamImageFile, setTeamImageFile] = useState<File | null>(null);
   const [teamMessage, setTeamMessage] = useState("");
-
+const [adminDateFilter, setAdminDateFilter] = useState("all");
+const [adminMonthFilter, setAdminMonthFilter] = useState("all");
+const [adminYearFilter, setAdminYearFilter] = useState("all");
   const [radioTeamName, setRadioTeamName] = useState("");
   const [radioTeamTitle, setRadioTeamTitle] = useState("");
   const [radioSegmentName, setRadioSegmentName] = useState("");
@@ -386,9 +388,16 @@ setEventMessage("Event approved successfully.");
 };
 
 const updateEventStatus = async (id: string, status: string) => {
+  const updatePayload: any = { status };
+
+  if (status === "approved") {
+    updatePayload.approved_by = user?.email || user?.id;
+    updatePayload.approved_at = new Date().toISOString();
+  }
+
   const { error } = await supabase
     .from("events")
-    .update({ status })
+    .update(updatePayload)
     .eq("id", id);
 
   if (error) {
@@ -401,9 +410,16 @@ const updateEventStatus = async (id: string, status: string) => {
 };
 
 const updateBusinessStatus = async (id: string, status: string) => {
+  const updatePayload: any = { status };
+
+  if (status === "approved") {
+    updatePayload.approved_by = user?.email || user?.id;
+    updatePayload.approved_at = new Date().toISOString();
+  }
+
   const { error } = await supabase
     .from("local_businesses")
-    .update({ status })
+    .update(updatePayload)
     .eq("id", id);
 
   if (error) {
@@ -2240,14 +2256,63 @@ function renderTeamPage() {
 }
 
   function StudioPage() {
-  const visibleAdminEvents = adminEvents.filter(
-    (event) => (event.status || "pending") === eventAdminFilter
-  );
+const filteredAdminEvents = filterByAdminDate(adminEvents, "date");
+const filteredAdminBusinesses = filterByAdminDate(adminBusinesses, "created_at");
 
-  const visibleAdminBusinesses = adminBusinesses.filter(
-    (business) => (business.status || "pending") === businessAdminFilter
-  );
+const visibleAdminEvents = filteredAdminEvents.filter(
+  (event) => (event.status || "pending") === eventAdminFilter
+);
 
+const visibleAdminBusinesses = filteredAdminBusinesses.filter(
+  (business) => (business.status || "pending") === businessAdminFilter
+);
+
+const filterByAdminDate = (items: any[], dateField = "created_at") => {
+  const now = new Date();
+
+  return items.filter((item) => {
+    const rawDate = item[dateField] || item.date || item.created_at;
+    if (!rawDate) return true;
+
+    const itemDate = new Date(rawDate);
+    if (Number.isNaN(itemDate.getTime())) return true;
+
+    if (adminYearFilter !== "all" && String(itemDate.getFullYear()) !== adminYearFilter) {
+      return false;
+    }
+
+    if (adminMonthFilter !== "all" && String(itemDate.getMonth() + 1) !== adminMonthFilter) {
+      return false;
+    }
+
+    if (adminDateFilter === "last_month") {
+      const past = new Date();
+      past.setMonth(now.getMonth() - 1);
+      return itemDate >= past;
+    }
+
+    if (adminDateFilter === "quarter") {
+      const past = new Date();
+      past.setMonth(now.getMonth() - 3);
+      return itemDate >= past;
+    }
+
+    if (adminDateFilter === "six_months") {
+      const past = new Date();
+      past.setMonth(now.getMonth() - 6);
+      return itemDate >= past;
+    }
+
+    if (adminDateFilter === "year") {
+      const past = new Date();
+      past.setFullYear(now.getFullYear() - 1);
+      return itemDate >= past;
+    }
+
+    return true;
+  });
+};
+    
   const countByStatus = (items: any[], status: string) =>
     items.filter((item) => (item.status || "pending") === status).length;
 
@@ -2276,14 +2341,36 @@ function renderTeamPage() {
         <div>
           <h1 className="text-4xl font-black mb-2">Seattle Desi TV Studio</h1>
           <p className="text-gray-500 mb-8">Admin control center for approvals and updates.</p>
+<section className="border rounded-2xl p-5 mb-8 bg-gray-50">
+  <h2 className="text-xl font-black mb-4">Global Dashboard Filter</h2>
 
-         <div className="grid md:grid-cols-4 gap-6 mb-10">
+  <div className="grid md:grid-cols-3 gap-3">
+    <select className="border rounded-lg p-3" value={adminDateFilter} onChange={(e) => setAdminDateFilter(e.target.value)}>
+      <option value="all">All Time</option>
+      <option value="last_month">Last Month</option>
+      <option value="quarter">Last Quarter</option>
+      <option value="six_months">Last 6 Months</option>
+      <option value="year">Last Year</option>
+    </select>
 
-  <div className="border rounded-2xl p-6 shadow-sm bg-white">
-    <p className="text-gray-500">Videos</p>
-    <h2 className="text-4xl font-black">{videos.length}</h2>
+    <select className="border rounded-lg p-3" value={adminMonthFilter} onChange={(e) => setAdminMonthFilter(e.target.value)}>
+      <option value="all">All Months</option>
+      {["January","February","March","April","May","June","July","August","September","October","November","December"].map((month, index) => (
+        <option key={month} value={String(index + 1)}>{month}</option>
+      ))}
+    </select>
+
+    <select className="border rounded-lg p-3" value={adminYearFilter} onChange={(e) => setAdminYearFilter(e.target.value)}>
+      <option value="all">All Years</option>
+      {[2024, 2025, 2026, 2027].map((year) => (
+        <option key={year} value={String(year)}>{year}</option>
+      ))}
+    </select>
   </div>
+</section>
+         <div className="grid md:grid-cols-3 gap-6 mb-10">
 
+ 
   <div className="border rounded-2xl p-6 shadow-sm bg-white">
     <p className="text-gray-500">Events</p>
 
@@ -2350,6 +2437,12 @@ function renderTeamPage() {
                     <p className="font-bold">{event.title}</p>
                     <p className="text-sm text-gray-500">{event.date}</p>
                     <p className="text-sm text-gray-500">{event.location}</p>
+                    <div className="mt-3 text-xs text-gray-600 bg-gray-50 rounded-lg p-3">
+  <p><b>POC Email:</b> {event.poc_email || "Not provided"}</p>
+  <p><b>POC Phone:</b> {event.poc_phone || "Not provided"}</p>
+  <p><b>Approved By:</b> {event.approved_by || "Not approved yet"}</p>
+  <p><b>Approved At:</b> {event.approved_at ? new Date(event.approved_at).toLocaleString() : "Not approved yet"}</p>
+</div>
                     <p className="text-xs mt-2">Status: <b>{event.status || "pending"}</b></p>
 {editingEventId === event.id && (
   <div className="mt-4 grid gap-2 bg-gray-50 p-3 rounded-xl">
@@ -2451,6 +2544,13 @@ function renderTeamPage() {
                     <p className="text-sm text-gray-500">{business.address}</p>
                     <p className="text-sm text-gray-500">{business.category}</p>
                     <p className="text-xs mt-2">Status: <b>{business.status || "pending"}</b></p>
+                    <div className="mt-3 text-xs text-gray-600 bg-gray-50 rounded-lg p-3">
+  <p><b>POC Name:</b> {business.poc_name || "Not provided"}</p>
+  <p><b>POC Email:</b> {business.poc_email || "Not provided"}</p>
+  <p><b>POC Phone:</b> {business.poc_phone || "Not provided"}</p>
+  <p><b>Approved By:</b> {business.approved_by || "Not approved yet"}</p>
+  <p><b>Approved At:</b> {business.approved_at ? new Date(business.approved_at).toLocaleString() : "Not approved yet"}</p>
+</div>
 {editingBusinessId === business.id && (
   <div className="mt-4 grid gap-2 bg-gray-50 p-3 rounded-xl">
     <input
