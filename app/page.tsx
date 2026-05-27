@@ -386,10 +386,50 @@ const approveEvent = async (id: string) => {
   await loadEventsOnly();
 };
 
+const holdEvent = async (id:string)=>{
+
+ const {error}=await supabase
+ .from("events")
+ .update({
+   status:"on_hold"
+ })
+ .eq("id",id);
+
+ if(error){
+   alert(error.message);
+   return;
+ }
+
+ alert("Event moved to On Hold");
+
+ await loadPendingApprovals();
+};
+
+const holdBusiness=async(id:string)=>{
+
+ const {error}=await supabase
+ .from("local_businesses")
+ .update({
+   status:"on_hold"
+ })
+ .eq("id",id);
+
+ if(error){
+   alert(error.message);
+   return;
+ }
+
+ alert("Business moved to On Hold");
+
+ await loadPendingApprovals();
+};
+  
 const approveBusiness = async (id: string) => {
   const { data, error } = await supabase
     .from("local_businesses")
-    .update({ approved: true })
+    .update({
+ status:"approved"
+})
     .eq("id", id)
     .select("id,name,approved");
 
@@ -627,7 +667,7 @@ const loadSpotifyEpisodes = async () => {
   const result = await supabase
     .from("events")
     .select("*")
-    .eq("approved", true)
+    .eq("status","approved")
     .order("created_at", { ascending: false });
 
   setEvents((result.data || []).map(normalizeEvent));
@@ -636,7 +676,7 @@ const loadSpotifyEpisodes = async () => {
 
   const loadData = async () => {
     const [businessRows, teamRows, radioTeamRows] = await Promise.all([
-      supabase.from("local_businesses").select("*").eq("approved", true).order("created_at", { ascending: false }),
+      supabase.from("local_businesses").select("*").eq("status","approved").order("created_at", { ascending: false }),
       supabase.from("team_members").select("*").order("created_at", { ascending: true }),
       supabase.from("radio_team_members").select("*").order("created_at", { ascending: true })
     ]);
@@ -651,13 +691,13 @@ const loadSpotifyEpisodes = async () => {
   const { data: events } = await supabase
     .from("events")
     .select("*")
-    .eq("approved", false)
+    ..eq("status","pending")
     .order("created_at", { ascending: false });
 
   const { data: businesses } = await supabase
     .from("local_businesses")
     .select("*")
-    .eq("approved", false)
+    ..eq("status","pending")
     .order("created_at", { ascending: false });
 
   setPendingEvents(events || []);
@@ -699,7 +739,7 @@ const createEvent = async () => {
       image_urls: imageUrls,
       crew_member_ids: selectedEventCrewIds,
       created_by: user.id,
-      approved: false,
+     status: "pending",
     });
 
     if (error) throw error;
@@ -826,7 +866,7 @@ const createBusiness = async () => {
     poc_phone: businessPocPhone,
     image: imageUrl,
     created_by: user.id,
-    approved: false,
+    status: "pending",
   });
 
   if (error) {
@@ -2190,12 +2230,20 @@ function renderTeamPage() {
                         Approve Event
                       </button>
                       <button
+type="button"
+onClick={()=>holdEvent(event.id)}
+className="bg-yellow-500 text-white px-3 py-2 rounded-lg mt-2 ml-2"
+>
+On Hold
+</button>
+                      <button
   type="button"
   onClick={() => rejectEvent(event.id)}
   className="bg-red-600 text-white px-3 py-2 rounded-lg mt-2 ml-2 font-bold text-sm"
 >
   Reject Event
 </button>
+                      
                     </div>
                   ))
                 )}
@@ -2237,6 +2285,13 @@ function renderTeamPage() {
     >
       Approve Business
     </button>
+    <button
+type="button"
+onClick={()=>holdBusiness(business.id)}
+className="bg-yellow-500 text-white px-3 py-2 rounded-lg mt-2 ml-2"
+>
+On Hold
+</button>
 <button
   type="button"
   onClick={() => rejectBusiness(business.id)}
