@@ -353,7 +353,7 @@ const isAdmin = useMemo(() => {
   return role.includes("admin") || role.includes("super_admin");
 }, [userRole]);
   const isCrew = useMemo(() => roleContainsCrew(userRole), [userRole]);
-  const canAccessAdminArea = Boolean(user && adminChecked && isAdmin);
+  const canAccessAdminArea = Boolean(user && isAdmin);
   const canChooseCrew = Boolean(user && adminChecked && isCrew);
 
   const filteredEvents = useMemo(() => filterEventsByMonthYear(events, eventMonthFilter, eventYearFilter), [events, eventMonthFilter, eventYearFilter]);
@@ -2261,7 +2261,12 @@ function renderTeamPage() {
             Login
           </button>
         </div>
-      ) : !canAccessAdminArea ? (
+      ) : !adminChecked ? (
+  <div className="max-w-xl mx-auto border rounded-2xl p-8 text-center">
+    <h1 className="text-3xl font-black">Checking Access...</h1>
+    <p className="text-gray-500 mt-3">Please wait while we verify your admin role.</p>
+  </div>
+) : !canAccessAdminArea ? (
         <div className="max-w-xl mx-auto bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-2xl p-8 text-center">
           <h1 className="text-3xl font-black">Access Restricted</h1>
           <p className="mt-3">You are logged in, but your role does not include admin access.</p>
@@ -2272,12 +2277,57 @@ function renderTeamPage() {
           <h1 className="text-4xl font-black mb-2">Seattle Desi TV Studio</h1>
           <p className="text-gray-500 mb-8">Admin control center for approvals and updates.</p>
 
-          <div className="grid md:grid-cols-4 gap-6 mb-10">
-            <div className="border rounded-2xl p-6 shadow-sm"><p className="text-gray-500">Videos</p><h2 className="text-4xl font-black">{videos.length}</h2></div>
-            <div className="border rounded-2xl p-6 shadow-sm"><p className="text-gray-500">Events</p><h2 className="text-4xl font-black">{adminEvents.length}</h2></div>
-            <div className="border rounded-2xl p-6 shadow-sm"><p className="text-gray-500">Businesses</p><h2 className="text-4xl font-black">{adminBusinesses.length}</h2></div>
-            <div className="border rounded-2xl p-6 shadow-sm"><p className="text-gray-500">Team</p><h2 className="text-4xl font-black">{teamMembers.length}</h2></div>
-          </div>
+         <div className="grid md:grid-cols-4 gap-6 mb-10">
+
+  <div className="border rounded-2xl p-6 shadow-sm bg-white">
+    <p className="text-gray-500">Videos</p>
+    <h2 className="text-4xl font-black">{videos.length}</h2>
+  </div>
+
+  <div className="border rounded-2xl p-6 shadow-sm bg-white">
+    <p className="text-gray-500">Events</p>
+
+    <h2 className="text-4xl font-black">
+      {adminEvents.length}
+    </h2>
+
+    <div className="mt-4 text-sm space-y-1">
+      <p>🟡 Pending: {countByStatus(adminEvents, "pending")}</p>
+      <p>🟢 Approved: {countByStatus(adminEvents, "approved")}</p>
+      <p>🟠 On Hold: {countByStatus(adminEvents, "on_hold")}</p>
+      <p>🔴 Rejected: {countByStatus(adminEvents, "rejected")}</p>
+    </div>
+  </div>
+
+  <div className="border rounded-2xl p-6 shadow-sm bg-white">
+    <p className="text-gray-500">Businesses</p>
+
+    <h2 className="text-4xl font-black">
+      {adminBusinesses.length}
+    </h2>
+
+    <div className="mt-4 text-sm space-y-1">
+      <p>🟡 Pending: {countByStatus(adminBusinesses, "pending")}</p>
+      <p>🟢 Approved: {countByStatus(adminBusinesses, "approved")}</p>
+      <p>🟠 On Hold: {countByStatus(adminBusinesses, "on_hold")}</p>
+      <p>🔴 Rejected: {countByStatus(adminBusinesses, "rejected")}</p>
+    </div>
+  </div>
+
+  <div className="border rounded-2xl p-6 shadow-sm bg-white">
+    <p className="text-gray-500">Team Members</p>
+
+    <h2 className="text-4xl font-black">
+      {teamMembers.length}
+    </h2>
+
+    <div className="mt-4 text-sm space-y-1">
+      <p>👥 Active Team Profiles</p>
+      <p>🎬 TV + Radio + Crew</p>
+    </div>
+  </div>
+
+</div>
 
           <section className="border rounded-2xl p-6 shadow-sm mb-10 bg-white">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
