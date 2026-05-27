@@ -2256,16 +2256,6 @@ function renderTeamPage() {
 }
 
   function StudioPage() {
-const filteredAdminEvents = filterByAdminDate(adminEvents, "date");
-const filteredAdminBusinesses = filterByAdminDate(adminBusinesses, "created_at");
-
-const visibleAdminEvents = filteredAdminEvents.filter(
-  (event) => (event.status || "pending") === eventAdminFilter
-);
-
-const visibleAdminBusinesses = filteredAdminBusinesses.filter(
-  (business) => (business.status || "pending") === businessAdminFilter
-);
 
 const filterByAdminDate = (items: any[], dateField = "created_at") => {
   const now = new Date();
@@ -2312,6 +2302,17 @@ const filterByAdminDate = (items: any[], dateField = "created_at") => {
     return true;
   });
 };
+
+const filteredAdminEvents = filterByAdminDate(adminEvents, "date");
+const filteredAdminBusinesses = filterByAdminDate(adminBusinesses, "created_at");
+
+const visibleAdminEvents = filteredAdminEvents.filter(
+  (event) => (event.status || "pending") === eventAdminFilter
+);
+
+const visibleAdminBusinesses = filteredAdminBusinesses.filter(
+  (business) => (business.status || "pending") === businessAdminFilter
+);
     
   const countByStatus = (items: any[], status: string) =>
     items.filter((item) => (item.status || "pending") === status).length;
