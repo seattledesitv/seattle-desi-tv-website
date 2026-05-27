@@ -298,7 +298,10 @@ const [pendingBusinesses, setPendingBusinesses] = useState<any[]>([]);
   const [radioMeta, setRadioMeta] = useState<AnyRecord | null>(null);
   const [radioMetaUpdatedAt, setRadioMetaUpdatedAt] = useState("");
   const [youtubeLoadMessage, setYoutubeLoadMessage] = useState("");
-
+const [eventAdminFilter, setEventAdminFilter] = useState("pending");
+const [businessAdminFilter, setBusinessAdminFilter] = useState("pending");
+const [adminEvents, setAdminEvents] = useState<any[]>([]);
+const [adminBusinesses, setAdminBusinesses] = useState<any[]>([]);
   const [eventTitle, setEventTitle] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [eventLocation, setEventLocation] = useState("");
@@ -366,26 +369,51 @@ const [pendingBusinesses, setPendingBusinesses] = useState<any[]>([]);
 const approveEvent = async (id: string) => {
   const { data, error } = await supabase
     .from("events")
-    .update({ approved: true })
+    .update({ status: "approved"  })
     .eq("id", id)
-    .select("id,title,approved");
+    .select("id,title,status");
 
-  alert(
-    JSON.stringify(
-      {
-        id,
-        error: error?.message || null,
-        data,
-      },
-      null,
-      2
-    )
-  );
+ if (error) {
+  alert(error.message);
+  return;
+}
 
-  await loadPendingApprovals();
+setEventMessage("Event approved successfully.");
+
+  await loadAdminDashboardData();
   await loadEventsOnly();
 };
 
+const updateEventStatus = async (id: string, status: string) => {
+  const { error } = await supabase
+    .from("events")
+    .update({ status })
+    .eq("id", id);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  await loadAdminDashboardData();
+  await loadEventsOnly();
+};
+
+const updateBusinessStatus = async (id: string, status: string) => {
+  const { error } = await supabase
+    .from("local_businesses")
+    .update({ status })
+    .eq("id", id);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  await loadAdminDashboardData();
+  await loadData();
+};
+  
 const holdEvent = async (id:string)=>{
 
  const {error}=await supabase
@@ -402,7 +430,7 @@ const holdEvent = async (id:string)=>{
 
  alert("Event moved to On Hold");
 
- await loadPendingApprovals();
+ await loadAdminDashboardData();
 };
 
 const holdBusiness=async(id:string)=>{
@@ -421,7 +449,7 @@ const holdBusiness=async(id:string)=>{
 
  alert("Business moved to On Hold");
 
- await loadPendingApprovals();
+ await loadAdminDashboardData();
 };
   
 const approveBusiness = async (id: string) => {
@@ -433,19 +461,14 @@ const approveBusiness = async (id: string) => {
     .eq("id", id)
     .select("id,name,approved");
 
-  alert(
-    JSON.stringify(
-      {
-        id,
-        error: error?.message || null,
-        data,
-      },
-      null,
-      2
-    )
-  );
+if (error) {
+  alert(error.message);
+  return;
+}
 
-  await loadPendingApprovals();
+setEventMessage("Event approved successfully.");
+
+  await loadAdminDashboardData();
   await loadData();
 };
 
@@ -461,7 +484,7 @@ const approveBusiness = async (id: string) => {
   }
 
   alert("Event rejected and removed.");
-  await loadPendingApprovals();
+  await loadAdminDashboardData();
 };
 
 const rejectBusiness = async (id: string) => {
@@ -476,7 +499,7 @@ const rejectBusiness = async (id: string) => {
   }
 
   alert("Business rejected and removed.");
-  await loadPendingApprovals();
+  await loadAdminDashboardData();
 };
   const isValidTab = (value: string): value is TabId =>
   [
@@ -687,23 +710,7 @@ const loadSpotifyEpisodes = async () => {
     await fetchYouTubeVideos();
   };
 
-  const loadPendingApprovals = async () => {
-  const { data: events } = await supabase
-    .from("events")
-    .select("*")
-    .eq("status","pending")
-    .order("created_at", { ascending: false });
-
-  const { data: businesses } = await supabase
-    .from("local_businesses")
-    .select("*")
-    .eq("status","pending")
-    .order("created_at", { ascending: false });
-
-  setPendingEvents(events || []);
-  setPendingBusinesses(businesses || []);
-};
-  
+loadPendingApprovals
 const createEvent = async () => {
   setEventMessage("");
 
@@ -1033,11 +1040,11 @@ useEffect(() => {
     loadData();
     fetchRadioMetadata();
     loadSpotifyEpisodes();
-    loadPendingApprovals();
+    loadAdminDashboardData();
     const interval = setInterval(() => {
       loadData();
       fetchRadioMetadata();
-      loadPendingApprovals();
+      loadAdminDashboardData();
     }, 60000);
     return () => clearInterval(interval);
   }, []);
@@ -2156,180 +2163,119 @@ function renderTeamPage() {
 }
 
   function StudioPage() {
+  const visibleAdminEvents = adminEvents.filter(
+    (event) => (event.status || "pending") === eventAdminFilter
+  );
+
+  const visibleAdminBusinesses = adminBusinesses.filter(
+    (business) => (business.status || "pending") === businessAdminFilter
+  );
+
+  const countByStatus = (items: any[], status: string) =>
+    items.filter((item) => (item.status || "pending") === status).length;
+
   return (
     <main className="bg-white text-[#081024] px-8 md:px-14 py-10">
       {!user ? (
         <div className="max-w-xl mx-auto border rounded-2xl p-8 text-center">
           <h1 className="text-3xl font-black">Admin Login Required</h1>
-          <p className="text-gray-500 mt-3">
-            Please login with an admin account to access Studio.
-          </p>
-          <button
-            type="button"
-            onClick={openLogin}
-            className="mt-6 bg-pink-600 text-white px-6 py-3 rounded-xl font-bold"
-          >
+          <p className="text-gray-500 mt-3">Please login with an admin account to access Studio.</p>
+          <button type="button" onClick={openLogin} className="mt-6 bg-pink-600 text-white px-6 py-3 rounded-xl font-bold">
             Login
           </button>
         </div>
       ) : !canAccessAdminArea ? (
         <div className="max-w-xl mx-auto bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-2xl p-8 text-center">
           <h1 className="text-3xl font-black">Access Restricted</h1>
-          <p className="mt-3">
-            You are logged in, but your role does not include admin access.
-          </p>
-         <p className="mt-2 text-sm">
-  Current role: [{userRole || "No admin role assigned"}]
-</p>
+          <p className="mt-3">You are logged in, but your role does not include admin access.</p>
+          <p className="mt-2 text-sm">Current role: [{userRole || "No admin role assigned"}]</p>
         </div>
       ) : (
         <div>
           <h1 className="text-4xl font-black mb-2">Seattle Desi TV Studio</h1>
-          <p className="text-gray-500 mb-8">
-            Admin control center for managing the media platform.
-          </p>
+          <p className="text-gray-500 mb-8">Admin control center for approvals and updates.</p>
 
-          <div className="grid md:grid-cols-3 gap-6 mb-10">
-            <div className="border rounded-2xl p-6 shadow-sm">
-              <p className="text-gray-500">Videos</p>
-              <h2 className="text-4xl font-black">{videos.length}</h2>
-            </div>
-            <div className="border rounded-2xl p-6 shadow-sm">
-              <p className="text-gray-500">Approved Events</p>
-              <h2 className="text-4xl font-black">{events.length}</h2>
-            </div>
-            <div className="border rounded-2xl p-6 shadow-sm">
-              <p className="text-gray-500">Team Members</p>
-              <h2 className="text-4xl font-black">{teamMembers.length}</h2>
-            </div>
+          <div className="grid md:grid-cols-4 gap-6 mb-10">
+            <div className="border rounded-2xl p-6 shadow-sm"><p className="text-gray-500">Videos</p><h2 className="text-4xl font-black">{videos.length}</h2></div>
+            <div className="border rounded-2xl p-6 shadow-sm"><p className="text-gray-500">Events</p><h2 className="text-4xl font-black">{adminEvents.length}</h2></div>
+            <div className="border rounded-2xl p-6 shadow-sm"><p className="text-gray-500">Businesses</p><h2 className="text-4xl font-black">{adminBusinesses.length}</h2></div>
+            <div className="border rounded-2xl p-6 shadow-sm"><p className="text-gray-500">Team</p><h2 className="text-4xl font-black">{teamMembers.length}</h2></div>
           </div>
 
           <section className="border rounded-2xl p-6 shadow-sm mb-10 bg-white">
-            <h2 className="text-2xl font-black mb-5">Pending Approvals</h2>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="border rounded-xl p-4">
-                <h3 className="font-black mb-4">Pending Events</h3>
-
-                {pendingEvents.length === 0 ? (
-                  <p className="text-gray-500 text-sm">
-                    No pending events.
-                  </p>
-                ) : (
-                  pendingEvents.map((event) => (
-                    <div key={event.id} className="border-b py-3 last:border-b-0">
-                      <p className="font-bold">{event.title}</p>
-                      <p className="text-sm text-gray-500">{event.location}</p>
-                      <p className="text-sm text-gray-500">{event.date}</p>
-
-                      <button
-                        type="button"
-                        onClick={() => approveEvent(event.id)}
-                        className="bg-green-600 text-white px-3 py-2 rounded-lg mt-2 font-bold text-sm"
-                      >
-                        Approve Event
-                      </button>
-                      <button
-type="button"
-onClick={()=>holdEvent(event.id)}
-className="bg-yellow-500 text-white px-3 py-2 rounded-lg mt-2 ml-2"
->
-On Hold
-</button>
-                      <button
-  type="button"
-  onClick={() => rejectEvent(event.id)}
-  className="bg-red-600 text-white px-3 py-2 rounded-lg mt-2 ml-2 font-bold text-sm"
->
-  Reject Event
-</button>
-                      
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <div className="border rounded-xl p-4">
-                <h3 className="font-black mb-4">Pending Businesses</h3>
-
-                {pendingBusinesses.length === 0 ? (
-                  <p className="text-gray-500 text-sm">
-                    No pending businesses.
-                  </p>
-                ) : (
-               pendingBusinesses.map((business) => (
-  <div key={business.id} className="border-b py-3 last:border-b-0">
-
-    {business.image && (
-      <img
-        src={business.image}
-        alt={business.name}
-        className="w-full h-40 object-cover rounded-xl mb-3"
-      />
-    )}
-
-    <p className="font-bold">{business.name}</p>
-
-    <p className="text-sm text-gray-500">
-      {business.address}
-    </p>
-
-    <p className="text-sm text-gray-500">
-      {business.category}
-    </p>
-
-    <button
-      type="button"
-      onClick={() => approveBusiness(business.id)}
-      className="bg-green-600 text-white px-3 py-2 rounded-lg mt-2 font-bold text-sm"
-    >
-      Approve Business
-    </button>
-    <button
-type="button"
-onClick={()=>holdBusiness(business.id)}
-className="bg-yellow-500 text-white px-3 py-2 rounded-lg mt-2 ml-2"
->
-On Hold
-</button>
-<button
-  type="button"
-  onClick={() => rejectBusiness(business.id)}
-  className="bg-red-600 text-white px-3 py-2 rounded-lg mt-2 ml-2 font-bold text-sm"
->
-  Reject Business
-</button>
-  </div>
-))
-                )}
-              </div>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
+              <h2 className="text-2xl font-black">Events Review</h2>
+              <select className="border rounded-lg p-3" value={eventAdminFilter} onChange={(e) => setEventAdminFilter(e.target.value)}>
+                <option value="pending">To Be Approved ({countByStatus(adminEvents, "pending")})</option>
+                <option value="approved">Approved ({countByStatus(adminEvents, "approved")})</option>
+                <option value="on_hold">On Hold ({countByStatus(adminEvents, "on_hold")})</option>
+                <option value="rejected">Rejected ({countByStatus(adminEvents, "rejected")})</option>
+              </select>
             </div>
+
+            {visibleAdminEvents.length === 0 ? (
+              <p className="text-gray-500 text-sm">No events in this status.</p>
+            ) : (
+              <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {visibleAdminEvents.map((event) => (
+                  <div key={event.id} className="border rounded-xl p-4">
+                    {event.image && <img src={event.image} alt={event.title} className="w-full h-40 object-cover rounded-xl mb-3" />}
+                    <p className="font-bold">{event.title}</p>
+                    <p className="text-sm text-gray-500">{event.date}</p>
+                    <p className="text-sm text-gray-500">{event.location}</p>
+                    <p className="text-xs mt-2">Status: <b>{event.status || "pending"}</b></p>
+
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      <button type="button" onClick={() => updateEventStatus(event.id, "approved")} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve</button>
+                      <button type="button" onClick={() => updateEventStatus(event.id, "on_hold")} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">On Hold</button>
+                      <button type="button" onClick={() => updateEventStatus(event.id, "rejected")} className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Reject</button>
+                      <button type="button" onClick={() => alert("Edit Event coming next")} className="border px-3 py-2 rounded-lg font-bold text-sm">Edit</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
-          <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
-            {[
-              ["events", "📅", "Manage Events"],
-              ["businesses", "🏪", "Manage Businesses"],
-              ["team", "👥", "Manage Team"],
-              ["tv", "📊", "Videos"],
-            ].map(([id, icon, title]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => goToProtectedTab(id as TabId)}
-                className="text-left border rounded-2xl p-6 hover:shadow-lg"
-              >
-                <div className="text-4xl">{icon}</div>
-                <h3 className="font-black mt-3">{title}</h3>
-              </button>
-            ))}
-          </div>
+          <section className="border rounded-2xl p-6 shadow-sm mb-10 bg-white">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
+              <h2 className="text-2xl font-black">Businesses Review</h2>
+              <select className="border rounded-lg p-3" value={businessAdminFilter} onChange={(e) => setBusinessAdminFilter(e.target.value)}>
+                <option value="pending">To Be Approved ({countByStatus(adminBusinesses, "pending")})</option>
+                <option value="approved">Approved ({countByStatus(adminBusinesses, "approved")})</option>
+                <option value="on_hold">On Hold ({countByStatus(adminBusinesses, "on_hold")})</option>
+                <option value="rejected">Rejected ({countByStatus(adminBusinesses, "rejected")})</option>
+              </select>
+            </div>
+
+            {visibleAdminBusinesses.length === 0 ? (
+              <p className="text-gray-500 text-sm">No businesses in this status.</p>
+            ) : (
+              <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {visibleAdminBusinesses.map((business) => (
+                  <div key={business.id} className="border rounded-xl p-4">
+                    {business.image && <img src={business.image} alt={business.name} className="w-full h-40 object-cover rounded-xl mb-3" />}
+                    <p className="font-bold">{business.name}</p>
+                    <p className="text-sm text-gray-500">{business.address}</p>
+                    <p className="text-sm text-gray-500">{business.category}</p>
+                    <p className="text-xs mt-2">Status: <b>{business.status || "pending"}</b></p>
+
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      <button type="button" onClick={() => updateBusinessStatus(business.id, "approved")} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve</button>
+                      <button type="button" onClick={() => updateBusinessStatus(business.id, "on_hold")} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">On Hold</button>
+                      <button type="button" onClick={() => updateBusinessStatus(business.id, "rejected")} className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Reject</button>
+                      <button type="button" onClick={() => alert("Edit Business coming next")} className="border px-3 py-2 rounded-lg font-bold text-sm">Edit</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
       )}
     </main>
   );
 }
-
   function Footer() {
     return <footer className="bg-[#050b18] text-white px-8 md:px-14 py-10"><div className="grid md:grid-cols-3 gap-8"><div><img src={LOGO_SRC} alt="Seattle Desi TV" className="h-20 mb-4" /><p className="text-gray-300 text-sm">Voice of the Desi Community across TV, Radio, Events and Local Stories.</p></div><div><h3 className="font-black mb-3">Connect</h3><div className="space-y-2 text-sm text-gray-300"><p><a href="https://seattledesitv.com" target="_blank" rel="noreferrer" className="hover:text-pink-400">🌐 Website: seattledesitv.com</a></p><p><a href="https://www.youtube.com/@SeattleDesiTV" target="_blank" rel="noreferrer" className="hover:text-pink-400">▶ YouTube: @SeattleDesiTV</a></p><p><a href="https://instagram.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-400">📸 Instagram: @seattledesitv</a></p><p><a href="https://www.tiktok.com/@seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-400">🎵 TikTok: @seattledesitv</a></p><p><a href="https://www.facebook.com/search/top?q=Seattle%20Desi%20TV" target="_blank" rel="noreferrer" className="hover:text-pink-400">📘 Facebook: Seattle Desi TV Page</a></p><p><a href="mailto:info@seattledesitv.com" className="hover:text-pink-400">✉ Email: info@seattledesitv.com</a></p></div></div><div><h3 className="font-black mb-3">Quick Links</h3><div className="space-y-2 text-sm text-gray-300">{["home", "tv", "radio", "events", "businesses"].map((id) => <button key={id} type="button" onClick={() => setTab(id as TabId)} className="block hover:text-pink-400 capitalize">{id}</button>)}</div></div></div><div className="border-t border-white/10 mt-8 pt-6 text-sm flex flex-col md:flex-row justify-between gap-3"><p>© 2026 Seattle Desi TV. All Rights Reserved.</p><p>Built with ❤️ for the community</p></div></footer>;
   }
