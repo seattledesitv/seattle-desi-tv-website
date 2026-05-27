@@ -691,7 +691,7 @@ const loadSpotifyEpisodes = async () => {
   const { data: events } = await supabase
     .from("events")
     .select("*")
-    ..eq("status","pending")
+    .eq("status","pending")
     .order("created_at", { ascending: false });
 
   const { data: businesses } = await supabase
