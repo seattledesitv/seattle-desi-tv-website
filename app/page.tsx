@@ -710,7 +710,21 @@ const loadSpotifyEpisodes = async () => {
     await fetchYouTubeVideos();
   };
 
-loadPendingApprovals
+const loadAdminDashboardData = async () => {
+  const { data: events } = await supabase
+    .from("events")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  const { data: businesses } = await supabase
+    .from("local_businesses")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  setAdminEvents(events || []);
+  setAdminBusinesses(businesses || []);
+};
+  
 const createEvent = async () => {
   setEventMessage("");
 
