@@ -34,9 +34,9 @@ function formatError(error: any) {
   return parts.join(" | ") || String(error);
 }
 
-async function uploadFileToBucket(file: File) {
+async function uploadFileToBucket(file: File, userId: string) {
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-  const path = `${Date.now()}-${safeName}`;
+  const path = `${userId}/${Date.now()}-${safeName}`;
   const { error } = await supabase.storage.from(EVENT_BUCKET).upload(path, file, { upsert: false });
   if (error) throw error;
   const { data } = supabase.storage.from(EVENT_BUCKET).getPublicUrl(path);
@@ -146,7 +146,7 @@ export default function EventsPage() {
 
       if (imageFiles.length > 0 && insertedEvent?.id) {
         try {
-          const imageUrl = await uploadFileToBucket(imageFiles[0]);
+          const imageUrl = await uploadFileToBucket(imageFiles[0], user.id);
           const { error: updateError } = await supabase
             .from("events")
             .update({ image: imageUrl })
