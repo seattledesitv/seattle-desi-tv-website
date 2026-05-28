@@ -603,35 +603,35 @@ const rejectBusiness = async (id: string) => {
     return data.publicUrl;
   };
 
-  const loadAdminRole = async (currentUser: any) => {
-    setAdminChecked(false);
-    if (!currentUser?.id) {
+const loadAdminRole = async (currentUser: any) => {
+  setAdminChecked(false);
+
+  if (!currentUser?.id) {
+    setUserRole("");
+    setAdminChecked(true);
+    return;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("admins")
+      .select("user_id,email,role")
+      .or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Admin role error:", error);
       setUserRole("");
-      setAdminChecked(true);
-      return;
+    } else {
+      setUserRole(data?.role || "");
     }
-    try {
-      const byUserId = await withTimeout(
-        supabase.from("admins").select("user_id,email,role").eq("user_id", currentUser.id).maybeSingle(),
-        8000,
-        "Admin lookup"
-      );
-      if (byUserId.error) throw byUserId.error;
-      let row = byUserId.data;
-      if (!row && currentUser.email) {
-        const byEmail = await withTimeout(
-          supabase.from("admins").select("user_id,email,role").eq("email", currentUser.email).maybeSingle(),
-          8000,
-          "Admin lookup by email"
-        );
-        if (byEmail.error) throw byEmail.error;
-        row = byEmail.data;
-      }
-      setUserRole(row?.role || "");
-    } finally {
-      setAdminChecked(true);
-    }
-  };
+  } catch (error) {
+    console.error("Admin role catch:", error);
+    setUserRole("");
+  } finally {
+    setAdminChecked(true);
+  }
+};
 
   const signIn = async () => {
     setAuthMessage("");
@@ -2330,7 +2330,9 @@ const visibleAdminBusinesses = filteredAdminBusinesses.filter(
       ) : !adminChecked ? (
   <div className="max-w-xl mx-auto border rounded-2xl p-8 text-center">
     <h1 className="text-3xl font-black">Checking Access...</h1>
-    <p className="text-gray-500 mt-3">Please wait while we verify your admin role.</p>
+    <p className="text-gray-500 mt-3">Please wait while we verify your admin role.</p> <p className="text-xs text-gray-400 mt-3">
+  Debug: adminChecked={String(adminChecked)} role=[{userRole}]
+</p>
   </div>
 ) : !canAccessAdminArea ? (
         <div className="max-w-xl mx-auto bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-2xl p-8 text-center">
