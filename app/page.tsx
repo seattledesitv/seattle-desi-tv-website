@@ -2448,6 +2448,64 @@ const visibleAdminBusinesses = filteredAdminBusinesses.filter(
   <p><b>Approved At:</b> {event.approved_at ? new Date(event.approved_at).toLocaleString() : "Not approved yet"}</p>
 </div>
                     <p className="text-xs mt-2">Status: <b>{event.status || "pending"}</b></p>
+                    <div className="mt-3 text-xs text-gray-600 bg-purple-50 rounded-lg p-3">
+  <p className="font-black text-purple-800 mb-2">Assigned Crew</p>
+
+  {Array.isArray(event.crew_member_ids) && event.crew_member_ids.length > 0 ? (
+    <div className="flex flex-wrap gap-2">
+      {teamMembers
+        .filter((member) => event.crew_member_ids.includes(member.id))
+        .map((member) => (
+          <span
+            key={member.id}
+            className="bg-white border border-purple-200 text-purple-800 px-3 py-1 rounded-full font-bold"
+          >
+            {member.name}
+          </span>
+        ))}
+    </div>
+  ) : (
+    <p>No crew assigned yet.</p>
+  )}
+
+  <div className="mt-3">
+    <p className="font-bold mb-2">Assign / Update Crew</p>
+
+    <div className="grid gap-1">
+      {teamMembers.map((member) => (
+        <label key={member.id} className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={Array.isArray(event.crew_member_ids) && event.crew_member_ids.includes(member.id)}
+            onChange={async (e) => {
+              const current = Array.isArray(event.crew_member_ids)
+                ? event.crew_member_ids
+                : [];
+
+              const next = e.target.checked
+                ? [...current, member.id]
+                : current.filter((id: string) => id !== member.id);
+
+              const { error } = await supabase
+                .from("events")
+                .update({ crew_member_ids: next })
+                .eq("id", event.id);
+
+              if (error) {
+                alert(error.message);
+                return;
+              }
+
+              await loadAdminDashboardData();
+              await loadEventsOnly();
+            }}
+          />
+          {member.name} — {member.title}
+        </label>
+      ))}
+    </div>
+  </div>
+</div>
 {editingEventId === event.id && (
   <div className="mt-4 grid gap-2 bg-gray-50 p-3 rounded-xl">
     <input
