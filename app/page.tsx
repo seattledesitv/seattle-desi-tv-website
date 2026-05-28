@@ -2334,7 +2334,7 @@ const approveCrewRequest = async (assignment: any) => {
     .eq("id", assignment.event_id);
 
   if (eventError) {
-    alert(eventError.message);
+    alert("Event update failed: " + eventError.message);
     return;
   }
 
@@ -2348,13 +2348,15 @@ const approveCrewRequest = async (assignment: any) => {
     .eq("id", assignment.id);
 
   if (assignmentError) {
-    alert(assignmentError.message);
+    alert("Assignment update failed: " + assignmentError.message);
     return;
   }
 
+  alert("Crew request approved.");
+
+  await loadEventCrewAssignments();
   await loadAdminDashboardData();
   await loadEventsOnly();
-  await loadEventCrewAssignments();
 };
 
 const rejectCrewRequest = async (assignmentId: string) => {
