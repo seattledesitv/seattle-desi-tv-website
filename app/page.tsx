@@ -762,10 +762,19 @@ const loadSpotifyEpisodes = async () => {
     }
   };
 
-  const loadEventCrewAssignments = async () => {
-    const { data } = await supabase.from("event_crew_assignments").select("*, team_members(name,title,image)");
-    setEventCrewAssignments(data || []);
-  };
+const loadEventCrewAssignments = async () => {
+  const { data, error } = await supabase
+    .from("event_crew_assignments")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Crew assignments load error:", error);
+    return;
+  }
+
+  setEventCrewAssignments(data || []);
+};
 
  const loadEventsOnly = async () => {
   const result = await supabase
@@ -804,6 +813,7 @@ const loadAdminDashboardData = async () => {
 
   setAdminEvents(events || []);
   setAdminBusinesses(businesses || []);
+  await loadEventCrewAssignments();
 };
   
 const createEvent = async () => {
