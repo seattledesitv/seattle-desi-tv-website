@@ -1654,8 +1654,29 @@ if (contactPhone && !phonePattern.test(contactPhone.trim())) {
 
   const CrewBadges = ({ event }: { event: AnyRecord }) => {
     const assigned = teamMembers.filter((member) => event.crew_member_ids?.includes(member.id));
-    const volunteers = eventCrewAssignments.filter((assignment) => assignment.event_id === event.id);
-    return <>{assigned.length > 0 && <div className="mt-4 bg-gray-50 rounded-xl p-3"><p className="text-xs font-black text-gray-500 uppercase">Desi TV Crew</p><div className="flex flex-wrap gap-2 mt-2">{assigned.map((member) => <span key={member.id} className="bg-pink-50 text-pink-600 px-3 py-1 rounded-full text-xs font-bold">{member.name}</span>)}</div></div>}{volunteers.length > 0 && <div className="mt-3 bg-blue-50 rounded-xl p-3"><p className="text-xs font-black text-blue-700 uppercase">Crew Volunteers</p><p className="text-xs text-blue-700 mt-1">{volunteers.length} crew member(s) joined</p></div>}</>;
+    const approvedVolunteers = eventCrewAssignments.filter(
+  (assignment) =>
+    assignment.event_id === event.id &&
+    assignment.status === "approved"
+);
+    return <>{assigned.length > 0 && <div className="mt-4 bg-gray-50 rounded-xl p-3"><p className="text-xs font-black text-gray-500 uppercase">Desi TV Crew</p><div className="flex flex-wrap gap-2 mt-2">{assigned.map((member) => <span key={member.id} className="bg-pink-50 text-pink-600 px-3 py-1 rounded-full text-xs font-bold">{member.name}</span>)}</div></div>}{approvedVolunteers.length > 0 && (
+  <div className="mt-3 bg-blue-50 rounded-xl p-3">
+    <p className="text-xs font-black text-blue-700 uppercase">
+      Approved Self-Joined Crew
+    </p>
+
+    <div className="flex flex-wrap gap-2 mt-2">
+      {approvedVolunteers.map((assignment) => (
+        <span
+          key={assignment.id}
+          className="bg-white text-blue-700 border border-blue-200 px-3 py-1 rounded-full text-xs font-bold"
+        >
+          {assignment.user_email || assignment.user_id}
+        </span>
+      ))}
+    </div>
+  </div>
+)}</>;
   };
 
   const authPanelProps = {
