@@ -369,6 +369,73 @@ const isAdmin = useMemo(() => {
     setTab("login");
   };
 
+const approveCrewRequest = async (assignment: any) => {
+  const event = adminEvents.find((item) => item.id === assignment.event_id);
+
+  if (!event) {
+    alert("Event not found.");
+    return;
+  }
+
+  const currentCrewIds = Array.isArray(event.crew_member_ids)
+    ? event.crew_member_ids
+    : [];
+
+  const nextCrewIds = currentCrewIds.includes(assignment.user_id)
+    ? currentCrewIds
+    : [...currentCrewIds, assignment.user_id];
+
+  const { error: eventError } = await supabase
+    .from("events")
+    .update({
+      crew_member_ids: nextCrewIds,
+    })
+    .eq("id", assignment.event_id);
+
+  if (eventError) {
+    alert("Event update failed: " + eventError.message);
+    return;
+  }
+
+  const { error: assignmentError } = await supabase
+    .from("event_crew_assignments")
+    .update({
+      status: "approved",
+      approved_by: user?.email || user?.id,
+      approved_at: new Date().toISOString(),
+    })
+    .eq("id", assignment.id);
+
+  if (assignmentError) {
+    alert("Assignment update failed: " + assignmentError.message);
+    return;
+  }
+
+  alert("Crew request approved.");
+
+  await loadEventCrewAssignments();
+  await loadAdminDashboardData();
+  await loadEventsOnly();
+};
+
+const rejectCrewRequest = async (assignmentId: string) => {
+  const { error } = await supabase
+    .from("event_crew_assignments")
+    .update({
+      status: "rejected",
+      approved_by: user?.email || user?.id,
+      approved_at: new Date().toISOString(),
+    })
+    .eq("id", assignmentId);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  await loadEventCrewAssignments();
+};
+    
 const approveEvent = async (id: string) => {
   const { data, error } = await supabase
     .from("events")
@@ -2310,72 +2377,8 @@ function renderTeamPage() {
     </main>
   );
 }
-const approveCrewRequest = async (assignment: any) => {
-  const event = adminEvents.find((item) => item.id === assignment.event_id);
 
-  if (!event) {
-    alert("Event not found.");
-    return;
-  }
-
-  const currentCrewIds = Array.isArray(event.crew_member_ids)
-    ? event.crew_member_ids
-    : [];
-
-  const nextCrewIds = currentCrewIds.includes(assignment.user_id)
-    ? currentCrewIds
-    : [...currentCrewIds, assignment.user_id];
-
-  const { error: eventError } = await supabase
-    .from("events")
-    .update({
-      crew_member_ids: nextCrewIds,
-    })
-    .eq("id", assignment.event_id);
-
-  if (eventError) {
-    alert("Event update failed: " + eventError.message);
-    return;
-  }
-
-  const { error: assignmentError } = await supabase
-    .from("event_crew_assignments")
-    .update({
-      status: "approved",
-      approved_by: user?.email || user?.id,
-      approved_at: new Date().toISOString(),
-    })
-    .eq("id", assignment.id);
-
-  if (assignmentError) {
-    alert("Assignment update failed: " + assignmentError.message);
-    return;
-  }
-
-  alert("Crew request approved.");
-
-  await loadEventCrewAssignments();
-  await loadAdminDashboardData();
-  await loadEventsOnly();
-};
-
-const rejectCrewRequest = async (assignmentId: string) => {
-  const { error } = await supabase
-    .from("event_crew_assignments")
-    .update({
-      status: "rejected",
-      approved_by: user?.email || user?.id,
-      approved_at: new Date().toISOString(),
-    })
-    .eq("id", assignmentId);
-
-  if (error) {
-    alert(error.message);
-    return;
-  }
-
-  await loadEventCrewAssignments();
-};
+  
   function StudioPage() {
 
 const filterByAdminDate = (items: any[], dateField = "created_at") => {
