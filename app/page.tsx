@@ -971,18 +971,22 @@ const createEvent = async () => {
     return;
   }
 
-  await fetch("/api/admin-notify", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      type: "Crew Request",
-      name: "Crew request for event",
-      description: `User ${user.email} requested to join event ${eventId}`,
-      submitterEmail: user?.email,
-    }),
-  });
+  try {
+    await fetch("/api/admin-notify", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        type: "Crew Request",
+        name: "Crew request for event",
+        description: `User ${user.email} requested to join event ${eventId}`,
+        submitterEmail: user?.email,
+      }),
+    });
+  } catch (e) {
+    console.error("Admin notify failed", e);
+  }
 
   setEventCrewMessage(
     "Your request to join as Desi TV Crew has been submitted for admin approval."
@@ -990,32 +994,6 @@ const createEvent = async () => {
 
   await loadEventCrewAssignments();
 };
-
-/* ADD STEP 3 RIGHT HERE */
-
-await fetch("/api/admin-notify", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    type: "Crew Request",
-    name: "Crew request for event",
-    description: `User ${user.email} requested to join event ${eventId}`,
-    submitterEmail: user?.email,
-  }),
-});
-
-setEventCrewMessage(
-  "Your request to join as Desi TV Crew has been submitted for admin approval."
-);
-
-await loadEventCrewAssignments();
-    if (error) return setEventCrewMessage(error.message || "Could not join crew.");
-    setEventCrewMessage("Your request to join as Desi TV Crew has been submitted for admin approval.");
-    await loadEventCrewAssignments();
-  };
-
 const createBusiness = async () => {
   setBusinessMessage("");
 
