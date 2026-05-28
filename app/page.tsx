@@ -725,6 +725,7 @@ const signIn = async () => {
   }
 
   if (data?.user) {
+    alert("Login success: " + data.user.email);
     setUser(data.user);
     setPassword("");
 
