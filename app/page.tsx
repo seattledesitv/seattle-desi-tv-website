@@ -362,6 +362,7 @@ const [roleName, setRoleName] = useState("");
 const [roleEmail, setRoleEmail] = useState("");
 const [roleValue, setRoleValue] = useState("general_public");
 const [roleMessage, setRoleMessage] = useState("");
+const [returnTabAfterLogin, setReturnTabAfterLogin] = useState<TabId>("home");
   
 const isAdmin = useMemo(() => {
   const role = String(userRole || "").toLowerCase().trim();
@@ -376,11 +377,12 @@ const isAdmin = useMemo(() => {
   const filteredBusinesses = useMemo(() => businesses.filter((business) => businessCategoryFilter === "all" || business.category === businessCategoryFilter), [businesses, businessCategoryFilter]);
   const availableBusinessCategories = useMemo(() => Array.from(new Set(businesses.map((business) => business.category).filter(Boolean))).sort(), [businesses]);
 
-  const openLogin = () => {
-    setAuthMode("login");
-    setAuthMessage("");
-    setTab("login");
-  };
+const openLogin = () => {
+  setReturnTabAfterLogin(tab === "login" ? "home" : tab);
+  setAuthMode("login");
+  setAuthMessage("");
+  setTab("login");
+};
 
 const approveCrewRequest = async (assignment: any) => {
   const event = adminEvents.find((item) => item.id === assignment.event_id);
@@ -740,7 +742,7 @@ const signIn = async () => {
   await loadAdminDashboardData();
 
   setTab("home");
-  window.history.pushState({ tab: "home" }, "", "#home");
+  window.history.pushState({ tab: nextTab }, "", `#${nextTab}`);
 }
 };
 
@@ -1765,10 +1767,7 @@ const authPanelProps = {
   authMessage,
   onEmailChange: setEmail,
   onPasswordChange: setPassword,
-  onSignIn: () => {
-    alert("authPanelProps signIn fired");
-    signIn();
-  },
+ onSignIn: signIn,
   onSignUp: signUp,
   onResetPassword: resetPassword,
   onMagicLinkLogin: magicLinkLogin,
