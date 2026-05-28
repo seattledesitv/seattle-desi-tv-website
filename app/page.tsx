@@ -731,18 +731,17 @@ const signIn = async () => {
     return;
   }
 
-  if (data?.user) {
-    alert("Login success: " + data.user.email);
-    setUser(data.user);
-    setPassword("");
+ if (data?.user) {
+  setUser(data.user);
+  setPassword("");
 
-    await loadAdminRole(data.user);
+  await loadAdminRole(data.user);
+  await loadData();
+  await loadAdminDashboardData();
 
-    setTab("home");
-    window.history.pushState({ tab: "home" }, "", "#home");
-
-    setAuthMessage("Logged in successfully.");
-  }
+  setTab("home");
+  window.history.pushState({ tab: "home" }, "", "#home");
+}
 };
 
   const signUp = async () => {
