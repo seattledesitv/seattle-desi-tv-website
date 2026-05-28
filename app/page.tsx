@@ -959,21 +959,7 @@ const createEvent = async () => {
       onConflict: "event_id,user_id",
     }
   );
-    const { error } = await supabase
-  .from("event_crew_assignments")
-  .upsert(
-    {
-      event_id: eventId,
-      user_id: user.id,
-      user_email: user.email,
-      assignment_type: "self_selected",
-      status: "pending",
-    },
-    {
-      onConflict: "event_id,user_id",
-    }
-  );
-
+  
 if (crewError) {
   setEventCrewMessage(crewError.message);
   return;
