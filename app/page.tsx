@@ -604,34 +604,35 @@ const rejectBusiness = async (id: string) => {
   };
 
 const loadAdminRole = async (currentUser: any) => {
-  setAdminChecked(false);
-
-  if (!currentUser?.id) {
-    setUserRole("");
-    setAdminChecked(true);
-    return;
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from("admins")
-      .select("user_id,email,role")
-      .or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
-      .maybeSingle();
-
-    if (error) {
-      console.error("Admin role error:", error);
-      setUserRole("");
-    } else {
-      setUserRole(data?.role || "");
+    setAdminChecked(false);
+    if (!currentUser?.id) {
+  setUserRole("");
+      setAdminChecked(true);
+      return;
     }
-  } catch (error) {
-    console.error("Admin role catch:", error);
-    setUserRole("");
-  } finally {
-    setAdminChecked(true);
-  }
-};
+    try {
+      const byUserId = await withTimeout(
+        supabase.from("admins").select("user_id,email,role").eq("user_id", currentUser.id).maybeSingle(),
+        8000,
+        "Admin lookup"
+      );
+      if (byUserId.error) throw byUserId.error;
+      let row = byUserId.data;
+      if (!row && currentUser.email) {
+        const byEmail = await withTimeout(
+          supabase.from("admins").select("user_id,email,role").eq("email", currentUser.email).maybeSingle(),
+          8000,
+          "Admin lookup by email"
+        );
+        if (byEmail.error) throw byEmail.error;
+        row = byEmail.data;
+      }
+      setUserRole(row?.role || "");
+    } finally {
+      setAdminChecked(true);
+}
+  };
+
 
   const signIn = async () => {
     setAuthMessage("");
