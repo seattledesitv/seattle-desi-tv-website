@@ -349,7 +349,13 @@ const [adminYearFilter, setAdminYearFilter] = useState("all");
   const [contactInterest, setContactInterest] = useState("volunteer");
   const [contactMessage, setContactMessage] = useState("");
   const [contactStatus, setContactStatus] = useState("");
-
+const [roleUsers, setRoleUsers] = useState<any[]>([]);
+const [roleSearch, setRoleSearch] = useState("");
+const [roleName, setRoleName] = useState("");
+const [roleEmail, setRoleEmail] = useState("");
+const [roleValue, setRoleValue] = useState("general_public");
+const [roleMessage, setRoleMessage] = useState("");
+  
 const isAdmin = useMemo(() => {
   const role = String(userRole || "").toLowerCase().trim();
   return role.includes("admin") || role.includes("super_admin");
@@ -881,6 +887,7 @@ const loadAdminDashboardData = async () => {
   setAdminEvents(events || []);
   setAdminBusinesses(businesses || []);
   await loadEventCrewAssignments();
+  await loadRoleUsers();
 };
   
 const createEvent = async () => {
@@ -977,6 +984,54 @@ const createEvent = async () => {
     await loadEventsOnly();
   };
 
+const loadRoleUsers = async () => {
+  const { data, error } = await supabase
+    .from("admins")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Role users load error:", error);
+    return;
+  }
+
+  setRoleUsers(data || []);
+};
+
+const saveUserRole = async () => {
+  setRoleMessage("");
+
+  if (!roleEmail || !roleValue) {
+    setRoleMessage("Please enter email and select role.");
+    return;
+  }
+
+  const { error } = await supabase
+    .from("admins")
+    .upsert(
+      {
+        name: roleName || null,
+        email: roleEmail.trim().toLowerCase(),
+        role: roleValue,
+      },
+      {
+        onConflict: "email",
+      }
+    );
+
+  if (error) {
+    setRoleMessage(error.message);
+    return;
+  }
+
+  setRoleName("");
+  setRoleEmail("");
+  setRoleValue("general_public");
+  setRoleMessage("Role updated successfully.");
+
+  await loadRoleUsers();
+};
+  
   const volunteerForEventCrew = async (eventId: string) => {
   if (!user?.id) {
     openLogin();
@@ -1254,6 +1309,7 @@ useEffect(() => {
   
   useEffect(() => {
     loadData();
+    loadRoleUsers();
     fetchRadioMetadata();
     loadSpotifyEpisodes();
     loadAdminDashboardData();
@@ -2514,6 +2570,93 @@ const visibleAdminBusinesses = filteredAdminBusinesses.filter(
         <option key={year} value={String(year)}>{year}</option>
       ))}
     </select>
+  </div>
+</section>
+<section className="border rounded-2xl p-6 shadow-sm mb-10 bg-white">
+  <h2 className="text-2xl font-black mb-5">User Role Management</h2>
+
+  <div className="grid md:grid-cols-4 gap-3 mb-4">
+    <input
+      className="border rounded-lg p-3"
+      placeholder="Name"
+      value={roleName}
+      onChange={(e) => setRoleName(e.target.value)}
+    />
+
+    <input
+      className="border rounded-lg p-3"
+      placeholder="Email"
+      value={roleEmail}
+      onChange={(e) => setRoleEmail(e.target.value)}
+    />
+
+    <select
+      className="border rounded-lg p-3"
+      value={roleValue}
+      onChange={(e) => setRoleValue(e.target.value)}
+    >
+      <option value="general_public">general_public</option>
+      <option value="team_member">team_member</option>
+      <option value="pm_admin">pm_admin</option>
+      <option value="super_admin">super_admin</option>
+    </select>
+
+    <button
+      type="button"
+      onClick={saveUserRole}
+      className="bg-pink-600 text-white px-4 py-3 rounded-lg font-bold"
+    >
+      Save Role
+    </button>
+  </div>
+
+  {roleMessage && (
+    <p className="text-sm text-orange-600 mb-4">{roleMessage}</p>
+  )}
+
+  <input
+    className="border rounded-lg p-3 w-full mb-4"
+    placeholder="Search by name or email"
+    value={roleSearch}
+    onChange={(e) => setRoleSearch(e.target.value)}
+  />
+
+  <div className="grid gap-3">
+    {roleUsers
+      .filter((item) => {
+        const search = roleSearch.toLowerCase();
+        return (
+          !search ||
+          String(item.name || "").toLowerCase().includes(search) ||
+          String(item.email || "").toLowerCase().includes(search)
+        );
+      })
+      .map((item) => (
+        <div
+          key={item.id || item.email}
+          className="border rounded-xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+        >
+          <div>
+            <p className="font-black">{item.name || "No name"}</p>
+            <p className="text-sm text-gray-500">{item.email}</p>
+            <p className="text-xs text-gray-500">
+              Current role: <b>{item.role || "general_public"}</b>
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setRoleName(item.name || "");
+              setRoleEmail(item.email || "");
+              setRoleValue(item.role || "general_public");
+            }}
+            className="border px-4 py-2 rounded-lg font-bold text-sm"
+          >
+            Edit Role
+          </button>
+        </div>
+      ))}
   </div>
 </section>
 <section className="border rounded-2xl p-6 shadow-sm mb-10 bg-white">
