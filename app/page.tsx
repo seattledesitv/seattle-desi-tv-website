@@ -940,31 +940,56 @@ const createEvent = async () => {
   };
 
   const volunteerForEventCrew = async (eventId: string) => {
-    if (!user?.id) {
-      openLogin();
-      return setEventCrewMessage("Please login before joining crew.");
-    }
-    if (!canChooseCrew) return setEventCrewMessage("Only users with a role containing crew can join as crew.");
-    const { error: crewError } = await supabase
-  .from("event_crew_assignments")
-  .upsert(
-    {
-      event_id: eventId,
-      user_id: user.id,
-      user_email: user.email,
-      assignment_type: "self_selected",
-      status: "pending",
+  if (!user?.id) {
+    openLogin();
+    return setEventCrewMessage("Please login before joining crew.");
+  }
+
+  if (!canChooseCrew) {
+    return setEventCrewMessage(
+      "Only users with a role containing crew can join as crew."
+    );
+  }
+
+  const { error: crewError } = await supabase
+    .from("event_crew_assignments")
+    .upsert(
+      {
+        event_id: eventId,
+        user_id: user.id,
+        user_email: user.email,
+        assignment_type: "self_selected",
+        status: "pending",
+      },
+      {
+        onConflict: "event_id,user_id",
+      }
+    );
+
+  if (crewError) {
+    setEventCrewMessage(crewError.message);
+    return;
+  }
+
+  await fetch("/api/admin-notify", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
     },
-    {
-      onConflict: "event_id,user_id",
-    }
+    body: JSON.stringify({
+      type: "Crew Request",
+      name: "Crew request for event",
+      description: `User ${user.email} requested to join event ${eventId}`,
+      submitterEmail: user?.email,
+    }),
+  });
+
+  setEventCrewMessage(
+    "Your request to join as Desi TV Crew has been submitted for admin approval."
   );
-  
-if (crewError) {
-  setEventCrewMessage(crewError.message);
-  return;
-}
-}
+
+  await loadEventCrewAssignments();
+};
 
 /* ADD STEP 3 RIGHT HERE */
 
