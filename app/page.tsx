@@ -431,45 +431,6 @@ const updateBusinessStatus = async (id: string, status: string) => {
   await loadData();
 };
 
-  const approveCrewRequest = async (event: any, assignment: any) => {
-  const currentCrewIds = Array.isArray(event.crew_member_ids)
-    ? event.crew_member_ids
-    : [];
-
-  const nextCrewIds = currentCrewIds.includes(assignment.user_id)
-    ? currentCrewIds
-    : [...currentCrewIds, assignment.user_id];
-
-  const { error: eventError } = await supabase
-    .from("events")
-    .update({
-      crew_member_ids: nextCrewIds,
-    })
-    .eq("id", event.id);
-
-  if (eventError) {
-    alert(eventError.message);
-    return;
-  }
-
-  const { error: assignmentError } = await supabase
-    .from("event_crew_assignments")
-    .update({
-      status: "approved",
-      approved_by: user?.email || user?.id,
-      approved_at: new Date().toISOString(),
-    })
-    .eq("id", assignment.id);
-
-  if (assignmentError) {
-    alert(assignmentError.message);
-    return;
-  }
-
-  await loadAdminDashboardData();
-  await loadEventsOnly();
-  await loadEventCrewAssignments();
-};
   
 const startEditEvent = (event: any) => {
   setEditingEventId(event.id);
@@ -2776,7 +2737,7 @@ const visibleAdminBusinesses = filteredAdminBusinesses.filter(
 
       <button
         type="button"
-        onClick={() => approveCrewRequest(event, assignment)}
+        onClick={() => approveCrewRequest(assignment)}
         className="mt-2 bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm"
       >
         Approve Crew
