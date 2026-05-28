@@ -8,6 +8,8 @@ A Git-ready Next.js + Supabase media platform for Seattle Desi TV.
 - YouTube latest videos using YouTube Data API
 - Live365 radio metadata and audio stream
 - Events with poster upload, ticket link, internal POC fields
+- Standalone Events page with login-aware pending submissions
+- Standalone Businesses page for approved local listings
 - Admin-assigned Desi TV Crew per event
 - Crew users can join an event as Desi TV Crew
 - Local business directory with offers/discounts
@@ -79,9 +81,3 @@ git branch -M main
 git remote add origin https://github.com/YOURUSERNAME/seattle-desi-tv.git
 git push -u origin main
 ```
-
-## Deploy to Vercel
-
-1. Import the GitHub repo in Vercel.
-2. Add the same environment variables from `.env.local.example`.
-3. Deploy.
