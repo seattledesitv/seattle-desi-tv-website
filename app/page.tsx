@@ -707,18 +707,35 @@ const loadAdminRole = async (currentUser: any) => {
   }
 };
 
-  const signIn = async () => {
-    setAuthMessage("");
-    if (!email || !password) return setAuthMessage("Please enter email and password.");
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return setAuthMessage(error.message);
-    if (data?.user) {
-      setUser(data.user);
-      setPassword("");
-      setTab("home");
-      await loadAdminRole(data.user);
-    }
-  };
+const signIn = async () => {
+  setAuthMessage("");
+
+  if (!email || !password) {
+    return setAuthMessage("Please enter email and password.");
+  }
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    setAuthMessage(error.message);
+    return;
+  }
+
+  if (data?.user) {
+    setUser(data.user);
+    setPassword("");
+
+    await loadAdminRole(data.user);
+
+    setTab("home");
+    window.history.pushState({ tab: "home" }, "", "#home");
+
+    setAuthMessage("Logged in successfully.");
+  }
+};
 
   const signUp = async () => {
     setAuthMessage("");
