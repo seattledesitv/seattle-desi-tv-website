@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js"; 
 
 type AnyRecord = Record<string, any>;
 type TabId = "home" | "tv" | "radio" | "events" | "businesses" | "team" | "studio" | "donate" | "contact" | "login";
