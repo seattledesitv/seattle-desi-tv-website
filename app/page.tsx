@@ -1759,19 +1759,22 @@ if (contactPhone && !phonePattern.test(contactPhone.trim())) {
 )}</>;
   };
 
-  const authPanelProps = {
-    email,
-    password,
-    authMode,
-    authMessage,
-    onEmailChange: setEmail,
-    onPasswordChange: setPassword,
-    onSignIn: signIn,
-    onSignUp: signUp,
-    onResetPassword: resetPassword,
-    onMagicLinkLogin: magicLinkLogin,
-    onToggleMode: () => setAuthMode(authMode === "login" ? "signup" : "login")
-  };
+const authPanelProps = {
+  email,
+  password,
+  authMode,
+  authMessage,
+  onEmailChange: setEmail,
+  onPasswordChange: setPassword,
+  onSignIn: () => {
+    alert("authPanelProps signIn fired");
+    signIn();
+  },
+  onSignUp: signUp,
+  onResetPassword: resetPassword,
+  onMagicLinkLogin: magicLinkLogin,
+  onToggleMode: () => setAuthMode(authMode === "login" ? "signup" : "login")
+};
   
   return (
     <div className="min-h-screen bg-white">
