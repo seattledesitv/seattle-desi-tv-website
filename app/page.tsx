@@ -718,7 +718,7 @@ const signIn = async () => {
     email,
     password,
   });
-
+  console.log("LOGIN RESULT", { data, error });
   if (error) {
     setAuthMessage(error.message);
     return;
