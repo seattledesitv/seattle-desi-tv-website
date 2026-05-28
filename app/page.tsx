@@ -740,7 +740,7 @@ const signIn = async () => {
   await loadAdminRole(data.user);
   await loadData();
   await loadAdminDashboardData();
-
+  const nextTab = returnTabAfterLogin || "home";
   setTab("home");
   window.history.pushState({ tab: nextTab }, "", `#${nextTab}`);
 }
