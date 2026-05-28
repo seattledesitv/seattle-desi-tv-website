@@ -176,9 +176,16 @@ function AuthPanel({
       {authMessage && <p className="text-sm text-orange-600 mb-3">{authMessage}</p>}
 
       {authMode === "login" ? (
-        <button type="button" onClick={onSignIn} className="bg-pink-600 text-white px-4 py-3 w-full rounded-lg font-bold">
-          Login
-        </button>
+        <button
+  type="button"
+  onClick={() => {
+    alert("Login button clicked");
+    onSignIn();
+  }}
+  className="bg-pink-600 text-white px-4 py-3 w-full rounded-lg font-bold"
+>
+  Login
+</button>
       ) : (
         <button type="button" onClick={onSignUp} className="bg-pink-600 text-white px-4 py-3 w-full rounded-lg font-bold">
           Sign Up
