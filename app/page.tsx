@@ -951,6 +951,9 @@ const createEvent = async () => {
     );
   }
 
+  const event = events.find((item) => item.id === eventId);
+  const eventTitle = event?.title || "Unknown Event";
+
   const { error: crewError } = await supabase
     .from("event_crew_assignments")
     .upsert(
@@ -958,6 +961,7 @@ const createEvent = async () => {
         event_id: eventId,
         user_id: user.id,
         user_email: user.email,
+        event_title: eventTitle,
         assignment_type: "self_selected",
         status: "pending",
       },
@@ -971,25 +975,22 @@ const createEvent = async () => {
     return;
   }
 
-  try {
-    await fetch("/api/admin-notify", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        type: "Crew Request",
-        name: "Crew request for event",
-        description: `User ${user.email} requested to join event ${eventId}`,
-        submitterEmail: user?.email,
-      }),
-    });
-  } catch (e) {
-    console.error("Admin notify failed", e);
-  }
+  await fetch("/api/admin-notify", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "Crew Request",
+      name: eventTitle,
+      description: `User ${user.email} requested to join as TV crew for ${eventTitle}.`,
+      submitterEmail: user?.email,
+      location: `${window.location.origin}/#studio`,
+    }),
+  });
 
   setEventCrewMessage(
-    "Your request to join as Desi TV Crew has been submitted for admin approval."
+    "Your crew request has been submitted for admin approval."
   );
 
   await loadEventCrewAssignments();
@@ -2338,7 +2339,70 @@ function renderTeamPage() {
     </main>
   );
 }
+const approveCrewRequest = async (assignment: any) => {
+  const event = adminEvents.find((item) => item.id === assignment.event_id);
 
+  if (!event) {
+    alert("Event not found.");
+    return;
+  }
+
+  const currentCrewIds = Array.isArray(event.crew_member_ids)
+    ? event.crew_member_ids
+    : [];
+
+  const nextCrewIds = currentCrewIds.includes(assignment.user_id)
+    ? currentCrewIds
+    : [...currentCrewIds, assignment.user_id];
+
+  const { error: eventError } = await supabase
+    .from("events")
+    .update({
+      crew_member_ids: nextCrewIds,
+    })
+    .eq("id", assignment.event_id);
+
+  if (eventError) {
+    alert(eventError.message);
+    return;
+  }
+
+  const { error: assignmentError } = await supabase
+    .from("event_crew_assignments")
+    .update({
+      status: "approved",
+      approved_by: user?.email || user?.id,
+      approved_at: new Date().toISOString(),
+    })
+    .eq("id", assignment.id);
+
+  if (assignmentError) {
+    alert(assignmentError.message);
+    return;
+  }
+
+  await loadAdminDashboardData();
+  await loadEventsOnly();
+  await loadEventCrewAssignments();
+};
+
+const rejectCrewRequest = async (assignmentId: string) => {
+  const { error } = await supabase
+    .from("event_crew_assignments")
+    .update({
+      status: "rejected",
+      approved_by: user?.email || user?.id,
+      approved_at: new Date().toISOString(),
+    })
+    .eq("id", assignmentId);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  await loadEventCrewAssignments();
+};
   function StudioPage() {
 
 const filterByAdminDate = (items: any[], dateField = "created_at") => {
@@ -2455,6 +2519,46 @@ const visibleAdminBusinesses = filteredAdminBusinesses.filter(
     </select>
   </div>
 </section>
+<section className="border rounded-2xl p-6 shadow-sm mb-10 bg-white">
+  <h2 className="text-2xl font-black mb-5">Event Crew Approval</h2>
+
+  {eventCrewAssignments.filter((a) => (a.status || "pending") === "pending").length === 0 ? (
+    <p className="text-gray-500 text-sm">No pending crew requests.</p>
+  ) : (
+    <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+      {eventCrewAssignments
+        .filter((a) => (a.status || "pending") === "pending")
+        .map((assignment) => (
+          <div key={assignment.id} className="border rounded-xl p-4 bg-blue-50">
+            <p className="text-xs font-black text-blue-700 uppercase">Pending Crew Request</p>
+            <h3 className="font-black mt-2">{assignment.event_title || assignment.event_id}</h3>
+            <p className="text-sm text-gray-700 mt-2">
+              Requested by: {assignment.user_email || assignment.user_id}
+            </p>
+
+            <div className="flex gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => approveCrewRequest(assignment)}
+                className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm"
+              >
+                Approve Crew
+              </button>
+
+              <button
+                type="button"
+                onClick={() => rejectCrewRequest(assignment.id)}
+                className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm"
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        ))}
+    </div>
+  )}
+</section>
+          
          <div className="grid md:grid-cols-3 gap-6 mb-10">
 
  
