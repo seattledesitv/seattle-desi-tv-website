@@ -2328,7 +2328,7 @@ const visibleAdminBusinesses = filteredAdminBusinesses.filter(
             Login
           </button>
         </div>
-      ) : !adminChecked ? (
+      ) : !adminChecked && !isAdmin ?  (
   <div className="max-w-xl mx-auto border rounded-2xl p-8 text-center">
     <h1 className="text-3xl font-black">Checking Access...</h1>
     <p className="text-gray-500 mt-3">Please wait while we verify your admin role.</p> <p className="text-xs text-gray-400 mt-3">
