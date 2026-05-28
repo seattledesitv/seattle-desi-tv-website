@@ -28,6 +28,12 @@ function getImages(event: EventRow) {
   return event.image ? [event.image] : [];
 }
 
+function formatError(error: any) {
+  if (!error) return "Unknown error.";
+  const parts = [error.message, error.details, error.hint, error.code].filter(Boolean);
+  return parts.join(" | ") || String(error);
+}
+
 async function uploadFileToBucket(file: File) {
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
   const path = `${Date.now()}-${safeName}`;
@@ -68,7 +74,7 @@ export default function EventsPage() {
     if (error) {
       console.error("Events load error", error);
       setEvents([]);
-      setMessage(`Could not load events: ${error.message}`);
+      setMessage(`Could not load events: ${formatError(error)}`);
       return;
     }
 
@@ -85,7 +91,7 @@ export default function EventsPage() {
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      setAuthMessage(error.message);
+      setAuthMessage(formatError(error));
       return;
     }
 
@@ -116,11 +122,7 @@ export default function EventsPage() {
     setSaving(true);
 
     try {
-      const imageUrls = imageFiles.length
-        ? await Promise.all(imageFiles.map((file) => uploadFileToBucket(file)))
-        : [];
-
-      const { error } = await supabase.from("events").insert({
+      const eventPayload = {
         title,
         date,
         location,
@@ -128,14 +130,35 @@ export default function EventsPage() {
         ticket_url: ticketUrl || null,
         poc_email: pocEmail || user.email || null,
         poc_phone: pocPhone || null,
-        image: imageUrls[0] || null,
-        image_urls: imageUrls,
-        crew_member_ids: [],
         created_by: user.id,
         status: "pending",
-      });
+      };
 
-      if (error) throw error;
+      const { data: insertedEvent, error: insertError } = await supabase
+        .from("events")
+        .insert(eventPayload)
+        .select("id")
+        .single();
+
+      if (insertError) throw insertError;
+
+      let imageMessage = "";
+
+      if (imageFiles.length > 0 && insertedEvent?.id) {
+        try {
+          const imageUrl = await uploadFileToBucket(imageFiles[0]);
+          const { error: updateError } = await supabase
+            .from("events")
+            .update({ image: imageUrl })
+            .eq("id", insertedEvent.id);
+
+          if (updateError) {
+            imageMessage = ` Event was saved, but image link update failed: ${formatError(updateError)}`;
+          }
+        } catch (uploadError: any) {
+          imageMessage = ` Event was saved, but image upload failed: ${formatError(uploadError)}`;
+        }
+      }
 
       setTitle("");
       setDate("");
@@ -145,10 +168,11 @@ export default function EventsPage() {
       setPocEmail("");
       setPocPhone("");
       setImageFiles([]);
-      setSubmitMessage("Event submitted successfully. It will appear after admin approval.");
+      setSubmitMessage(`Event submitted successfully. It will appear after admin approval.${imageMessage}`);
       await loadEvents();
     } catch (error: any) {
-      setSubmitMessage(error?.message || "Could not submit event.");
+      console.error("Event submit error", error);
+      setSubmitMessage(`Could not submit event: ${formatError(error)}`);
     } finally {
       setSaving(false);
     }
@@ -211,9 +235,9 @@ export default function EventsPage() {
                 <input className="w-full border rounded-lg p-3 mb-3" placeholder="POC email (internal)" type="email" value={pocEmail} onChange={(e) => setPocEmail(e.target.value)} />
                 <input className="w-full border rounded-lg p-3 mb-3" placeholder="POC phone (internal)" value={pocPhone} onChange={(e) => setPocPhone(e.target.value)} />
                 <label className="block text-sm font-bold mb-2">Upload event image / poster</label>
-                <input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" multiple onChange={(e) => setImageFiles(Array.from(e.target.files || []))} />
-                {imageFiles.length > 0 && <p className="text-xs text-gray-500 mb-3">Selected {imageFiles.length} image(s)</p>}
-                {submitMessage && <p className="text-sm text-orange-600 mb-3">{submitMessage}</p>}
+                <input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setImageFiles(Array.from(e.target.files || []))} />
+                {imageFiles.length > 0 && <p className="text-xs text-gray-500 mb-3">Selected {imageFiles.length} image(s). Only the first image is uploaded in this safe mode.</p>}
+                {submitMessage && <p className="text-sm text-orange-600 mb-3 whitespace-pre-line">{submitMessage}</p>}
                 <button type="button" onClick={submitEvent} disabled={saving} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full disabled:opacity-60">
                   {saving ? "Saving Event..." : "Submit Event for Approval"}
                 </button>
@@ -224,7 +248,7 @@ export default function EventsPage() {
                 <p className="text-sm text-gray-500 mb-4">You can browse events without login. Login is only required to submit a new event.</p>
                 <input className="w-full border rounded-lg p-3 mb-3" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
                 <input className="w-full border rounded-lg p-3 mb-3" placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-                {authMessage && <p className="text-sm text-orange-600 mb-3">{authMessage}</p>}
+                {authMessage && <p className="text-sm text-orange-600 mb-3 whitespace-pre-line">{authMessage}</p>}
                 <button type="button" onClick={signIn} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full">Login</button>
               </div>
             )}
