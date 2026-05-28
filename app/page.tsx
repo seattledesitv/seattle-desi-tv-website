@@ -945,7 +945,7 @@ const createEvent = async () => {
       return setEventCrewMessage("Please login before joining crew.");
     }
     if (!canChooseCrew) return setEventCrewMessage("Only users with a role containing crew can join as crew.");
-    const { error } = await supabase
+    const { error: crewError } = await supabase
   .from("event_crew_assignments")
   .upsert(
     {
@@ -974,9 +974,10 @@ const createEvent = async () => {
     }
   );
 
-if (error) {
-  setEventCrewMessage(error.message);
+if (crewError) {
+  setEventCrewMessage(crewError.message);
   return;
+}
 }
 
 /* ADD STEP 3 RIGHT HERE */
