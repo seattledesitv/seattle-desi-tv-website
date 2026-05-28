@@ -431,6 +431,46 @@ const updateBusinessStatus = async (id: string, status: string) => {
   await loadData();
 };
 
+  const approveCrewRequest = async (event: any, assignment: any) => {
+  const currentCrewIds = Array.isArray(event.crew_member_ids)
+    ? event.crew_member_ids
+    : [];
+
+  const nextCrewIds = currentCrewIds.includes(assignment.user_id)
+    ? currentCrewIds
+    : [...currentCrewIds, assignment.user_id];
+
+  const { error: eventError } = await supabase
+    .from("events")
+    .update({
+      crew_member_ids: nextCrewIds,
+    })
+    .eq("id", event.id);
+
+  if (eventError) {
+    alert(eventError.message);
+    return;
+  }
+
+  const { error: assignmentError } = await supabase
+    .from("event_crew_assignments")
+    .update({
+      status: "approved",
+      approved_by: user?.email || user?.id,
+      approved_at: new Date().toISOString(),
+    })
+    .eq("id", assignment.id);
+
+  if (assignmentError) {
+    alert(assignmentError.message);
+    return;
+  }
+
+  await loadAdminDashboardData();
+  await loadEventsOnly();
+  await loadEventCrewAssignments();
+};
+  
 const startEditEvent = (event: any) => {
   setEditingEventId(event.id);
   setEventEditForm({
@@ -895,7 +935,7 @@ const createEvent = async () => {
     if (error) return setEventCrewMessage(error.message || "Could not assign crew.");
     setAssignCrewEventId(null);
     setAssignCrewMemberIds([]);
-    setEventCrewMessage("Desi TV Crew assigned successfully.");
+    setEventCrewMessage("Your request to join as Desi TV Crew has been submitted for admin approval.");
     await loadEventsOnly();
   };
 
@@ -905,9 +945,62 @@ const createEvent = async () => {
       return setEventCrewMessage("Please login before joining crew.");
     }
     if (!canChooseCrew) return setEventCrewMessage("Only users with a role containing crew can join as crew.");
-    const { error } = await supabase.from("event_crew_assignments").insert({ event_id: eventId, user_id: user.id, assignment_type: "self_selected" });
+    const { error } = await supabase
+  .from("event_crew_assignments")
+  .upsert(
+    {
+      event_id: eventId,
+      user_id: user.id,
+      user_email: user.email,
+      assignment_type: "self_selected",
+      status: "pending",
+    },
+    {
+      onConflict: "event_id,user_id",
+    }
+  );
+    const { error } = await supabase
+  .from("event_crew_assignments")
+  .upsert(
+    {
+      event_id: eventId,
+      user_id: user.id,
+      user_email: user.email,
+      assignment_type: "self_selected",
+      status: "pending",
+    },
+    {
+      onConflict: "event_id,user_id",
+    }
+  );
+
+if (error) {
+  setEventCrewMessage(error.message);
+  return;
+}
+
+/* ADD STEP 3 RIGHT HERE */
+
+await fetch("/api/admin-notify", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    type: "Crew Request",
+    name: "Crew request for event",
+    description: `User ${user.email} requested to join event ${eventId}`,
+    submitterEmail: user?.email,
+  }),
+});
+
+setEventCrewMessage(
+  "Your request to join as Desi TV Crew has been submitted for admin approval."
+);
+
+await loadEventCrewAssignments();
     if (error) return setEventCrewMessage(error.message || "Could not join crew.");
-    setEventCrewMessage("You joined as Desi TV Crew.");
+    setEventCrewMessage("Your request to join as Desi TV Crew has been submitted for admin approval.");
     await loadEventCrewAssignments();
   };
 
@@ -2572,6 +2665,31 @@ const visibleAdminBusinesses = filteredAdminBusinesses.filter(
     </div>
   </div>
 )}
+         {eventCrewAssignments
+  .filter(
+    (assignment) =>
+      assignment.event_id === event.id &&
+      (assignment.status || "pending") === "pending"
+  )
+  .map((assignment) => (
+    <div
+      key={assignment.id}
+      className="mt-3 text-xs text-blue-700 bg-blue-50 rounded-lg p-3"
+    >
+      <p className="font-black mb-1">Pending Crew Request</p>
+
+      <p>{assignment.user_email || assignment.user_id}</p>
+
+      <button
+        type="button"
+        onClick={() => approveCrewRequest(event, assignment)}
+        className="mt-2 bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm"
+      >
+        Approve Crew
+      </button>
+    </div>
+  ))}
+           
                     <div className="flex flex-wrap gap-2 mt-3">
                       <button type="button" onClick={() => updateEventStatus(event.id, "approved")} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve</button>
                       <button type="button" onClick={() => updateEventStatus(event.id, "on_hold")} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">On Hold</button>
