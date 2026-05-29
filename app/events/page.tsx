@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-const EVENT_BUCKET = "event-posters";
+const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
+const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -34,13 +35,28 @@ function formatError(error: any) {
   return parts.join(" | ") || String(error);
 }
 
-async function uploadFileToBucket(file: File, userId: string) {
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-  const path = `${userId}/${Date.now()}-${safeName}`;
-  const { error } = await supabase.storage.from(EVENT_BUCKET).upload(path, file, { upsert: false });
-  if (error) throw error;
-  const { data } = supabase.storage.from(EVENT_BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+async function uploadFileToCloudinary(file: File) {
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+    throw new Error("Cloudinary is not configured. Add NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET in Vercel Environment Variables.");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+  formData.append("folder", "seattle-desi-tv/events");
+
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+    method: "POST",
+    body: formData,
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result?.error?.message || `Cloudinary upload failed with status ${response.status}`);
+  }
+
+  return result.secure_url as string;
 }
 
 export default function EventsPage() {
@@ -146,7 +162,7 @@ export default function EventsPage() {
 
       if (imageFiles.length > 0 && insertedEvent?.id) {
         try {
-          const imageUrl = await uploadFileToBucket(imageFiles[0], user.id);
+          const imageUrl = await uploadFileToCloudinary(imageFiles[0]);
           const { error: updateError } = await supabase
             .from("events")
             .update({ image: imageUrl })
@@ -156,7 +172,7 @@ export default function EventsPage() {
             imageMessage = ` Event was saved, but image link update failed: ${formatError(updateError)}`;
           }
         } catch (uploadError: any) {
-          imageMessage = ` Event was saved, but image upload failed: ${formatError(uploadError)}`;
+          imageMessage = ` Event was saved, but Cloudinary image upload failed: ${formatError(uploadError)}`;
         }
       }
 
@@ -236,7 +252,7 @@ export default function EventsPage() {
                 <input className="w-full border rounded-lg p-3 mb-3" placeholder="POC phone (internal)" value={pocPhone} onChange={(e) => setPocPhone(e.target.value)} />
                 <label className="block text-sm font-bold mb-2">Upload event image / poster</label>
                 <input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setImageFiles(Array.from(e.target.files || []))} />
-                {imageFiles.length > 0 && <p className="text-xs text-gray-500 mb-3">Selected {imageFiles.length} image(s). Only the first image is uploaded in this safe mode.</p>}
+                {imageFiles.length > 0 && <p className="text-xs text-gray-500 mb-3">Selected {imageFiles.length} image(s). Only the first image is uploaded.</p>}
                 {submitMessage && <p className="text-sm text-orange-600 mb-3 whitespace-pre-line">{submitMessage}</p>}
                 <button type="button" onClick={submitEvent} disabled={saving} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full disabled:opacity-60">
                   {saving ? "Saving Event..." : "Submit Event for Approval"}
