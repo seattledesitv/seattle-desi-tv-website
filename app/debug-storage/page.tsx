@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-const BUCKET = "event-images";
+const BUCKET = "event-posters";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -104,7 +104,7 @@ export default function DebugStoragePage() {
         <div>
           <a href="/events" className="text-pink-300 font-bold">← Back to Events</a>
           <h1 className="text-3xl font-black mt-3">Storage Upload Debug</h1>
-          <p className="text-slate-300 mt-2">Tests direct upload to the event-images Supabase Storage bucket.</p>
+          <p className="text-slate-300 mt-2">Tests direct upload to the event-posters Supabase Storage bucket.</p>
         </div>
 
         <div className="bg-white/10 rounded-2xl p-5 border border-white/10">
