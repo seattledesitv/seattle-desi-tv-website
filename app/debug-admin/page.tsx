@@ -3,10 +3,19 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
+const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-  { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
+  {
+    auth: {
+      storageKey: AUTH_STORAGE_KEY,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  }
 );
 
 function roleContainsAdmin(role: string) {
@@ -16,8 +25,9 @@ function roleContainsAdmin(role: string) {
 function storageSnapshot() {
   try {
     return {
-      localStorageKeys: Object.keys(localStorage).filter((key) => key.toLowerCase().includes("supabase") || key.toLowerCase().includes("sb-")),
-      sessionStorageKeys: Object.keys(sessionStorage).filter((key) => key.toLowerCase().includes("supabase") || key.toLowerCase().includes("sb-")),
+      authStorageKeyInUse: AUTH_STORAGE_KEY,
+      localStorageKeys: Object.keys(localStorage).filter((key) => key.toLowerCase().includes("supabase") || key.toLowerCase().includes("sb-") || key === AUTH_STORAGE_KEY),
+      sessionStorageKeys: Object.keys(sessionStorage).filter((key) => key.toLowerCase().includes("supabase") || key.toLowerCase().includes("sb-") || key === AUTH_STORAGE_KEY),
     };
   } catch (error: any) {
     return { storageError: error?.message || String(error) };
@@ -75,7 +85,7 @@ export default function DebugAdminPage() {
           userRole: "",
           isAdmin: false,
           canAccessAdminArea: false,
-          note: "No Supabase user is currently logged in, or session retrieval failed."
+          note: "No Supabase user is currently logged in for the fresh auth storage key. Login again at /login after that page is updated."
         });
         return;
       }
@@ -133,10 +143,10 @@ export default function DebugAdminPage() {
     } catch {}
     try {
       Object.keys(localStorage)
-        .filter((key) => key.toLowerCase().includes("supabase") || key.toLowerCase().includes("sb-"))
+        .filter((key) => key.toLowerCase().includes("supabase") || key.toLowerCase().includes("sb-") || key === AUTH_STORAGE_KEY)
         .forEach((key) => localStorage.removeItem(key));
       Object.keys(sessionStorage)
-        .filter((key) => key.toLowerCase().includes("supabase") || key.toLowerCase().includes("sb-"))
+        .filter((key) => key.toLowerCase().includes("supabase") || key.toLowerCase().includes("sb-") || key === AUTH_STORAGE_KEY)
         .forEach((key) => sessionStorage.removeItem(key));
     } catch {}
     await runDebug();
