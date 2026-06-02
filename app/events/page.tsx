@@ -138,6 +138,11 @@ export default function EventsPage() {
     setSaving(true);
 
     try {
+      let imageUrl = "";
+      if (imageFiles.length > 0) {
+        imageUrl = await uploadFileToCloudinary(imageFiles[0]);
+      }
+
       const eventPayload = {
         title,
         date,
@@ -146,35 +151,14 @@ export default function EventsPage() {
         ticket_url: ticketUrl || null,
         poc_email: pocEmail || user.email || null,
         poc_phone: pocPhone || null,
+        image: imageUrl || null,
         created_by: user.id,
         status: "pending",
       };
 
-      const { data: insertedEvent, error: insertError } = await supabase
-        .from("events")
-        .insert(eventPayload)
-        .select("id")
-        .single();
+      const { error: insertError } = await supabase.from("events").insert(eventPayload);
 
       if (insertError) throw insertError;
-
-      let imageMessage = "";
-
-      if (imageFiles.length > 0 && insertedEvent?.id) {
-        try {
-          const imageUrl = await uploadFileToCloudinary(imageFiles[0]);
-          const { error: updateError } = await supabase
-            .from("events")
-            .update({ image: imageUrl })
-            .eq("id", insertedEvent.id);
-
-          if (updateError) {
-            imageMessage = ` Event was saved, but image link update failed: ${formatError(updateError)}`;
-          }
-        } catch (uploadError: any) {
-          imageMessage = ` Event was saved, but Cloudinary image upload failed: ${formatError(uploadError)}`;
-        }
-      }
 
       setTitle("");
       setDate("");
@@ -184,7 +168,7 @@ export default function EventsPage() {
       setPocEmail("");
       setPocPhone("");
       setImageFiles([]);
-      setSubmitMessage(`Event submitted successfully. It will appear after admin approval.${imageMessage}`);
+      setSubmitMessage("Event submitted successfully. It will appear after admin approval.");
       await loadEvents();
     } catch (error: any) {
       console.error("Event submit error", error);
