@@ -39,27 +39,34 @@ export default function LoginPage() {
   async function getRoleForUser(user: any) {
     if (!user?.id && !user?.email) return "";
 
-    const { data, error } = await supabase
-      .from("admins")
-      .select("role")
-      .or(`user_id.eq.${user.id},email.eq.${user.email}`)
-      .maybeSingle();
+    try {
+      const { data, error } = await withTimeout(
+        supabase
+          .from("admins")
+          .select("role")
+          .or(`user_id.eq.${user.id},email.eq.${user.email}`)
+          .maybeSingle(),
+        2500
+      );
 
-    if (error) {
-      console.error("Admin role lookup failed", error);
+      if (error) {
+        console.error("Admin role lookup failed", error);
+        return "";
+      }
+
+      return data?.role || "";
+    } catch (error) {
+      console.error("Admin role lookup failed or timed out", error);
       return "";
     }
-
-    return data?.role || "";
   }
 
   async function redirectForUser(user: any) {
+    setLoading(true);
+    setMessage("Redirecting...");
     const role = await getRoleForUser(user);
-    if (isAdminRole(role)) {
-      window.location.href = "/#studio";
-    } else {
-      window.location.href = "/";
-    }
+    const target = isAdminRole(role) ? "/#studio" : "/";
+    window.location.assign(target);
   }
 
   async function signIn() {
@@ -126,7 +133,7 @@ export default function LoginPage() {
 
         if (user) {
           setEmail(user.email || "");
-          setMessage(`Already logged in as ${user.email}. Use Continue or Logout below.`);
+          setMessage(`Already logged in as ${user.email}. Use Continue, Go to Studio, or Logout below.`);
         } else {
           setMessage("");
         }
@@ -172,8 +179,11 @@ export default function LoginPage() {
                 disabled={loading}
                 className="w-full bg-pink-600 text-white py-3 rounded-xl font-black disabled:opacity-60"
               >
-                Continue
+                {loading ? "Redirecting..." : "Continue"}
               </button>
+              <a href="/#studio" className="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-center">
+                Go to Studio
+              </a>
               <button
                 type="button"
                 onClick={cleanLogout}
