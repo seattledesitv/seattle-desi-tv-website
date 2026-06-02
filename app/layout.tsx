@@ -22,28 +22,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <Script
-          id="sdtv-hash-tab-fix"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function () {
-                function notifyAppAboutHash() {
-                  if (!window.location.hash) return;
-                  try {
-                    window.dispatchEvent(new PopStateEvent('popstate', { state: { tab: window.location.hash.replace('#', '') } }));
-                  } catch (e) {
-                    window.dispatchEvent(new Event('popstate'));
-                  }
-                }
-                window.addEventListener('hashchange', notifyAppAboutHash);
-                setTimeout(notifyAppAboutHash, 250);
-                setTimeout(notifyAppAboutHash, 1000);
-                setTimeout(notifyAppAboutHash, 2000);
-              })();
-            `
-          }}
-        />
-        <Script
           src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
           async
           defer
