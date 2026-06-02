@@ -39,7 +39,7 @@ export default function LoginPage() {
   async function redirectForUser(user: any) {
     const role = await getRoleForUser(user);
     if (isAdminRole(role)) {
-      window.location.href = "/studio";
+      window.location.href = "/#studio";
     } else {
       window.location.href = "/";
     }
