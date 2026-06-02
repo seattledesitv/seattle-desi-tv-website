@@ -70,6 +70,10 @@ export default function StudioPage() {
 
   const canAccessStudio = Boolean(user && roleContainsAdmin(role));
 
+  function getEventForAssignment(assignment: any) {
+    return events.find((event) => event.id === assignment.event_id) || null;
+  }
+
   async function loadStudioData() {
     const [eventResult, businessResult, teamResult, crewResult] = await Promise.all([
       supabase
@@ -364,22 +368,29 @@ export default function StudioPage() {
             <section className="bg-white text-slate-950 rounded-2xl p-6">
               <h2 className="text-2xl font-black mb-4">Crew Requests</h2>
               <div className="grid gap-3">
-                {crewAssignments.map((assignment) => (
-                  <div key={assignment.id} className="border rounded-xl p-4 grid md:grid-cols-[1fr_auto] gap-4">
-                    <div>
-                      <h3 className="font-black">{assignment.event_title || assignment.event_id}</h3>
-                      <p className="text-sm text-gray-600">{assignment.user_email} · {assignment.assignment_type}</p>
-                      <span className={`inline-block text-sm font-bold px-3 py-1 rounded-full mt-3 ${statusClass(assignment.status)}`}>{assignment.status || "pending"}</span>
-                      {assignment.approved_by && <p className="text-xs text-gray-500 mt-2">Approved by {assignment.approved_by}</p>}
+                {crewAssignments.map((assignment) => {
+                  const assignedEvent = getEventForAssignment(assignment);
+                  const displayTitle = assignment.event_title || assignedEvent?.title || "Unknown event";
+                  return (
+                    <div key={assignment.id} className="border rounded-xl p-4 grid md:grid-cols-[96px_1fr_auto] gap-4 items-center">
+                      <ImageThumb src={getImage(assignedEvent)} label={displayTitle} />
+                      <div>
+                        <h3 className="font-black">{displayTitle}</h3>
+                        {assignedEvent && <p className="text-sm text-gray-600">{formatDate(assignedEvent.date)} · {assignedEvent.location}</p>}
+                        <p className="text-sm text-gray-600 mt-1">Crew: {assignment.user_email} · {assignment.assignment_type}</p>
+                        <span className={`inline-block text-sm font-bold px-3 py-1 rounded-full mt-3 ${statusClass(assignment.status)}`}>{assignment.status || "pending"}</span>
+                        {assignment.approved_by && <p className="text-xs text-gray-500 mt-2">Approved by {assignment.approved_by}</p>}
+                        {!assignedEvent && <p className="text-xs text-red-500 mt-2">Event record not found for ID: {assignment.event_id}</p>}
+                      </div>
+                      <div className="flex flex-wrap gap-2 md:justify-end md:items-center">
+                        <button onClick={() => updateCrewStatus(assignment.id, "approved")} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve</button>
+                        <button onClick={() => updateCrewStatus(assignment.id, "on_hold")} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">On Hold</button>
+                        <button onClick={() => updateCrewStatus(assignment.id, "rejected")} className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Reject</button>
+                        <button onClick={() => deleteCrewAssignment(assignment.id)} className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm">Delete</button>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-2 md:justify-end md:items-center">
-                      <button onClick={() => updateCrewStatus(assignment.id, "approved")} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve</button>
-                      <button onClick={() => updateCrewStatus(assignment.id, "on_hold")} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">On Hold</button>
-                      <button onClick={() => updateCrewStatus(assignment.id, "rejected")} className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Reject</button>
-                      <button onClick={() => deleteCrewAssignment(assignment.id)} className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm">Delete</button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {crewAssignments.length === 0 && <p className="text-gray-500">No crew requests found.</p>}
               </div>
             </section>
