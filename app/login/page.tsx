@@ -13,6 +13,21 @@ function isAdminRole(role: string) {
   return String(role || "").toLowerCase().includes("admin");
 }
 
+function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Session check timed out.")), ms);
+    Promise.resolve(promise)
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -99,21 +114,45 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
-    async function init() {
-      const { data } = await supabase.auth.getUser();
-      const user = data?.user || null;
-      setCurrentUser(user);
-      setCheckingSession(false);
+    let cancelled = false;
 
-      if (user) {
-        setEmail(user.email || "");
-        setMessage(`Already logged in as ${user.email}. Use Continue or Logout below.`);
-      } else {
-        setMessage("");
+    async function init() {
+      try {
+        const { data } = await withTimeout(supabase.auth.getUser(), 2500);
+        if (cancelled) return;
+
+        const user = data?.user || null;
+        setCurrentUser(user);
+
+        if (user) {
+          setEmail(user.email || "");
+          setMessage(`Already logged in as ${user.email}. Use Continue or Logout below.`);
+        } else {
+          setMessage("");
+        }
+      } catch (error: any) {
+        if (cancelled) return;
+        console.warn("Login session check failed or timed out", error);
+        setCurrentUser(null);
+        setMessage("Session check timed out. You can login again below.");
+      } finally {
+        if (!cancelled) setCheckingSession(false);
       }
     }
 
     init();
+
+    const fallback = setTimeout(() => {
+      if (!cancelled) {
+        setCheckingSession(false);
+        setMessage((current) => current || "Session check timed out. You can login again below.");
+      }
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(fallback);
+    };
   }, []);
 
   return (
@@ -170,7 +209,7 @@ export default function LoginPage() {
               disabled={loading || checkingSession}
               className="w-full bg-pink-600 text-white py-3 rounded-xl font-black disabled:opacity-60"
             >
-              {loading ? "Logging in..." : "Login"}
+              {checkingSession ? "Checking login..." : loading ? "Logging in..." : "Login"}
             </button>
           </>
         )}
