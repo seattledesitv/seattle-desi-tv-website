@@ -3,10 +3,19 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
+const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-  { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
+  {
+    auth: {
+      storageKey: AUTH_STORAGE_KEY,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  }
 );
 
 function isAdminRole(role: string) {
@@ -100,14 +109,17 @@ export default function LoginPage() {
   async function cleanLogout() {
     setLoading(true);
     setMessage("Logging out...");
-    await supabase.auth.signOut({ scope: "global" });
     try {
-      localStorage.removeItem("supabase.auth.token");
+      await withTimeout(supabase.auth.signOut({ scope: "global" }), 2500);
+    } catch {
+      // continue with local cleanup
+    }
+    try {
       Object.keys(localStorage)
-        .filter((key) => key.toLowerCase().includes("supabase") || key.toLowerCase().includes("sb-"))
+        .filter((key) => key.toLowerCase().includes("supabase") || key.toLowerCase().includes("sb-") || key === AUTH_STORAGE_KEY)
         .forEach((key) => localStorage.removeItem(key));
       Object.keys(sessionStorage)
-        .filter((key) => key.toLowerCase().includes("supabase") || key.toLowerCase().includes("sb-"))
+        .filter((key) => key.toLowerCase().includes("supabase") || key.toLowerCase().includes("sb-") || key === AUTH_STORAGE_KEY)
         .forEach((key) => sessionStorage.removeItem(key));
     } catch {
       // ignore browser storage cleanup errors
@@ -141,7 +153,7 @@ export default function LoginPage() {
         if (cancelled) return;
         console.warn("Login session check failed or timed out", error);
         setCurrentUser(null);
-        setMessage("Session check timed out. You can login again below.");
+        setMessage("No active login found. Please login below.");
       } finally {
         if (!cancelled) setCheckingSession(false);
       }
@@ -152,7 +164,7 @@ export default function LoginPage() {
     const fallback = setTimeout(() => {
       if (!cancelled) {
         setCheckingSession(false);
-        setMessage((current) => current || "Session check timed out. You can login again below.");
+        setMessage((current) => current || "No active login found. Please login below.");
       }
     }, 3000);
 
