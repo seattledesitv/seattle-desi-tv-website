@@ -22,97 +22,81 @@ function roleContainsAdmin(role: string) {
   return String(role || "").toLowerCase().trim().includes("admin");
 }
 
-function formatDate(value?: string | null) {
-  if (!value) return "";
-  const parsed = new Date(`${String(value).split("T")[0]}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString();
-}
+type DashboardCounts = {
+  events: number;
+  pendingEvents: number;
+  businesses: number;
+  pendingBusinesses: number;
+  crew: number;
+  pendingCrew: number;
+  team: number;
+  radioTeam: number;
+};
 
-function statusClass(status?: string | null) {
-  const normalized = String(status || "pending").toLowerCase();
-  if (normalized === "approved") return "bg-green-100 text-green-800";
-  if (normalized === "rejected") return "bg-red-100 text-red-800";
-  if (normalized === "on_hold") return "bg-yellow-100 text-yellow-800";
-  return "bg-gray-100 text-gray-800";
-}
+const emptyCounts: DashboardCounts = {
+  events: 0,
+  pendingEvents: 0,
+  businesses: 0,
+  pendingBusinesses: 0,
+  crew: 0,
+  pendingCrew: 0,
+  team: 0,
+  radioTeam: 0,
+};
 
-function getImage(row: any) {
-  if (Array.isArray(row?.image_urls) && row.image_urls.length > 0) return row.image_urls[0];
-  return row?.image || row?.image_url || row?.photo || row?.picture || row?.avatar || "";
-}
-
-function getName(row: any) {
-  return row?.name || row?.title || row?.full_name || row?.member_name || row?.email || "Untitled";
-}
-
-function getTitle(row: any) {
-  return row?.title || row?.role || row?.position || row?.category || "";
-}
-
-function ImageThumb({ src, label }: { src?: string; label: string }) {
-  if (!src) {
-    return <div className="w-24 h-24 rounded-xl bg-pink-50 grid place-items-center text-pink-600 font-black text-xs text-center px-2">No image</div>;
-  }
-  return <img src={src} alt={label} className="w-24 h-24 rounded-xl object-cover bg-gray-100 border" />;
-}
-
-export default function StudioPage() {
+export default function StudioDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking Studio access...");
   const [actionMessage, setActionMessage] = useState("");
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState("");
-  const [events, setEvents] = useState<any[]>([]);
-  const [businesses, setBusinesses] = useState<any[]>([]);
-  const [teamMembers, setTeamMembers] = useState<any[]>([]);
-  const [crewAssignments, setCrewAssignments] = useState<any[]>([]);
+  const [counts, setCounts] = useState<DashboardCounts>(emptyCounts);
 
   const canAccessStudio = Boolean(user && roleContainsAdmin(role));
 
-  function getEventForAssignment(assignment: any) {
-    return events.find((event) => event.id === assignment.event_id) || null;
-  }
-
-  async function loadStudioData() {
-    const [eventResult, businessResult, teamResult, crewResult] = await Promise.all([
-      supabase
-        .from("events")
-        .select("id,title,date,location,status,image,image_urls,created_at")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("local_businesses")
-        .select("id,name,category,address,status,image,image_urls,created_at")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("team_members")
-        .select("*")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("event_crew_assignments")
-        .select("*")
-        .order("created_at", { ascending: false }),
+  async function loadCounts() {
+    const [eventsResult, pendingEventsResult, businessesResult, pendingBusinessesResult, crewResult, pendingCrewResult, teamResult, radioTeamResult] = await Promise.all([
+      supabase.from("events").select("id", { count: "exact", head: true }),
+      supabase.from("events").select("id", { count: "exact", head: true }).neq("status", "approved"),
+      supabase.from("local_businesses").select("id", { count: "exact", head: true }),
+      supabase.from("local_businesses").select("id", { count: "exact", head: true }).neq("status", "approved"),
+      supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }),
+      supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).neq("status", "approved"),
+      supabase.from("team_members").select("id", { count: "exact", head: true }),
+      supabase.from("radio_team_members").select("id", { count: "exact", head: true }),
     ]);
 
-    const errors = [];
-    if (eventResult.error) errors.push(`Events: ${eventResult.error.message}`);
-    else setEvents(eventResult.data || []);
+    const errors = [
+      eventsResult.error,
+      pendingEventsResult.error,
+      businessesResult.error,
+      pendingBusinessesResult.error,
+      crewResult.error,
+      pendingCrewResult.error,
+      teamResult.error,
+      radioTeamResult.error,
+    ].filter(Boolean);
 
-    if (businessResult.error) errors.push(`Businesses: ${businessResult.error.message}`);
-    else setBusinesses(businessResult.data || []);
+    if (errors.length) {
+      setActionMessage(`Some dashboard counts could not load: ${errors.map((error: any) => error.message).join(" | ")}`);
+    }
 
-    if (teamResult.error) errors.push(`Team: ${teamResult.error.message}`);
-    else setTeamMembers(teamResult.data || []);
-
-    if (crewResult.error) errors.push(`Crew: ${crewResult.error.message}`);
-    else setCrewAssignments(crewResult.data || []);
-
-    if (errors.length) setActionMessage(errors.join(" | "));
+    setCounts({
+      events: eventsResult.count || 0,
+      pendingEvents: pendingEventsResult.count || 0,
+      businesses: businessesResult.count || 0,
+      pendingBusinesses: pendingBusinessesResult.count || 0,
+      crew: crewResult.count || 0,
+      pendingCrew: pendingCrewResult.count || 0,
+      team: teamResult.count || 0,
+      radioTeam: radioTeamResult.count || 0,
+    });
   }
 
   async function init() {
     setLoading(true);
     setMessage("Checking Studio access...");
+    setActionMessage("");
 
     const sessionResult = await supabase.auth.getSession();
     const currentUser = sessionResult.data?.session?.user || null;
@@ -120,10 +104,7 @@ export default function StudioPage() {
 
     if (!currentUser) {
       setRole("");
-      setEvents([]);
-      setBusinesses([]);
-      setTeamMembers([]);
-      setCrewAssignments([]);
+      setCounts(emptyCounts);
       setMessage("Please login to access Studio.");
       setLoading(false);
       return;
@@ -144,104 +125,9 @@ export default function StudioPage() {
       return;
     }
 
-    await loadStudioData();
+    await loadCounts();
     setMessage("");
     setLoading(false);
-  }
-
-  async function updateEventStatus(id: string, status: string) {
-    setActionMessage("Updating event...");
-    const payload: any = { status };
-    if (status === "approved") {
-      payload.approved_by = user?.email || user?.id || null;
-      payload.approved_at = new Date().toISOString();
-      payload.approved = true;
-    }
-    if (status !== "approved") payload.approved = false;
-
-    const { error } = await supabase.from("events").update(payload).eq("id", id);
-    if (error) {
-      setActionMessage(`Event update failed: ${error.message}`);
-      return;
-    }
-    setActionMessage(`Event marked ${status}.`);
-    await loadStudioData();
-  }
-
-  async function deleteEvent(id: string, title: string) {
-    const ok = window.confirm(`Delete event: ${title}? This cannot be undone.`);
-    if (!ok) return;
-
-    setActionMessage("Deleting event...");
-    const { error } = await supabase.from("events").delete().eq("id", id);
-    if (error) {
-      setActionMessage(`Event delete failed: ${error.message}`);
-      return;
-    }
-    setActionMessage("Event deleted.");
-    await loadStudioData();
-  }
-
-  async function updateBusinessStatus(id: string, status: string) {
-    setActionMessage("Updating business...");
-    const payload: any = { status };
-    if (status === "approved") {
-      payload.approved_by = user?.email || user?.id || null;
-      payload.approved_at = new Date().toISOString();
-      payload.approved = true;
-    }
-    if (status !== "approved") payload.approved = false;
-
-    const { error } = await supabase.from("local_businesses").update(payload).eq("id", id);
-    if (error) {
-      setActionMessage(`Business update failed: ${error.message}`);
-      return;
-    }
-    setActionMessage(`Business marked ${status}.`);
-    await loadStudioData();
-  }
-
-  async function deleteBusiness(id: string, name: string) {
-    const ok = window.confirm(`Delete business: ${name}? This cannot be undone.`);
-    if (!ok) return;
-
-    setActionMessage("Deleting business...");
-    const { error } = await supabase.from("local_businesses").delete().eq("id", id);
-    if (error) {
-      setActionMessage(`Business delete failed: ${error.message}`);
-      return;
-    }
-    setActionMessage("Business deleted.");
-    await loadStudioData();
-  }
-
-  async function updateCrewStatus(id: string, status: string) {
-    setActionMessage("Updating crew request...");
-    const payload: any = { status };
-    if (status === "approved") {
-      payload.approved_by = user?.email || user?.id || null;
-      payload.approved_at = new Date().toISOString();
-    }
-    const { error } = await supabase.from("event_crew_assignments").update(payload).eq("id", id);
-    if (error) {
-      setActionMessage(`Crew update failed: ${error.message}`);
-      return;
-    }
-    setActionMessage(`Crew request marked ${status}.`);
-    await loadStudioData();
-  }
-
-  async function deleteCrewAssignment(id: string) {
-    const ok = window.confirm("Delete this crew assignment? This cannot be undone.");
-    if (!ok) return;
-    setActionMessage("Deleting crew assignment...");
-    const { error } = await supabase.from("event_crew_assignments").delete().eq("id", id);
-    if (error) {
-      setActionMessage(`Crew delete failed: ${error.message}`);
-      return;
-    }
-    setActionMessage("Crew assignment deleted.");
-    await loadStudioData();
   }
 
   async function logout() {
@@ -261,9 +147,43 @@ export default function StudioPage() {
     init();
   }, []);
 
-  const pendingEvents = events.filter((item) => item.status !== "approved");
-  const pendingBusinesses = businesses.filter((item) => item.status !== "approved");
-  const pendingCrew = crewAssignments.filter((item) => item.status !== "approved");
+  const modules = [
+    {
+      title: "Events",
+      href: "/studio/events",
+      count: counts.events,
+      secondary: `${counts.pendingEvents} pending / non-approved`,
+      description: "Approve, hold, reject, delete, and review event listings with images.",
+    },
+    {
+      title: "Businesses",
+      href: "/studio/businesses",
+      count: counts.businesses,
+      secondary: `${counts.pendingBusinesses} pending / non-approved`,
+      description: "Manage local business listings, offers, websites, images, and approval status.",
+    },
+    {
+      title: "Crew Requests",
+      href: "/studio/crew",
+      count: counts.crew,
+      secondary: `${counts.pendingCrew} pending / non-approved`,
+      description: "Approve or reject crew requests and view event details with images.",
+    },
+    {
+      title: "Team",
+      href: "/studio/team",
+      count: counts.team,
+      secondary: "team members",
+      description: "Add, edit, delete, and manage public SDTV team profiles.",
+    },
+    {
+      title: "Radio Team",
+      href: "/studio/radio-team",
+      count: counts.radioTeam,
+      secondary: "radio hosts / segments",
+      description: "Manage RJ profiles, radio hosts, titles, segments, and images.",
+    },
+  ];
 
   return (
     <main className="min-h-screen bg-slate-950 text-white px-6 py-10">
@@ -296,102 +216,30 @@ export default function StudioPage() {
           <div className="space-y-8">
             {actionMessage && <div className="bg-yellow-100 text-yellow-900 rounded-2xl p-4 font-bold">{actionMessage}</div>}
 
-            <div className="grid md:grid-cols-5 gap-4">
-              <div className="bg-white/10 border border-white/10 rounded-2xl p-5"><p className="text-slate-300">All Events</p><p className="text-3xl font-black">{events.length}</p></div>
-              <div className="bg-white/10 border border-white/10 rounded-2xl p-5"><p className="text-slate-300">Pending Events</p><p className="text-3xl font-black">{pendingEvents.length}</p></div>
-              <div className="bg-white/10 border border-white/10 rounded-2xl p-5"><p className="text-slate-300">Businesses</p><p className="text-3xl font-black">{businesses.length}</p></div>
-              <div className="bg-white/10 border border-white/10 rounded-2xl p-5"><p className="text-slate-300">Team</p><p className="text-3xl font-black">{teamMembers.length}</p></div>
-              <div className="bg-white/10 border border-white/10 rounded-2xl p-5"><p className="text-slate-300">Crew Requests</p><p className="text-3xl font-black">{pendingCrew.length}</p></div>
-            </div>
-
-            <section className="bg-white text-slate-950 rounded-2xl p-6">
-              <h2 className="text-2xl font-black mb-4">Events</h2>
-              <div className="grid gap-3">
-                {events.map((event) => (
-                  <div key={event.id} className="border rounded-xl p-4 grid md:grid-cols-[96px_1fr_auto] gap-4 items-center">
-                    <ImageThumb src={getImage(event)} label={event.title} />
+            <section className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
+              {modules.map((module) => (
+                <a key={module.href} href={module.href} className="bg-white text-slate-950 rounded-2xl p-6 border border-white/10 shadow-xl hover:scale-[1.01] transition block">
+                  <div className="flex items-start justify-between gap-4">
                     <div>
-                      <h3 className="font-black">{event.title}</h3>
-                      <p className="text-sm text-gray-600">{formatDate(event.date)} · {event.location}</p>
-                      <span className={`inline-block text-sm font-bold px-3 py-1 rounded-full mt-3 ${statusClass(event.status)}`}>{event.status || "pending"}</span>
+                      <h2 className="text-2xl font-black">{module.title}</h2>
+                      <p className="text-gray-600 mt-2">{module.description}</p>
                     </div>
-                    <div className="flex flex-wrap gap-2 md:justify-end md:items-center">
-                      <button onClick={() => updateEventStatus(event.id, "approved")} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve</button>
-                      <button onClick={() => updateEventStatus(event.id, "on_hold")} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">On Hold</button>
-                      <button onClick={() => updateEventStatus(event.id, "rejected")} className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Reject</button>
-                      <button onClick={() => deleteEvent(event.id, event.title)} className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm">Delete</button>
+                    <div className="text-right">
+                      <p className="text-4xl font-black text-pink-600">{module.count}</p>
+                      <p className="text-xs text-gray-500 font-bold uppercase tracking-wide">{module.secondary}</p>
                     </div>
                   </div>
-                ))}
-              </div>
+                  <div className="mt-6 inline-block bg-slate-950 text-white px-4 py-2 rounded-xl font-bold">Open {module.title}</div>
+                </a>
+              ))}
             </section>
 
-            <section className="bg-white text-slate-950 rounded-2xl p-6">
-              <h2 className="text-2xl font-black mb-4">Businesses</h2>
-              <div className="grid gap-3">
-                {businesses.map((business) => (
-                  <div key={business.id} className="border rounded-xl p-4 grid md:grid-cols-[96px_1fr_auto] gap-4 items-center">
-                    <ImageThumb src={getImage(business)} label={business.name} />
-                    <div>
-                      <h3 className="font-black">{business.name}</h3>
-                      <p className="text-sm text-gray-600">{business.category} · {business.address}</p>
-                      <span className={`inline-block text-sm font-bold px-3 py-1 rounded-full mt-3 ${statusClass(business.status)}`}>{business.status || "pending"}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2 md:justify-end md:items-center">
-                      <button onClick={() => updateBusinessStatus(business.id, "approved")} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve</button>
-                      <button onClick={() => updateBusinessStatus(business.id, "on_hold")} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">On Hold</button>
-                      <button onClick={() => updateBusinessStatus(business.id, "rejected")} className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Reject</button>
-                      <button onClick={() => deleteBusiness(business.id, business.name)} className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm">Delete</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="bg-white text-slate-950 rounded-2xl p-6">
-              <h2 className="text-2xl font-black mb-4">Team Members</h2>
-              <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {teamMembers.map((member) => (
-                  <div key={member.id || getName(member)} className="border rounded-xl p-4 flex gap-4 items-center">
-                    <ImageThumb src={getImage(member)} label={getName(member)} />
-                    <div>
-                      <h3 className="font-black">{getName(member)}</h3>
-                      <p className="text-sm text-gray-600">{getTitle(member)}</p>
-                      {member.email && <p className="text-xs text-gray-500 mt-1">{member.email}</p>}
-                    </div>
-                  </div>
-                ))}
-                {teamMembers.length === 0 && <p className="text-gray-500">No team members found.</p>}
-              </div>
-            </section>
-
-            <section className="bg-white text-slate-950 rounded-2xl p-6">
-              <h2 className="text-2xl font-black mb-4">Crew Requests</h2>
-              <div className="grid gap-3">
-                {crewAssignments.map((assignment) => {
-                  const assignedEvent = getEventForAssignment(assignment);
-                  const displayTitle = assignment.event_title || assignedEvent?.title || "Unknown event";
-                  return (
-                    <div key={assignment.id} className="border rounded-xl p-4 grid md:grid-cols-[96px_1fr_auto] gap-4 items-center">
-                      <ImageThumb src={getImage(assignedEvent)} label={displayTitle} />
-                      <div>
-                        <h3 className="font-black">{displayTitle}</h3>
-                        {assignedEvent && <p className="text-sm text-gray-600">{formatDate(assignedEvent.date)} · {assignedEvent.location}</p>}
-                        <p className="text-sm text-gray-600 mt-1">Crew: {assignment.user_email} · {assignment.assignment_type}</p>
-                        <span className={`inline-block text-sm font-bold px-3 py-1 rounded-full mt-3 ${statusClass(assignment.status)}`}>{assignment.status || "pending"}</span>
-                        {assignment.approved_by && <p className="text-xs text-gray-500 mt-2">Approved by {assignment.approved_by}</p>}
-                        {!assignedEvent && <p className="text-xs text-red-500 mt-2">Event record not found for ID: {assignment.event_id}</p>}
-                      </div>
-                      <div className="flex flex-wrap gap-2 md:justify-end md:items-center">
-                        <button onClick={() => updateCrewStatus(assignment.id, "approved")} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve</button>
-                        <button onClick={() => updateCrewStatus(assignment.id, "on_hold")} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">On Hold</button>
-                        <button onClick={() => updateCrewStatus(assignment.id, "rejected")} className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Reject</button>
-                        <button onClick={() => deleteCrewAssignment(assignment.id)} className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm">Delete</button>
-                      </div>
-                    </div>
-                  );
-                })}
-                {crewAssignments.length === 0 && <p className="text-gray-500">No crew requests found.</p>}
+            <section className="bg-white/10 border border-white/10 rounded-2xl p-6">
+              <h2 className="text-2xl font-black">Next Studio Upgrades</h2>
+              <div className="grid md:grid-cols-3 gap-4 mt-4 text-slate-200">
+                <div className="bg-slate-900 rounded-xl p-4">Cloudinary image upload for Team and Radio Team</div>
+                <div className="bg-slate-900 rounded-xl p-4">Dedicated edit pages for Events and Businesses</div>
+                <div className="bg-slate-900 rounded-xl p-4">Public Team and Radio pages powered by admin data</div>
               </div>
             </section>
           </div>
