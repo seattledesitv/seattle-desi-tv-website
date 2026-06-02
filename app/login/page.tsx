@@ -18,6 +18,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("Checking login...");
   const [loading, setLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
 
   async function getRoleForUser(user: any) {
     if (!user?.id && !user?.email) return "";
@@ -64,6 +66,7 @@ export default function LoginPage() {
     }
 
     if (data.user) {
+      setCurrentUser(data.user);
       setMessage("Login successful. Redirecting...");
       await redirectForUser(data.user);
     } else {
@@ -72,12 +75,39 @@ export default function LoginPage() {
     }
   }
 
+  async function cleanLogout() {
+    setLoading(true);
+    setMessage("Logging out...");
+    await supabase.auth.signOut({ scope: "global" });
+    try {
+      localStorage.removeItem("supabase.auth.token");
+      Object.keys(localStorage)
+        .filter((key) => key.toLowerCase().includes("supabase") || key.toLowerCase().includes("sb-"))
+        .forEach((key) => localStorage.removeItem(key));
+      Object.keys(sessionStorage)
+        .filter((key) => key.toLowerCase().includes("supabase") || key.toLowerCase().includes("sb-"))
+        .forEach((key) => sessionStorage.removeItem(key));
+    } catch {
+      // ignore browser storage cleanup errors
+    }
+    setCurrentUser(null);
+    setPassword("");
+    setLoading(false);
+    setCheckingSession(false);
+    setMessage("Logged out. You can login again now.");
+    window.history.replaceState({}, "", "/login");
+  }
+
   useEffect(() => {
     async function init() {
       const { data } = await supabase.auth.getUser();
-      if (data?.user) {
-        setMessage(`Already logged in as ${data.user.email}. Redirecting...`);
-        await redirectForUser(data.user);
+      const user = data?.user || null;
+      setCurrentUser(user);
+      setCheckingSession(false);
+
+      if (user) {
+        setEmail(user.email || "");
+        setMessage(`Already logged in as ${user.email}. Use Continue or Logout below.`);
       } else {
         setMessage("");
       }
@@ -93,33 +123,59 @@ export default function LoginPage() {
         <h1 className="text-3xl font-black mt-4">Login</h1>
         <p className="text-gray-500 mt-2 mb-6">Use your Seattle Desi TV account.</p>
 
-        <input
-          className="w-full border rounded-lg p-3 mb-3"
-          placeholder="Email"
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
-        <input
-          className="w-full border rounded-lg p-3 mb-3"
-          placeholder="Password"
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
+        {currentUser && !checkingSession ? (
+          <div className="bg-green-50 border border-green-200 text-green-800 rounded-xl p-4 mb-5 text-sm">
+            <p>Currently logged in as <b>{currentUser.email}</b>.</p>
+            <div className="grid gap-3 mt-4">
+              <button
+                type="button"
+                onClick={() => redirectForUser(currentUser)}
+                disabled={loading}
+                className="w-full bg-pink-600 text-white py-3 rounded-xl font-black disabled:opacity-60"
+              >
+                Continue
+              </button>
+              <button
+                type="button"
+                onClick={cleanLogout}
+                disabled={loading}
+                className="w-full border border-red-500 text-red-600 py-3 rounded-xl font-black disabled:opacity-60"
+              >
+                Logout / Clear Session
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <input
+              className="w-full border rounded-lg p-3 mb-3"
+              placeholder="Email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+            <input
+              className="w-full border rounded-lg p-3 mb-3"
+              placeholder="Password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
 
-        {message && <p className="text-sm text-orange-600 mb-3 whitespace-pre-line">{message}</p>}
+            <button
+              type="button"
+              onClick={signIn}
+              disabled={loading || checkingSession}
+              className="w-full bg-pink-600 text-white py-3 rounded-xl font-black disabled:opacity-60"
+            >
+              {loading ? "Logging in..." : "Login"}
+            </button>
+          </>
+        )}
 
-        <button
-          type="button"
-          onClick={signIn}
-          disabled={loading}
-          className="w-full bg-pink-600 text-white py-3 rounded-xl font-black disabled:opacity-60"
-        >
-          {loading ? "Logging in..." : "Login"}
-        </button>
+        {message && <p className="text-sm text-orange-600 mt-4 whitespace-pre-line">{message}</p>}
       </div>
     </main>
   );
