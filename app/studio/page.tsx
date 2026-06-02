@@ -29,9 +29,18 @@ function formatDate(value?: string | null) {
   return parsed.toLocaleDateString();
 }
 
+function statusClass(status?: string | null) {
+  const normalized = String(status || "pending").toLowerCase();
+  if (normalized === "approved") return "bg-green-100 text-green-800";
+  if (normalized === "rejected") return "bg-red-100 text-red-800";
+  if (normalized === "on_hold") return "bg-yellow-100 text-yellow-800";
+  return "bg-gray-100 text-gray-800";
+}
+
 export default function StudioPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking Studio access...");
+  const [actionMessage, setActionMessage] = useState("");
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState("");
   const [events, setEvents] = useState<any[]>([]);
@@ -51,8 +60,17 @@ export default function StudioPage() {
         .order("created_at", { ascending: false }),
     ]);
 
-    if (!eventResult.error) setEvents(eventResult.data || []);
-    if (!businessResult.error) setBusinesses(businessResult.data || []);
+    if (eventResult.error) {
+      setActionMessage(`Could not load events: ${eventResult.error.message}`);
+    } else {
+      setEvents(eventResult.data || []);
+    }
+
+    if (businessResult.error) {
+      setActionMessage(`Could not load businesses: ${businessResult.error.message}`);
+    } else {
+      setBusinesses(businessResult.data || []);
+    }
   }
 
   async function init() {
@@ -90,6 +108,76 @@ export default function StudioPage() {
     await loadStudioData();
     setMessage("");
     setLoading(false);
+  }
+
+  async function updateEventStatus(id: string, status: string) {
+    setActionMessage("Updating event...");
+    const payload: any = { status };
+    if (status === "approved") {
+      payload.approved_by = user?.email || user?.id || null;
+      payload.approved_at = new Date().toISOString();
+      payload.approved = true;
+    }
+    if (status !== "approved") {
+      payload.approved = false;
+    }
+
+    const { error } = await supabase.from("events").update(payload).eq("id", id);
+    if (error) {
+      setActionMessage(`Event update failed: ${error.message}`);
+      return;
+    }
+    setActionMessage(`Event marked ${status}.`);
+    await loadStudioData();
+  }
+
+  async function deleteEvent(id: string, title: string) {
+    const ok = window.confirm(`Delete event: ${title}? This cannot be undone.`);
+    if (!ok) return;
+
+    setActionMessage("Deleting event...");
+    const { error } = await supabase.from("events").delete().eq("id", id);
+    if (error) {
+      setActionMessage(`Event delete failed: ${error.message}`);
+      return;
+    }
+    setActionMessage("Event deleted.");
+    await loadStudioData();
+  }
+
+  async function updateBusinessStatus(id: string, status: string) {
+    setActionMessage("Updating business...");
+    const payload: any = { status };
+    if (status === "approved") {
+      payload.approved_by = user?.email || user?.id || null;
+      payload.approved_at = new Date().toISOString();
+      payload.approved = true;
+    }
+    if (status !== "approved") {
+      payload.approved = false;
+    }
+
+    const { error } = await supabase.from("local_businesses").update(payload).eq("id", id);
+    if (error) {
+      setActionMessage(`Business update failed: ${error.message}`);
+      return;
+    }
+    setActionMessage(`Business marked ${status}.`);
+    await loadStudioData();
+  }
+
+  async function deleteBusiness(id: string, name: string) {
+    const ok = window.confirm(`Delete business: ${name}? This cannot be undone.`);
+    if (!ok) return;
+
+    setActionMessage("Deleting business...");
+    const { error } = await supabase.from("local_businesses").delete().eq("id", id);
+    if (error) {
+      setActionMessage(`Business delete failed: ${error.message}`);
+      return;
+    }
+    setActionMessage("Business deleted.");
+    await loadStudioData();
   }
 
   async function logout() {
@@ -141,6 +229,8 @@ export default function StudioPage() {
 
         {!loading && canAccessStudio && (
           <div className="space-y-8">
+            {actionMessage && <div className="bg-yellow-100 text-yellow-900 rounded-2xl p-4 font-bold">{actionMessage}</div>}
+
             <div className="grid md:grid-cols-4 gap-4">
               <div className="bg-white/10 border border-white/10 rounded-2xl p-5"><p className="text-slate-300">All Events</p><p className="text-3xl font-black">{events.length}</p></div>
               <div className="bg-white/10 border border-white/10 rounded-2xl p-5"><p className="text-slate-300">Pending Events</p><p className="text-3xl font-black">{pendingEvents.length}</p></div>
@@ -149,30 +239,42 @@ export default function StudioPage() {
             </div>
 
             <section className="bg-white text-slate-950 rounded-2xl p-6">
-              <h2 className="text-2xl font-black mb-4">Recent Events</h2>
+              <h2 className="text-2xl font-black mb-4">Events</h2>
               <div className="grid gap-3">
                 {events.map((event) => (
-                  <div key={event.id} className="border rounded-xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div key={event.id} className="border rounded-xl p-4 grid md:grid-cols-[1fr_auto] gap-4">
                     <div>
                       <h3 className="font-black">{event.title}</h3>
                       <p className="text-sm text-gray-600">{formatDate(event.date)} · {event.location}</p>
+                      <span className={`inline-block text-sm font-bold px-3 py-1 rounded-full mt-3 ${statusClass(event.status)}`}>{event.status || "pending"}</span>
                     </div>
-                    <span className="text-sm font-bold bg-gray-100 px-3 py-1 rounded-full">{event.status || "pending"}</span>
+                    <div className="flex flex-wrap gap-2 md:justify-end md:items-center">
+                      <button onClick={() => updateEventStatus(event.id, "approved")} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve</button>
+                      <button onClick={() => updateEventStatus(event.id, "on_hold")} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">On Hold</button>
+                      <button onClick={() => updateEventStatus(event.id, "rejected")} className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Reject</button>
+                      <button onClick={() => deleteEvent(event.id, event.title)} className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm">Delete</button>
+                    </div>
                   </div>
                 ))}
               </div>
             </section>
 
             <section className="bg-white text-slate-950 rounded-2xl p-6">
-              <h2 className="text-2xl font-black mb-4">Recent Businesses</h2>
+              <h2 className="text-2xl font-black mb-4">Businesses</h2>
               <div className="grid gap-3">
                 {businesses.map((business) => (
-                  <div key={business.id} className="border rounded-xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div key={business.id} className="border rounded-xl p-4 grid md:grid-cols-[1fr_auto] gap-4">
                     <div>
                       <h3 className="font-black">{business.name}</h3>
                       <p className="text-sm text-gray-600">{business.category} · {business.address}</p>
+                      <span className={`inline-block text-sm font-bold px-3 py-1 rounded-full mt-3 ${statusClass(business.status)}`}>{business.status || "pending"}</span>
                     </div>
-                    <span className="text-sm font-bold bg-gray-100 px-3 py-1 rounded-full">{business.status || "pending"}</span>
+                    <div className="flex flex-wrap gap-2 md:justify-end md:items-center">
+                      <button onClick={() => updateBusinessStatus(business.id, "approved")} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve</button>
+                      <button onClick={() => updateBusinessStatus(business.id, "on_hold")} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">On Hold</button>
+                      <button onClick={() => updateBusinessStatus(business.id, "rejected")} className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Reject</button>
+                      <button onClick={() => deleteBusiness(business.id, business.name)} className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm">Delete</button>
+                    </div>
                   </div>
                 ))}
               </div>
