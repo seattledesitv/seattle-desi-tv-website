@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
+const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
+const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -54,8 +56,10 @@ export default function StudioTeamPage() {
   const [form, setForm] = useState(emptyForm());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const canAccess = Boolean(user && roleContainsAdmin(role));
+  const cloudinaryReady = Boolean(CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET);
 
   async function loadMembers() {
     const { data, error } = await supabase
@@ -122,6 +126,44 @@ export default function StudioTeamPage() {
     setEditingId(null);
     setForm(emptyForm());
     setActionMessage("");
+  }
+
+  async function uploadImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!cloudinaryReady) {
+      setActionMessage("Cloudinary is not configured. Add NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET in Vercel.");
+      return;
+    }
+
+    setUploadingImage(true);
+    setActionMessage("Uploading image...");
+
+    try {
+      const uploadForm = new FormData();
+      uploadForm.append("file", file);
+      uploadForm.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      uploadForm.append("folder", "seattle-desi-tv/team");
+
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: "POST",
+        body: uploadForm,
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.secure_url) {
+        throw new Error(result.error?.message || "Cloudinary upload failed.");
+      }
+
+      setForm((current) => ({ ...current, image: result.secure_url }));
+      setActionMessage("Image uploaded. Save the team member to keep it.");
+    } catch (error: any) {
+      setActionMessage(`Image upload failed: ${error?.message || String(error)}`);
+    } finally {
+      setUploadingImage(false);
+      event.target.value = "";
+    }
   }
 
   async function saveMember() {
@@ -221,7 +263,7 @@ export default function StudioTeamPage() {
 
             <section className="bg-white text-slate-950 rounded-2xl p-6">
               <h2 className="text-2xl font-black mb-4">{editingId ? "Edit Team Member" : "Add Team Member"}</h2>
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-[1fr_1fr_1.4fr] gap-4">
                 <label className="grid gap-2 text-sm font-bold">
                   Name
                   <input className="border rounded-lg p-3 font-normal" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Team member name" />
@@ -230,13 +272,16 @@ export default function StudioTeamPage() {
                   Title / Role
                   <input className="border rounded-lg p-3 font-normal" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Founder, Host, Volunteer..." />
                 </label>
-                <label className="grid gap-2 text-sm font-bold">
-                  Image URL
-                  <input className="border rounded-lg p-3 font-normal" value={form.image} onChange={(event) => setForm({ ...form, image: event.target.value })} placeholder="https://..." />
-                </label>
+                <div className="grid gap-2 text-sm font-bold">
+                  Image
+                  <input type="file" accept="image/*" onChange={uploadImage} disabled={uploadingImage} className="border rounded-lg p-3 font-normal" />
+                  <input className="border rounded-lg p-3 font-normal" value={form.image} onChange={(event) => setForm({ ...form, image: event.target.value })} placeholder="Or paste image URL" />
+                  {form.image && <img src={form.image} alt="Preview" className="w-24 h-24 object-cover rounded-xl border" />}
+                  {!cloudinaryReady && <p className="text-xs text-orange-600">Cloudinary upload is not configured; image URL still works.</p>}
+                </div>
               </div>
               <div className="flex flex-wrap gap-3 mt-5">
-                <button onClick={saveMember} disabled={saving} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold disabled:opacity-60">{saving ? "Saving..." : editingId ? "Update Member" : "Add Member"}</button>
+                <button onClick={saveMember} disabled={saving || uploadingImage} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold disabled:opacity-60">{saving ? "Saving..." : editingId ? "Update Member" : "Add Member"}</button>
                 {editingId && <button onClick={resetForm} className="border border-gray-400 text-gray-700 px-5 py-3 rounded-xl font-bold">Cancel Edit</button>}
               </div>
             </section>
