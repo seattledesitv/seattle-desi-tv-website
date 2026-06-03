@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
 const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "seattledesitv@gmail.com";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -76,6 +77,7 @@ export default function EventsPage() {
   const [pocPhone, setPocPhone] = useState("");
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [submitMessage, setSubmitMessage] = useState("");
+  const [adminReviewLink, setAdminReviewLink] = useState("");
   const [saving, setSaving] = useState(false);
 
   async function loadEvents() {
@@ -85,7 +87,7 @@ export default function EventsPage() {
       .from("events")
       .select("id,title,date,location,description,image,image_urls,ticket_url,status,created_at")
       .eq("status", "approved")
-      .order("created_at", { ascending: false });
+      .order("date", { ascending: true });
 
     if (error) {
       console.error("Events load error", error);
@@ -122,8 +124,30 @@ export default function EventsPage() {
     setAuthMessage("Logged out.");
   }
 
+  function openAdminEmail(eventId: string, eventTitle: string, eventDate: string, eventLocation: string) {
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://seattledesitv.com";
+    const reviewLink = `${origin}/studio/events/${eventId}`;
+    setAdminReviewLink(reviewLink);
+
+    const subject = `New SDTV event submitted: ${eventTitle}`;
+    const body = [
+      "A new event has been submitted for Seattle Desi TV review.",
+      "",
+      `Event: ${eventTitle}`,
+      `Date: ${eventDate}`,
+      `Location: ${eventLocation}`,
+      `Submitted by: ${user?.email || "unknown"}`,
+      "",
+      `Review / approve here: ${reviewLink}`,
+    ].join("\n");
+
+    const mailtoUrl = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(mailtoUrl, "_blank");
+  }
+
   async function submitEvent() {
     setSubmitMessage("");
+    setAdminReviewLink("");
 
     if (!user?.id) {
       setSubmitMessage("Please login before submitting an event.");
@@ -154,9 +178,14 @@ export default function EventsPage() {
         image: imageUrl || null,
         created_by: user.id,
         status: "pending",
+        approved: false,
       };
 
-      const { error: insertError } = await supabase.from("events").insert(eventPayload);
+      const { data, error: insertError } = await supabase
+        .from("events")
+        .insert(eventPayload)
+        .select("id,title,date,location")
+        .single();
 
       if (insertError) throw insertError;
 
@@ -168,7 +197,8 @@ export default function EventsPage() {
       setPocEmail("");
       setPocPhone("");
       setImageFiles([]);
-      setSubmitMessage("Event submitted successfully. It will appear after admin approval.");
+      setSubmitMessage("Event submitted successfully. It will appear after admin approval. An admin review email window has been opened.");
+      if (data?.id) openAdminEmail(data.id, data.title, data.date, data.location);
       await loadEvents();
     } catch (error: any) {
       console.error("Event submit error", error);
@@ -238,6 +268,7 @@ export default function EventsPage() {
                 <input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setImageFiles(Array.from(e.target.files || []))} />
                 {imageFiles.length > 0 && <p className="text-xs text-gray-500 mb-3">Selected {imageFiles.length} image(s). Only the first image is uploaded.</p>}
                 {submitMessage && <p className="text-sm text-orange-600 mb-3 whitespace-pre-line">{submitMessage}</p>}
+                {adminReviewLink && <a href={adminReviewLink} target="_blank" rel="noreferrer" className="block text-sm text-pink-600 font-bold mb-3">Admin review link</a>}
                 <button type="button" onClick={submitEvent} disabled={saving} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full disabled:opacity-60">
                   {saving ? "Saving Event..." : "Submit Event for Approval"}
                 </button>
