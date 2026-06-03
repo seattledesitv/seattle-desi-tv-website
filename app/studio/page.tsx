@@ -153,7 +153,7 @@ export default function StudioDashboardPage() {
   const attentionCards = [
     { title: "Pending Events", href: "/studio/events/pending", count: counts.pendingEvents, description: "Review new event submissions." },
     { title: "Pending Businesses", href: "/studio/businesses?status=pending", count: counts.pendingBusinesses, description: "Review business listings." },
-    { title: "Pending Crew", href: "/studio/crew?status=pending", count: counts.pendingCrew, description: "Review crew requests." },
+    { title: "Pending Crew", href: "/studio/crew/pending", count: counts.pendingCrew, description: "Review crew requests." },
   ];
 
   const modules = [
