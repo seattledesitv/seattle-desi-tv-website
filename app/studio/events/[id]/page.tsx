@@ -32,7 +32,14 @@ function emptyForm() {
   };
 }
 
-export default function EventEditPage({ params }: { params: { id: string } }) {
+function getEventIdFromPath() {
+  if (typeof window === "undefined") return "";
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  const last = parts[parts.length - 1] || "";
+  return last === "events" ? "" : last;
+}
+
+export default function EventEditPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -41,15 +48,21 @@ export default function EventEditPage({ params }: { params: { id: string } }) {
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState("");
   const [form, setForm] = useState(emptyForm());
+  const [eventId, setEventId] = useState("");
 
   const canAccess = Boolean(user && roleContainsAdmin(role));
   const cloudinaryReady = Boolean(CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET);
 
-  async function loadEvent() {
+  async function loadEvent(id: string) {
+    if (!id) {
+      setActionMessage("Could not load event: missing event id in URL.");
+      return;
+    }
+
     const { data, error } = await supabase
       .from("events")
       .select("id,title,date,location,description,image,ticket_url,poc_email,poc_phone,status,approved")
-      .eq("id", params.id)
+      .eq("id", id)
       .maybeSingle();
 
     if (error) {
@@ -79,6 +92,8 @@ export default function EventEditPage({ params }: { params: { id: string } }) {
   async function init() {
     setLoading(true);
     setMessage("Checking access...");
+    const idFromPath = getEventIdFromPath();
+    setEventId(idFromPath);
 
     const sessionResult = await supabase.auth.getSession();
     const currentUser = sessionResult.data?.session?.user || null;
@@ -106,7 +121,7 @@ export default function EventEditPage({ params }: { params: { id: string } }) {
       return;
     }
 
-    await loadEvent();
+    await loadEvent(idFromPath);
     setMessage("");
     setLoading(false);
   }
@@ -144,6 +159,11 @@ export default function EventEditPage({ params }: { params: { id: string } }) {
   }
 
   async function saveEvent() {
+    if (!eventId) {
+      setActionMessage("Save failed: missing event id in URL.");
+      return;
+    }
+
     if (!form.title.trim()) {
       setActionMessage("Event title is required.");
       return;
@@ -171,7 +191,7 @@ export default function EventEditPage({ params }: { params: { id: string } }) {
       payload.approved_at = new Date().toISOString();
     }
 
-    const { error } = await supabase.from("events").update(payload).eq("id", params.id);
+    const { error } = await supabase.from("events").update(payload).eq("id", eventId);
     if (error) {
       setActionMessage(`Save failed: ${error.message}`);
       setSaving(false);
