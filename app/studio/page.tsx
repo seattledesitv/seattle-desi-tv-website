@@ -25,6 +25,9 @@ function roleContainsAdmin(role: string) {
 type DashboardCounts = {
   events: number;
   pendingEvents: number;
+  approvedEvents: number;
+  onHoldEvents: number;
+  rejectedEvents: number;
   businesses: number;
   pendingBusinesses: number;
   crew: number;
@@ -36,6 +39,9 @@ type DashboardCounts = {
 const emptyCounts: DashboardCounts = {
   events: 0,
   pendingEvents: 0,
+  approvedEvents: 0,
+  onHoldEvents: 0,
+  rejectedEvents: 0,
   businesses: 0,
   pendingBusinesses: 0,
   crew: 0,
@@ -55,27 +61,21 @@ export default function StudioDashboardPage() {
   const canAccessStudio = Boolean(user && roleContainsAdmin(role));
 
   async function loadCounts() {
-    const [eventsResult, pendingEventsResult, businessesResult, pendingBusinessesResult, crewResult, pendingCrewResult, teamResult, radioTeamResult] = await Promise.all([
+    const [eventsResult, pendingEventsResult, approvedEventsResult, onHoldEventsResult, rejectedEventsResult, businessesResult, pendingBusinessesResult, crewResult, pendingCrewResult, teamResult, radioTeamResult] = await Promise.all([
       supabase.from("events").select("id", { count: "exact", head: true }),
-      supabase.from("events").select("id", { count: "exact", head: true }).neq("status", "approved"),
+      supabase.from("events").select("id", { count: "exact", head: true }).or("status.is.null,status.eq.pending"),
+      supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "approved"),
+      supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "on_hold"),
+      supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "rejected"),
       supabase.from("local_businesses").select("id", { count: "exact", head: true }),
-      supabase.from("local_businesses").select("id", { count: "exact", head: true }).neq("status", "approved"),
+      supabase.from("local_businesses").select("id", { count: "exact", head: true }).or("status.is.null,status.eq.pending"),
       supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }),
-      supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).neq("status", "approved"),
+      supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).or("status.is.null,status.eq.pending"),
       supabase.from("team_members").select("id", { count: "exact", head: true }),
       supabase.from("radio_team_members").select("id", { count: "exact", head: true }),
     ]);
 
-    const errors = [
-      eventsResult.error,
-      pendingEventsResult.error,
-      businessesResult.error,
-      pendingBusinessesResult.error,
-      crewResult.error,
-      pendingCrewResult.error,
-      teamResult.error,
-      radioTeamResult.error,
-    ].filter(Boolean);
+    const errors = [eventsResult.error, pendingEventsResult.error, approvedEventsResult.error, onHoldEventsResult.error, rejectedEventsResult.error, businessesResult.error, pendingBusinessesResult.error, crewResult.error, pendingCrewResult.error, teamResult.error, radioTeamResult.error].filter(Boolean);
 
     if (errors.length) {
       setActionMessage(`Some dashboard counts could not load: ${errors.map((error: any) => error.message).join(" | ")}`);
@@ -84,6 +84,9 @@ export default function StudioDashboardPage() {
     setCounts({
       events: eventsResult.count || 0,
       pendingEvents: pendingEventsResult.count || 0,
+      approvedEvents: approvedEventsResult.count || 0,
+      onHoldEvents: onHoldEventsResult.count || 0,
+      rejectedEvents: rejectedEventsResult.count || 0,
       businesses: businessesResult.count || 0,
       pendingBusinesses: pendingBusinessesResult.count || 0,
       crew: crewResult.count || 0,
@@ -147,42 +150,18 @@ export default function StudioDashboardPage() {
     init();
   }, []);
 
+  const attentionCards = [
+    { title: "Pending Events", href: "/studio/events?status=pending", count: counts.pendingEvents, description: "Review new event submissions." },
+    { title: "Pending Businesses", href: "/studio/businesses?status=pending", count: counts.pendingBusinesses, description: "Review business listings." },
+    { title: "Pending Crew", href: "/studio/crew?status=pending", count: counts.pendingCrew, description: "Review crew requests." },
+  ];
+
   const modules = [
-    {
-      title: "Events",
-      href: "/studio/events",
-      count: counts.events,
-      secondary: `${counts.pendingEvents} pending / non-approved`,
-      description: "Approve, hold, reject, delete, and review event listings with images.",
-    },
-    {
-      title: "Businesses",
-      href: "/studio/businesses",
-      count: counts.businesses,
-      secondary: `${counts.pendingBusinesses} pending / non-approved`,
-      description: "Manage local business listings, offers, websites, images, and approval status.",
-    },
-    {
-      title: "Crew Requests",
-      href: "/studio/crew",
-      count: counts.crew,
-      secondary: `${counts.pendingCrew} pending / non-approved`,
-      description: "Approve or reject crew requests and view event details with images.",
-    },
-    {
-      title: "Team",
-      href: "/studio/team",
-      count: counts.team,
-      secondary: "team members",
-      description: "Add, edit, delete, and manage public SDTV team profiles.",
-    },
-    {
-      title: "Radio Team",
-      href: "/studio/radio-team",
-      count: counts.radioTeam,
-      secondary: "radio hosts / segments",
-      description: "Manage RJ profiles, radio hosts, titles, segments, and images.",
-    },
+    { title: "All Events", href: "/studio/events", count: counts.events, secondary: `${counts.approvedEvents} approved · ${counts.onHoldEvents} on hold · ${counts.rejectedEvents} rejected`, description: "Filter, calendar-view, approve, hold, reject, delete, and edit events." },
+    { title: "Businesses", href: "/studio/businesses", count: counts.businesses, secondary: `${counts.pendingBusinesses} pending / non-approved`, description: "Manage local business listings, offers, websites, images, and approval status." },
+    { title: "Crew Requests", href: "/studio/crew", count: counts.crew, secondary: `${counts.pendingCrew} pending`, description: "Approve or reject crew requests and view event details with images." },
+    { title: "Team", href: "/studio/team", count: counts.team, secondary: "team members", description: "Add, edit, delete, and manage public SDTV team profiles." },
+    { title: "Radio Team", href: "/studio/radio-team", count: counts.radioTeam, secondary: "radio hosts / segments", description: "Manage RJ profiles, radio hosts, titles, segments, and images." },
   ];
 
   return (
@@ -192,9 +171,7 @@ export default function StudioDashboardPage() {
           <div>
             <a href="/" className="text-pink-300 font-bold">← Back to Seattle Desi TV</a>
             <h1 className="text-4xl md:text-5xl font-black mt-3">Seattle Desi TV Studio</h1>
-            <p className="text-slate-300 mt-2">
-              {user?.email ? `Logged in as ${user.email} · Role: ${role || "none"}` : "Admin dashboard"}
-            </p>
+            <p className="text-slate-300 mt-2">{user?.email ? `Logged in as ${user.email} · Role: ${role || "none"}` : "Admin dashboard"}</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <button onClick={init} className="bg-white text-slate-950 px-5 py-3 rounded-xl font-bold">Refresh</button>
@@ -216,30 +193,47 @@ export default function StudioDashboardPage() {
           <div className="space-y-8">
             {actionMessage && <div className="bg-yellow-100 text-yellow-900 rounded-2xl p-4 font-bold">{actionMessage}</div>}
 
-            <section className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
-              {modules.map((module) => (
-                <a key={module.href} href={module.href} className="bg-white text-slate-950 rounded-2xl p-6 border border-white/10 shadow-xl hover:scale-[1.01] transition block">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h2 className="text-2xl font-black">{module.title}</h2>
-                      <p className="text-gray-600 mt-2">{module.description}</p>
+            <section>
+              <h2 className="text-2xl font-black mb-4">Needs Attention</h2>
+              <div className="grid md:grid-cols-3 gap-5">
+                {attentionCards.map((card) => (
+                  <a key={card.href} href={card.href} className="bg-pink-600 text-white rounded-2xl p-6 shadow-xl hover:scale-[1.01] transition block">
+                    <p className="text-sm font-black uppercase tracking-wide opacity-80">{card.title}</p>
+                    <p className="text-5xl font-black mt-3">{card.count}</p>
+                    <p className="mt-3 font-semibold opacity-90">{card.description}</p>
+                    <div className="mt-5 inline-block bg-white/20 px-4 py-2 rounded-xl font-bold">Review now</div>
+                  </a>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-black mb-4">Studio Modules</h2>
+              <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {modules.map((module) => (
+                  <a key={module.href} href={module.href} className="bg-white text-slate-950 rounded-2xl p-6 border border-white/10 shadow-xl hover:scale-[1.01] transition block">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h2 className="text-2xl font-black">{module.title}</h2>
+                        <p className="text-gray-600 mt-2">{module.description}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-4xl font-black text-pink-600">{module.count}</p>
+                        <p className="text-xs text-gray-500 font-bold uppercase tracking-wide">{module.secondary}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-4xl font-black text-pink-600">{module.count}</p>
-                      <p className="text-xs text-gray-500 font-bold uppercase tracking-wide">{module.secondary}</p>
-                    </div>
-                  </div>
-                  <div className="mt-6 inline-block bg-slate-950 text-white px-4 py-2 rounded-xl font-bold">Open {module.title}</div>
-                </a>
-              ))}
+                    <div className="mt-6 inline-block bg-slate-950 text-white px-4 py-2 rounded-xl font-bold">Open {module.title}</div>
+                  </a>
+                ))}
+              </div>
             </section>
 
             <section className="bg-white/10 border border-white/10 rounded-2xl p-6">
-              <h2 className="text-2xl font-black">Next Studio Upgrades</h2>
+              <h2 className="text-2xl font-black">Public Pages</h2>
               <div className="grid md:grid-cols-3 gap-4 mt-4 text-slate-200">
-                <div className="bg-slate-900 rounded-xl p-4">Cloudinary image upload for Team and Radio Team</div>
-                <div className="bg-slate-900 rounded-xl p-4">Dedicated edit pages for Events and Businesses</div>
-                <div className="bg-slate-900 rounded-xl p-4">Public Team and Radio pages powered by admin data</div>
+                <a href="/events" className="bg-slate-900 rounded-xl p-4 font-bold">Public Events</a>
+                <a href="/team" className="bg-slate-900 rounded-xl p-4 font-bold">Public Team</a>
+                <a href="/radio-team" className="bg-slate-900 rounded-xl p-4 font-bold">Public Radio Team</a>
               </div>
             </section>
           </div>
