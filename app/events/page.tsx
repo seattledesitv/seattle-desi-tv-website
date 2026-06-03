@@ -124,9 +124,13 @@ export default function EventsPage() {
     setAuthMessage("Logged out.");
   }
 
-  function openAdminEmail(eventId: string, eventTitle: string, eventDate: string, eventLocation: string) {
+  function buildAdminReviewLink(eventId: string) {
     const origin = typeof window !== "undefined" ? window.location.origin : "https://seattledesitv.com";
-    const reviewLink = `${origin}/studio/events/${eventId}`;
+    return `${origin}/studio/events/${eventId}`;
+  }
+
+  function openAdminEmail(eventId: string, eventTitle: string, eventDate: string, eventLocation: string) {
+    const reviewLink = buildAdminReviewLink(eventId);
     setAdminReviewLink(reviewLink);
 
     const subject = `New SDTV event submitted: ${eventTitle}`;
@@ -143,6 +147,37 @@ export default function EventsPage() {
 
     const mailtoUrl = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.open(mailtoUrl, "_blank");
+  }
+
+  async function notifyAdmin(eventId: string, eventTitle: string, eventDate: string, eventLocation: string) {
+    const reviewLink = buildAdminReviewLink(eventId);
+    setAdminReviewLink(reviewLink);
+
+    try {
+      const response = await fetch("/api/notify-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "event",
+          title: eventTitle,
+          date: eventDate,
+          location: eventLocation,
+          submittedBy: user?.email || "unknown",
+          reviewUrl: reviewLink,
+        }),
+      });
+
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.ok) {
+        throw new Error(result?.error || "Admin email API did not confirm success.");
+      }
+
+      return true;
+    } catch (error) {
+      console.warn("Admin notification failed, opening email fallback.", error);
+      openAdminEmail(eventId, eventTitle, eventDate, eventLocation);
+      return false;
+    }
   }
 
   async function submitEvent() {
@@ -197,8 +232,16 @@ export default function EventsPage() {
       setPocEmail("");
       setPocPhone("");
       setImageFiles([]);
-      setSubmitMessage("Event submitted successfully. It will appear after admin approval. An admin review email window has been opened.");
-      if (data?.id) openAdminEmail(data.id, data.title, data.date, data.location);
+
+      let notificationSent = false;
+      if (data?.id) {
+        notificationSent = await notifyAdmin(data.id, data.title, data.date, data.location);
+      }
+
+      setSubmitMessage(notificationSent
+        ? "Event submitted successfully. It will appear after admin approval. Admin notification email was sent."
+        : "Event submitted successfully. It will appear after admin approval. Automatic email failed, so an admin email window was opened as backup."
+      );
       await loadEvents();
     } catch (error: any) {
       console.error("Event submit error", error);
