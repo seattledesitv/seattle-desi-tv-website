@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
+const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
+const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -38,12 +40,7 @@ function ImageThumb({ src, label }: { src?: string; label: string }) {
 }
 
 function emptyForm() {
-  return {
-    name: "",
-    title: "",
-    segment_name: "",
-    image: "",
-  };
+  return { name: "", title: "", segment_name: "", image: "" };
 }
 
 export default function StudioRadioTeamPage() {
@@ -56,8 +53,10 @@ export default function StudioRadioTeamPage() {
   const [form, setForm] = useState(emptyForm());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const canAccess = Boolean(user && roleContainsAdmin(role));
+  const cloudinaryReady = Boolean(CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET);
 
   async function loadMembers() {
     const { data, error } = await supabase
@@ -69,14 +68,12 @@ export default function StudioRadioTeamPage() {
       setActionMessage(`Could not load radio team members: ${error.message}`);
       return;
     }
-
     setMembers(data || []);
   }
 
   async function init() {
     setLoading(true);
     setMessage("Checking access...");
-
     const sessionResult = await supabase.auth.getSession();
     const currentUser = sessionResult.data?.session?.user || null;
     setUser(currentUser);
@@ -111,12 +108,7 @@ export default function StudioRadioTeamPage() {
 
   function startEdit(member: RadioTeamMember) {
     setEditingId(member.id);
-    setForm({
-      name: member.name || "",
-      title: member.title || "",
-      segment_name: member.segment_name || "",
-      image: member.image || "",
-    });
+    setForm({ name: member.name || "", title: member.title || "", segment_name: member.segment_name || "", image: member.image || "" });
     setActionMessage(`Editing ${member.name}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -127,12 +119,39 @@ export default function StudioRadioTeamPage() {
     setActionMessage("");
   }
 
+  async function uploadImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!cloudinaryReady) {
+      setActionMessage("Cloudinary is not configured. Image URL still works.");
+      return;
+    }
+
+    setUploadingImage(true);
+    setActionMessage("Uploading image...");
+    try {
+      const uploadForm = new FormData();
+      uploadForm.append("file", file);
+      uploadForm.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      uploadForm.append("folder", "seattle-desi-tv/radio-team");
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, { method: "POST", body: uploadForm });
+      const result = await response.json();
+      if (!response.ok || !result.secure_url) throw new Error(result.error?.message || "Upload failed.");
+      setForm((current) => ({ ...current, image: result.secure_url }));
+      setActionMessage("Image uploaded. Save to keep it.");
+    } catch (error: any) {
+      setActionMessage(`Image upload failed: ${error?.message || String(error)}`);
+    } finally {
+      setUploadingImage(false);
+      event.target.value = "";
+    }
+  }
+
   async function saveMember() {
     if (!form.name.trim()) {
       setActionMessage("Name is required.");
       return;
     }
-
     setSaving(true);
     setActionMessage(editingId ? "Updating radio team member..." : "Adding radio team member...");
 
@@ -144,7 +163,6 @@ export default function StudioRadioTeamPage() {
     };
 
     let error = null;
-
     if (editingId) {
       const result = await supabase.from("radio_team_members").update(payload).eq("id", editingId);
       error = result.error;
@@ -169,7 +187,6 @@ export default function StudioRadioTeamPage() {
   async function deleteMember(member: RadioTeamMember) {
     const ok = window.confirm(`Delete radio team member: ${member.name}? This cannot be undone.`);
     if (!ok) return;
-
     setActionMessage("Deleting radio team member...");
     const { error } = await supabase.from("radio_team_members").delete().eq("id", member.id);
     if (error) {
@@ -190,9 +207,7 @@ export default function StudioRadioTeamPage() {
     window.location.href = "/login";
   }
 
-  useEffect(() => {
-    init();
-  }, []);
+  useEffect(() => { init(); }, []);
 
   return (
     <main className="min-h-screen bg-slate-950 text-white px-6 py-10">
@@ -210,65 +225,26 @@ export default function StudioRadioTeamPage() {
         </div>
 
         {loading && <div className="bg-white/10 border border-white/10 rounded-2xl p-6">{message}</div>}
-
-        {!loading && !canAccess && (
-          <div className="bg-white text-slate-950 rounded-2xl p-8 max-w-xl">
-            <h2 className="text-2xl font-black">Access Required</h2>
-            <p className="text-gray-600 mt-3">{message}</p>
-            <a href="/login" className="inline-block bg-pink-600 text-white px-5 py-3 rounded-xl font-bold mt-5">Go to Login</a>
-          </div>
-        )}
+        {!loading && !canAccess && <div className="bg-white text-slate-950 rounded-2xl p-8 max-w-xl"><h2 className="text-2xl font-black">Access Required</h2><p className="text-gray-600 mt-3">{message}</p><a href="/login" className="inline-block bg-pink-600 text-white px-5 py-3 rounded-xl font-bold mt-5">Go to Login</a></div>}
 
         {!loading && canAccess && (
           <div className="space-y-8">
             {actionMessage && <div className="bg-yellow-100 text-yellow-900 rounded-2xl p-4 font-bold">{actionMessage}</div>}
-
             <section className="bg-white text-slate-950 rounded-2xl p-6">
               <h2 className="text-2xl font-black mb-4">{editingId ? "Edit Radio Team Member" : "Add Radio Team Member"}</h2>
-              <div className="grid md:grid-cols-4 gap-4">
-                <label className="grid gap-2 text-sm font-bold">
-                  Name
-                  <input className="border rounded-lg p-3 font-normal" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Host / RJ name" />
-                </label>
-                <label className="grid gap-2 text-sm font-bold">
-                  Title / Role
-                  <input className="border rounded-lg p-3 font-normal" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="RJ, Host, Producer..." />
-                </label>
-                <label className="grid gap-2 text-sm font-bold">
-                  Segment Name
-                  <input className="border rounded-lg p-3 font-normal" value={form.segment_name} onChange={(event) => setForm({ ...form, segment_name: event.target.value })} placeholder="Desi Weekend Vibes" />
-                </label>
-                <label className="grid gap-2 text-sm font-bold">
-                  Image URL
-                  <input className="border rounded-lg p-3 font-normal" value={form.image} onChange={(event) => setForm({ ...form, image: event.target.value })} placeholder="https://..." />
-                </label>
+              <div className="grid md:grid-cols-[1fr_1fr_1fr_1.4fr] gap-4">
+                <label className="grid gap-2 text-sm font-bold">Name<input className="border rounded-lg p-3 font-normal" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Name" /></label>
+                <label className="grid gap-2 text-sm font-bold">Title / Role<input className="border rounded-lg p-3 font-normal" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="RJ, Host, Producer..." /></label>
+                <label className="grid gap-2 text-sm font-bold">Segment Name<input className="border rounded-lg p-3 font-normal" value={form.segment_name} onChange={(event) => setForm({ ...form, segment_name: event.target.value })} placeholder="Segment" /></label>
+                <div className="grid gap-2 text-sm font-bold">Image<input type="file" accept="image/*" onChange={uploadImage} disabled={uploadingImage} className="border rounded-lg p-3 font-normal" /><input className="border rounded-lg p-3 font-normal" value={form.image} onChange={(event) => setForm({ ...form, image: event.target.value })} placeholder="Or paste image URL" />{form.image && <img src={form.image} alt="Preview" className="w-24 h-24 object-cover rounded-xl border" />}{!cloudinaryReady && <p className="text-xs text-orange-600">Cloudinary upload is not configured; image URL still works.</p>}</div>
               </div>
-              <div className="flex flex-wrap gap-3 mt-5">
-                <button onClick={saveMember} disabled={saving} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold disabled:opacity-60">{saving ? "Saving..." : editingId ? "Update Member" : "Add Member"}</button>
-                {editingId && <button onClick={resetForm} className="border border-gray-400 text-gray-700 px-5 py-3 rounded-xl font-bold">Cancel Edit</button>}
-              </div>
+              <div className="flex flex-wrap gap-3 mt-5"><button onClick={saveMember} disabled={saving || uploadingImage} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold disabled:opacity-60">{saving ? "Saving..." : editingId ? "Update Member" : "Add Member"}</button>{editingId && <button onClick={resetForm} className="border border-gray-400 text-gray-700 px-5 py-3 rounded-xl font-bold">Cancel Edit</button>}</div>
             </section>
 
             <section className="bg-white text-slate-950 rounded-2xl p-6">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-                <h2 className="text-2xl font-black">Radio Team</h2>
-                <p className="text-sm text-gray-500">Total: {members.length}</p>
-              </div>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4"><h2 className="text-2xl font-black">Radio Team</h2><p className="text-sm text-gray-500">Total: {members.length}</p></div>
               <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {members.map((member) => (
-                  <article key={member.id} className="border rounded-xl p-4 flex gap-4 items-center">
-                    <ImageThumb src={member.image} label={member.name} />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-black truncate">{member.name}</h3>
-                      <p className="text-sm text-gray-600">{member.title || "No title"}</p>
-                      <p className="text-sm font-bold text-pink-600 mt-1">{member.segment_name || "No segment"}</p>
-                      <div className="flex flex-wrap gap-2 mt-4">
-                        <button onClick={() => startEdit(member)} className="bg-slate-900 text-white px-3 py-2 rounded-lg font-bold text-sm">Edit</button>
-                        <button onClick={() => deleteMember(member)} className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm">Delete</button>
-                      </div>
-                    </div>
-                  </article>
-                ))}
+                {members.map((member) => <article key={member.id} className="border rounded-xl p-4 flex gap-4 items-center"><ImageThumb src={member.image} label={member.name} /><div className="flex-1 min-w-0"><h3 className="text-lg font-black truncate">{member.name}</h3><p className="text-sm text-gray-600">{member.title || "No title"}</p><p className="text-sm font-bold text-pink-600 mt-1">{member.segment_name || "No segment"}</p><div className="flex flex-wrap gap-2 mt-4"><button onClick={() => startEdit(member)} className="bg-slate-900 text-white px-3 py-2 rounded-lg font-bold text-sm">Edit</button><button onClick={() => deleteMember(member)} className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm">Delete</button></div></div></article>)}
                 {members.length === 0 && <p className="text-gray-500">No radio team members found.</p>}
               </div>
             </section>
