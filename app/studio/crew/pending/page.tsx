@@ -24,7 +24,7 @@ export default function PendingCrewPage() {
 
   async function loadData() {
     const [eventsResult, crewResult] = await Promise.all([
-      supabase.from("events").select("id,title,date,location,image,image_urls"),
+      supabase.from("events").select("id,title,date,location,image,image_urls,crew_member_ids"),
       supabase.from("event_crew_assignments").select("id,event_id,user_id,user_email,assignment_type,status,created_at,event_title").or("status.is.null,status.eq.pending").order("created_at", { ascending: false })
     ]);
     if (eventsResult.error) setActionMessage(`Could not load events: ${eventsResult.error.message}`); else setEvents(eventsResult.data || []);
@@ -46,13 +46,31 @@ export default function PendingCrewPage() {
     setLoading(false);
   }
 
-  async function updateCrewStatus(id: string, status: string, assignedEvent: any) {
+  async function addCrewToEvent(assignment: any, assignedEvent: any) {
+    if (!assignedEvent?.id || !assignment?.user_id) return;
+    const existing = Array.isArray(assignedEvent.crew_member_ids) ? assignedEvent.crew_member_ids : [];
+    const nextCrew = Array.from(new Set([...existing, assignment.user_id]));
+    const { error } = await supabase.from("events").update({ crew_member_ids: nextCrew }).eq("id", assignedEvent.id);
+    if (error) throw error;
+  }
+
+  async function updateCrewStatus(assignment: any, status: string, assignedEvent: any) {
     setActionMessage("Updating crew request...");
-    const payload: any = { status };
-    if (status === "approved") { payload.approved_by = user?.email || user?.id || null; payload.approved_at = new Date().toISOString(); }
-    if (assignedEvent?.title) payload.event_title = assignedEvent.title;
-    const { error } = await supabase.from("event_crew_assignments").update(payload).eq("id", id);
-    if (error) setActionMessage(`Update failed: ${error.message}`); else { setActionMessage(`Crew request marked ${status}.`); await loadData(); }
+    try {
+      const payload: any = { status };
+      if (status === "approved") {
+        payload.approved_by = user?.email || user?.id || null;
+        payload.approved_at = new Date().toISOString();
+        await addCrewToEvent(assignment, assignedEvent);
+      }
+      if (assignedEvent?.title) payload.event_title = assignedEvent.title;
+      const { error } = await supabase.from("event_crew_assignments").update(payload).eq("id", assignment.id);
+      if (error) throw error;
+      setActionMessage(status === "approved" ? "Crew request approved and member added to event crew." : `Crew request marked ${status}.`);
+      await loadData();
+    } catch (error: any) {
+      setActionMessage(`Update failed: ${error?.message || String(error)}`);
+    }
   }
 
   async function deleteCrew(id: string) {
@@ -71,7 +89,7 @@ export default function PendingCrewPage() {
         <p className="text-slate-300 mt-2 mb-8">Review crew requests waiting for approval.</p>
         {loading && <div className="bg-white/10 rounded-2xl p-6">{message}</div>}
         {!loading && !canAccess && <div className="bg-white text-slate-950 rounded-2xl p-8">{message}</div>}
-        {!loading && canAccess && <div className="space-y-5">{actionMessage && <div className="bg-yellow-100 text-yellow-900 rounded-2xl p-4 font-bold">{actionMessage}</div>}<div className="bg-white/10 rounded-2xl p-5"><p className="text-slate-300">Pending Crew Requests</p><p className="text-4xl font-black">{assignments.length}</p></div><div className="grid gap-4">{assignments.map((assignment) => { const ev = eventFor(assignment); const title = assignment.event_title || ev?.title || "Unknown event"; return <article key={assignment.id} className="bg-white text-slate-950 rounded-2xl p-4 grid md:grid-cols-[112px_1fr_auto] gap-4 items-center">{getImage(ev) ? <img src={getImage(ev)} alt={title} className="w-28 h-28 rounded-xl object-cover" /> : <div className="w-28 h-28 bg-pink-50 rounded-xl grid place-items-center text-pink-600 font-black text-xs">No image</div>}<div><h2 className="text-xl font-black">{title}</h2>{ev && <p className="text-sm text-gray-600">{dateText(ev.date)} · {ev.location}</p>}<p className="text-sm text-gray-700 mt-2">Crew: {assignment.user_email || assignment.user_id}</p><p className="text-xs text-gray-500">Type: {assignment.assignment_type || "not specified"}</p></div><div className="flex flex-wrap gap-2 md:justify-end"><button onClick={() => updateCrewStatus(assignment.id, "approved", ev)} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve</button><button onClick={() => updateCrewStatus(assignment.id, "on_hold", ev)} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">On Hold</button><button onClick={() => updateCrewStatus(assignment.id, "rejected", ev)} className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Reject</button><button onClick={() => deleteCrew(assignment.id)} className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm">Delete</button></div></article>; })}{assignments.length === 0 && <div className="bg-white text-slate-950 rounded-2xl p-8">No pending crew requests.</div>}</div></div>}
+        {!loading && canAccess && <div className="space-y-5">{actionMessage && <div className="bg-yellow-100 text-yellow-900 rounded-2xl p-4 font-bold">{actionMessage}</div>}<div className="bg-white/10 rounded-2xl p-5"><p className="text-slate-300">Pending Crew Requests</p><p className="text-4xl font-black">{assignments.length}</p></div><div className="grid gap-4">{assignments.map((assignment) => { const ev = eventFor(assignment); const title = assignment.event_title || ev?.title || "Unknown event"; return <article key={assignment.id} className="bg-white text-slate-950 rounded-2xl p-4 grid md:grid-cols-[112px_1fr_auto] gap-4 items-center">{getImage(ev) ? <img src={getImage(ev)} alt={title} className="w-28 h-28 rounded-xl object-cover" /> : <div className="w-28 h-28 bg-pink-50 rounded-xl grid place-items-center text-pink-600 font-black text-xs">No image</div>}<div><h2 className="text-xl font-black">{title}</h2>{ev && <p className="text-sm text-gray-600">{dateText(ev.date)} · {ev.location}</p>}<p className="text-sm text-gray-700 mt-2">Crew: {assignment.user_email || assignment.user_id}</p><p className="text-xs text-gray-500">Type: {assignment.assignment_type || "not specified"}</p></div><div className="flex flex-wrap gap-2 md:justify-end"><button onClick={() => updateCrewStatus(assignment, "approved", ev)} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve</button><button onClick={() => updateCrewStatus(assignment, "on_hold", ev)} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">On Hold</button><button onClick={() => updateCrewStatus(assignment, "rejected", ev)} className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Reject</button><button onClick={() => deleteCrew(assignment.id)} className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm">Delete</button></div></article>; })}{assignments.length === 0 && <div className="bg-white text-slate-950 rounded-2xl p-8">No pending crew requests.</div>}</div></div>}
       </div>
     </main>
   );
