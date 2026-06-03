@@ -124,13 +124,21 @@ export default function EventsPage() {
     setAuthMessage("Logged out.");
   }
 
-  function buildAdminReviewLink(eventId: string) {
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://seattledesitv.com";
-    return `${origin}/studio/events/${eventId}`;
+  function siteOrigin() {
+    return typeof window !== "undefined" ? window.location.origin : "https://seattledesitv.com";
+  }
+
+  function buildAdminReviewLink() {
+    return `${siteOrigin()}/studio/events/pending`;
+  }
+
+  function buildDirectEventLink(eventId: string) {
+    return `${siteOrigin()}/studio/events/${eventId}`;
   }
 
   function openAdminEmail(eventId: string, eventTitle: string, eventDate: string, eventLocation: string) {
-    const reviewLink = buildAdminReviewLink(eventId);
+    const reviewLink = buildAdminReviewLink();
+    const directLink = buildDirectEventLink(eventId);
     setAdminReviewLink(reviewLink);
 
     const subject = `New SDTV event submitted: ${eventTitle}`;
@@ -142,7 +150,8 @@ export default function EventsPage() {
       `Location: ${eventLocation}`,
       `Submitted by: ${user?.email || "unknown"}`,
       "",
-      `Review / approve here: ${reviewLink}`,
+      `Open pending inbox: ${reviewLink}`,
+      `Direct edit link: ${directLink}`,
     ].join("\n");
 
     const mailtoUrl = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -150,7 +159,8 @@ export default function EventsPage() {
   }
 
   async function notifyAdmin(eventId: string, eventTitle: string, eventDate: string, eventLocation: string) {
-    const reviewLink = buildAdminReviewLink(eventId);
+    const reviewLink = buildAdminReviewLink();
+    const directLink = buildDirectEventLink(eventId);
     setAdminReviewLink(reviewLink);
 
     try {
@@ -164,6 +174,7 @@ export default function EventsPage() {
           location: eventLocation,
           submittedBy: user?.email || "unknown",
           reviewUrl: reviewLink,
+          directUrl: directLink,
         }),
       });
 
@@ -279,13 +290,7 @@ export default function EventsPage() {
             <p className="text-sm text-gray-500 mt-2">{message}</p>
           </div>
 
-          <button
-            type="button"
-            onClick={loadEvents}
-            className="border border-pink-600 text-pink-600 px-5 py-3 rounded-xl font-bold bg-white"
-          >
-            Refresh Events
-          </button>
+          <button type="button" onClick={loadEvents} className="border border-pink-600 text-pink-600 px-5 py-3 rounded-xl font-bold bg-white">Refresh Events</button>
         </div>
 
         <section className="grid lg:grid-cols-[420px_1fr] gap-8 items-start">
@@ -311,7 +316,7 @@ export default function EventsPage() {
                 <input className="w-full border rounded-lg p-3 mb-3" type="file" accept="image/*" onChange={(e) => setImageFiles(Array.from(e.target.files || []))} />
                 {imageFiles.length > 0 && <p className="text-xs text-gray-500 mb-3">Selected {imageFiles.length} image(s). Only the first image is uploaded.</p>}
                 {submitMessage && <p className="text-sm text-orange-600 mb-3 whitespace-pre-line">{submitMessage}</p>}
-                {adminReviewLink && <a href={adminReviewLink} target="_blank" rel="noreferrer" className="block text-sm text-pink-600 font-bold mb-3">Admin review link</a>}
+                {adminReviewLink && <a href={adminReviewLink} target="_blank" rel="noreferrer" className="block text-sm text-pink-600 font-bold mb-3">Admin pending inbox</a>}
                 <button type="button" onClick={submitEvent} disabled={saving} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full disabled:opacity-60">
                   {saving ? "Saving Event..." : "Submit Event for Approval"}
                 </button>
@@ -342,29 +347,17 @@ export default function EventsPage() {
                       {images.length > 0 ? (
                         <img src={images[0]} alt={event.title} className="w-full h-56 object-cover bg-gray-100" />
                       ) : (
-                        <div className="w-full h-56 bg-pink-50 grid place-items-center text-pink-600 font-black">
-                          Seattle Desi TV
-                        </div>
+                        <div className="w-full h-56 bg-pink-50 grid place-items-center text-pink-600 font-black">Seattle Desi TV</div>
                       )}
 
                       <div className="p-5">
                         <h2 className="text-xl font-black">{event.title}</h2>
-                        <p className="text-gray-500 mt-1">
-                          {d ? d.toLocaleDateString() : event.date} · {event.location}
-                        </p>
+                        <p className="text-gray-500 mt-1">{d ? d.toLocaleDateString() : event.date} · {event.location}</p>
                         {event.description && <p className="text-sm text-gray-600 mt-3 whitespace-pre-line">{event.description}</p>}
 
                         <div className="flex flex-wrap gap-3 mt-5">
-                          {event.ticket_url && (
-                            <a href={event.ticket_url} target="_blank" rel="noreferrer" className="bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">
-                              Tickets / Register
-                            </a>
-                          )}
-                          {event.location && (
-                            <a href={`https://www.google.com/maps?q=${encodeURIComponent(event.location)}`} target="_blank" rel="noreferrer" className="border px-4 py-2 rounded-lg font-bold text-sm">
-                              Map
-                            </a>
-                          )}
+                          {event.ticket_url && <a href={event.ticket_url} target="_blank" rel="noreferrer" className="bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Tickets / Register</a>}
+                          {event.location && <a href={`https://www.google.com/maps?q=${encodeURIComponent(event.location)}`} target="_blank" rel="noreferrer" className="border px-4 py-2 rounded-lg font-bold text-sm">Map</a>}
                         </div>
                       </div>
                     </article>
