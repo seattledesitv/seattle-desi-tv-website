@@ -20,24 +20,26 @@ export default function MyAssignmentsPage() {
 
   const canViewAssignments = Boolean(user && isTeamRole(role));
 
+  async function getUserRole(currentUser: any) {
+    const adminResult = await supabase.from("admins").select("role").or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`).maybeSingle();
+    if (adminResult.data?.role) return cleanRole(adminResult.data.role);
+
+    const requestResult = await supabase
+      .from("user_role_requests")
+      .select("approved_role,requested_role,status")
+      .or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
+      .eq("status", "approved")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return cleanRole(requestResult.data?.approved_role || requestResult.data?.requested_role || "general_public");
+  }
+
   async function loadAssignments(currentUser: any) {
-    if (!currentUser?.id) {
-      setEvents([]);
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("events")
-      .select("id,title,date,location,description,image,image_urls,ticket_url,poc_email,poc_phone,status,crew_member_ids")
-      .contains("crew_member_ids", [currentUser.id])
-      .order("date", { ascending: true });
-
-    if (error) {
-      setMessage(`Could not load assignments: ${error.message}`);
-      setEvents([]);
-      return;
-    }
-
+    if (!currentUser?.id) { setEvents([]); return; }
+    const { data, error } = await supabase.from("events").select("id,title,date,location,description,image,image_urls,ticket_url,poc_email,poc_phone,status,crew_member_ids").contains("crew_member_ids", [currentUser.id]).order("date", { ascending: true });
+    if (error) { setMessage(`Could not load assignments: ${error.message}`); setEvents([]); return; }
     setEvents(data || []);
     setMessage((data || []).length ? `You have ${(data || []).length} assignment(s).` : "You do not have any assignments yet.");
   }
@@ -47,22 +49,11 @@ export default function MyAssignmentsPage() {
     const { data } = await supabase.auth.getUser();
     const currentUser = data?.user || null;
     setUser(currentUser);
+    if (!currentUser) { setMessage("Please login to see your SDTV assignments."); setLoading(false); return; }
 
-    if (!currentUser) {
-      setMessage("Please login to see your SDTV assignments.");
-      setLoading(false);
-      return;
-    }
-
-    const roleResult = await supabase.from("admins").select("role").or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`).maybeSingle();
-    const nextRole = cleanRole(roleResult.data?.role || "general_public");
+    const nextRole = await getUserRole(currentUser);
     setRole(nextRole);
-
-    if (!isTeamRole(nextRole)) {
-      setMessage("This page is for approved SDTV team members.");
-      setLoading(false);
-      return;
-    }
+    if (!isTeamRole(nextRole)) { setMessage(`This page is for approved SDTV team members. Current role: ${nextRole}`); setLoading(false); return; }
 
     await loadAssignments(currentUser);
     setLoading(false);
@@ -70,10 +61,7 @@ export default function MyAssignmentsPage() {
 
   async function signOut() {
     await supabase.auth.signOut();
-    setUser(null);
-    setRole("general_public");
-    setEvents([]);
-    setMessage("Logged out.");
+    setUser(null); setRole("general_public"); setEvents([]); setMessage("Logged out.");
   }
 
   useEffect(() => { init(); }, []);
@@ -82,51 +70,12 @@ export default function MyAssignmentsPage() {
     <main className="min-h-screen bg-slate-950 text-white px-6 py-10">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <div>
-            <a href="/" className="text-pink-300 font-bold">← Back to Seattle Desi TV</a>
-            <h1 className="text-4xl md:text-5xl font-black mt-3">My Assignments</h1>
-            <p className="text-slate-300 mt-2">Private SDTV crew assignments for upcoming coverage.</p>
-            {user?.email && <p className="text-slate-400 text-sm mt-2">Logged in as {user.email} · Role: {role}</p>}
-          </div>
-          <div className="flex gap-3">
-            <button onClick={init} className="bg-white text-slate-950 px-5 py-3 rounded-xl font-bold">Refresh</button>
-            {user && <button onClick={signOut} className="border border-red-400 text-red-300 px-5 py-3 rounded-xl font-bold">Logout</button>}
-          </div>
+          <div><a href="/" className="text-pink-300 font-bold">← Back to Seattle Desi TV</a><h1 className="text-4xl md:text-5xl font-black mt-3">My Assignments</h1><p className="text-slate-300 mt-2">Private SDTV crew assignments for upcoming coverage.</p>{user?.email && <p className="text-slate-400 text-sm mt-2">Logged in as {user.email} · Role: {role}</p>}</div>
+          <div className="flex gap-3"><button onClick={init} className="bg-white text-slate-950 px-5 py-3 rounded-xl font-bold">Refresh</button>{user && <button onClick={signOut} className="border border-red-400 text-red-300 px-5 py-3 rounded-xl font-bold">Logout</button>}</div>
         </div>
-
         {loading && <div className="bg-white/10 rounded-2xl p-6">{message}</div>}
         {!loading && !canViewAssignments && <div className="bg-white text-slate-950 rounded-2xl p-8"><p>{message}</p><a href="/login" className="inline-block bg-pink-600 text-white px-5 py-3 rounded-xl font-bold mt-5">Go to Login</a></div>}
-
-        {!loading && canViewAssignments && (
-          <div className="space-y-5">
-            <div className="bg-white/10 rounded-2xl p-5"><p className="text-slate-300">Assigned Events</p><p className="text-4xl font-black">{events.length}</p></div>
-            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {events.map((event) => {
-                const image = firstImage(event);
-                return (
-                  <article key={event.id} className="bg-white text-slate-950 rounded-2xl overflow-hidden shadow-xl">
-                    {image ? <img src={image} alt={event.title} className="w-full h-52 object-cover" /> : <div className="w-full h-52 bg-pink-50 grid place-items-center text-pink-600 font-black">Seattle Desi TV</div>}
-                    <div className="p-5">
-                      <p className="text-xs font-black uppercase tracking-wide text-pink-600">Assigned Coverage</p>
-                      <h2 className="text-xl font-black mt-1">{event.title}</h2>
-                      <p className="text-gray-600 mt-1">{dateText(event.date)} · {event.location}</p>
-                      {event.description && <p className="text-sm text-gray-600 mt-3 line-clamp-3">{event.description}</p>}
-                      <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm">
-                        {event.poc_email && <p><b>POC Email:</b> {event.poc_email}</p>}
-                        {event.poc_phone && <p><b>POC Phone:</b> {event.poc_phone}</p>}
-                      </div>
-                      <div className="flex flex-wrap gap-3 mt-5">
-                        {event.ticket_url && <a href={event.ticket_url} target="_blank" rel="noreferrer" className="bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Tickets / Info</a>}
-                        {event.location && <a href={`https://www.google.com/maps?q=${encodeURIComponent(event.location)}`} target="_blank" rel="noreferrer" className="border px-4 py-2 rounded-lg font-bold text-sm">Map</a>}
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-            {events.length === 0 && <div className="bg-white text-slate-950 rounded-2xl p-8">No assigned events yet.</div>}
-          </div>
-        )}
+        {!loading && canViewAssignments && <div className="space-y-5"><div className="bg-white/10 rounded-2xl p-5"><p className="text-slate-300">Assigned Events</p><p className="text-4xl font-black">{events.length}</p></div><div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">{events.map((event) => { const image = firstImage(event); return <article key={event.id} className="bg-white text-slate-950 rounded-2xl overflow-hidden shadow-xl">{image ? <img src={image} alt={event.title} className="w-full h-52 object-cover" /> : <div className="w-full h-52 bg-pink-50 grid place-items-center text-pink-600 font-black">Seattle Desi TV</div>}<div className="p-5"><p className="text-xs font-black uppercase tracking-wide text-pink-600">Assigned Coverage</p><h2 className="text-xl font-black mt-1">{event.title}</h2><p className="text-gray-600 mt-1">{dateText(event.date)} · {event.location}</p>{event.description && <p className="text-sm text-gray-600 mt-3 line-clamp-3">{event.description}</p>}<div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm">{event.poc_email && <p><b>POC Email:</b> {event.poc_email}</p>}{event.poc_phone && <p><b>POC Phone:</b> {event.poc_phone}</p>}</div><div className="flex flex-wrap gap-3 mt-5">{event.ticket_url && <a href={event.ticket_url} target="_blank" rel="noreferrer" className="bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Tickets / Info</a>}{event.location && <a href={`https://www.google.com/maps?q=${encodeURIComponent(event.location)}`} target="_blank" rel="noreferrer" className="border px-4 py-2 rounded-lg font-bold text-sm">Map</a>}</div></div></article>; })}</div>{events.length === 0 && <div className="bg-white text-slate-950 rounded-2xl p-8">No assigned events yet.</div>}</div>}
       </div>
     </main>
   );
