@@ -26,6 +26,7 @@ export default function SiteHeader() {
           <nav className="hidden lg:flex items-center gap-3 font-bold text-sm">
             {links.map(([label, href]) => <a key={href} href={href} className="hover:text-pink-600">{label}</a>)}
             <a href="/my-assignments" className="hover:text-pink-600">My Assignments</a>
+            <a href="/notifications" className="hover:text-pink-600">🔔 Notifications</a>
             <a href="/studio" className="hover:text-pink-600">Studio</a>
             <a href="/login" className="bg-pink-600 text-white px-4 py-2 rounded-xl">Login</a>
           </nav>
