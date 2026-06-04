@@ -17,6 +17,11 @@ function roleContainsAdmin(role: string) {
   return String(role || "").toLowerCase().trim().includes("admin");
 }
 
+function isCrewAssignableRole(role: string) {
+  const normalized = String(role || "").toLowerCase().trim();
+  return normalized === "team_member" || normalized.includes("admin");
+}
+
 function emptyForm() {
   return {
     title: "",
@@ -49,9 +54,25 @@ export default function EventEditPage() {
   const [role, setRole] = useState("");
   const [form, setForm] = useState(emptyForm());
   const [eventId, setEventId] = useState("");
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [selectedCrewIds, setSelectedCrewIds] = useState<string[]>([]);
 
   const canAccess = Boolean(user && roleContainsAdmin(role));
   const cloudinaryReady = Boolean(CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET);
+
+  async function loadTeamMembers() {
+    const { data, error } = await supabase
+      .from("admins")
+      .select("user_id,email,role,name")
+      .order("email", { ascending: true });
+
+    if (error) {
+      setActionMessage(`Could not load team members: ${error.message}`);
+      return;
+    }
+
+    setTeamMembers((data || []).filter((member: any) => member.user_id && isCrewAssignableRole(member.role)));
+  }
 
   async function loadEvent(id: string) {
     if (!id) {
@@ -61,7 +82,7 @@ export default function EventEditPage() {
 
     const { data, error } = await supabase
       .from("events")
-      .select("id,title,date,location,description,image,ticket_url,poc_email,poc_phone,status,approved")
+      .select("id,title,date,location,description,image,ticket_url,poc_email,poc_phone,status,approved,crew_member_ids")
       .eq("id", id)
       .maybeSingle();
 
@@ -87,6 +108,7 @@ export default function EventEditPage() {
       status: data.status || "pending",
       approved: Boolean(data.approved),
     });
+    setSelectedCrewIds(Array.isArray(data.crew_member_ids) ? data.crew_member_ids : []);
   }
 
   async function init() {
@@ -121,9 +143,13 @@ export default function EventEditPage() {
       return;
     }
 
-    await loadEvent(idFromPath);
+    await Promise.all([loadEvent(idFromPath), loadTeamMembers()]);
     setMessage("");
     setLoading(false);
+  }
+
+  function toggleCrewMember(userId: string) {
+    setSelectedCrewIds((current) => current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId]);
   }
 
   async function uploadImage(event: ChangeEvent<HTMLInputElement>) {
@@ -184,6 +210,7 @@ export default function EventEditPage() {
       poc_phone: form.poc_phone.trim(),
       status: form.status || "pending",
       approved,
+      crew_member_ids: Array.from(new Set(selectedCrewIds)),
     };
 
     if (approved) {
@@ -198,7 +225,7 @@ export default function EventEditPage() {
       return;
     }
 
-    setActionMessage("Event saved.");
+    setActionMessage("Event saved, including assigned crew.");
     setSaving(false);
   }
 
@@ -236,6 +263,20 @@ export default function EventEditPage() {
               <input className="border rounded-lg p-3 font-normal" value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} placeholder="Or paste image URL" />
               {form.image && <img src={form.image} alt="Event preview" className="w-48 h-48 object-cover rounded-xl border" />}
               {!cloudinaryReady && <p className="text-xs text-orange-600">Cloudinary upload is not configured; image URL still works.</p>}
+            </div>
+
+            <div className="border rounded-2xl p-4 bg-slate-50">
+              <h2 className="text-xl font-black">Assign SDTV Crew</h2>
+              <p className="text-sm text-gray-600 mt-1 mb-4">Private admin-only assignment. These names are not shown publicly.</p>
+              <div className="grid md:grid-cols-2 gap-3">
+                {teamMembers.map((member) => (
+                  <label key={member.user_id} className="flex items-center gap-3 border rounded-xl p-3 bg-white text-sm">
+                    <input type="checkbox" checked={selectedCrewIds.includes(member.user_id)} onChange={() => toggleCrewMember(member.user_id)} />
+                    <span><b>{member.name || member.email}</b><br /><span className="text-gray-500">{member.email} · {member.role}</span></span>
+                  </label>
+                ))}
+                {teamMembers.length === 0 && <p className="text-sm text-gray-500">No approved team members found in roles yet.</p>}
+              </div>
             </div>
 
             <button onClick={saveEvent} disabled={saving || uploadingImage} className="bg-pink-600 text-white px-6 py-3 rounded-xl font-black disabled:opacity-60">{saving ? "Saving..." : "Save Event"}</button>
