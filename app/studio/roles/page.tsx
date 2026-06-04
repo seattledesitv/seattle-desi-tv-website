@@ -2,20 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import StudioHeader from "../../components/StudioHeader";
 
 const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
 const ROLES = ["general_public", "team_member", "pm_admin", "super_admin"];
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-  { auth: { storageKey: AUTH_STORAGE_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
-);
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "", { auth: { storageKey: AUTH_STORAGE_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
 
-function isAdminRole(role: string) {
-  const normalized = String(role || "").toLowerCase();
-  return normalized === "pm_admin" || normalized === "super_admin" || normalized.includes("admin");
-}
+function isAdminRole(role: string) { const normalized = String(role || "").toLowerCase(); return normalized === "pm_admin" || normalized === "super_admin" || normalized.includes("admin"); }
 
 export default function StudioRolesPage() {
   const [loading, setLoading] = useState(true);
@@ -25,25 +19,14 @@ export default function StudioRolesPage() {
   const [role, setRole] = useState("");
   const [requests, setRequests] = useState<any[]>([]);
   const [selectedRoles, setSelectedRoles] = useState<Record<string, string>>({});
-
   const canAccess = Boolean(user && isAdminRole(role));
 
   async function loadRequests() {
-    const { data, error } = await supabase
-      .from("user_role_requests")
-      .select("id,user_id,email,requested_role,status,approved_role,approved_by,approved_at,created_at")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      setActionMessage(`Could not load role requests: ${error.message}`);
-      return;
-    }
-
+    const { data, error } = await supabase.from("user_role_requests").select("id,user_id,email,requested_role,status,approved_role,approved_by,approved_at,created_at").order("created_at", { ascending: false });
+    if (error) { setActionMessage(`Could not load role requests: ${error.message}`); return; }
     setRequests(data || []);
     const next: Record<string, string> = {};
-    (data || []).forEach((item: any) => {
-      next[item.id] = item.approved_role || item.requested_role || "general_public";
-    });
+    (data || []).forEach((item: any) => { next[item.id] = item.approved_role || item.requested_role || "general_public"; });
     setSelectedRoles(next);
   }
 
@@ -52,139 +35,34 @@ export default function StudioRolesPage() {
     const sessionResult = await supabase.auth.getSession();
     const currentUser = sessionResult.data?.session?.user || null;
     setUser(currentUser);
-
-    if (!currentUser) {
-      setMessage("Please login to access role requests.");
-      setLoading(false);
-      return;
-    }
-
-    const adminResult = await supabase
-      .from("admins")
-      .select("role")
-      .or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
-      .maybeSingle();
-
+    if (!currentUser) { setMessage("Please login to access role requests."); setLoading(false); return; }
+    const adminResult = await supabase.from("admins").select("role").or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`).maybeSingle();
     const nextRole = adminResult.data?.role || "";
     setRole(nextRole);
-
-    if (!isAdminRole(nextRole)) {
-      setMessage("This account does not have role approval access.");
-      setLoading(false);
-      return;
-    }
-
-    await loadRequests();
-    setMessage("");
-    setLoading(false);
+    if (!isAdminRole(nextRole)) { setMessage("This account does not have role approval access."); setLoading(false); return; }
+    await loadRequests(); setMessage(""); setLoading(false);
   }
 
   async function approveRequest(request: any) {
     const approvedRole = selectedRoles[request.id] || request.requested_role || "general_public";
     setActionMessage("Approving role request...");
-
-    const { error: upsertError } = await supabase.from("admins").upsert({
-      user_id: request.user_id,
-      email: request.email,
-      role: approvedRole,
-    }, { onConflict: "email" });
-
-    if (upsertError) {
-      setActionMessage(`Could not update user role: ${upsertError.message}`);
-      return;
-    }
-
-    const { error: updateError } = await supabase
-      .from("user_role_requests")
-      .update({
-        status: "approved",
-        approved_role: approvedRole,
-        approved_by: user?.email || user?.id || null,
-        approved_at: new Date().toISOString(),
-      })
-      .eq("id", request.id);
-
-    if (updateError) {
-      setActionMessage(`Role approved, but request status update failed: ${updateError.message}`);
-      return;
-    }
-
+    const { error: upsertError } = await supabase.from("admins").upsert({ user_id: request.user_id, email: request.email, role: approvedRole }, { onConflict: "email" });
+    if (upsertError) { setActionMessage(`Could not update user role: ${upsertError.message}`); return; }
+    const { error: updateError } = await supabase.from("user_role_requests").update({ status: "approved", approved_role: approvedRole, approved_by: user?.email || user?.id || null, approved_at: new Date().toISOString() }).eq("id", request.id);
+    if (updateError) { setActionMessage(`Role approved, but request status update failed: ${updateError.message}`); return; }
     setActionMessage(`Approved ${request.email} as ${approvedRole}.`);
     await loadRequests();
   }
 
   async function rejectRequest(request: any) {
     setActionMessage("Rejecting role request...");
-    const { error } = await supabase
-      .from("user_role_requests")
-      .update({
-        status: "rejected",
-        approved_by: user?.email || user?.id || null,
-        approved_at: new Date().toISOString(),
-      })
-      .eq("id", request.id);
-
-    if (error) {
-      setActionMessage(`Reject failed: ${error.message}`);
-      return;
-    }
-
+    const { error } = await supabase.from("user_role_requests").update({ status: "rejected", approved_by: user?.email || user?.id || null, approved_at: new Date().toISOString() }).eq("id", request.id);
+    if (error) { setActionMessage(`Reject failed: ${error.message}`); return; }
     setActionMessage(`Rejected request from ${request.email}.`);
     await loadRequests();
   }
 
   useEffect(() => { init(); }, []);
 
-  return (
-    <main className="min-h-screen bg-slate-950 text-white px-6 py-10">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <div>
-            <a href="/studio" className="text-pink-300 font-bold">← Back to Studio</a>
-            <h1 className="text-4xl md:text-5xl font-black mt-3">Role Requests</h1>
-            <p className="text-slate-300 mt-2">Approve public users and SDTV team members.</p>
-          </div>
-          <button onClick={init} className="bg-white text-slate-950 px-5 py-3 rounded-xl font-bold">Refresh</button>
-        </div>
-
-        {loading && <div className="bg-white/10 rounded-2xl p-6">{message}</div>}
-        {!loading && !canAccess && <div className="bg-white text-slate-950 rounded-2xl p-8">{message}</div>}
-
-        {!loading && canAccess && (
-          <div className="space-y-5">
-            {actionMessage && <div className="bg-yellow-100 text-yellow-900 rounded-2xl p-4 font-bold">{actionMessage}</div>}
-            <div className="bg-white/10 rounded-2xl p-5">
-              <p className="text-slate-300">Total Role Requests</p>
-              <p className="text-4xl font-black">{requests.length}</p>
-            </div>
-
-            <div className="grid gap-4">
-              {requests.map((request) => (
-                <article key={request.id} className="bg-white text-slate-950 rounded-2xl p-5 grid lg:grid-cols-[1fr_auto] gap-4 items-center">
-                  <div>
-                    <h2 className="text-xl font-black">{request.email}</h2>
-                    <p className="text-sm text-gray-600 mt-1">Requested: <b>{request.requested_role}</b> · Status: <b>{request.status}</b></p>
-                    {request.approved_role && <p className="text-sm text-gray-600">Approved role: <b>{request.approved_role}</b></p>}
-                    {request.approved_by && <p className="text-xs text-gray-500 mt-1">Reviewed by {request.approved_by}</p>}
-                  </div>
-                  <div className="flex flex-wrap gap-2 lg:justify-end">
-                    <select
-                      className="border rounded-lg p-2 text-sm"
-                      value={selectedRoles[request.id] || request.requested_role || "general_public"}
-                      onChange={(event) => setSelectedRoles({ ...selectedRoles, [request.id]: event.target.value })}
-                    >
-                      {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-                    </select>
-                    <button onClick={() => approveRequest(request)} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve</button>
-                    <button onClick={() => rejectRequest(request)} className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Reject</button>
-                  </div>
-                </article>
-              ))}
-              {requests.length === 0 && <div className="bg-white text-slate-950 rounded-2xl p-8">No role requests found.</div>}
-            </div>
-          </div>
-        )}
-      </div>
-    </main>
-  );
+  return <main className="min-h-screen bg-slate-950 text-white"><StudioHeader /><div className="max-w-6xl mx-auto px-6 py-10"><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8"><div><h1 className="text-4xl md:text-5xl font-black">Role Requests</h1><p className="text-slate-300 mt-2">Approve public users and SDTV team members.</p>{user?.email && <p className="text-slate-400 text-sm mt-2">Logged in as {user.email} · Role: {role || "none"}</p>}</div><button onClick={init} className="bg-white text-slate-950 px-5 py-3 rounded-xl font-bold">Refresh</button></div>{loading && <div className="bg-white/10 rounded-2xl p-6">{message}</div>}{!loading && !canAccess && <div className="bg-white text-slate-950 rounded-2xl p-8">{message}</div>}{!loading && canAccess && <div className="space-y-5">{actionMessage && <div className="bg-yellow-100 text-yellow-900 rounded-2xl p-4 font-bold">{actionMessage}</div>}<div className="bg-white/10 rounded-2xl p-5"><p className="text-slate-300">Total Role Requests</p><p className="text-4xl font-black">{requests.length}</p></div><div className="grid gap-4">{requests.map((request) => <article key={request.id} className="bg-white text-slate-950 rounded-2xl p-5 grid lg:grid-cols-[1fr_auto] gap-4 items-center"><div><h2 className="text-xl font-black">{request.email}</h2><p className="text-sm text-gray-600 mt-1">Requested: <b>{request.requested_role}</b> · Status: <b>{request.status}</b></p>{request.approved_role && <p className="text-sm text-gray-600">Approved role: <b>{request.approved_role}</b></p>}{request.approved_by && <p className="text-xs text-gray-500 mt-1">Reviewed by {request.approved_by}</p>}</div><div className="flex flex-wrap gap-2 lg:justify-end"><select className="border rounded-lg p-2 text-sm" value={selectedRoles[request.id] || request.requested_role || "general_public"} onChange={(event) => setSelectedRoles({ ...selectedRoles, [request.id]: event.target.value })}>{ROLES.map((r) => <option key={r} value={r}>{r}</option>)}</select><button onClick={() => approveRequest(request)} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve</button><button onClick={() => rejectRequest(request)} className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Reject</button></div></article>)}{requests.length === 0 && <div className="bg-white text-slate-950 rounded-2xl p-8">No role requests found.</div>}</div></div>}</div></main>;
 }
