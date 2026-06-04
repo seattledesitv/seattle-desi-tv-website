@@ -21,6 +21,7 @@ type EventRow = {
   image?: string | null;
   image_urls?: string[] | null;
   ticket_url?: string | null;
+  created_by?: string | null;
 };
 
 function cleanRole(role: string) {
@@ -73,13 +74,14 @@ export default function EventsPage() {
   const [crewMessage, setCrewMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [requestingCrewEventId, setRequestingCrewEventId] = useState("");
+  const [requestingCoverageEventId, setRequestingCoverageEventId] = useState("");
 
   const canRequestCrew = Boolean(user && roleCanRequestCrew(userRole));
 
   async function loadEvents() {
     const { data, error } = await supabase
       .from("events")
-      .select("id,title,date,location,description,image,image_urls,ticket_url")
+      .select("id,title,date,location,description,image,image_urls,ticket_url,created_by")
       .eq("status", "approved")
       .order("date", { ascending: true });
     if (error) {
@@ -189,6 +191,32 @@ export default function EventsPage() {
     }
   }
 
+  async function requestOwnerCoverage(event: EventRow) {
+    setCrewMessage("");
+    if (!user?.id || event.created_by !== user.id) {
+      setCrewMessage("Only the event creator can request SDTV coverage for this event.");
+      return;
+    }
+    setRequestingCoverageEventId(event.id);
+    try {
+      const { error } = await supabase.from("event_crew_assignments").insert({
+        event_id: event.id,
+        user_id: user.id,
+        user_email: user.email || null,
+        assignment_type: "owner_coverage_request",
+        status: "pending",
+        event_title: event.title,
+      });
+      if (error) throw error;
+      await notify("event owner coverage request", event.title, event.date, event.location, `${siteOrigin()}/studio/crew/pending`, `${siteOrigin()}/studio/events/${event.id}`);
+      setCrewMessage("SDTV coverage request submitted for admin review.");
+    } catch (error: any) {
+      setCrewMessage(`Could not submit coverage request: ${formatError(error)}`);
+    } finally {
+      setRequestingCoverageEventId("");
+    }
+  }
+
   useEffect(() => {
     async function init() {
       const { data } = await supabase.auth.getUser();
@@ -255,6 +283,7 @@ export default function EventsPage() {
                 {events.map((event) => {
                   const image = firstImage(event);
                   const d = event.date ? new Date(`${String(event.date).split("T")[0]}T00:00:00`) : null;
+                  const isOwner = Boolean(user?.id && event.created_by === user.id);
                   return (
                     <article key={event.id} className="border rounded-2xl overflow-hidden shadow-sm bg-white">
                       {image ? <img src={image} alt={event.title} className="w-full h-56 object-cover bg-gray-100" /> : <div className="w-full h-56 bg-pink-50 grid place-items-center text-pink-600 font-black">Seattle Desi TV</div>}
@@ -265,6 +294,7 @@ export default function EventsPage() {
                         <div className="flex flex-wrap gap-3 mt-5">
                           {event.ticket_url && <a href={event.ticket_url} target="_blank" rel="noreferrer" className="bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Tickets / Register</a>}
                           {event.location && <a href={`https://www.google.com/maps?q=${encodeURIComponent(event.location)}`} target="_blank" rel="noreferrer" className="border px-4 py-2 rounded-lg font-bold text-sm">Map</a>}
+                          {isOwner && <button type="button" onClick={() => requestOwnerCoverage(event)} disabled={requestingCoverageEventId === event.id} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-60">{requestingCoverageEventId === event.id ? "Requesting..." : "Request SDTV Coverage"}</button>}
                           {canRequestCrew && <button type="button" onClick={() => requestCrew(event)} disabled={requestingCrewEventId === event.id} className="border border-pink-600 text-pink-600 px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-60">{requestingCrewEventId === event.id ? "Requesting..." : "Request to Cover"}</button>}
                         </div>
                       </div>
