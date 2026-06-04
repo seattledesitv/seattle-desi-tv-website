@@ -47,6 +47,15 @@ function siteOrigin() {
   return typeof window !== "undefined" ? window.location.origin : "https://seattledesitv.com";
 }
 
+function coverageLabel(status?: string) {
+  const value = String(status || "not_requested").toLowerCase();
+  if (value === "approved") return "Coverage request approved";
+  if (value === "on_hold") return "Coverage request is under review";
+  if (value === "rejected") return "Coverage request declined";
+  if (value === "pending") return "Coverage request pending";
+  return "No coverage request yet";
+}
+
 async function uploadImage(file: File) {
   if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) throw new Error("Cloudinary is not configured.");
   const formData = new FormData();
@@ -61,6 +70,7 @@ async function uploadImage(file: File) {
 
 export default function EventsPage() {
   const [events, setEvents] = useState<EventRow[]>([]);
+  const [coverageByEvent, setCoverageByEvent] = useState<Record<string, any>>({});
   const [message, setMessage] = useState("Loading approved events...");
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState("general_public");
@@ -77,6 +87,32 @@ export default function EventsPage() {
   const [requestingCoverageEventId, setRequestingCoverageEventId] = useState("");
 
   const canRequestCrew = Boolean(user && roleCanRequestCrew(userRole));
+
+  async function loadCoverageRequests(currentUser: any) {
+    if (!currentUser?.id) {
+      setCoverageByEvent({});
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("event_crew_assignments")
+      .select("id,event_id,status,assignment_type,created_at,approved_at")
+      .eq("user_id", currentUser.id)
+      .eq("assignment_type", "owner_coverage_request")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.warn("Coverage status load failed", error);
+      setCoverageByEvent({});
+      return;
+    }
+
+    const next: Record<string, any> = {};
+    (data || []).forEach((request: any) => {
+      if (!next[request.event_id]) next[request.event_id] = request;
+    });
+    setCoverageByEvent(next);
+  }
 
   async function loadEvents() {
     const { data, error } = await supabase
@@ -115,6 +151,7 @@ export default function EventsPage() {
     }
     setUser(data.user || null);
     await loadRole(data.user);
+    await loadCoverageRequests(data.user);
     setPassword("");
   }
 
@@ -122,6 +159,7 @@ export default function EventsPage() {
     await supabase.auth.signOut();
     setUser(null);
     setUserRole("general_public");
+    setCoverageByEvent({});
   }
 
   async function notify(type: string, title: string, date: string, location: string, reviewUrl: string, directUrl?: string) {
@@ -210,6 +248,7 @@ export default function EventsPage() {
       if (error) throw error;
       await notify("event owner coverage request", event.title, event.date, event.location, `${siteOrigin()}/studio/crew/pending`, `${siteOrigin()}/studio/events/${event.id}`);
       setCrewMessage("SDTV coverage request submitted for admin review.");
+      await loadCoverageRequests(user);
     } catch (error: any) {
       setCrewMessage(`Could not submit coverage request: ${formatError(error)}`);
     } finally {
@@ -223,13 +262,16 @@ export default function EventsPage() {
       const currentUser = data?.user || null;
       setUser(currentUser);
       await loadRole(currentUser);
+      await loadCoverageRequests(currentUser);
       setAuthChecked(true);
       await loadEvents();
     }
     init();
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user || null);
-      await loadRole(session?.user || null);
+      const nextUser = session?.user || null;
+      setUser(nextUser);
+      await loadRole(nextUser);
+      await loadCoverageRequests(nextUser);
     });
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -284,6 +326,7 @@ export default function EventsPage() {
                   const image = firstImage(event);
                   const d = event.date ? new Date(`${String(event.date).split("T")[0]}T00:00:00`) : null;
                   const isOwner = Boolean(user?.id && event.created_by === user.id);
+                  const coverageRequest = coverageByEvent[event.id];
                   return (
                     <article key={event.id} className="border rounded-2xl overflow-hidden shadow-sm bg-white">
                       {image ? <img src={image} alt={event.title} className="w-full h-56 object-cover bg-gray-100" /> : <div className="w-full h-56 bg-pink-50 grid place-items-center text-pink-600 font-black">Seattle Desi TV</div>}
@@ -291,10 +334,16 @@ export default function EventsPage() {
                         <h2 className="text-xl font-black">{event.title}</h2>
                         <p className="text-gray-500 mt-1">{d ? d.toLocaleDateString() : event.date} · {event.location}</p>
                         {event.description && <p className="text-sm text-gray-600 mt-3 whitespace-pre-line">{event.description}</p>}
+                        {isOwner && (
+                          <div className="mt-4 rounded-xl border bg-slate-50 p-3 text-sm">
+                            <p className="font-black text-slate-900">Private Organizer View</p>
+                            <p className="text-slate-600">{coverageLabel(coverageRequest?.status)}</p>
+                          </div>
+                        )}
                         <div className="flex flex-wrap gap-3 mt-5">
                           {event.ticket_url && <a href={event.ticket_url} target="_blank" rel="noreferrer" className="bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Tickets / Register</a>}
                           {event.location && <a href={`https://www.google.com/maps?q=${encodeURIComponent(event.location)}`} target="_blank" rel="noreferrer" className="border px-4 py-2 rounded-lg font-bold text-sm">Map</a>}
-                          {isOwner && <button type="button" onClick={() => requestOwnerCoverage(event)} disabled={requestingCoverageEventId === event.id} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-60">{requestingCoverageEventId === event.id ? "Requesting..." : "Request SDTV Coverage"}</button>}
+                          {isOwner && !coverageRequest && <button type="button" onClick={() => requestOwnerCoverage(event)} disabled={requestingCoverageEventId === event.id} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-60">{requestingCoverageEventId === event.id ? "Requesting..." : "Request SDTV Coverage"}</button>}
                           {canRequestCrew && <button type="button" onClick={() => requestCrew(event)} disabled={requestingCrewEventId === event.id} className="border border-pink-600 text-pink-600 px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-60">{requestingCrewEventId === event.id ? "Requesting..." : "Request to Cover"}</button>}
                         </div>
                       </div>
