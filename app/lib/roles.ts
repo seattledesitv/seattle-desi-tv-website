@@ -19,24 +19,54 @@ export function isTeamRole(role?: string | null) {
 export async function resolveUserRole(supabase: SupabaseClient, currentUser: any) {
   if (!currentUser?.id) return "general_public";
 
-  const adminResult = await supabase
+  const adminByUserId = await supabase
     .from("admins")
     .select("role")
-    .or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
+    .eq("user_id", currentUser.id)
     .maybeSingle();
 
-  if (adminResult.data?.role) return cleanRole(adminResult.data.role);
+  if (adminByUserId.data?.role) return cleanRole(adminByUserId.data.role);
 
-  const roleRequestResult = await supabase
+  const email = String(currentUser.email || "").trim();
+  if (email) {
+    const adminByEmail = await supabase
+      .from("admins")
+      .select("role")
+      .ilike("email", email)
+      .maybeSingle();
+
+    if (adminByEmail.data?.role) return cleanRole(adminByEmail.data.role);
+  }
+
+  const roleRequestByUserId = await supabase
     .from("user_role_requests")
     .select("approved_role,requested_role,status")
-    .or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
+    .eq("user_id", currentUser.id)
     .eq("status", "approved")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  return cleanRole(roleRequestResult.data?.approved_role || roleRequestResult.data?.requested_role || "general_public");
+  if (roleRequestByUserId.data) {
+    return cleanRole(roleRequestByUserId.data.approved_role || roleRequestByUserId.data.requested_role || "general_public");
+  }
+
+  if (email) {
+    const roleRequestByEmail = await supabase
+      .from("user_role_requests")
+      .select("approved_role,requested_role,status")
+      .ilike("email", email)
+      .eq("status", "approved")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (roleRequestByEmail.data) {
+      return cleanRole(roleRequestByEmail.data.approved_role || roleRequestByEmail.data.requested_role || "general_public");
+    }
+  }
+
+  return "general_public";
 }
 
 export function canAccessStudio(role?: string | null) {
