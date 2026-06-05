@@ -1,15 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import StudioHeader from "../../components/StudioHeader";
+import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { isAdminRole, resolveUserRole } from "../../lib/roles";
 
-const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
 const ROLES = ["general_public", "team_member", "pm_admin", "super_admin"];
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "", { auth: { storageKey: AUTH_STORAGE_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
-
-function isAdminRole(role: string) { const normalized = String(role || "").toLowerCase(); return normalized === "pm_admin" || normalized === "super_admin" || normalized.includes("admin"); }
+const supabase = getSupabaseBrowserClient();
 
 export default function StudioRolesPage() {
   const [loading, setLoading] = useState(true);
@@ -41,8 +38,7 @@ export default function StudioRolesPage() {
     const currentUser = sessionResult.data?.session?.user || null;
     setUser(currentUser);
     if (!currentUser) { setMessage("Please login to access role requests."); setLoading(false); return; }
-    const adminResult = await supabase.from("admins").select("role").or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`).maybeSingle();
-    const nextRole = adminResult.data?.role || "";
+    const nextRole = await resolveUserRole(supabase, currentUser);
     setRole(nextRole);
     if (!isAdminRole(nextRole)) { setMessage("This account does not have role approval access."); setLoading(false); return; }
     await loadRequests(); setMessage(""); setLoading(false);
