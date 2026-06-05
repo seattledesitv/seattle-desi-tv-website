@@ -1,14 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import StudioHeader from "../components/StudioHeader";
+import { getSupabaseBrowserClient, AUTH_STORAGE_KEY } from "../lib/supabaseBrowser";
+import { isAdminRole, resolveUserRole } from "../lib/roles";
 
-const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "", { auth: { storageKey: AUTH_STORAGE_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
-
-function roleContainsAdmin(role: string) { return String(role || "").toLowerCase().trim().includes("admin"); }
+const supabase = getSupabaseBrowserClient();
 
 type DashboardCounts = { events: number; pendingEvents: number; approvedEvents: number; onHoldEvents: number; rejectedEvents: number; businesses: number; pendingBusinesses: number; crew: number; pendingCrew: number; team: number; radioTeam: number; roleRequests: number; coverageRequests: number; };
 const emptyCounts: DashboardCounts = { events: 0, pendingEvents: 0, approvedEvents: 0, onHoldEvents: 0, rejectedEvents: 0, businesses: 0, pendingBusinesses: 0, crew: 0, pendingCrew: 0, team: 0, radioTeam: 0, roleRequests: 0, coverageRequests: 0 };
@@ -20,7 +17,7 @@ export default function StudioDashboardPage() {
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState("");
   const [counts, setCounts] = useState<DashboardCounts>(emptyCounts);
-  const canAccessStudio = Boolean(user && roleContainsAdmin(role));
+  const canAccessStudio = Boolean(user && isAdminRole(role));
 
   async function loadCounts() {
     const [eventsResult, pendingEventsResult, approvedEventsResult, onHoldEventsResult, rejectedEventsResult, businessesResult, pendingBusinessesResult, crewResult, pendingCrewResult, teamResult, radioTeamResult, roleRequestsResult, coverageRequestsResult] = await Promise.all([
@@ -49,10 +46,9 @@ export default function StudioDashboardPage() {
     const currentUser = sessionResult.data?.session?.user || null;
     setUser(currentUser);
     if (!currentUser) { setRole(""); setCounts(emptyCounts); setMessage("Please login to access Studio."); setLoading(false); return; }
-    const adminResult = await supabase.from("admins").select("role").or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`).maybeSingle();
-    const nextRole = adminResult.data?.role || "";
+    const nextRole = await resolveUserRole(supabase, currentUser);
     setRole(nextRole);
-    if (!roleContainsAdmin(nextRole)) { setMessage("You are logged in, but this account does not have Studio admin access."); setLoading(false); return; }
+    if (!isAdminRole(nextRole)) { setMessage("You are logged in, but this account does not have Studio admin access."); setLoading(false); return; }
     await loadCounts(); setMessage(""); setLoading(false);
   }
 
