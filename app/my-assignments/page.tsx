@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { isTeamRole, resolveUserRole } from "../lib/roles";
 
-const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "", { auth: { storageKey: AUTH_STORAGE_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+const supabase = getSupabaseBrowserClient();
 
-function cleanRole(role: string) { return String(role || "general_public").toLowerCase().trim(); }
-function isTeamRole(role: string) { const next = cleanRole(role); return next === "team_member" || next.includes("admin"); }
 function firstImage(event: any) { if (Array.isArray(event?.image_urls) && event.image_urls.length > 0) return event.image_urls[0]; return event?.image || ""; }
 function dateText(value?: string) { if (!value) return ""; const d = new Date(`${String(value).split("T")[0]}T00:00:00`); return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString(); }
 function workflowLabel(a: any) { if (a.coverage_completed) return "Coverage Complete"; if (a.crew_confirmed) return "Confirmed"; return "Assigned - Awaiting Confirmation"; }
@@ -24,13 +22,6 @@ export default function MyAssignmentsPage() {
   const [notes, setNotes] = useState<Record<string, string>>({});
 
   const canViewAssignments = Boolean(user && isTeamRole(role));
-
-  async function getUserRole(currentUser: any) {
-    const adminResult = await supabase.from("admins").select("role").or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`).maybeSingle();
-    if (adminResult.data?.role) return cleanRole(adminResult.data.role);
-    const requestResult = await supabase.from("user_role_requests").select("approved_role,requested_role,status").or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`).eq("status", "approved").order("created_at", { ascending: false }).limit(1).maybeSingle();
-    return cleanRole(requestResult.data?.approved_role || requestResult.data?.requested_role || "general_public");
-  }
 
   async function loadAssignments(currentUser: any) {
     if (!currentUser?.id) { setAssignments([]); setEventsById({}); return; }
@@ -61,7 +52,7 @@ export default function MyAssignmentsPage() {
     const currentUser = data?.user || null;
     setUser(currentUser);
     if (!currentUser) { setMessage("Please login to see your SDTV assignments."); setLoading(false); return; }
-    const nextRole = await getUserRole(currentUser);
+    const nextRole = await resolveUserRole(supabase, currentUser);
     setRole(nextRole);
     if (!isTeamRole(nextRole)) { setMessage(`This page is for approved SDTV team members. Current role: ${nextRole}`); setLoading(false); return; }
     await loadAssignments(currentUser);
