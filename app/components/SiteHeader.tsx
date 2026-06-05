@@ -1,4 +1,13 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "", { auth: { storageKey: AUTH_STORAGE_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+
 export default function SiteHeader() {
+  const [unreadCount, setUnreadCount] = useState(0);
   const links = [
     ["Home", "/"],
     ["Events", "/events"],
@@ -6,6 +15,19 @@ export default function SiteHeader() {
     ["Team", "/team"],
     ["Portal", "/portal"],
   ];
+
+  useEffect(() => {
+    async function loadUnread() {
+      const { data } = await supabase.auth.getUser();
+      const user = data?.user || null;
+      if (!user?.id) { setUnreadCount(0); return; }
+      const { count } = await supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("read", false);
+      setUnreadCount(count || 0);
+    }
+    loadUnread();
+  }, []);
+
+  const notificationLabel = unreadCount > 0 ? `🔔 ${unreadCount}` : "🔔 Notifications";
 
   return (
     <>
@@ -26,7 +48,7 @@ export default function SiteHeader() {
           <nav className="hidden lg:flex items-center gap-3 font-bold text-sm">
             {links.map(([label, href]) => <a key={href} href={href} className="hover:text-pink-600">{label}</a>)}
             <a href="/my-assignments" className="hover:text-pink-600">My Assignments</a>
-            <a href="/notifications" className="hover:text-pink-600">🔔 Notifications</a>
+            <a href="/notifications" className="hover:text-pink-600">{notificationLabel}</a>
             <a href="/studio" className="hover:text-pink-600">Studio</a>
             <a href="/login" className="bg-pink-600 text-white px-4 py-2 rounded-xl">Login</a>
           </nav>
