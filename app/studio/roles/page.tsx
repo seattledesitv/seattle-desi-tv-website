@@ -21,6 +21,11 @@ export default function StudioRolesPage() {
   const [selectedRoles, setSelectedRoles] = useState<Record<string, string>>({});
   const canAccess = Boolean(user && isAdminRole(role));
 
+  async function notifyUser(userId: string, title: string, message: string, link: string) {
+    if (!userId) return;
+    await supabase.from("notifications").insert({ user_id: userId, title, message, link, read: false });
+  }
+
   async function loadRequests() {
     const { data, error } = await supabase.from("user_role_requests").select("id,user_id,email,requested_role,status,approved_role,approved_by,approved_at,created_at").order("created_at", { ascending: false });
     if (error) { setActionMessage(`Could not load role requests: ${error.message}`); return; }
@@ -50,6 +55,7 @@ export default function StudioRolesPage() {
     if (upsertError) { setActionMessage(`Could not update user role: ${upsertError.message}`); return; }
     const { error: updateError } = await supabase.from("user_role_requests").update({ status: "approved", approved_role: approvedRole, approved_by: user?.email || user?.id || null, approved_at: new Date().toISOString() }).eq("id", request.id);
     if (updateError) { setActionMessage(`Role approved, but request status update failed: ${updateError.message}`); return; }
+    await notifyUser(request.user_id, "Role request approved", `Your Seattle Desi TV role request was approved as ${approvedRole}.`, "/portal");
     setActionMessage(`Approved ${request.email} as ${approvedRole}.`);
     await loadRequests();
   }
@@ -58,6 +64,7 @@ export default function StudioRolesPage() {
     setActionMessage("Rejecting role request...");
     const { error } = await supabase.from("user_role_requests").update({ status: "rejected", approved_by: user?.email || user?.id || null, approved_at: new Date().toISOString() }).eq("id", request.id);
     if (error) { setActionMessage(`Reject failed: ${error.message}`); return; }
+    await notifyUser(request.user_id, "Role request rejected", "Your Seattle Desi TV role request was reviewed and rejected.", "/portal");
     setActionMessage(`Rejected request from ${request.email}.`);
     await loadRequests();
   }
