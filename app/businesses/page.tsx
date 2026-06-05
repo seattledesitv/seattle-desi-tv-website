@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import SiteHeader from "../components/SiteHeader";
 import SiteFooter from "../components/SiteFooter";
+import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 
-const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
 const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "seattledesitv@gmail.com";
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "", { auth: { storageKey: AUTH_STORAGE_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+const supabase = getSupabaseBrowserClient();
 
 type BusinessRow = { id: string; name: string; address: string; website?: string | null; category?: string | null; discount?: string | null; offer?: string | null; image?: string | null; image_urls?: string[] | null; status?: string | null; };
 
