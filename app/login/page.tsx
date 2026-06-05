@@ -1,19 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { AUTH_STORAGE_KEY, getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { isAdminRole, resolveUserRole } from "../lib/roles";
 
-const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-  { auth: { storageKey: AUTH_STORAGE_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
-);
-
-function isAdminRole(role: string) {
-  return String(role || "").toLowerCase().includes("admin");
-}
+const supabase = getSupabaseBrowserClient();
 
 function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -32,25 +23,11 @@ export default function LoginPage() {
   const [requestedRole, setRequestedRole] = useState("general_public");
   const [roleRequestMessage, setRoleRequestMessage] = useState("");
 
-  async function getRoleForUser(user: any) {
-    if (!user?.id && !user?.email) return "";
-    try {
-      const { data, error } = await withTimeout(
-        supabase.from("admins").select("role").or(`user_id.eq.${user.id},email.eq.${user.email}`).maybeSingle(),
-        2500
-      );
-      if (error) return "";
-      return data?.role || "";
-    } catch {
-      return "";
-    }
-  }
-
   async function redirectForUser(user: any) {
     setLoading(true);
     setMessage("Redirecting...");
-    const role = await getRoleForUser(user);
-    window.location.assign(isAdminRole(role) ? "/#studio" : "/");
+    const role = await resolveUserRole(supabase, user);
+    window.location.assign(isAdminRole(role) ? "/studio" : "/");
   }
 
   async function signIn() {
@@ -121,7 +98,7 @@ export default function LoginPage() {
             <p>Currently logged in as <b>{currentUser.email}</b>.</p>
             <div className="grid gap-3 mt-4">
               <button type="button" onClick={() => redirectForUser(currentUser)} disabled={loading} className="w-full bg-pink-600 text-white py-3 rounded-xl font-black disabled:opacity-60">{loading ? "Redirecting..." : "Continue"}</button>
-              <a href="/#studio" className="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-center">Go to Studio</a>
+              <a href="/studio" className="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-center">Go to Studio</a>
               <div className="border rounded-xl p-3 bg-white">
                 <label className="block text-xs font-bold text-gray-500 mb-2">Request account type</label>
                 <select className="w-full border rounded-lg p-3 mb-3" value={requestedRole} onChange={(event) => setRequestedRole(event.target.value)}>
