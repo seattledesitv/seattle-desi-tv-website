@@ -8,6 +8,7 @@ export default function StudioHeader() {
     ["Crew", "/studio/crew/pending"],
     ["Calendar", "/studio/assignments-calendar"],
     ["Roles", "/studio/roles"],
+    ["Notifications", "/notifications"],
     ["Team", "/studio/team"],
     ["Radio", "/studio/radio-team"],
   ];
