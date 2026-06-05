@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { isTeamRole, resolveUserRole } from "../lib/roles";
 
-const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "", { auth: { storageKey: AUTH_STORAGE_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+const supabase = getSupabaseBrowserClient();
 
 function todayIso() { return new Date().toISOString().split("T")[0]; }
-function cleanRole(role: string) { return String(role || "general_public").toLowerCase().trim(); }
-function isTeamRole(role: string) { const r = cleanRole(role); return r === "team_member" || r.includes("admin"); }
 
 export default function MyAvailabilityPage() {
   const [loading, setLoading] = useState(true);
@@ -22,22 +20,6 @@ export default function MyAvailabilityPage() {
 
   const canUse = Boolean(user && isTeamRole(role));
 
-  async function getUserRole(currentUser: any) {
-    const adminResult = await supabase.from("admins").select("role").or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`).maybeSingle();
-    if (adminResult.data?.role) return cleanRole(adminResult.data.role);
-
-    const requestResult = await supabase
-      .from("user_role_requests")
-      .select("approved_role,requested_role,status")
-      .or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
-      .eq("status", "approved")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    return cleanRole(requestResult.data?.approved_role || requestResult.data?.requested_role || "general_public");
-  }
-
   async function loadRows(currentUser: any) {
     if (!currentUser?.id) return;
     const { data, error } = await supabase.from("crew_availability").select("id,available_date,status,note").eq("user_id", currentUser.id).gte("available_date", todayIso()).order("available_date", { ascending: true });
@@ -50,7 +32,7 @@ export default function MyAvailabilityPage() {
     const currentUser = data?.user || null;
     setUser(currentUser);
     if (!currentUser) { setMessage("Please login to manage availability."); setLoading(false); return; }
-    const nextRole = await getUserRole(currentUser);
+    const nextRole = await resolveUserRole(supabase, currentUser);
     setRole(nextRole);
     if (!isTeamRole(nextRole)) { setMessage(`This page is for approved SDTV team members. Current role: ${nextRole}`); setLoading(false); return; }
     await loadRows(currentUser);
