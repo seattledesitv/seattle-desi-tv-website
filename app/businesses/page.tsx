@@ -12,6 +12,7 @@ const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "seattledesitv@gmail.
 const supabase = getSupabaseBrowserClient();
 
 type BusinessRow = { id: string; name: string; address: string; website?: string | null; category?: string | null; discount?: string | null; offer?: string | null; image?: string | null; image_urls?: string[] | null; status?: string | null; };
+type InsertedBusiness = { id: string; name: string; address: string };
 
 function getImages(business: BusinessRow) { if (Array.isArray(business.image_urls) && business.image_urls.length > 0) return business.image_urls; return business.image ? [business.image] : []; }
 function formatError(error: any) { if (!error) return "Unknown error."; return [error.message, error.details, error.hint, error.code].filter(Boolean).join(" | ") || String(error); }
@@ -95,7 +96,8 @@ export default function BusinessesPage() {
       const businessPayload: any = { name: form.name, address: form.address, website: form.website || null, category: form.category || null, discount: form.discount || null, offer: form.offer || null, poc_name: form.pocName || null, poc_email: form.pocEmail || user.email || null, poc_phone: form.pocPhone || null, image: imageUrl || null, created_by: user.id, status: "pending", approved: false };
       const { data, error } = await supabase.from("local_businesses").insert(businessPayload).select("id,name,address").single();
       if (error) throw error;
-      const sent = data?.id ? await notifyAdmin(data.id, data.name, data.address) : false;
+      const insertedBusiness = data as InsertedBusiness | null;
+      const sent = insertedBusiness ? await notifyAdmin(insertedBusiness.id, insertedBusiness.name, insertedBusiness.address) : false;
       setForm({ name: "", address: "", website: "", category: "", discount: "", offer: "", pocName: "", pocEmail: "", pocPhone: "" });
       setImageFiles([]);
       setSubmitMessage(sent ? "Business submitted successfully. It will appear after admin approval. Admin notification email was sent." : "Business submitted successfully. It will appear after admin approval. Automatic email failed, so an admin email window was opened as backup.");
