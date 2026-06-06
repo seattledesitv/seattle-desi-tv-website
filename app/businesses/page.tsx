@@ -92,7 +92,8 @@ export default function BusinessesPage() {
     setSaving(true);
     try {
       const imageUrl = imageFiles[0] ? await uploadFileToCloudinary(imageFiles[0]) : "";
-      const { data, error } = await supabase.from("local_businesses").insert({ name: form.name, address: form.address, website: form.website || null, category: form.category || null, discount: form.discount || null, offer: form.offer || null, poc_name: form.pocName || null, poc_email: form.pocEmail || user.email || null, poc_phone: form.pocPhone || null, image: imageUrl || null, created_by: user.id, status: "pending", approved: false }).select("id,name,address").single();
+      const businessPayload: any = { name: form.name, address: form.address, website: form.website || null, category: form.category || null, discount: form.discount || null, offer: form.offer || null, poc_name: form.pocName || null, poc_email: form.pocEmail || user.email || null, poc_phone: form.pocPhone || null, image: imageUrl || null, created_by: user.id, status: "pending", approved: false };
+      const { data, error } = await supabase.from("local_businesses").insert(businessPayload).select("id,name,address").single();
       if (error) throw error;
       const sent = data?.id ? await notifyAdmin(data.id, data.name, data.address) : false;
       setForm({ name: "", address: "", website: "", category: "", discount: "", offer: "", pocName: "", pocEmail: "", pocPhone: "" });
