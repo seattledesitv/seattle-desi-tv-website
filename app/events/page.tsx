@@ -23,6 +23,8 @@ type EventRow = {
   created_by?: string | null;
 };
 
+type InsertedEvent = { id: string; title: string; date: string; location: string };
+
 function firstImage(row: EventRow) {
   if (Array.isArray(row.image_urls) && row.image_urls.length > 0) return row.image_urls[0];
   return row.image || "";
@@ -177,13 +179,15 @@ export default function EventsPage() {
     setSaving(true);
     try {
       const image = imageFiles[0] ? await uploadImage(imageFiles[0]) : "";
+      const eventPayload: any = { ...form, image: image || null, poc_email: form.poc_email || user.email || null, created_by: user.id, status: "pending", approved: false };
       const { data, error } = await supabase
         .from("events")
-        .insert({ ...form, image: image || null, poc_email: form.poc_email || user.email || null, created_by: user.id, status: "pending", approved: false })
+        .insert(eventPayload)
         .select("id,title,date,location")
         .single();
       if (error) throw error;
-      await notify("event", data.title, data.date, data.location, `${siteOrigin()}/studio/events/pending`, `${siteOrigin()}/studio/events/${data.id}`);
+      const insertedEvent = data as InsertedEvent | null;
+      if (insertedEvent) await notify("event", insertedEvent.title, insertedEvent.date, insertedEvent.location, `${siteOrigin()}/studio/events/pending`, `${siteOrigin()}/studio/events/${insertedEvent.id}`);
       setForm({ title: "", date: "", location: "", description: "", ticket_url: "", poc_email: "", poc_phone: "" });
       setImageFiles([]);
       setSubmitMessage("Event submitted successfully. It will appear after admin approval.");
@@ -203,7 +207,8 @@ export default function EventsPage() {
     }
     setRequestingCrewEventId(event.id);
     try {
-      const { error } = await supabase.from("event_crew_assignments").insert({ event_id: event.id, user_id: user.id, user_email: user.email || null, assignment_type: "team_member_request", status: "pending", event_title: event.title });
+      const crewPayload: any = { event_id: event.id, user_id: user.id, user_email: user.email || null, assignment_type: "team_member_request", status: "pending", event_title: event.title };
+      const { error } = await supabase.from("event_crew_assignments").insert(crewPayload);
       if (error) throw error;
       await notify("team member crew request", event.title, event.date, event.location, `${siteOrigin()}/studio/crew/pending`, `${siteOrigin()}/studio/events/${event.id}`);
       setCrewMessage("Crew request submitted for admin approval.");
@@ -222,7 +227,8 @@ export default function EventsPage() {
     }
     setRequestingCoverageEventId(event.id);
     try {
-      const { error } = await supabase.from("event_crew_assignments").insert({ event_id: event.id, user_id: user.id, user_email: user.email || null, assignment_type: "owner_coverage_request", status: "pending", event_title: event.title });
+      const coveragePayload: any = { event_id: event.id, user_id: user.id, user_email: user.email || null, assignment_type: "owner_coverage_request", status: "pending", event_title: event.title };
+      const { error } = await supabase.from("event_crew_assignments").insert(coveragePayload);
       if (error) throw error;
       await notify("event owner coverage request", event.title, event.date, event.location, `${siteOrigin()}/studio/coverage`, `${siteOrigin()}/studio/events/${event.id}`);
       setCrewMessage("SDTV coverage request submitted for admin review.");
