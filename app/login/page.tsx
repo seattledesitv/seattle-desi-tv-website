@@ -44,13 +44,14 @@ export default function LoginPage() {
     setRoleRequestMessage("");
     if (!currentUser?.email) { setRoleRequestMessage("Please login first."); return; }
     const safeRole = requestedRole === "team_member" ? "team_member" : "general_public";
-    const { error } = await supabase.from("user_role_requests").insert({
+    const roleRequestPayload: any = {
       user_id: currentUser.id,
       email: currentUser.email,
       requested_role: safeRole,
       status: safeRole === "general_public" ? "approved" : "pending",
       approved_role: safeRole === "general_public" ? "general_public" : null,
-    });
+    };
+    const { error } = await supabase.from("user_role_requests").insert(roleRequestPayload);
     if (error) { setRoleRequestMessage(`Role request failed: ${error.message}`); return; }
     setRoleRequestMessage(safeRole === "team_member" ? "Team member request submitted for admin approval." : "General public role request saved.");
   }
