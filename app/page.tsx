@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import SiteHeader from "./components/SiteHeader";
+import SiteFooter from "./components/SiteFooter";
 import { getSupabaseBrowserClient } from "./lib/supabaseBrowser";
 import { isAdminRole, isTeamRole, resolveUserRole } from "./lib/roles";
 
@@ -31,35 +33,26 @@ const fallbackSocialStats = [
 ];
 
 type EventRow = { id: string; title: string; date: string; location: string; image?: string | null; image_urls?: string[] | null };
-type BusinessRow = { id: string; name: string; address?: string | null; category?: string | null; offer?: string | null; discount?: string | null; image?: string | null; image_urls?: string[] | null };
+type BusinessRow = { id: string; name: string; category?: string | null; offer?: string | null; discount?: string | null; image?: string | null; image_urls?: string[] | null };
 type TeamRow = { id: string; name: string; title?: string | null; image?: string | null; photo?: string | null; picture?: string | null };
 type VideoRow = { id?: string; title: string; description?: string; thumbnail?: string; url: string; publishedAt?: string };
-type SocialRow = { platform: string; followers?: number | null; views?: number | null; videos?: number | null; href?: string | null; updated_at?: string | null };
+type SocialRow = { platform: string; followers?: number | null; views?: number | null; videos?: number | null; href?: string | null };
 type SectionSetting = { section_key: string; display_order?: number | null; enabled?: boolean | null; title?: string | null; subtitle?: string | null };
 type Counts = { events: number; businesses: number; coverage: number; team: number; radio: number };
 
 const emptyCounts: Counts = { events: 0, businesses: 0, coverage: 0, team: 0, radio: 0 };
-
 function firstImage(row: any) { if (Array.isArray(row?.image_urls) && row.image_urls.length > 0) return row.image_urls[0]; return row?.image || row?.photo || row?.picture || ""; }
 function formatDate(value?: string | null) { if (!value) return ""; const date = new Date(`${String(value).split("T")[0]}T00:00:00`); return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(); }
 function formatNumber(value?: number | null) { return Number(value || 0).toLocaleString(); }
 function isExternal(href: string) { return href.startsWith("http"); }
-
-function LinkCard({ label, href, description }: { label: string; href: string; description: string }) {
-  return <a href={href} className="block rounded-2xl border bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition"><h3 className="text-xl font-black text-slate-950">{label}</h3><p className="text-gray-600 mt-2 text-sm">{description}</p></a>;
-}
-
-function SectionLinks({ title, subtitle, links }: { title: string; subtitle: string; links: string[][] }) {
-  return <section className="max-w-7xl mx-auto px-6 md:px-10 py-8"><div className="mb-5"><h2 className="text-3xl font-black text-slate-950">{title}</h2><p className="text-gray-600 mt-1">{subtitle}</p></div><div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5">{links.map(([label, href, description]) => <LinkCard key={href} label={label} href={href} description={description} />)}</div></section>;
-}
 
 function StatCard({ label, value, note, href }: { label: string; value: string | number; note: string; href?: string }) {
   const card = <div className="rounded-2xl bg-white border shadow-sm p-5 h-full"><p className="text-sm font-black uppercase tracking-wide text-gray-500">{label}</p><p className="text-3xl font-black text-pink-600 mt-2">{value}</p><p className="text-sm text-gray-600 mt-2">{note}</p></div>;
   return href ? <a href={href} target={isExternal(href) ? "_blank" : undefined} rel={isExternal(href) ? "noreferrer" : undefined}>{card}</a> : card;
 }
 
-function SiteFooter() {
-  return <footer className="border-t bg-slate-950 text-white px-6 md:px-10 py-10"><div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-8 text-sm"><div><img src="/sdtv-logo.png" alt="Seattle Desi TV" className="h-14 w-auto mb-3" /><h3 className="font-black text-xl">Seattle Desi TV</h3><p className="text-slate-300 mt-2">Community • Culture • Connection</p></div><div><h4 className="font-black mb-3">Explore</h4><div className="grid gap-2 text-slate-300"><a href="/events">Events</a><a href="/businesses">Businesses</a><a href="/radio">Radio</a><a href="/team">Team</a></div></div><div><h4 className="font-black mb-3">Get Involved</h4><div className="grid gap-2 text-slate-300"><a href="/events">Submit Event</a><a href="/businesses">List Business</a><a href="/portal">Volunteer / Crew</a><a href="/login">Login</a></div></div><div><h4 className="font-black mb-3">Follow</h4><div className="grid gap-2 text-slate-300"><a href="https://www.youtube.com/@SeattleDesiTV" target="_blank" rel="noreferrer">YouTube</a><a href="https://instagram.com/seattledesitv" target="_blank" rel="noreferrer">Instagram</a><a href="https://facebook.com/seattledesitv" target="_blank" rel="noreferrer">Facebook</a><a href="mailto:info@seattledesitv.com">info@seattledesitv.com</a></div></div></div><p className="max-w-7xl mx-auto text-slate-400 text-xs mt-8">© Seattle Desi TV. Built for community media operations.</p></footer>;
+function LinkSection({ title, subtitle, links }: { title: string; subtitle: string; links: string[][] }) {
+  return <section className="max-w-7xl mx-auto px-6 md:px-10 py-8"><h2 className="text-3xl font-black text-slate-950">{title}</h2><p className="text-gray-600 mt-1 mb-5">{subtitle}</p><div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5">{links.map(([label, href, description]) => <a key={href} href={href} className="block rounded-2xl border bg-white p-5 shadow-sm hover:shadow-lg transition"><h3 className="text-xl font-black text-slate-950">{label}</h3><p className="text-gray-600 mt-2 text-sm">{description}</p></a>)}</div></section>;
 }
 
 export default function HomePage() {
@@ -78,31 +71,24 @@ export default function HomePage() {
   async function countQuery(query: any) { const result = await query; return result.count || 0; }
   function sectionText(key: string, fallbackTitle: string, fallbackSubtitle: string) { const setting = sectionSettings.find((s) => s.section_key === key); return { title: setting?.title || fallbackTitle, subtitle: setting?.subtitle || fallbackSubtitle }; }
 
-  async function loadUserRole() {
-    const { data } = await supabase.auth.getUser();
-    const currentUser = data?.user || null;
-    setUser(currentUser);
-    setRole(await resolveUserRole(supabase, currentUser));
-  }
+  async function loadUserRole() { const { data } = await supabase.auth.getUser(); const currentUser = data?.user || null; setUser(currentUser); setRole(await resolveUserRole(supabase, currentUser)); }
 
   async function loadDynamicHomepage() {
     setLoadingDynamic(true);
     const today = new Date().toISOString().split("T")[0];
     const [eventsResult, businessesResult, teamResult, settingsResult, socialResult, eventsCount, businessesCount, coverageCount, teamCount, radioCount] = await Promise.all([
       supabase.from("events").select("id,title,date,location,image,image_urls").eq("status", "approved").gte("date", today).order("date", { ascending: true }).limit(6),
-      supabase.from("local_businesses").select("id,name,address,category,offer,discount,image,image_urls").eq("status", "approved").limit(6),
+      supabase.from("local_businesses").select("id,name,category,offer,discount,image,image_urls").eq("status", "approved").limit(6),
       supabase.from("team_members").select("id,name,title,image,photo,picture").limit(6),
       supabase.from("homepage_settings").select("section_key,display_order,enabled,title,subtitle").order("display_order", { ascending: true }),
-      supabase.from("social_media_stats").select("platform,followers,views,videos,href,updated_at").order("platform", { ascending: true }),
+      supabase.from("social_media_stats").select("platform,followers,views,videos,href").order("platform", { ascending: true }),
       countQuery(supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "approved")),
       countQuery(supabase.from("local_businesses").select("id", { count: "exact", head: true }).eq("status", "approved")),
       countQuery(supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).eq("assignment_type", "owner_coverage_request")),
       countQuery(supabase.from("team_members").select("id", { count: "exact", head: true })),
       countQuery(supabase.from("radio_team_members").select("id", { count: "exact", head: true })),
     ]);
-    setEvents(eventsResult.data || []);
-    setBusinesses(businessesResult.data || []);
-    setTeam(teamResult.data || []);
+    setEvents(eventsResult.data || []); setBusinesses(businessesResult.data || []); setTeam(teamResult.data || []);
     if (!settingsResult.error && Array.isArray(settingsResult.data) && settingsResult.data.length > 0) setSectionSettings(settingsResult.data);
     if (!socialResult.error && Array.isArray(socialResult.data) && socialResult.data.length > 0) setSocialRows(socialResult.data);
     setCounts({ events: eventsCount, businesses: businessesCount, coverage: coverageCount, team: teamCount, radio: radioCount });
@@ -110,24 +96,15 @@ export default function HomePage() {
   }
 
   async function loadLatestVideos() {
-    try {
-      const response = await fetch("/api/youtube/latest", { cache: "no-store" });
-      const result = await response.json();
-      if (result?.ok && Array.isArray(result.videos) && result.videos.length > 0) { setVideos(result.videos); setVideoMessage("Latest videos from YouTube."); }
-      else { setVideos([]); setVideoMessage(result?.error ? `Showing fallback videos: ${result.error}` : "Showing fallback videos."); }
-    } catch { setVideos([]); setVideoMessage("Showing fallback videos."); }
+    try { const response = await fetch("/api/youtube/latest", { cache: "no-store" }); const result = await response.json(); if (result?.ok && Array.isArray(result.videos) && result.videos.length > 0) { setVideos(result.videos); setVideoMessage("Latest videos from YouTube."); } else { setVideos([]); setVideoMessage(result?.error ? `Showing fallback videos: ${result.error}` : "Showing fallback videos."); } } catch { setVideos([]); setVideoMessage("Showing fallback videos."); }
   }
 
   useEffect(() => { loadUserRole(); loadDynamicHomepage(); loadLatestVideos(); }, []);
-
   const featuredTeam = useMemo(() => team.slice(0, 4), [team]);
   const videoCards = videos.length > 0 ? videos : fallbackVideos;
   const canSeeTeamTools = Boolean(user && isTeamRole(role));
   const canSeeStudio = Boolean(user && isAdminRole(role));
   const enabledSections = useMemo(() => sectionSettings.filter((s) => s.enabled !== false).sort((a, b) => Number(a.display_order || 999) - Number(b.display_order || 999)), [sectionSettings]);
-  const publicLinks = [["Events", "/events", "Submit and browse community events."], ["Business Directory", "/businesses", "Explore and submit local Desi businesses."], ["SDTV Radio", "/radio", "Listen live and discover radio programming."]];
-  const teamLinks = [["My Assignments", "/my-assignments", "View events you are assigned to cover."], ["My Availability", "/my-availability", "Tell SDTV when you are available."]];
-  const adminLinks = [["Studio", "/studio", "Admin dashboard."], ["Analytics", "/studio/analytics", "View SDTV operational metrics."], ["Coverage Requests", "/studio/coverage", "Review organizer coverage requests."], ["Role Requests", "/studio/roles", "Approve public and team member roles."]];
 
   function renderSection(key: string) {
     if (key === "home") return <section key="home" className="relative overflow-hidden bg-slate-950 text-white"><div className="absolute inset-0 opacity-30 bg-cover bg-center" style={{ backgroundImage: "url('/hero-sdtv.png')" }} /><div className="relative max-w-7xl mx-auto px-6 md:px-10 py-20 md:py-28"><p className="text-pink-300 font-black uppercase tracking-wide">Voice of the Desi Community</p><h1 className="text-5xl md:text-7xl font-black max-w-4xl leading-tight mt-3">Seattle Desi TV</h1><p className="text-xl text-slate-200 max-w-3xl mt-5">Community stories, events, culture, interviews, radio, and media coverage across the Pacific Northwest.</p><div className="flex flex-wrap gap-4 mt-8"><a href="/events" className="bg-pink-600 text-white px-6 py-4 rounded-xl font-black">Browse Events</a><a href="/radio" className="bg-white text-slate-950 px-6 py-4 rounded-xl font-black">Listen to Radio</a><a href="/businesses" className="border border-white/70 px-6 py-4 rounded-xl font-black">Local Businesses</a></div></div></section>;
@@ -142,5 +119,9 @@ export default function HomePage() {
     return null;
   }
 
-  return <main className="min-h-screen bg-gradient-to-b from-white to-slate-100 text-slate-950"><div className="bg-[#050b18] text-white text-sm px-6 md:px-10 py-2 flex flex-wrap items-center justify-between gap-3"><div className="flex gap-4 flex-wrap"><a href="https://www.youtube.com/@SeattleDesiTV" target="_blank" rel="noreferrer" className="hover:text-pink-300">YouTube</a><a href="https://instagram.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-300">Instagram</a><a href="https://facebook.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-300">Facebook</a><a href="mailto:info@seattledesitv.com" className="hover:text-pink-300">info@seattledesitv.com</a></div><span className="font-bold text-yellow-300">Seattle Desi TV + Radio</span></div><header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b px-6 md:px-10 py-4"><div className="max-w-7xl mx-auto flex items-center justify-between gap-4"><a href="/" className="flex items-center gap-3 font-black text-xl"><img src="/sdtv-logo.png" alt="Seattle Desi TV" className="h-14 w-auto" /><span>Seattle Desi TV</span></a><nav className="hidden lg:flex items-center gap-3 font-bold text-sm"><a href="/events" className="hover:text-pink-600">Events</a><a href="/businesses" className="hover:text-pink-600">Businesses</a><a href="/radio" className="hover:text-pink-600">Radio</a><a href="#videos" className="hover:text-pink-600">Videos</a>{canSeeTeamTools && <a href="/my-assignments" className="hover:text-pink-600">My Assignments</a>}{canSeeTeamTools && <a href="/my-availability" className="hover:text-pink-600">Availability</a>}{canSeeStudio && <a href="/studio" className="hover:text-pink-600">Studio</a>}{user ? <a href="/portal" className="bg-slate-950 text-white px-4 py-2 rounded-xl">Portal</a> : <a href="/login" className="bg-pink-600 text-white px-4 py-2 rounded-xl">Login</a>}</nav><a href="/portal" className="lg:hidden bg-pink-600 text-white px-4 py-2 rounded-xl font-bold">Menu</a></div></header>{enabledSections.map((section) => renderSection(section.section_key))}<SectionLinks title="Public Website" subtitle="Main public pages for community visitors." links={publicLinks} />{canSeeTeamTools && <SectionLinks title="SDTV Team" subtitle="Private operational pages for approved team members." links={teamLinks} />}{canSeeStudio && <SectionLinks title="Studio Admin" subtitle="Admin tools for SDTV operations." links={adminLinks} />}<SiteFooter /></main>;
+  const publicLinks = [["Events", "/events", "Submit and browse community events."], ["Business Directory", "/businesses", "Explore and submit local Desi businesses."], ["SDTV Radio", "/radio", "Listen live and discover radio programming."]];
+  const teamLinks = [["My Assignments", "/my-assignments", "View events you are assigned to cover."], ["My Availability", "/my-availability", "Tell SDTV when you are available."]];
+  const adminLinks = [["Studio", "/studio", "Admin dashboard."], ["Analytics", "/studio/analytics", "View SDTV operational metrics."], ["Coverage Requests", "/studio/coverage", "Review organizer coverage requests."], ["Role Requests", "/studio/roles", "Approve public and team member roles."]];
+
+  return <main className="min-h-screen bg-gradient-to-b from-white to-slate-100 text-slate-950"><SiteHeader />{enabledSections.map((section) => renderSection(section.section_key))}<LinkSection title="Public Website" subtitle="Main public pages for community visitors." links={publicLinks} />{canSeeTeamTools && <LinkSection title="SDTV Team" subtitle="Private operational pages for approved team members." links={teamLinks} />}{canSeeStudio && <LinkSection title="Studio Admin" subtitle="Admin tools for SDTV operations." links={adminLinks} />}<SiteFooter /></main>;
 }
