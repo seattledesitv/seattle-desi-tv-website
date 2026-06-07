@@ -11,6 +11,7 @@ export default function StudioHeader() {
   const links = [
     ["Dashboard", "/studio"],
     ["Homepage", "/studio/homepage"],
+    ["Hero", "/studio/hero"],
     ["Sponsors", "/studio/sponsors"],
     ["Analytics", "/studio/analytics"],
     ["Events", "/studio/events"],
@@ -27,42 +28,21 @@ export default function StudioHeader() {
   async function loadUnreadCount() {
     const { data } = await supabase.auth.getUser();
     const user = data?.user || null;
-    if (!user?.id) {
-      setUnreadCount(0);
-      return;
-    }
-
-    const { count } = await supabase
-      .from("notifications")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .eq("read", false);
-
+    if (!user?.id) { setUnreadCount(0); return; }
+    const { count } = await supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("read", false);
     setUnreadCount(count || 0);
   }
 
-  useEffect(() => {
-    loadUnreadCount();
-  }, []);
+  useEffect(() => { loadUnreadCount(); }, []);
 
   return (
     <div className="bg-slate-950 text-white border-b border-white/10">
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <a href="/" className="text-pink-300 font-bold text-sm">← Public Site</a>
-            <h1 className="text-2xl font-black">SDTV Studio</h1>
-          </div>
+          <div><a href="/" className="text-pink-300 font-bold text-sm">← Public Site</a><h1 className="text-2xl font-black">SDTV Studio</h1></div>
           <nav className="flex flex-wrap gap-2 text-sm font-bold">
-            {links.map(([label, href]) => (
-              <a key={href} href={href} className="bg-white/10 hover:bg-pink-600 px-3 py-2 rounded-lg transition">
-                {label}
-              </a>
-            ))}
-            <a href="/notifications" className="bg-white/10 hover:bg-pink-600 px-3 py-2 rounded-lg transition relative">
-              Notifications
-              {unreadCount > 0 && <span className="ml-2 bg-pink-600 text-white rounded-full px-2 py-0.5 text-xs">{unreadCount}</span>}
-            </a>
+            {links.map(([label, href]) => <a key={href} href={href} className="bg-white/10 hover:bg-pink-600 px-3 py-2 rounded-lg transition">{label}</a>)}
+            <a href="/notifications" className="bg-white/10 hover:bg-pink-600 px-3 py-2 rounded-lg transition relative">Notifications{unreadCount > 0 && <span className="ml-2 bg-pink-600 text-white rounded-full px-2 py-0.5 text-xs">{unreadCount}</span>}</a>
           </nav>
         </div>
       </div>
