@@ -5,28 +5,49 @@ import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, isTeamRole, resolveUserRole } from "../lib/roles";
 
 const supabase = getSupabaseBrowserClient();
+const HEADER_CACHE_KEY = "sdtv-header-state-v1";
+
+function readCachedHeaderState() {
+  if (typeof window === "undefined") return { email: "", role: "general_public", unreadCount: 0 };
+  try {
+    const raw = window.localStorage.getItem(HEADER_CACHE_KEY);
+    return raw ? JSON.parse(raw) : { email: "", role: "general_public", unreadCount: 0 };
+  } catch {
+    return { email: "", role: "general_public", unreadCount: 0 };
+  }
+}
+
+function writeCachedHeaderState(state: any) {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.setItem(HEADER_CACHE_KEY, JSON.stringify(state)); } catch {}
+}
 
 export default function SiteHeader() {
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [user, setUser] = useState<any>(null);
-  const [role, setRole] = useState("general_public");
+  const cached = readCachedHeaderState();
+  const [unreadCount, setUnreadCount] = useState(Number(cached.unreadCount || 0));
+  const [isLoggedIn, setIsLoggedIn] = useState(Boolean(cached.email));
+  const [role, setRole] = useState(cached.role || "general_public");
 
   useEffect(() => {
     async function loadState() {
       const { data } = await supabase.auth.getUser();
       const currentUser = data?.user || null;
-      setUser(currentUser);
       const nextRole = await resolveUserRole(supabase, currentUser);
+      let nextUnreadCount = 0;
+      if (currentUser?.id) {
+        const { count } = await supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", currentUser.id).eq("read", false);
+        nextUnreadCount = count || 0;
+      }
+      setIsLoggedIn(Boolean(currentUser?.email));
       setRole(nextRole);
-      if (!currentUser?.id) { setUnreadCount(0); return; }
-      const { count } = await supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", currentUser.id).eq("read", false);
-      setUnreadCount(count || 0);
+      setUnreadCount(nextUnreadCount);
+      writeCachedHeaderState({ email: currentUser?.email || "", role: nextRole, unreadCount: nextUnreadCount });
     }
     loadState();
   }, []);
 
-  const canSeeTeamTools = Boolean(user && isTeamRole(role));
-  const canSeeStudio = Boolean(user && isAdminRole(role));
+  const canSeeTeamTools = Boolean(isLoggedIn && isTeamRole(role));
+  const canSeeStudio = Boolean(isLoggedIn && isAdminRole(role));
 
   return (
     <>
@@ -54,9 +75,9 @@ export default function SiteHeader() {
             <a href="/portal" className="hover:text-pink-600">Portal</a>
             {canSeeTeamTools && <a href="/my-assignments" className="hover:text-pink-600">My Assignments</a>}
             {canSeeTeamTools && <a href="/my-availability" className="hover:text-pink-600">Availability</a>}
-            {user && <a href="/notifications" className="hover:text-pink-600">Notifications{unreadCount > 0 ? ` ${unreadCount}` : ""}</a>}
+            {isLoggedIn && <a href="/notifications" className="hover:text-pink-600">Notifications{unreadCount > 0 ? ` ${unreadCount}` : ""}</a>}
             {canSeeStudio && <a href="/studio" className="hover:text-pink-600">Studio</a>}
-            <a href="/login" className="bg-pink-600 text-white px-4 py-2 rounded-xl">{user ? "Account" : "Login"}</a>
+            <a href="/login" className="bg-pink-600 text-white px-4 py-2 rounded-xl">{isLoggedIn ? "Account" : "Login"}</a>
           </nav>
           <a href="/portal" className="lg:hidden bg-pink-600 text-white px-4 py-2 rounded-xl font-bold">Menu</a>
         </div>
