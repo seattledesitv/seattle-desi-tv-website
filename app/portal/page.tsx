@@ -1,72 +1,35 @@
+import MyHubHeader from "../components/MyHubHeader";
+import SiteFooter from "../components/SiteFooter";
+
 export default function PortalPage() {
-  const publicLinks = [
-    ["Home", "/"],
-    ["Events", "/events"],
-    ["Business Directory", "/businesses"],
-    ["Team", "/team"],
-    ["Radio Team", "/radio-team"],
-    ["Login / Account", "/login"],
+  const links = [
+    ["My Hub Dashboard", "/my-hub", "Your SDTV workspace home."],
+    ["My Assignments", "/my-assignments", "Confirm and complete event coverage work."],
+    ["My Availability", "/my-availability", "Share when you can support coverage."],
+    ["Notifications", "/notifications", "View SDTV alerts and updates."],
+    ["Events", "/events", "Browse public events."],
+    ["Businesses", "/businesses", "Browse the local business directory."],
+    ["Radio", "/radio", "Listen to Seattle Desi Radio."],
+    ["Studio", "/studio", "Admin workspace."],
   ];
-
-  const teamLinks = [
-    ["My Assignments", "/my-assignments"],
-    ["My Availability", "/my-availability"],
-    ["Request Team Role", "/login"],
-  ];
-
-  const studioLinks = [
-    ["Studio Dashboard", "/studio"],
-    ["Pending Events", "/studio/events/pending"],
-    ["All Events", "/studio/events"],
-    ["Coverage Requests", "/studio/coverage"],
-    ["Pending Crew", "/studio/crew/pending"],
-    ["Crew Requests", "/studio/crew"],
-    ["Assignments Calendar", "/studio/assignments-calendar"],
-    ["Businesses", "/studio/businesses"],
-    ["Team Management", "/studio/team"],
-    ["Radio Team Management", "/studio/radio-team"],
-    ["Role Requests", "/studio/roles"],
-  ];
-
-  const renderCard = (title: string, description: string, links: string[][], accent: string) => (
-    <section className="bg-white text-slate-950 rounded-3xl p-6 shadow-xl border">
-      <h2 className="text-2xl font-black">{title}</h2>
-      <p className="text-gray-600 mt-2 mb-5">{description}</p>
-      <div className="grid gap-3">
-        {links.map(([label, href]) => (
-          <a key={href} href={href} className={`block rounded-xl px-4 py-3 font-bold border hover:scale-[1.01] transition ${accent}`}>
-            {label}
-          </a>
-        ))}
-      </div>
-    </section>
-  );
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white px-6 py-10">
-      <div className="max-w-7xl mx-auto">
-        <a href="/" className="text-pink-300 font-bold">← Back to Seattle Desi TV</a>
-        <div className="mt-5 mb-10">
-          <h1 className="text-4xl md:text-6xl font-black">Seattle Desi TV Portal</h1>
-          <p className="text-slate-300 mt-3 max-w-3xl">One clean place for public visitors, SDTV team members, and admins. This page replaces the confusing hash-menu workflow with direct routes.</p>
+    <main className="min-h-screen bg-slate-950 text-white">
+      <MyHubHeader />
+      <div className="max-w-7xl mx-auto px-6 py-10">
+        <p className="text-pink-300 font-black uppercase tracking-wide">My Hub</p>
+        <h1 className="text-4xl md:text-6xl font-black mt-3">Seattle Desi TV Portal</h1>
+        <p className="text-slate-300 mt-3 max-w-3xl mb-8">A simple navigation bridge for public pages, team tools, account access, and Studio operations.</p>
+        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5">
+          {links.map(([label, href, note]) => (
+            <a key={href} href={href} className="bg-white text-slate-950 rounded-3xl p-6 shadow-xl border hover:scale-[1.01] transition block">
+              <h2 className="text-xl font-black">{label}</h2>
+              <p className="text-gray-600 mt-2 text-sm">{note}</p>
+            </a>
+          ))}
         </div>
-
-        <div className="grid lg:grid-cols-3 gap-6">
-          {renderCard("Public", "For community visitors, organizers, and businesses.", publicLinks, "hover:bg-pink-50 hover:border-pink-300")}
-          {renderCard("SDTV Team", "For approved team members handling coverage and availability.", teamLinks, "hover:bg-yellow-50 hover:border-yellow-300")}
-          {renderCard("Studio Admin", "For PM admins and super admins managing operations.", studioLinks, "hover:bg-blue-50 hover:border-blue-300")}
-        </div>
-
-        <section className="mt-8 bg-white/10 border border-white/10 rounded-3xl p-6">
-          <h2 className="text-2xl font-black">Recommended Menu Structure</h2>
-          <p className="text-slate-300 mt-2">The homepage should use simple direct links for these routes and slowly retire the old #tab menu.</p>
-          <div className="grid md:grid-cols-3 gap-4 mt-5 text-sm">
-            <div className="bg-slate-900 rounded-2xl p-4"><b>Public Menu</b><br />Home, Events, Businesses, Team, Radio, Contact</div>
-            <div className="bg-slate-900 rounded-2xl p-4"><b>Team Menu</b><br />My Assignments, My Availability, Login</div>
-            <div className="bg-slate-900 rounded-2xl p-4"><b>Admin Menu</b><br />Studio, Coverage, Crew, Roles, Calendar</div>
-          </div>
-        </section>
       </div>
+      <SiteFooter />
     </main>
   );
 }
