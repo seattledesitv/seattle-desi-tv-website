@@ -10,6 +10,10 @@ const supabase = getSupabaseBrowserClient();
 const emptyBanner = { title: "", subtitle: "", image_url: "", button_text: "", button_url: "", banner_type: "marketing", start_date: "", end_date: "", display_order: 0, active: true };
 const emptyFestival = { festival_name: "", festival_key: "", title: "", subtitle: "", image_url: "", start_date: "", end_date: "", active: true };
 
+function normalizeDate(value: string | null | undefined) {
+  return value ? String(value).split("T")[0] : "";
+}
+
 export default function HeroCmsPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
@@ -19,6 +23,8 @@ export default function HeroCmsPage() {
   const [festivals, setFestivals] = useState<any[]>([]);
   const [bannerForm, setBannerForm] = useState<any>(emptyBanner);
   const [festivalForm, setFestivalForm] = useState<any>(emptyFestival);
+  const [editingBannerId, setEditingBannerId] = useState("");
+  const [editingFestivalId, setEditingFestivalId] = useState("");
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [festivalFile, setFestivalFile] = useState<File | null>(null);
   const [uploadingBanner, setUploadingBanner] = useState(false);
@@ -46,6 +52,52 @@ export default function HeroCmsPage() {
     await loadContent();
     setMessage("");
     setLoading(false);
+  }
+
+  function resetBannerForm() {
+    setBannerForm(emptyBanner);
+    setBannerFile(null);
+    setEditingBannerId("");
+  }
+
+  function resetFestivalForm() {
+    setFestivalForm(emptyFestival);
+    setFestivalFile(null);
+    setEditingFestivalId("");
+  }
+
+  function editBanner(banner: any) {
+    setEditingBannerId(banner.id);
+    setBannerFile(null);
+    setBannerForm({
+      title: banner.title || "",
+      subtitle: banner.subtitle || "",
+      image_url: banner.image_url || "",
+      button_text: banner.button_text || "",
+      button_url: banner.button_url || "",
+      banner_type: banner.banner_type || "marketing",
+      start_date: normalizeDate(banner.start_date),
+      end_date: normalizeDate(banner.end_date),
+      display_order: Number(banner.display_order || 0),
+      active: banner.active !== false,
+    });
+    setMessage(`Editing marketing banner: ${banner.title || "Untitled"}`);
+  }
+
+  function editFestival(festival: any) {
+    setEditingFestivalId(festival.id);
+    setFestivalFile(null);
+    setFestivalForm({
+      festival_name: festival.festival_name || "",
+      festival_key: festival.festival_key || "",
+      title: festival.title || "",
+      subtitle: festival.subtitle || "",
+      image_url: festival.image_url || "",
+      start_date: normalizeDate(festival.start_date),
+      end_date: normalizeDate(festival.end_date),
+      active: festival.active !== false,
+    });
+    setMessage(`Editing festival asset: ${festival.festival_name || "Untitled"}`);
   }
 
   async function uploadBannerImage() {
@@ -86,11 +138,12 @@ export default function HeroCmsPage() {
         imageUrl = await uploadFileToCloudinary(bannerFile);
       }
       const payload: any = { ...bannerForm, image_url: imageUrl, start_date: bannerForm.start_date || null, end_date: bannerForm.end_date || null, display_order: Number(bannerForm.display_order || 0), updated_at: new Date().toISOString() };
-      const { error } = await supabase.from("homepage_hero_banners").insert(payload);
-      if (error) { setMessage(`Save failed: ${error.message}`); return; }
-      setBannerForm(emptyBanner);
-      setBannerFile(null);
-      setMessage("Hero banner saved with image.");
+      const result = editingBannerId
+        ? await supabase.from("homepage_hero_banners").update(payload).eq("id", editingBannerId)
+        : await supabase.from("homepage_hero_banners").insert(payload);
+      if (result.error) { setMessage(`Save failed: ${result.error.message}`); return; }
+      resetBannerForm();
+      setMessage(editingBannerId ? "Hero banner updated." : "Hero banner saved with image.");
       await loadContent();
     } catch (error: any) {
       setMessage(error?.message || "Banner save failed.");
@@ -109,11 +162,12 @@ export default function HeroCmsPage() {
         imageUrl = await uploadFileToCloudinary(festivalFile);
       }
       const payload: any = { ...festivalForm, image_url: imageUrl, updated_at: new Date().toISOString() };
-      const { error } = await supabase.from("festival_hero_assets").insert(payload);
-      if (error) { setMessage(`Festival save failed: ${error.message}`); return; }
-      setFestivalForm(emptyFestival);
-      setFestivalFile(null);
-      setMessage("Festival hero saved with image.");
+      const result = editingFestivalId
+        ? await supabase.from("festival_hero_assets").update(payload).eq("id", editingFestivalId)
+        : await supabase.from("festival_hero_assets").insert(payload);
+      if (result.error) { setMessage(`Festival save failed: ${result.error.message}`); return; }
+      resetFestivalForm();
+      setMessage(editingFestivalId ? "Festival hero updated." : "Festival hero saved with image.");
       await loadContent();
     } catch (error: any) {
       setMessage(error?.message || "Festival save failed.");
@@ -143,14 +197,14 @@ export default function HeroCmsPage() {
 
           <section className="grid xl:grid-cols-[460px_1fr] gap-6">
             <div className="bg-white text-slate-950 rounded-2xl p-6">
-              <h2 className="text-2xl font-black mb-4">Add Marketing Banner</h2>
+              <div className="flex items-center justify-between gap-3 mb-4"><h2 className="text-2xl font-black">{editingBannerId ? "Edit Marketing Banner" : "Add Marketing Banner"}</h2>{editingBannerId && <button onClick={resetBannerForm} className="border px-3 py-2 rounded-lg font-bold text-sm">Cancel</button>}</div>
               <input className="w-full border rounded-lg p-3 mb-3" placeholder="Title" value={bannerForm.title} onChange={(e) => setBannerForm({ ...bannerForm, title: e.target.value })} />
               <input className="w-full border rounded-lg p-3 mb-3" placeholder="Subtitle" value={bannerForm.subtitle} onChange={(e) => setBannerForm({ ...bannerForm, subtitle: e.target.value })} />
               <div className="border rounded-xl p-4 mb-3 bg-slate-50">
                 <p className="font-black text-sm mb-2">Upload Banner Image</p>
                 <input type="file" accept="image/*" onChange={(e) => { setBannerFile(e.target.files?.[0] || null); setBannerForm({ ...bannerForm, image_url: "" }); }} className="w-full text-sm mb-3" />
                 <button type="button" onClick={uploadBannerImage} disabled={!bannerFile || uploadingBanner} className="w-full bg-slate-950 text-white px-4 py-3 rounded-xl font-bold disabled:opacity-50">{uploadingBanner ? "Uploading..." : "Upload Now / Preview"}</button>
-                <p className="text-xs text-gray-500 mt-2">You can either upload first for preview or simply click Save Banner; Save will upload automatically.</p>
+                <p className="text-xs text-gray-500 mt-2">You can upload first for preview or click Save; Save will upload automatically.</p>
               </div>
               <input className="w-full border rounded-lg p-3 mb-3" placeholder="Image URL / optional override" value={bannerForm.image_url} onChange={(e) => setBannerForm({ ...bannerForm, image_url: e.target.value })} />
               {bannerForm.image_url && <img src={bannerForm.image_url} alt="Banner preview" className="w-full h-48 object-cover rounded-xl border mb-3" />}
@@ -161,18 +215,18 @@ export default function HeroCmsPage() {
               <input className="w-full border rounded-lg p-3 mb-3" type="date" value={bannerForm.end_date} onChange={(e) => setBannerForm({ ...bannerForm, end_date: e.target.value })} />
               <input className="w-full border rounded-lg p-3 mb-3" type="number" placeholder="Display order" value={bannerForm.display_order} onChange={(e) => setBannerForm({ ...bannerForm, display_order: Number(e.target.value) })} />
               <label className="flex gap-2 text-sm font-bold mb-4"><input type="checkbox" checked={bannerForm.active} onChange={(e) => setBannerForm({ ...bannerForm, active: e.target.checked })} /> Active</label>
-              <button onClick={saveBanner} disabled={uploadingBanner} className="w-full bg-pink-600 text-white px-5 py-3 rounded-xl font-black disabled:opacity-50">{uploadingBanner ? "Saving..." : "Save Banner"}</button>
+              <button onClick={saveBanner} disabled={uploadingBanner} className="w-full bg-pink-600 text-white px-5 py-3 rounded-xl font-black disabled:opacity-50">{uploadingBanner ? "Saving..." : editingBannerId ? "Update Banner" : "Save Banner"}</button>
             </div>
 
             <div className="bg-white text-slate-950 rounded-2xl p-6">
               <h2 className="text-2xl font-black mb-4">Hero Banners ({banners.length})</h2>
-              <div className="grid gap-4">{banners.map((banner) => <article key={banner.id} className="border rounded-xl p-4 grid md:grid-cols-[120px_1fr_auto] gap-4 items-center">{banner.image_url ? <img src={banner.image_url} alt={banner.title} className="w-28 h-20 rounded-xl object-cover bg-gray-50 border" /> : <div className="w-28 h-20 rounded-xl bg-pink-50 grid place-items-center text-pink-600 font-black text-xs">No image</div>}<div><h3 className="text-xl font-black">{banner.title}</h3><p className="text-sm text-gray-600">{banner.banner_type} · Order {banner.display_order || 0} · {banner.active ? "Active" : "Inactive"}</p><p className="text-xs text-gray-500 break-all">{banner.image_url || "No image URL saved"}</p><p className="text-xs text-gray-500">{banner.start_date || "No start"} → {banner.end_date || "No end"}</p></div><button onClick={() => toggle("homepage_hero_banners", banner)} className="border px-3 py-2 rounded-lg font-bold text-sm">{banner.active ? "Deactivate" : "Activate"}</button></article>)}{banners.length === 0 && <p className="text-gray-500">No banners found.</p>}</div>
+              <div className="grid gap-4">{banners.map((banner) => <article key={banner.id} className="border rounded-xl p-4 grid md:grid-cols-[120px_1fr_auto] gap-4 items-center">{banner.image_url ? <img src={banner.image_url} alt={banner.title} className="w-28 h-20 rounded-xl object-cover bg-gray-50 border" /> : <div className="w-28 h-20 rounded-xl bg-pink-50 grid place-items-center text-pink-600 font-black text-xs">No image</div>}<div><h3 className="text-xl font-black">{banner.title}</h3><p className="text-sm text-gray-600">{banner.banner_type} · Order {banner.display_order || 0} · {banner.active ? "Active" : "Inactive"}</p><p className="text-xs text-gray-500 break-all">{banner.image_url || "No image URL saved"}</p><p className="text-xs text-gray-500">{banner.start_date || "No start"} → {banner.end_date || "No end"}</p></div><div className="flex flex-wrap gap-2 justify-end"><button onClick={() => editBanner(banner)} className="bg-slate-950 text-white px-3 py-2 rounded-lg font-bold text-sm">Edit</button><button onClick={() => toggle("homepage_hero_banners", banner)} className="border px-3 py-2 rounded-lg font-bold text-sm">{banner.active ? "Deactivate" : "Activate"}</button></div></article>)}{banners.length === 0 && <p className="text-gray-500">No banners found.</p>}</div>
             </div>
           </section>
 
           <section className="grid xl:grid-cols-[460px_1fr] gap-6">
             <div className="bg-white text-slate-950 rounded-2xl p-6">
-              <h2 className="text-2xl font-black mb-4">Add Festival Hero</h2>
+              <div className="flex items-center justify-between gap-3 mb-4"><h2 className="text-2xl font-black">{editingFestivalId ? "Edit Festival Hero" : "Add Festival Hero"}</h2>{editingFestivalId && <button onClick={resetFestivalForm} className="border px-3 py-2 rounded-lg font-bold text-sm">Cancel</button>}</div>
               <input className="w-full border rounded-lg p-3 mb-3" placeholder="Festival name" value={festivalForm.festival_name} onChange={(e) => setFestivalForm({ ...festivalForm, festival_name: e.target.value })} />
               <input className="w-full border rounded-lg p-3 mb-3" placeholder="Festival key e.g. diwali_2026" value={festivalForm.festival_key} onChange={(e) => setFestivalForm({ ...festivalForm, festival_key: e.target.value })} />
               <input className="w-full border rounded-lg p-3 mb-3" placeholder="Title" value={festivalForm.title} onChange={(e) => setFestivalForm({ ...festivalForm, title: e.target.value })} />
@@ -181,19 +235,19 @@ export default function HeroCmsPage() {
                 <p className="font-black text-sm mb-2">Upload Festival Image</p>
                 <input type="file" accept="image/*" onChange={(e) => { setFestivalFile(e.target.files?.[0] || null); setFestivalForm({ ...festivalForm, image_url: "" }); }} className="w-full text-sm mb-3" />
                 <button type="button" onClick={uploadFestivalImage} disabled={!festivalFile || uploadingFestival} className="w-full bg-slate-950 text-white px-4 py-3 rounded-xl font-bold disabled:opacity-50">{uploadingFestival ? "Uploading..." : "Upload Now / Preview"}</button>
-                <p className="text-xs text-gray-500 mt-2">You can either upload first for preview or simply click Save Festival; Save will upload automatically.</p>
+                <p className="text-xs text-gray-500 mt-2">You can upload first for preview or click Save; Save will upload automatically.</p>
               </div>
               <input className="w-full border rounded-lg p-3 mb-3" placeholder="Image URL / optional override" value={festivalForm.image_url} onChange={(e) => setFestivalForm({ ...festivalForm, image_url: e.target.value })} />
               {festivalForm.image_url && <img src={festivalForm.image_url} alt="Festival preview" className="w-full h-48 object-cover rounded-xl border mb-3" />}
               <input className="w-full border rounded-lg p-3 mb-3" type="date" value={festivalForm.start_date} onChange={(e) => setFestivalForm({ ...festivalForm, start_date: e.target.value })} />
               <input className="w-full border rounded-lg p-3 mb-3" type="date" value={festivalForm.end_date} onChange={(e) => setFestivalForm({ ...festivalForm, end_date: e.target.value })} />
               <label className="flex gap-2 text-sm font-bold mb-4"><input type="checkbox" checked={festivalForm.active} onChange={(e) => setFestivalForm({ ...festivalForm, active: e.target.checked })} /> Active</label>
-              <button onClick={saveFestival} disabled={uploadingFestival} className="w-full bg-pink-600 text-white px-5 py-3 rounded-xl font-black disabled:opacity-50">{uploadingFestival ? "Saving..." : "Save Festival"}</button>
+              <button onClick={saveFestival} disabled={uploadingFestival} className="w-full bg-pink-600 text-white px-5 py-3 rounded-xl font-black disabled:opacity-50">{uploadingFestival ? "Saving..." : editingFestivalId ? "Update Festival" : "Save Festival"}</button>
             </div>
 
             <div className="bg-white text-slate-950 rounded-2xl p-6">
               <h2 className="text-2xl font-black mb-4">Festival Assets ({festivals.length})</h2>
-              <div className="grid gap-4">{festivals.map((festival) => <article key={festival.id} className="border rounded-xl p-4 grid md:grid-cols-[120px_1fr_auto] gap-4 items-center">{festival.image_url ? <img src={festival.image_url} alt={festival.festival_name} className="w-28 h-20 rounded-xl object-cover bg-gray-50 border" /> : <div className="w-28 h-20 rounded-xl bg-pink-50 grid place-items-center text-pink-600 font-black text-xs">No image</div>}<div><h3 className="text-xl font-black">{festival.festival_name}</h3><p className="text-sm text-gray-600">{festival.festival_key} · {festival.active ? "Active" : "Inactive"}</p><p className="text-xs text-gray-500 break-all">{festival.image_url || "No image URL saved"}</p><p className="text-xs text-gray-500">{festival.start_date} → {festival.end_date}</p></div><button onClick={() => toggle("festival_hero_assets", festival)} className="border px-3 py-2 rounded-lg font-bold text-sm">{festival.active ? "Deactivate" : "Activate"}</button></article>)}{festivals.length === 0 && <p className="text-gray-500">No festival assets found.</p>}</div>
+              <div className="grid gap-4">{festivals.map((festival) => <article key={festival.id} className="border rounded-xl p-4 grid md:grid-cols-[120px_1fr_auto] gap-4 items-center">{festival.image_url ? <img src={festival.image_url} alt={festival.festival_name} className="w-28 h-20 rounded-xl object-cover bg-gray-50 border" /> : <div className="w-28 h-20 rounded-xl bg-pink-50 grid place-items-center text-pink-600 font-black text-xs">No image</div>}<div><h3 className="text-xl font-black">{festival.festival_name}</h3><p className="text-sm text-gray-600">{festival.festival_key} · {festival.active ? "Active" : "Inactive"}</p><p className="text-xs text-gray-500 break-all">{festival.image_url || "No image URL saved"}</p><p className="text-xs text-gray-500">{festival.start_date} → {festival.end_date}</p></div><div className="flex flex-wrap gap-2 justify-end"><button onClick={() => editFestival(festival)} className="bg-slate-950 text-white px-3 py-2 rounded-lg font-bold text-sm">Edit</button><button onClick={() => toggle("festival_hero_assets", festival)} className="border px-3 py-2 rounded-lg font-bold text-sm">{festival.active ? "Deactivate" : "Activate"}</button></div></article>)}{festivals.length === 0 && <p className="text-gray-500">No festival assets found.</p>}</div>
             </div>
           </section>
         </div>}
