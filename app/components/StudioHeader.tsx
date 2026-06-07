@@ -10,6 +10,8 @@ export default function StudioHeader() {
 
   const links = [
     ["Dashboard", "/studio"],
+    ["Homepage", "/studio/homepage"],
+    ["Sponsors", "/studio/sponsors"],
     ["Analytics", "/studio/analytics"],
     ["Events", "/studio/events"],
     ["Pending Events", "/studio/events/pending"],
@@ -58,7 +60,7 @@ export default function StudioHeader() {
               </a>
             ))}
             <a href="/notifications" className="bg-white/10 hover:bg-pink-600 px-3 py-2 rounded-lg transition relative">
-              🔔 Notifications
+              Notifications
               {unreadCount > 0 && <span className="ml-2 bg-pink-600 text-white rounded-full px-2 py-0.5 text-xs">{unreadCount}</span>}
             </a>
           </nav>
