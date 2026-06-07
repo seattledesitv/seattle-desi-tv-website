@@ -6,6 +6,7 @@ import SiteFooter from "./components/SiteFooter";
 import { getSupabaseBrowserClient } from "./lib/supabaseBrowser";
 
 const supabase = getSupabaseBrowserClient();
+const SPONSOR_TIERS = ["Gold Sponsor", "Silver Sponsor", "Community Partner"];
 
 const fallbackSectionSettings = [
   { section_key: "home", display_order: 1, enabled: true },
@@ -36,6 +37,7 @@ type BusinessRow = { id: string; name: string; category?: string | null; offer?:
 type TeamRow = { id: string; name: string; title?: string | null; image?: string | null; photo?: string | null; picture?: string | null };
 type VideoRow = { id?: string; title: string; description?: string; thumbnail?: string; url: string; publishedAt?: string };
 type SocialRow = { platform: string; followers?: number | null; views?: number | null; videos?: number | null; href?: string | null };
+type SponsorRow = { id: string; name: string; website?: string | null; logo_url?: string | null; tier?: string | null; display_order?: number | null };
 type SectionSetting = { section_key: string; display_order?: number | null; enabled?: boolean | null; title?: string | null; subtitle?: string | null };
 type Counts = { events: number; businesses: number; coverage: number; team: number; radio: number };
 
@@ -50,11 +52,17 @@ function StatCard({ label, value, note, href }: { label: string; value: string |
   return href ? <a href={href} target={isExternal(href) ? "_blank" : undefined} rel={isExternal(href) ? "noreferrer" : undefined}>{card}</a> : card;
 }
 
+function SponsorCard({ sponsor }: { sponsor: SponsorRow }) {
+  const card = <div className="bg-white border rounded-2xl p-5 h-full text-center shadow-sm hover:shadow-xl transition"><div className="h-24 rounded-xl bg-slate-50 grid place-items-center overflow-hidden mb-4">{sponsor.logo_url ? <img src={sponsor.logo_url} alt={sponsor.name} className="max-h-20 max-w-full object-contain p-2" /> : <span className="text-pink-600 font-black">SDTV</span>}</div><h3 className="font-black text-lg">{sponsor.name}</h3>{sponsor.website && <p className="text-pink-600 text-sm font-bold mt-2">Visit Sponsor</p>}</div>;
+  return sponsor.website ? <a href={sponsor.website} target="_blank" rel="noreferrer">{card}</a> : card;
+}
+
 export default function HomePage() {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [businesses, setBusinesses] = useState<BusinessRow[]>([]);
   const [team, setTeam] = useState<TeamRow[]>([]);
   const [videos, setVideos] = useState<VideoRow[]>([]);
+  const [sponsors, setSponsors] = useState<SponsorRow[]>([]);
   const [socialRows, setSocialRows] = useState<SocialRow[]>(fallbackSocialStats);
   const [sectionSettings, setSectionSettings] = useState<SectionSetting[]>(fallbackSectionSettings);
   const [counts, setCounts] = useState<Counts>(emptyCounts);
@@ -67,12 +75,13 @@ export default function HomePage() {
   async function loadDynamicHomepage() {
     setLoadingDynamic(true);
     const today = new Date().toISOString().split("T")[0];
-    const [eventsResult, businessesResult, teamResult, settingsResult, socialResult, eventsCount, businessesCount, coverageCount, teamCount, radioCount] = await Promise.all([
+    const [eventsResult, businessesResult, teamResult, settingsResult, socialResult, sponsorsResult, eventsCount, businessesCount, coverageCount, teamCount, radioCount] = await Promise.all([
       supabase.from("events").select("id,title,date,location,image,image_urls").eq("status", "approved").gte("date", today).order("date", { ascending: true }).limit(6),
       supabase.from("local_businesses").select("id,name,category,offer,discount,image,image_urls").eq("status", "approved").limit(6),
       supabase.from("team_members").select("id,name,title,image,photo,picture").limit(6),
       supabase.from("homepage_settings").select("section_key,display_order,enabled,title,subtitle").order("display_order", { ascending: true }),
       supabase.from("social_media_stats").select("platform,followers,views,videos,href").order("platform", { ascending: true }),
+      supabase.from("homepage_sponsors").select("id,name,website,logo_url,tier,display_order").eq("active", true).order("tier", { ascending: true }).order("display_order", { ascending: true }),
       countQuery(supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "approved")),
       countQuery(supabase.from("local_businesses").select("id", { count: "exact", head: true }).eq("status", "approved")),
       countQuery(supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).eq("assignment_type", "owner_coverage_request")),
@@ -82,13 +91,12 @@ export default function HomePage() {
     setEvents(eventsResult.data || []); setBusinesses(businessesResult.data || []); setTeam(teamResult.data || []);
     if (!settingsResult.error && Array.isArray(settingsResult.data) && settingsResult.data.length > 0) setSectionSettings(settingsResult.data);
     if (!socialResult.error && Array.isArray(socialResult.data) && socialResult.data.length > 0) setSocialRows(socialResult.data);
+    if (!sponsorsResult.error && Array.isArray(sponsorsResult.data)) setSponsors(sponsorsResult.data);
     setCounts({ events: eventsCount, businesses: businessesCount, coverage: coverageCount, team: teamCount, radio: radioCount });
     setLoadingDynamic(false);
   }
 
-  async function loadLatestVideos() {
-    try { const response = await fetch("/api/youtube/latest", { cache: "no-store" }); const result = await response.json(); if (result?.ok && Array.isArray(result.videos) && result.videos.length > 0) { setVideos(result.videos); setVideoMessage("Latest videos from YouTube."); } else { setVideos([]); setVideoMessage(result?.error ? `Showing fallback videos: ${result.error}` : "Showing fallback videos."); } } catch { setVideos([]); setVideoMessage("Showing fallback videos."); }
-  }
+  async function loadLatestVideos() { try { const response = await fetch("/api/youtube/latest", { cache: "no-store" }); const result = await response.json(); if (result?.ok && Array.isArray(result.videos) && result.videos.length > 0) { setVideos(result.videos); setVideoMessage("Latest videos from YouTube."); } else { setVideos([]); setVideoMessage(result?.error ? `Showing fallback videos: ${result.error}` : "Showing fallback videos."); } } catch { setVideos([]); setVideoMessage("Showing fallback videos."); } }
 
   useEffect(() => { loadDynamicHomepage(); loadLatestVideos(); }, []);
   const featuredTeam = useMemo(() => team.slice(0, 4), [team]);
@@ -104,7 +112,7 @@ export default function HomePage() {
     if (key === "videos") return <section key="videos" id="videos" className="max-w-7xl mx-auto px-6 md:px-10 py-10"><div className="bg-slate-950 text-white rounded-3xl p-8 md:p-10"><div className="flex items-end justify-between gap-4 mb-6"><div><p className="text-pink-300 font-black uppercase tracking-wide">Watch SDTV</p><h2 className="text-3xl md:text-4xl font-black">Latest YouTube Videos</h2><p className="text-slate-300 mt-1">{videoMessage}</p></div><a href="https://www.youtube.com/@SeattleDesiTV/videos" target="_blank" rel="noreferrer" className="hidden md:inline-block text-pink-300 font-black">Open YouTube →</a></div><div className="grid md:grid-cols-3 gap-5">{videoCards.map((video) => <a key={video.url} href={video.url} target="_blank" rel="noreferrer" className="bg-white/10 border border-white/10 rounded-2xl overflow-hidden hover:bg-white/15 transition"><div className="h-44 bg-white/5 grid place-items-center overflow-hidden">{video.thumbnail ? <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover" /> : <div className="font-black text-pink-300">Seattle Desi TV</div>}</div><div className="p-5"><h3 className="font-black text-xl">{video.title}</h3>{video.publishedAt && <p className="text-pink-200 text-xs font-bold mt-2">{formatDate(video.publishedAt)}</p>}<p className="text-slate-300 text-sm mt-2">{video.description || "Watch this Seattle Desi TV video on YouTube."}</p></div></a>)}</div></div></section>;
     if (key === "social") return <section key="social" id="social" className="max-w-7xl mx-auto px-6 md:px-10 py-10"><div className="mb-6"><p className="text-pink-600 font-black uppercase tracking-wide">Social Reach</p><h2 className="text-3xl md:text-4xl font-black">Social Media Stats</h2><p className="text-gray-600 mt-1">Followers, views, and videos across SDTV channels.</p></div><div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5">{socialRows.map((stat) => <StatCard key={stat.platform} label={stat.platform} value={formatNumber(stat.followers)} note={`${formatNumber(stat.views)} views · ${formatNumber(stat.videos)} videos`} href={stat.href || undefined} />)}<StatCard label="All Platforms" value="Multi-channel" note="TV, radio, web, social" href="/portal" /></div></section>;
     if (key === "team") return <section key="team" className="max-w-7xl mx-auto px-6 md:px-10 py-10"><div className="flex items-end justify-between gap-4 mb-6"><div><p className="text-pink-600 font-black uppercase tracking-wide">People behind SDTV</p><h2 className="text-3xl md:text-4xl font-black">Team Spotlight</h2><p className="text-gray-600 mt-1">Meet some of the community members supporting SDTV.</p></div><a href="/team" className="hidden md:inline-block text-pink-600 font-black">Meet the team →</a></div>{featuredTeam.length === 0 ? <div className="bg-white border rounded-2xl p-8 text-gray-500">Team profiles will appear here after they are added in Studio.</div> : <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5">{featuredTeam.map((member) => { const image = firstImage(member); return <a key={member.id} href="/team" className="bg-white border rounded-2xl p-5 text-center shadow-sm hover:shadow-xl transition">{image ? <img src={image} alt={member.name} className="w-24 h-24 rounded-full object-cover mx-auto" /> : <div className="w-24 h-24 rounded-full bg-pink-50 text-pink-600 grid place-items-center mx-auto font-black">SDTV</div>}<h3 className="text-xl font-black mt-4">{member.name}</h3>{member.title && <p className="text-gray-600 text-sm mt-1">{member.title}</p>}</a>; })}</div>}</section>;
-    if (key === "sponsors") return <section key="sponsors" className="max-w-7xl mx-auto px-6 md:px-10 py-10"><div className="bg-white border rounded-3xl p-8"><p className="text-pink-600 font-black uppercase tracking-wide">Sponsors</p><h2 className="text-3xl md:text-4xl font-black">Sponsor Showcase</h2><p className="text-gray-600 mt-2">Sponsor management will be connected in the next homepage CMS phase.</p></div></section>;
+    if (key === "sponsors") return <section key="sponsors" className="max-w-7xl mx-auto px-6 md:px-10 py-10"><div className="bg-white border rounded-3xl p-8"><p className="text-pink-600 font-black uppercase tracking-wide">Sponsors</p><h2 className="text-3xl md:text-4xl font-black">Our Sponsors</h2><p className="text-gray-600 mt-2 mb-8">Thank you to the partners supporting Seattle Desi TV.</p>{sponsors.length === 0 ? <p className="text-gray-500">Sponsors will appear here after they are added in Studio.</p> : <div className="space-y-8">{SPONSOR_TIERS.map((tier) => { const tierSponsors = sponsors.filter((s) => (s.tier || "Community Partner") === tier); if (tierSponsors.length === 0) return null; return <div key={tier}><h3 className="text-2xl font-black mb-4">{tier}s</h3><div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5">{tierSponsors.map((sponsor) => <SponsorCard key={sponsor.id} sponsor={sponsor} />)}</div></div>; })}</div>}</div></section>;
     return null;
   }
 
