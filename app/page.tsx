@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import SiteHeader from "./components/SiteHeader";
 import SiteFooter from "./components/SiteFooter";
 import { getSupabaseBrowserClient } from "./lib/supabaseBrowser";
-import { isAdminRole, isTeamRole, resolveUserRole } from "./lib/roles";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -51,10 +50,6 @@ function StatCard({ label, value, note, href }: { label: string; value: string |
   return href ? <a href={href} target={isExternal(href) ? "_blank" : undefined} rel={isExternal(href) ? "noreferrer" : undefined}>{card}</a> : card;
 }
 
-function LinkSection({ title, subtitle, links }: { title: string; subtitle: string; links: string[][] }) {
-  return <section className="max-w-7xl mx-auto px-6 md:px-10 py-8"><h2 className="text-3xl font-black text-slate-950">{title}</h2><p className="text-gray-600 mt-1 mb-5">{subtitle}</p><div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5">{links.map(([label, href, description]) => <a key={href} href={href} className="block rounded-2xl border bg-white p-5 shadow-sm hover:shadow-lg transition"><h3 className="text-xl font-black text-slate-950">{label}</h3><p className="text-gray-600 mt-2 text-sm">{description}</p></a>)}</div></section>;
-}
-
 export default function HomePage() {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [businesses, setBusinesses] = useState<BusinessRow[]>([]);
@@ -65,13 +60,9 @@ export default function HomePage() {
   const [counts, setCounts] = useState<Counts>(emptyCounts);
   const [loadingDynamic, setLoadingDynamic] = useState(true);
   const [videoMessage, setVideoMessage] = useState("Loading latest videos...");
-  const [user, setUser] = useState<any>(null);
-  const [role, setRole] = useState("general_public");
 
   async function countQuery(query: any) { const result = await query; return result.count || 0; }
   function sectionText(key: string, fallbackTitle: string, fallbackSubtitle: string) { const setting = sectionSettings.find((s) => s.section_key === key); return { title: setting?.title || fallbackTitle, subtitle: setting?.subtitle || fallbackSubtitle }; }
-
-  async function loadUserRole() { const { data } = await supabase.auth.getUser(); const currentUser = data?.user || null; setUser(currentUser); setRole(await resolveUserRole(supabase, currentUser)); }
 
   async function loadDynamicHomepage() {
     setLoadingDynamic(true);
@@ -99,11 +90,9 @@ export default function HomePage() {
     try { const response = await fetch("/api/youtube/latest", { cache: "no-store" }); const result = await response.json(); if (result?.ok && Array.isArray(result.videos) && result.videos.length > 0) { setVideos(result.videos); setVideoMessage("Latest videos from YouTube."); } else { setVideos([]); setVideoMessage(result?.error ? `Showing fallback videos: ${result.error}` : "Showing fallback videos."); } } catch { setVideos([]); setVideoMessage("Showing fallback videos."); }
   }
 
-  useEffect(() => { loadUserRole(); loadDynamicHomepage(); loadLatestVideos(); }, []);
+  useEffect(() => { loadDynamicHomepage(); loadLatestVideos(); }, []);
   const featuredTeam = useMemo(() => team.slice(0, 4), [team]);
   const videoCards = videos.length > 0 ? videos : fallbackVideos;
-  const canSeeTeamTools = Boolean(user && isTeamRole(role));
-  const canSeeStudio = Boolean(user && isAdminRole(role));
   const enabledSections = useMemo(() => sectionSettings.filter((s) => s.enabled !== false).sort((a, b) => Number(a.display_order || 999) - Number(b.display_order || 999)), [sectionSettings]);
 
   function renderSection(key: string) {
@@ -119,9 +108,5 @@ export default function HomePage() {
     return null;
   }
 
-  const publicLinks = [["Events", "/events", "Submit and browse community events."], ["Business Directory", "/businesses", "Explore and submit local Desi businesses."], ["SDTV Radio", "/radio", "Listen live and discover radio programming."]];
-  const teamLinks = [["My Assignments", "/my-assignments", "View events you are assigned to cover."], ["My Availability", "/my-availability", "Tell SDTV when you are available."]];
-  const adminLinks = [["Studio", "/studio", "Admin dashboard."], ["Analytics", "/studio/analytics", "View SDTV operational metrics."], ["Coverage Requests", "/studio/coverage", "Review organizer coverage requests."], ["Role Requests", "/studio/roles", "Approve public and team member roles."]];
-
-  return <main className="min-h-screen bg-gradient-to-b from-white to-slate-100 text-slate-950"><SiteHeader />{enabledSections.map((section) => renderSection(section.section_key))}<LinkSection title="Public Website" subtitle="Main public pages for community visitors." links={publicLinks} />{canSeeTeamTools && <LinkSection title="SDTV Team" subtitle="Private operational pages for approved team members." links={teamLinks} />}{canSeeStudio && <LinkSection title="Studio Admin" subtitle="Admin tools for SDTV operations." links={adminLinks} />}<SiteFooter /></main>;
+  return <main className="min-h-screen bg-gradient-to-b from-white to-slate-100 text-slate-950"><SiteHeader />{enabledSections.map((section) => renderSection(section.section_key))}<SiteFooter /></main>;
 }
