@@ -44,7 +44,7 @@ export default function StudioHeader() {
           <div><a href="/" className="text-pink-300 font-bold text-sm">← Public Site</a><h1 className="text-2xl font-black">SDTV Studio</h1></div>
           <nav className="flex flex-wrap gap-2 text-sm font-bold">
             {links.map(([label, href]) => <a key={href} href={href} className="bg-white/10 hover:bg-pink-600 px-3 py-2 rounded-lg transition">{label}</a>)}
-            <a href="/notifications" className="bg-white/10 hover:bg-pink-600 px-3 py-2 rounded-lg transition relative">Notifications{unreadCount > 0 && <span className="ml-2 bg-pink-600 text-white rounded-full px-2 py-0.5 text-xs">{unreadCount}</span>}</a>
+            <a href="/notifications?from=studio" className="bg-white/10 hover:bg-pink-600 px-3 py-2 rounded-lg transition relative">Notifications{unreadCount > 0 && <span className="ml-2 bg-pink-600 text-white rounded-full px-2 py-0.5 text-xs">{unreadCount}</span>}</a>
           </nav>
         </div>
       </div>
