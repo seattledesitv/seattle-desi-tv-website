@@ -23,6 +23,16 @@ function normalizeSource(value?: string | null): NotificationSource {
   return next === "studio" || next === "hub" ? next : "public";
 }
 
+function sourceFromReferrer(referrer?: string): NotificationSource {
+  if (!referrer) return "public";
+  try {
+    const url = new URL(referrer);
+    if (url.pathname.startsWith("/studio")) return "studio";
+    if (url.pathname.startsWith("/my-hub") || url.pathname.startsWith("/my-")) return "hub";
+  } catch {}
+  return "public";
+}
+
 export default function NotificationsPage() {
   const [source, setSource] = useState<NotificationSource>("pending");
   const [loading, setLoading] = useState(true);
@@ -95,7 +105,8 @@ export default function NotificationsPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      setSource(normalizeSource(params.get("from")));
+      const explicitSource = params.get("from");
+      setSource(explicitSource ? normalizeSource(explicitSource) : sourceFromReferrer(document.referrer));
     }
     init();
   }, []);
