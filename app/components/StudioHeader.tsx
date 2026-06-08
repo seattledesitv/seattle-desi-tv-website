@@ -18,6 +18,7 @@ export default function StudioHeader() {
     ["Events", "/studio/events"],
     ["Pending Events", "/studio/events/pending"],
     ["Businesses", "/studio/businesses"],
+    ["Contact Requests", "/studio/contact-requests"],
     ["Coverage", "/studio/coverage"],
     ["Crew", "/studio/crew/pending"],
     ["Calendar", "/studio/assignments-calendar"],
