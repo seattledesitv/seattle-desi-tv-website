@@ -122,6 +122,11 @@ export default function MyHubPage() {
     { title: "Portal", note: "General SDTV links and workspace entry point.", href: "/portal", value: "Open" },
     { title: "My Assignments", note: "Confirm, complete, and track event coverage.", href: "/my-assignments", value: team ? assignmentsCount : "Team" },
     { title: "My Availability", note: "Share dates you can support coverage.", href: "/my-availability", value: team ? availabilityCount : "Team" },
+    { title: "My Events", note: "Events submitted from your account.", href: "#events", value: events.length },
+    { title: "My Businesses", note: "Business listings submitted from your account.", href: "#businesses", value: businesses.length },
+    { title: "My Coverage", note: "Coverage and crew requests tied to you.", href: "#coverage", value: coverageRequests.length },
+    { title: "My Contact Requests", note: "Contact form submissions using your email.", href: "#contacts", value: contactRequests.length },
+    { title: "My Role Requests", note: "Team, crew, or access requests submitted by you.", href: "#roles", value: roleRequests.length },
     { title: "Notifications", note: "Unread SDTV alerts and updates.", href: "/notifications", value: notificationsCount },
     { title: "Account", note: "Login, role request, and account access.", href: "/login", value: email ? "Signed in" : "Login" },
     { title: "Studio", note: "Admin operations and content management.", href: "/studio", value: admin ? "Admin" : "Locked" },
@@ -145,10 +150,10 @@ export default function MyHubPage() {
 
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
           {cards.map((card) => (
-            <a key={card.href} href={card.href} className="bg-white text-slate-950 rounded-3xl p-6 shadow-xl border hover:scale-[1.01] transition block">
+            <a key={card.href + card.title} href={card.href} className="bg-white text-slate-950 rounded-3xl p-6 shadow-xl border hover:scale-[1.01] transition block">
               <div className="flex items-start justify-between gap-4">
-                <div><h2 className="text-2xl font-black">{card.title}</h2><p className="text-gray-600 mt-2">{card.note}</p></div>
-                <span className="bg-pink-50 text-pink-600 rounded-full px-3 py-1 text-sm font-black">{card.value}</span>
+                <div className="min-w-0"><h2 className="text-2xl font-black">{card.title}</h2><p className="text-gray-600 mt-2">{card.note}</p></div>
+                <span className="bg-pink-50 text-pink-600 rounded-full px-4 py-1 text-sm font-black whitespace-nowrap shrink-0 text-center min-w-10">{card.value}</span>
               </div>
             </a>
           ))}
@@ -165,27 +170,27 @@ export default function MyHubPage() {
             <div className="grid md:grid-cols-2 gap-4">{recentActivity.map((item, index) => <MiniRow key={`${item.label}-${index}`} {...item} />)}{recentActivity.length === 0 && <div className="text-slate-300">No recent activity found yet.</div>}</div>
           </section>
 
-          <section id="events" className="bg-white text-slate-950 rounded-3xl p-6 md:p-8 shadow-xl">
+          <section id="events" className="bg-white text-slate-950 rounded-3xl p-6 md:p-8 shadow-xl scroll-mt-24">
             <div className="flex items-center justify-between gap-4 mb-5"><div><h2 className="text-2xl font-black">My Events</h2><p className="text-gray-600 text-sm">Recent events submitted by your account.</p></div><a href="/events" className="text-pink-600 font-black">Open Events →</a></div>
             <div className="grid gap-4">{events.map((event) => { const image = firstImage(event); return <article key={event.id} className="border rounded-2xl p-4 grid md:grid-cols-[96px_1fr_auto] gap-4 items-center">{image ? <img src={image} alt={event.title} className="w-24 h-24 rounded-xl object-cover" /> : <div className="w-24 h-24 bg-pink-50 text-pink-600 rounded-xl grid place-items-center font-black text-xs">SDTV</div>}<div><h3 className="font-black text-xl">{event.title}</h3><p className="text-gray-600 text-sm">{formatDate(event.date)} · {event.location}</p><p className="text-xs text-gray-500 mt-1">Status: {statusText(event.status)}</p></div><a href={`/events/${event.id}`} className="bg-slate-950 text-white px-4 py-2 rounded-xl font-bold text-sm">View</a></article>; })}{events.length === 0 && <p className="text-gray-500">No event submissions found for this account.</p>}</div>
           </section>
 
-          <section id="businesses" className="bg-white text-slate-950 rounded-3xl p-6 md:p-8 shadow-xl">
+          <section id="businesses" className="bg-white text-slate-950 rounded-3xl p-6 md:p-8 shadow-xl scroll-mt-24">
             <div className="flex items-center justify-between gap-4 mb-5"><div><h2 className="text-2xl font-black">My Business Listings</h2><p className="text-gray-600 text-sm">Recent business listings submitted by your account.</p></div><a href="/businesses" className="text-pink-600 font-black">Open Directory →</a></div>
             <div className="grid gap-4">{businesses.map((business) => { const image = firstImage(business); return <article key={business.id} className="border rounded-2xl p-4 grid md:grid-cols-[96px_1fr] gap-4 items-center">{image ? <img src={image} alt={business.name} className="w-24 h-24 rounded-xl object-cover" /> : <div className="w-24 h-24 bg-pink-50 text-pink-600 rounded-xl grid place-items-center font-black text-xs">Local</div>}<div><h3 className="font-black text-xl">{business.name}</h3><p className="text-gray-600 text-sm">{business.category || "Business"}</p><p className="text-xs text-gray-500 mt-1">Status: {statusText(business.status)}</p></div></article>; })}{businesses.length === 0 && <p className="text-gray-500">No business listings found for this account.</p>}</div>
           </section>
 
-          <section id="coverage" className="bg-white text-slate-950 rounded-3xl p-6 md:p-8 shadow-xl">
+          <section id="coverage" className="bg-white text-slate-950 rounded-3xl p-6 md:p-8 shadow-xl scroll-mt-24">
             <h2 className="text-2xl font-black mb-1">My Coverage & Crew Requests</h2><p className="text-gray-600 text-sm mb-5">Coverage and crew requests tied to your account or email address.</p>
             <div className="grid gap-4">{coverageRequests.map((request) => <article key={request.id} className="border rounded-2xl p-4"><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h3 className="font-black text-xl">{request.event_title || "Coverage request"}</h3><p className="text-gray-600 text-sm">Type: {request.assignment_type || "request"}</p><p className="text-xs text-gray-500 mt-1">Submitted: {formatDateTime(request.created_at)}</p></div><span className="bg-pink-50 text-pink-600 px-3 py-1 rounded-full text-xs font-black uppercase">{statusText(request.status)}</span></div></article>)}{coverageRequests.length === 0 && <p className="text-gray-500">No coverage or crew requests found.</p>}</div>
           </section>
 
-          <section id="contacts" className="bg-white text-slate-950 rounded-3xl p-6 md:p-8 shadow-xl">
+          <section id="contacts" className="bg-white text-slate-950 rounded-3xl p-6 md:p-8 shadow-xl scroll-mt-24">
             <div className="flex items-center justify-between gap-4 mb-5"><div><h2 className="text-2xl font-black">My Contact Requests</h2><p className="text-gray-600 text-sm">Contact requests submitted with {email}.</p></div><a href="/contact" className="text-pink-600 font-black">Submit New →</a></div>
             <div className="grid gap-4">{contactRequests.map((request) => <article key={request.id} className="border rounded-2xl p-4"><div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3"><div><h3 className="font-black text-xl">{request.interest || "Contact request"}</h3><p className="text-gray-600 text-sm whitespace-pre-wrap mt-1">{request.message || "No message provided."}</p></div><p className="text-xs text-gray-500">{formatDateTime(request.created_at)}</p></div></article>)}{contactRequests.length === 0 && <p className="text-gray-500">No contact requests found for this email.</p>}</div>
           </section>
 
-          <section id="roles" className="bg-white text-slate-950 rounded-3xl p-6 md:p-8 shadow-xl">
+          <section id="roles" className="bg-white text-slate-950 rounded-3xl p-6 md:p-8 shadow-xl scroll-mt-24">
             <h2 className="text-2xl font-black mb-1">My Role Requests</h2><p className="text-gray-600 text-sm mb-5">Team, crew, or access requests submitted by this account.</p>
             <div className="grid gap-4">{roleRequests.map((request) => <article key={request.id} className="border rounded-2xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h3 className="font-black text-xl">{request.approved_role || request.requested_role || "Role request"}</h3><p className="text-gray-600 text-sm">Submitted {formatDateTime(request.created_at)}</p></div><span className="bg-pink-50 text-pink-600 px-3 py-1 rounded-full text-xs font-black uppercase">{statusText(request.status)}</span></article>)}{roleRequests.length === 0 && <p className="text-gray-500">No role requests found.</p>}</div>
           </section>
