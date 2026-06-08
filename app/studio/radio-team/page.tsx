@@ -217,7 +217,7 @@ export default function StudioRadioTeamPage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
-            <a href="/studio" className="text-pink-300 font-bold">← Back to Studio</a>
+            
             <h1 className="text-4xl md:text-5xl font-black mt-3">Radio Team Management</h1>
             <p className="text-slate-300 mt-2">{user?.email ? `Logged in as ${user.email} · Role: ${role || "none"}` : "Studio radio team"}</p>
           </div>
