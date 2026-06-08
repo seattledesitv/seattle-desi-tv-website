@@ -8,6 +8,12 @@ import { isAdminRole, isTeamRole, resolveUserRole } from "../lib/roles";
 
 const supabase = getSupabaseBrowserClient();
 
+type SubmissionCounts = { events: number; businesses: number; coverage: number; contacts: number; roles: number };
+type StatusCounts = { pending: number; approved: number; on_hold: number; rejected: number };
+
+const emptySubmissionCounts: SubmissionCounts = { events: 0, businesses: 0, coverage: 0, contacts: 0, roles: 0 };
+const emptyStatusCounts: StatusCounts = { pending: 0, approved: 0, on_hold: 0, rejected: 0 };
+
 function formatDate(value?: string | null) {
   if (!value) return "";
   const date = new Date(value);
@@ -35,6 +41,29 @@ function MiniRow({ label, title, meta, href }: { label: string; title: string; m
   return href ? <a href={href}>{body}</a> : body;
 }
 
+function StatusSummary({ title, counts }: { title: string; counts: StatusCounts }) {
+  const items = [
+    ["Pending", counts.pending],
+    ["Approved", counts.approved],
+    ["On Hold", counts.on_hold],
+    ["Rejected", counts.rejected],
+  ];
+
+  return (
+    <div className="bg-white/10 border border-white/10 rounded-3xl p-6">
+      <h3 className="text-xl font-black">{title}</h3>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+        {items.map(([label, value]) => (
+          <div key={String(label)} className="bg-white text-slate-950 rounded-2xl p-4">
+            <p className="text-xs text-gray-500 font-black uppercase tracking-wide">{label}</p>
+            <p className="text-3xl font-black text-pink-600 mt-1">{value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function MyHubPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading...");
@@ -45,6 +74,9 @@ export default function MyHubPage() {
   const [assignmentsCount, setAssignmentsCount] = useState(0);
   const [availabilityCount, setAvailabilityCount] = useState(0);
   const [notificationsCount, setNotificationsCount] = useState(0);
+  const [submissionCounts, setSubmissionCounts] = useState<SubmissionCounts>(emptySubmissionCounts);
+  const [eventStatusCounts, setEventStatusCounts] = useState<StatusCounts>(emptyStatusCounts);
+  const [businessStatusCounts, setBusinessStatusCounts] = useState<StatusCounts>(emptyStatusCounts);
   const [events, setEvents] = useState<any[]>([]);
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [coverageRequests, setCoverageRequests] = useState<any[]>([]);
@@ -65,6 +97,11 @@ export default function MyHubPage() {
     return rows.slice(0, 8);
   }, [events, businesses, coverageRequests, contactRequests, roleRequests]);
 
+  async function countQuery(query: any) {
+    const result = await query;
+    return result.count || 0;
+  }
+
   async function loadHub() {
     setLoading(true);
     setMessage("Loading...");
@@ -80,7 +117,29 @@ export default function MyHubPage() {
 
     if (user?.id) {
       const today = new Date().toISOString().split("T")[0];
-      const [assignments, availability, notifications, eventsResult, businessesResult, coverageResult, contactsResult, roleRequestsResult] = await Promise.all([
+      const [
+        assignments,
+        availability,
+        notifications,
+        eventsResult,
+        businessesResult,
+        coverageResult,
+        contactsResult,
+        roleRequestsResult,
+        eventsTotal,
+        businessesTotal,
+        coverageTotal,
+        contactsTotal,
+        rolesTotal,
+        eventPending,
+        eventApproved,
+        eventOnHold,
+        eventRejected,
+        businessPending,
+        businessApproved,
+        businessOnHold,
+        businessRejected,
+      ] = await Promise.all([
         supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "approved"),
         supabase.from("crew_availability").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("available_date", today),
         supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("read", false),
@@ -89,6 +148,19 @@ export default function MyHubPage() {
         supabase.from("event_crew_assignments").select("id,event_id,event_title,user_id,user_email,assignment_type,status,created_at,approved_at").or(`user_id.eq.${user.id},user_email.eq.${nextEmail}`).order("created_at", { ascending: false }).limit(5),
         supabase.from("contact_requests").select("id,name,email,phone,interest,message,created_at").ilike("email", nextEmail).order("created_at", { ascending: false }).limit(5),
         supabase.from("user_role_requests").select("id,requested_role,approved_role,status,created_at,email,user_id").or(`user_id.eq.${user.id},email.eq.${nextEmail}`).order("created_at", { ascending: false }).limit(5),
+        countQuery(supabase.from("events").select("id", { count: "exact", head: true }).eq("created_by", user.id)),
+        countQuery(supabase.from("local_businesses").select("id", { count: "exact", head: true }).eq("created_by", user.id)),
+        countQuery(supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).or(`user_id.eq.${user.id},user_email.eq.${nextEmail}`)),
+        countQuery(supabase.from("contact_requests").select("id", { count: "exact", head: true }).ilike("email", nextEmail)),
+        countQuery(supabase.from("user_role_requests").select("id", { count: "exact", head: true }).or(`user_id.eq.${user.id},email.eq.${nextEmail}`)),
+        countQuery(supabase.from("events").select("id", { count: "exact", head: true }).eq("created_by", user.id).or("status.is.null,status.eq.pending")),
+        countQuery(supabase.from("events").select("id", { count: "exact", head: true }).eq("created_by", user.id).eq("status", "approved")),
+        countQuery(supabase.from("events").select("id", { count: "exact", head: true }).eq("created_by", user.id).eq("status", "on_hold")),
+        countQuery(supabase.from("events").select("id", { count: "exact", head: true }).eq("created_by", user.id).eq("status", "rejected")),
+        countQuery(supabase.from("local_businesses").select("id", { count: "exact", head: true }).eq("created_by", user.id).or("status.is.null,status.eq.pending")),
+        countQuery(supabase.from("local_businesses").select("id", { count: "exact", head: true }).eq("created_by", user.id).eq("status", "approved")),
+        countQuery(supabase.from("local_businesses").select("id", { count: "exact", head: true }).eq("created_by", user.id).eq("status", "on_hold")),
+        countQuery(supabase.from("local_businesses").select("id", { count: "exact", head: true }).eq("created_by", user.id).eq("status", "rejected")),
       ]);
 
       const errors = [assignments.error, availability.error, notifications.error, eventsResult.error, businessesResult.error, coverageResult.error, contactsResult.error, roleRequestsResult.error].filter(Boolean);
@@ -97,6 +169,9 @@ export default function MyHubPage() {
       setAssignmentsCount(assignments.count || 0);
       setAvailabilityCount(availability.count || 0);
       setNotificationsCount(notifications.count || 0);
+      setSubmissionCounts({ events: eventsTotal, businesses: businessesTotal, coverage: coverageTotal, contacts: contactsTotal, roles: rolesTotal });
+      setEventStatusCounts({ pending: eventPending, approved: eventApproved, on_hold: eventOnHold, rejected: eventRejected });
+      setBusinessStatusCounts({ pending: businessPending, approved: businessApproved, on_hold: businessOnHold, rejected: businessRejected });
       setEvents(eventsResult.data || []);
       setBusinesses(businessesResult.data || []);
       setCoverageRequests(coverageResult.data || []);
@@ -106,6 +181,9 @@ export default function MyHubPage() {
       setAssignmentsCount(0);
       setAvailabilityCount(0);
       setNotificationsCount(0);
+      setSubmissionCounts(emptySubmissionCounts);
+      setEventStatusCounts(emptyStatusCounts);
+      setBusinessStatusCounts(emptyStatusCounts);
       setEvents([]);
       setBusinesses([]);
       setCoverageRequests([]);
@@ -122,11 +200,11 @@ export default function MyHubPage() {
     { title: "Portal", note: "General SDTV links and workspace entry point.", href: "/portal", value: "Open" },
     { title: "My Assignments", note: "Confirm, complete, and track event coverage.", href: "/my-assignments", value: team ? assignmentsCount : "Team" },
     { title: "My Availability", note: "Share dates you can support coverage.", href: "/my-availability", value: team ? availabilityCount : "Team" },
-    { title: "My Events", note: "Events submitted from your account.", href: "#events", value: events.length },
-    { title: "My Businesses", note: "Business listings submitted from your account.", href: "#businesses", value: businesses.length },
-    { title: "My Coverage", note: "Coverage and crew requests tied to you.", href: "#coverage", value: coverageRequests.length },
-    { title: "My Contact Requests", note: "Contact form submissions using your email.", href: "#contacts", value: contactRequests.length },
-    { title: "My Role Requests", note: "Team, crew, or access requests submitted by you.", href: "#roles", value: roleRequests.length },
+    { title: "My Events", note: "Events submitted from your account.", href: "#events", value: submissionCounts.events },
+    { title: "My Businesses", note: "Business listings submitted from your account.", href: "#businesses", value: submissionCounts.businesses },
+    { title: "My Coverage", note: "Coverage and crew requests tied to you.", href: "#coverage", value: submissionCounts.coverage },
+    { title: "My Contact Requests", note: "Contact form submissions using your email.", href: "#contacts", value: submissionCounts.contacts },
+    { title: "My Role Requests", note: "Team, crew, or access requests submitted by you.", href: "#roles", value: submissionCounts.roles },
     { title: "Notifications", note: "Unread SDTV alerts and updates.", href: "/notifications", value: notificationsCount },
     { title: "Account", note: "Login, role request, and account access.", href: "/login", value: email ? "Signed in" : "Login" },
     { title: "Studio", note: "Admin operations and content management.", href: "/studio", value: admin ? "Admin" : "Locked" },
@@ -162,6 +240,11 @@ export default function MyHubPage() {
         {!loading && !userId && <div className="bg-white text-slate-950 rounded-3xl p-8 mt-8"><h2 className="text-2xl font-black">Login required</h2><p className="text-gray-600 mt-2">Login to see your submissions, requests, assignments, and notifications.</p><a href="/login" className="inline-block bg-pink-600 text-white px-5 py-3 rounded-xl font-bold mt-5">Go to Login</a></div>}
 
         {!loading && userId && <div className="space-y-8 mt-8">
+          <section className="grid xl:grid-cols-2 gap-6">
+            <StatusSummary title="Event Submission Status" counts={eventStatusCounts} />
+            <StatusSummary title="Business Listing Status" counts={businessStatusCounts} />
+          </section>
+
           <section className="bg-white/10 border border-white/10 rounded-3xl p-6 md:p-8">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
               <div><h2 className="text-2xl font-black">Recent Activity</h2><p className="text-slate-300 text-sm mt-1">Latest activity across your SDTV submissions and requests.</p></div>
