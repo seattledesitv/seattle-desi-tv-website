@@ -17,6 +17,7 @@ const defaultSections = [
   { section_key: "social", display_order: 7, enabled: true, title: "Social Media Stats", subtitle: "Followers, views, and videos across SDTV channels." },
   { section_key: "team", display_order: 8, enabled: true, title: "Team Spotlight", subtitle: "Meet some of the community members supporting SDTV." },
   { section_key: "sponsors", display_order: 9, enabled: false, title: "Sponsor Showcase", subtitle: "Sponsor management section." },
+  { section_key: "contact", display_order: 10, enabled: true, title: "Get Involved", subtitle: "Volunteer, sponsor, host shows, or request coverage." },
 ];
 
 const defaultSocial = [
