@@ -47,7 +47,7 @@ export default function SiteHeader() {
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <a href="/" className="flex items-center gap-3 font-black text-xl"><img src="/sdtv-logo.png" alt="Seattle Desi TV" className="h-14 w-auto" /><span>Seattle Desi TV</span></a>
           <nav className="hidden lg:flex items-center gap-3 font-bold text-sm">
-            <a href="/" className="hover:text-pink-600">Home</a><a href="/events" className="hover:text-pink-600">Events</a><a href="/businesses" className="hover:text-pink-600">Businesses</a><a href="/radio" className="hover:text-pink-600">Radio</a><a href="/team" className="hover:text-pink-600">Team</a>
+            <a href="/" className="hover:text-pink-600">Home</a><a href="/events" className="hover:text-pink-600">Events</a><a href="/businesses" className="hover:text-pink-600">Businesses</a><a href="/radio" className="hover:text-pink-600">Radio</a><a href="/team" className="hover:text-pink-600">Team</a><a href="/contact" className="hover:text-pink-600">Contact</a>
             <a href="/my-hub" className="hover:text-pink-600">My Hub{unreadCount > 0 ? ` ${unreadCount}` : ""}</a>
             {canSeeStudio && <a href="/studio" className="hover:text-pink-600">Studio</a>}
             <a href="/login" className="bg-pink-600 text-white px-4 py-2 rounded-xl">{isLoggedIn ? "Account" : "Login"}</a>
