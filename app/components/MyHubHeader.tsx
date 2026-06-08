@@ -28,7 +28,7 @@ export default function MyHubHeader() {
     ["Portal", "/portal", true],
     ["My Assignments", "/my-assignments", canSeeTeamTools],
     ["My Availability", "/my-availability", canSeeTeamTools],
-    ["Notifications", "/notifications", Boolean(email)],
+    ["Notifications", "/notifications?from=hub", Boolean(email)],
     ["Studio", "/studio", canSeeStudio],
   ];
 
