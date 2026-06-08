@@ -211,7 +211,9 @@ export default function StudioRadioTeamPage() {
   useEffect(() => { init(); }, []);
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white px-6 py-10">
+    <main className="min-h-screen bg-slate-950 text-white">
+  <StudioHeader />
+  <div className="max-w-7xl mx-auto px-6 py-10">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
