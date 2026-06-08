@@ -1,7 +1,8 @@
 "use client";
 
 import Script from "next/script";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 const requestTypes = ["General Inquiry", "Volunteer", "Internship", "RJ / Radio Host", "VJ / Anchor", "Sponsorship", "Event Coverage", "Business Listing", "Partnership"];
 const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY || "";
@@ -13,11 +14,25 @@ const ctaCards = [
   ["Sponsor SDTV", "Promote your brand across SDTV web, video, radio, and community channels.", "Sponsorship"],
 ];
 
+function normalizedInterest(value: string | null) {
+  if (!value) return "";
+  const decoded = decodeURIComponent(value);
+  return requestTypes.includes(decoded) ? decoded : "";
+}
+
 export default function ContactSection({ compact = false }: { compact?: boolean }) {
+  const searchParams = useSearchParams();
   const [form, setForm] = useState({ name: "", email: "", phone: "", interest: "General Inquiry", message: "" });
   const [captchaToken, setCaptchaToken] = useState("");
   const [status, setStatus] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const interest = normalizedInterest(searchParams.get("interest"));
+    if (interest) {
+      setForm((current) => ({ ...current, interest, message: current.message || `Hi SDTV team, I am interested in ${interest}. Please share next steps.` }));
+    }
+  }, [searchParams]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
