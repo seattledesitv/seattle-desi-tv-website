@@ -2,7 +2,6 @@
 
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
 
 const requestTypes = ["General Inquiry", "Volunteer", "Internship", "RJ / Radio Host", "VJ / Anchor", "Sponsorship", "Event Coverage", "Business Listing", "Partnership"];
 const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY || "";
@@ -26,8 +25,14 @@ function normalizedInterest(value: string | null) {
   return requestTypes.includes(decoded) ? decoded : "";
 }
 
-export default function ContactSection({ compact = false }: { compact?: boolean }) {
-  const searchParams = useSearchParams();
+export default function ContactSection({
+  compact = false,
+  initialInterest = "",
+}: {
+  compact?: boolean;
+  initialInterest?: string;
+}) {
+ 
   const turnstileRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "", interest: "General Inquiry", message: "" });
@@ -36,7 +41,7 @@ export default function ContactSection({ compact = false }: { compact?: boolean 
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const interest = normalizedInterest(searchParams.get("interest"));
+const interest = normalizedInterest(initialInterest);
     if (interest) {
       setForm((current) => ({ ...current, interest, message: current.message || `Hi SDTV team, I am interested in ${interest}. Please share next steps.` }));
     }
