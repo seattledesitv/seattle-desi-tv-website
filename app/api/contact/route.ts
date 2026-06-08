@@ -40,15 +40,17 @@ export async function POST(req: Request) {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const requestType = interest || "General Inquiry";
-    const { error: insertError } = await supabase.from("contact_requests").insert({
-      name,
-      email,
-      phone: phone || null,
-      request_type: requestType,
-      message,
-      source: "website_contact",
-      status: "new",
-    });
+const { error: insertError } = await supabase
+  .from("contact_requests")
+  .insert({
+    name,
+    email,
+    phone: phone || null,
+    interest: requestType,
+    message,
+    source: "website_contact",
+    status: "new",
+  });
 
     if (insertError) {
       return NextResponse.json({ success: false, step: "db_insert", error: insertError.message }, { status: 500 });
