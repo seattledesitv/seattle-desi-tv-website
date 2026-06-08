@@ -1,7 +1,7 @@
 "use client";
 
 import Script from "next/script";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 const requestTypes = ["General Inquiry", "Volunteer", "Internship", "RJ / Radio Host", "VJ / Anchor", "Sponsorship", "Event Coverage", "Business Listing", "Partnership"];
@@ -14,6 +14,12 @@ const ctaCards = [
   ["Sponsor SDTV", "Promote your brand across SDTV web, video, radio, and community channels.", "Sponsorship"],
 ];
 
+declare global {
+  interface Window {
+    turnstile?: any;
+  }
+}
+
 function normalizedInterest(value: string | null) {
   if (!value) return "";
   const decoded = decodeURIComponent(value);
@@ -22,6 +28,8 @@ function normalizedInterest(value: string | null) {
 
 export default function ContactSection({ compact = false }: { compact?: boolean }) {
   const searchParams = useSearchParams();
+  const turnstileRef = useRef<HTMLDivElement | null>(null);
+  const widgetIdRef = useRef<string | null>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "", interest: "General Inquiry", message: "" });
   const [captchaToken, setCaptchaToken] = useState("");
   const [status, setStatus] = useState("");
@@ -33,6 +41,30 @@ export default function ContactSection({ compact = false }: { compact?: boolean 
       setForm((current) => ({ ...current, interest, message: current.message || `Hi SDTV team, I am interested in ${interest}. Please share next steps.` }));
     }
   }, [searchParams]);
+
+  function renderTurnstile() {
+    if (!siteKey || !turnstileRef.current || !window.turnstile || widgetIdRef.current) return;
+    widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
+      sitekey: siteKey,
+      callback: (token: string) => {
+        setCaptchaToken(token);
+        setStatus((current) => current === "Please complete the captcha." ? "" : current);
+      },
+      "expired-callback": () => setCaptchaToken(""),
+      "error-callback": () => {
+        setCaptchaToken("");
+        setStatus("Captcha had an error. Please refresh and try again.");
+      },
+    });
+  }
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      renderTurnstile();
+      if (widgetIdRef.current) window.clearInterval(timer);
+    }, 300);
+    return () => window.clearInterval(timer);
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -52,6 +84,7 @@ export default function ContactSection({ compact = false }: { compact?: boolean 
       setStatus("Thank you. Seattle Desi TV received your message.");
       setForm({ name: "", email: "", phone: "", interest: "General Inquiry", message: "" });
       setCaptchaToken("");
+      if (window.turnstile && widgetIdRef.current) window.turnstile.reset(widgetIdRef.current);
     }
     setSaving(false);
   }
@@ -63,7 +96,7 @@ export default function ContactSection({ compact = false }: { compact?: boolean 
 
   return (
     <section id="contact" className={compact ? "py-10" : "py-16"}>
-      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer onLoad={renderTurnstile} />
       <div className="max-w-7xl mx-auto px-6 md:px-10">
         <div className="grid lg:grid-cols-[0.9fr_1.1fr] gap-8 items-start">
           <div className="bg-slate-950 text-white rounded-3xl p-8 md:p-10">
@@ -87,8 +120,8 @@ export default function ContactSection({ compact = false }: { compact?: boolean 
               <select className="border rounded-xl p-3" value={form.interest} onChange={(e) => setForm({ ...form, interest: e.target.value })}>{requestTypes.map((type) => <option key={type}>{type}</option>)}</select>
             </div>
             <textarea className="border rounded-xl p-3 w-full mt-4 min-h-36" placeholder="Message *" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
-            <div className="mt-4 bg-slate-50 rounded-2xl p-4 border">
-              {siteKey ? <div className="cf-turnstile" data-sitekey={siteKey} data-callback={(token: string) => setCaptchaToken(token)} data-expired-callback={() => setCaptchaToken("")} /> : <p className="text-red-600 font-bold text-sm">Turnstile site key is missing. Add NEXT_PUBLIC_TURNSTILE_SITE_KEY in Vercel.</p>}
+            <div className="mt-4 bg-slate-50 rounded-2xl p-4 border min-h-[92px]">
+              {siteKey ? <div ref={turnstileRef} /> : <p className="text-red-600 font-bold text-sm">Turnstile site key is missing. Add NEXT_PUBLIC_TURNSTILE_SITE_KEY in Vercel.</p>}
             </div>
             <button disabled={saving || !siteKey} className="w-full bg-pink-600 text-white px-5 py-4 rounded-xl font-black mt-5 disabled:opacity-50">{saving ? "Submitting..." : "Submit Contact Request"}</button>
             {status && <p className="mt-4 text-sm font-bold text-orange-700">{status}</p>}
