@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import SiteHeader from "../components/SiteHeader";
 import SiteFooter from "../components/SiteFooter";
@@ -23,8 +22,7 @@ function normalizeSource(value?: string | null) {
 }
 
 export default function NotificationsPage() {
-  const searchParams = useSearchParams();
-  const source = normalizeSource(searchParams.get("from"));
+  const [source, setSource] = useState("public");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading notifications...");
   const [user, setUser] = useState<any>(null);
@@ -90,7 +88,13 @@ export default function NotificationsPage() {
     else await loadNotifications();
   }
 
-  useEffect(() => { init(); }, []);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      setSource(normalizeSource(params.get("from")));
+    }
+    init();
+  }, []);
 
   return (
     <main className={pageShellClass}>
@@ -99,7 +103,7 @@ export default function NotificationsPage() {
         <div className="max-w-5xl mx-auto">
           <a href={backHref} className="text-pink-300 font-bold">{backText}</a>
           <h1 className="text-4xl md:text-6xl font-black mt-4">Notifications</h1>
-          <p className={source === "public" ? "text-slate-300 mt-3" : "text-slate-300 mt-3"}>Updates about role approvals, assignments, coverage, events, and business listings.</p>
+          <p className="text-slate-300 mt-3">Updates about role approvals, assignments, coverage, events, and business listings.</p>
         </div>
       </section>
       <section className="max-w-5xl mx-auto px-6 py-10">
