@@ -168,14 +168,15 @@ export default function VideoProductionPage() {
     const event = workflow.events || {};
     const { data } = await supabase.from("admins").select("user_id,email");
     const admins = data || [];
-    if (!admins.length) return;
-    await supabase.from("notifications").insert(admins.filter((admin: any) => admin.user_id).map((admin: any) => ({
+    const notifications = admins.filter((admin: any) => admin.user_id).map((admin: any) => ({
       user_id: admin.user_id,
       title: "Video workflow awaiting final approval",
       message: `${event.title || "An event video"} was approved by crew and needs SDTV admin final approval before publishing.`,
       link: "/studio/video-production",
       read: false,
-    }))).catch(() => null);
+    }));
+    if (!notifications.length) return;
+    await supabase.from("notifications").insert(notifications);
   }
 
   async function markCrewApproved(workflow: any) {
