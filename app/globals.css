@@ -3,6 +3,32 @@
 @tailwind utilities;
 
 * { box-sizing: border-box; }
+html, body { max-width: 100%; overflow-x: hidden; }
 body { margin: 0; background: #fff; color: #081024; }
 a { text-decoration: none; }
 button { cursor: pointer; }
+
+@media (max-width: 767px) {
+  section[key="home"] .max-h-\[390px\].hidden,
+  .max-h-\[390px\].hidden.justify-center {
+    display: flex !important;
+    position: absolute;
+    right: 1rem;
+    bottom: 3.25rem;
+    z-index: 15;
+    width: 6.5rem;
+    max-height: 8.5rem;
+    pointer-events: none;
+  }
+
+  .max-h-\[390px\].hidden.justify-center > div {
+    max-width: 6.5rem !important;
+    padding: 0.35rem !important;
+    border-radius: 1rem !important;
+    background: rgba(255, 255, 255, 0.14) !important;
+  }
+
+  .max-h-\[390px\].hidden.justify-center > div > div {
+    border-radius: 0.75rem !important;
+  }
+}
