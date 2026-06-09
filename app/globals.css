@@ -13,8 +13,9 @@ button { cursor: pointer; }
   .max-h-\[390px\].hidden.justify-center {
     display: flex !important;
     position: absolute;
-    right: 1rem;
-    bottom: 3.25rem;
+    right: 0.75rem;
+    top: 0.75rem;
+    bottom: auto;
     z-index: 15;
     width: 6.5rem;
     max-height: 8.5rem;
