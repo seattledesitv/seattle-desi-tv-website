@@ -74,14 +74,14 @@ function HeroCarousel({ items }: { items: HeroItem[] }) {
   const next = () => setCurrent((value) => (value + 1) % heroItems.length);
 
   return (
-    <section key="home" className="relative overflow-hidden bg-slate-950 text-white min-h-[560px]">
+    <section key="home" className="relative overflow-hidden bg-slate-950 text-white h-[560px] md:h-[620px]">
       <div className={`absolute inset-0 bg-cover bg-center transition-all duration-700 ${isEventHero ? "opacity-35 blur-sm scale-105" : ""}`} style={{ backgroundImage: `url('${image}')` }} />
       <div className={`absolute inset-0 ${isEventHero ? "bg-gradient-to-r from-slate-950 via-slate-950/90 to-slate-950/70" : "bg-gradient-to-r from-slate-950 via-slate-950/80 to-slate-950/20"}`} />
-      <div className={`relative max-w-7xl mx-auto px-6 md:px-10 py-16 md:py-24 min-h-[560px] grid gap-10 items-center ${isEventHero ? "lg:grid-cols-[1.05fr_0.95fr]" : "lg:grid-cols-1"}`}>
+      <div className={`relative max-w-7xl mx-auto px-6 md:px-10 h-full grid gap-8 items-center overflow-hidden ${isEventHero ? "lg:grid-cols-[1.05fr_0.95fr]" : "lg:grid-cols-1"}`}>
         <div className="max-w-4xl">
           <p className="text-pink-300 font-black uppercase tracking-wide">{item.badge || "Seattle Desi TV"}</p>
-          <h1 className="text-5xl md:text-7xl font-black leading-tight mt-3">{item.title}</h1>
-          {item.subtitle && <p className="text-xl text-slate-200 max-w-3xl mt-5">{item.subtitle}</p>}
+          <h1 className={`${isEventHero ? "text-4xl md:text-6xl" : "text-5xl md:text-7xl"} font-black leading-tight mt-3 line-clamp-3`}>{item.title}</h1>
+          {item.subtitle && <p className="text-lg md:text-xl text-slate-200 max-w-3xl mt-5 line-clamp-3">{item.subtitle}</p>}
           <div className="flex flex-wrap gap-4 mt-8">
             {item.button_text && item.button_url && <a href={item.button_url} className="bg-pink-600 text-white px-6 py-4 rounded-xl font-black">{item.button_text}</a>}
             <a href="/radio" className="bg-white text-slate-950 px-6 py-4 rounded-xl font-black">Listen to Radio</a>
@@ -89,8 +89,8 @@ function HeroCarousel({ items }: { items: HeroItem[] }) {
           </div>
         </div>
         {isEventHero && (
-          <div className="flex justify-center lg:justify-end">
-            <div className="w-full max-w-[360px] aspect-[4/5] rounded-[2rem] border border-white/20 bg-white/10 p-4 shadow-2xl backdrop-blur overflow-hidden">
+          <div className="hidden md:flex justify-center lg:justify-end max-h-[500px]">
+            <div className="w-full max-w-[340px] aspect-[4/5] rounded-[2rem] border border-white/20 bg-white/10 p-4 shadow-2xl backdrop-blur overflow-hidden">
               <div className="w-full h-full rounded-[1.5rem] bg-white grid place-items-center overflow-hidden">
                 <img src={image} alt={item.title} className="w-full h-full object-contain" />
               </div>
