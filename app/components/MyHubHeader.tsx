@@ -10,7 +10,7 @@ type HubLink = {
   label: string;
   href: string;
   show: boolean;
-  tone?: "default" | "primary" | "locked";
+  tone?: "default" | "primary" | "team";
 };
 
 export default function MyHubHeader() {
@@ -33,13 +33,8 @@ export default function MyHubHeader() {
   const links: HubLink[] = [
     { label: "Hub Home", href: "/my-hub", show: true, tone: "primary" },
     { label: "Portal", href: "/portal", show: true },
-    { label: "Assignments", href: "/my-assignments", show: true, tone: canSeeTeamTools ? "default" : "locked" },
-    { label: "Availability", href: "/my-availability", show: true, tone: canSeeTeamTools ? "default" : "locked" },
-    { label: "My Events", href: "/my-hub#events", show: true },
-    { label: "My Businesses", href: "/my-hub#businesses", show: true },
-    { label: "Coverage", href: "/my-hub#coverage", show: true },
-    { label: "Contacts", href: "/my-hub#contacts", show: true },
-    { label: "Role Requests", href: "/my-hub#roles", show: true },
+    { label: "Assignments", href: "/my-assignments", show: true, tone: canSeeTeamTools ? "default" : "team" },
+    { label: "Availability", href: "/my-availability", show: true, tone: canSeeTeamTools ? "default" : "team" },
     { label: "Notifications", href: "/notifications?from=hub", show: Boolean(email) },
     { label: "Account", href: "/login", show: true },
     { label: "Studio", href: "/studio", show: canSeeStudio, tone: "primary" },
@@ -47,7 +42,7 @@ export default function MyHubHeader() {
 
   function linkClass(tone?: HubLink["tone"]) {
     if (tone === "primary") return "bg-pink-600 hover:bg-pink-700 text-white";
-    if (tone === "locked") return "bg-white/5 hover:bg-white/10 text-slate-400 border border-white/10";
+    if (tone === "team") return "bg-white/5 hover:bg-white/10 text-slate-400 border border-white/10";
     return "bg-white/10 hover:bg-pink-600 text-white";
   }
 
@@ -67,7 +62,7 @@ export default function MyHubHeader() {
           <nav className="overflow-x-auto whitespace-nowrap flex gap-2 text-sm font-bold pb-1 -mx-1 px-1">
             {links.filter((link) => link.show).map((link) => (
               <a key={link.href + link.label} href={link.href} className={`${linkClass(link.tone)} px-3 py-2 rounded-lg transition shrink-0`}>
-                {link.label}{link.tone === "locked" ? " · Team" : ""}
+                {link.label}{link.tone === "team" ? " · Team" : ""}
               </a>
             ))}
           </nav>
