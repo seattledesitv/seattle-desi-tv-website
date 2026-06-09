@@ -215,6 +215,7 @@ export default function VideoProductionPage() {
           <p className="text-xs text-gray-400">Updated {dateText(workflow.updated_at)}</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <a href={`/studio/video-production/${workflow.id}`} className="bg-pink-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Open Workflow</a>
           {workflow.status === "ready_for_editing" && editor && <button onClick={() => updateWorkflow(workflow, { status: "in_editing", assigned_editor_email: workflow.assigned_editor_email || user?.email || null }, "Workflow moved to editing.")} className="bg-slate-950 text-white px-3 py-2 rounded-lg font-bold text-sm">Start Editing</button>}
           {workflow.status === "in_editing" && editor && <button onClick={() => updateWorkflow(workflow, { status: "awaiting_crew_review" }, "Draft marked ready for crew review.")} className="bg-pink-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Submit For Crew Review</button>}
           {canCrewReview && <button onClick={() => markCrewApproved(workflow)} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Crew Approve</button>}
