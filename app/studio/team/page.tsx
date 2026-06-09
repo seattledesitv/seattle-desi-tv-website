@@ -236,7 +236,7 @@ export default function StudioTeamPage() {
     <main className="min-h-screen bg-slate-950 text-white">
   <StudioHeader />
   <div className="max-w-7xl mx-auto px-6 py-10">
-      <div className="max-w-7xl mx-auto">
+     
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
                         <h1 className="text-4xl md:text-5xl font-black mt-3">Team Management</h1>
