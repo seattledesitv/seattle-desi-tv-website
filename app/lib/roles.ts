@@ -13,7 +13,16 @@ export function isAdminRole(role?: string | null) {
 
 export function isTeamRole(role?: string | null) {
   const next = cleanRole(role);
-  return next === "team_member" || isAdminRole(next);
+  return next === "team_member" || next === "crew_member" || next === "crew" || isAdminRole(next);
+}
+
+export function isVideoEditorRole(role?: string | null) {
+  const next = cleanRole(role);
+  return next === "video_editor" || next === "editor" || next.includes("video_editor") || isAdminRole(next);
+}
+
+export function canAccessVideoProduction(role?: string | null) {
+  return isAdminRole(role) || isTeamRole(role) || isVideoEditorRole(role);
 }
 
 export async function resolveUserRole(supabase: SupabaseClient, currentUser: any) {
