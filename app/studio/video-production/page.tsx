@@ -228,7 +228,13 @@ export default function VideoProductionPage() {
     );
   }
 
-  useEffect(() => { init(); }, []);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const requestedStatus = new URLSearchParams(window.location.search).get("status") || "";
+      if (STATUSES.some((status) => status.key === requestedStatus)) setFilter(requestedStatus);
+    }
+    init();
+  }, []);
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
