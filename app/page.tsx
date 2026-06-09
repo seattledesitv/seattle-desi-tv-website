@@ -69,9 +69,38 @@ function HeroCarousel({ items }: { items: HeroItem[] }) {
   useEffect(() => { if (heroItems.length <= 1) return; const timer = setInterval(() => setCurrent((value) => (value + 1) % heroItems.length), 6000); return () => clearInterval(timer); }, [heroItems.length]);
   const item = heroItems[current] || fallbackHero[0];
   const image = item.image_url || "/hero-sdtv.png";
+  const isEventHero = String(item.id || "").startsWith("event-");
   const previous = () => setCurrent((value) => (value - 1 + heroItems.length) % heroItems.length);
   const next = () => setCurrent((value) => (value + 1) % heroItems.length);
-  return <section key="home" className="relative overflow-hidden bg-slate-950 text-white min-h-[560px]"><div className="absolute inset-0 bg-cover bg-center transition-all duration-700" style={{ backgroundImage: `url('${image}')` }} /><div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-slate-950/20" /><div className="relative max-w-7xl mx-auto px-6 md:px-10 py-20 md:py-28 min-h-[560px] flex items-center"><div className="max-w-4xl"><p className="text-pink-300 font-black uppercase tracking-wide">{item.badge || "Seattle Desi TV"}</p><h1 className="text-5xl md:text-7xl font-black leading-tight mt-3">{item.title}</h1>{item.subtitle && <p className="text-xl text-slate-200 max-w-3xl mt-5">{item.subtitle}</p>}<div className="flex flex-wrap gap-4 mt-8">{item.button_text && item.button_url && <a href={item.button_url} className="bg-pink-600 text-white px-6 py-4 rounded-xl font-black">{item.button_text}</a>}<a href="/radio" className="bg-white text-slate-950 px-6 py-4 rounded-xl font-black">Listen to Radio</a><a href="/businesses" className="border border-white/70 px-6 py-4 rounded-xl font-black">Local Businesses</a></div></div></div>{heroItems.length > 1 && <><button aria-label="Previous hero" onClick={previous} className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 bg-white/15 hover:bg-white/25 text-white rounded-full w-11 h-11 font-black">‹</button><button aria-label="Next hero" onClick={next} className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 bg-white/15 hover:bg-white/25 text-white rounded-full w-11 h-11 font-black">›</button><div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2">{heroItems.map((hero, index) => <button key={hero.id} aria-label={`Show hero ${index + 1}`} onClick={() => setCurrent(index)} className={`h-3 rounded-full transition-all ${index === current ? "w-8 bg-pink-400" : "w-3 bg-white/50"}`} />)}</div></>}</section>;
+
+  return (
+    <section key="home" className="relative overflow-hidden bg-slate-950 text-white min-h-[560px]">
+      <div className={`absolute inset-0 bg-cover bg-center transition-all duration-700 ${isEventHero ? "opacity-35 blur-sm scale-105" : ""}`} style={{ backgroundImage: `url('${image}')` }} />
+      <div className={`absolute inset-0 ${isEventHero ? "bg-gradient-to-r from-slate-950 via-slate-950/90 to-slate-950/70" : "bg-gradient-to-r from-slate-950 via-slate-950/80 to-slate-950/20"}`} />
+      <div className={`relative max-w-7xl mx-auto px-6 md:px-10 py-16 md:py-24 min-h-[560px] grid gap-10 items-center ${isEventHero ? "lg:grid-cols-[1.05fr_0.95fr]" : "lg:grid-cols-1"}`}>
+        <div className="max-w-4xl">
+          <p className="text-pink-300 font-black uppercase tracking-wide">{item.badge || "Seattle Desi TV"}</p>
+          <h1 className="text-5xl md:text-7xl font-black leading-tight mt-3">{item.title}</h1>
+          {item.subtitle && <p className="text-xl text-slate-200 max-w-3xl mt-5">{item.subtitle}</p>}
+          <div className="flex flex-wrap gap-4 mt-8">
+            {item.button_text && item.button_url && <a href={item.button_url} className="bg-pink-600 text-white px-6 py-4 rounded-xl font-black">{item.button_text}</a>}
+            <a href="/radio" className="bg-white text-slate-950 px-6 py-4 rounded-xl font-black">Listen to Radio</a>
+            <a href="/businesses" className="border border-white/70 px-6 py-4 rounded-xl font-black">Local Businesses</a>
+          </div>
+        </div>
+        {isEventHero && (
+          <div className="flex justify-center lg:justify-end">
+            <div className="w-full max-w-[430px] aspect-square rounded-[2rem] border border-white/20 bg-white/10 p-4 shadow-2xl backdrop-blur overflow-hidden">
+              <div className="w-full h-full rounded-[1.5rem] bg-white grid place-items-center overflow-hidden">
+                <img src={image} alt={item.title} className="w-full h-full object-contain" />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      {heroItems.length > 1 && <><button aria-label="Previous hero" onClick={previous} className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 bg-white/15 hover:bg-white/25 text-white rounded-full w-11 h-11 font-black">‹</button><button aria-label="Next hero" onClick={next} className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 bg-white/15 hover:bg-white/25 text-white rounded-full w-11 h-11 font-black">›</button><div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2">{heroItems.map((hero, index) => <button key={hero.id} aria-label={`Show hero ${index + 1}`} onClick={() => setCurrent(index)} className={`h-3 rounded-full transition-all ${index === current ? "w-8 bg-pink-400" : "w-3 bg-white/50"}`} />)}</div></>}
+    </section>
+  );
 }
 
 export default function HomePage() {
@@ -100,7 +129,7 @@ export default function HomePage() {
       supabase.from("homepage_settings").select("section_key,display_order,enabled,title,subtitle").order("display_order", { ascending: true }),
       supabase.from("social_media_stats").select("platform,followers,views,videos,href").order("platform", { ascending: true }),
       supabase.from("homepage_sponsors").select("id,name,website,logo_url,tier,display_order").eq("active", true).order("tier", { ascending: true }).order("display_order", { ascending: true }),
-      supabase.from("events").select("id,title,date,location,image,image_urls,featured,featured_order").eq("status", "approved").eq("featured", true).gte("date", today).order("featured_order", { ascending: true }).order("date", { ascending: true }).limit(5),
+      supabase.from("events").select("id,title,date,location,image,image_urls,featured,featured_order").eq("status", "approved").eq("featured", true).order("featured_order", { ascending: true }).order("date", { ascending: true }).limit(5),
       supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,banner_type,start_date,end_date,display_order,active").eq("active", true).order("display_order", { ascending: true }),
       supabase.from("festival_hero_assets").select("id,festival_name,festival_key,title,subtitle,image_url,start_date,end_date,active").eq("active", true).order("start_date", { ascending: true }),
       countQuery(supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "approved")),
