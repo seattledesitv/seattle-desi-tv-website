@@ -85,9 +85,11 @@ export default function PendingCrewPage() {
   useEffect(() => { init(); }, []);
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white px-6 py-10">
+    <main className="min-h-screen bg-slate-950 text-white">
+  <StudioHeader />
+  <div className="max-w-7xl mx-auto px-6 py-10">
       <div className="max-w-6xl mx-auto">
-        <a href="/studio" className="text-pink-300 font-bold">← Back to Studio</a>
+        
         <h1 className="text-4xl md:text-5xl font-black mt-3">Pending Crew</h1>
         <p className="text-slate-300 mt-2 mb-8">Review crew requests waiting for approval.</p>
         {loading && <div className="bg-white/10 rounded-2xl p-6">{message}</div>}
