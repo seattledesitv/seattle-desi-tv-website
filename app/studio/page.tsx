@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import StudioHeader from "../components/StudioHeader";
+import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient, AUTH_STORAGE_KEY } from "../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../lib/roles";
 
