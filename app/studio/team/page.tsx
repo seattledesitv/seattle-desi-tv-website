@@ -2,7 +2,7 @@
 
 import { ChangeEvent, useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-
+import StudioHeader from "../../components/StudioHeader";
 const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
 const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
@@ -233,12 +233,13 @@ export default function StudioTeamPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white px-6 py-10">
+    <main className="min-h-screen bg-slate-950 text-white">
+  <StudioHeader />
+  <div className="max-w-7xl mx-auto px-6 py-10">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
-            <a href="/studio" className="text-pink-300 font-bold">← Back to Studio</a>
-            <h1 className="text-4xl md:text-5xl font-black mt-3">Team Management</h1>
+                        <h1 className="text-4xl md:text-5xl font-black mt-3">Team Management</h1>
             <p className="text-slate-300 mt-2">{user?.email ? `Logged in as ${user.email} · Role: ${role || "none"}` : "Studio team"}</p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -310,6 +311,7 @@ export default function StudioTeamPage() {
             </section>
           </div>
         )}
+       
       </div>
     </main>
   );
