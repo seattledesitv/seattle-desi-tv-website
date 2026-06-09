@@ -90,7 +90,7 @@ function HeroCarousel({ items }: { items: HeroItem[] }) {
         </div>
         {isEventHero && (
           <div className="flex justify-center lg:justify-end">
-            <div className="w-full max-w-[430px] aspect-square rounded-[2rem] border border-white/20 bg-white/10 p-4 shadow-2xl backdrop-blur overflow-hidden">
+            <div className="w-full max-w-[360px] aspect-[4/5] rounded-[2rem] border border-white/20 bg-white/10 p-4 shadow-2xl backdrop-blur overflow-hidden">
               <div className="w-full h-full rounded-[1.5rem] bg-white grid place-items-center overflow-hidden">
                 <img src={image} alt={item.title} className="w-full h-full object-contain" />
               </div>
