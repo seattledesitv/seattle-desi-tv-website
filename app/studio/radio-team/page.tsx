@@ -253,6 +253,7 @@ export default function StudioRadioTeamPage() {
             </section>
           </div>
         )}
+         </div>
       </div>
     </main>
   );
