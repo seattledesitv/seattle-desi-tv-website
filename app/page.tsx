@@ -9,30 +9,14 @@ const supabase = getSupabaseBrowserClient();
 const SPONSOR_TIERS = ["Gold Sponsor", "Silver Sponsor", "Community Partner"];
 
 const fallbackSectionSettings = [
-  { section_key: "home", display_order: 1, enabled: true },
-  { section_key: "stats", display_order: 2, enabled: true },
-  { section_key: "events", display_order: 3, enabled: true },
-  { section_key: "businesses", display_order: 4, enabled: true },
-  { section_key: "radio", display_order: 5, enabled: true },
-  { section_key: "videos", display_order: 6, enabled: true },
-  { section_key: "social", display_order: 7, enabled: true },
-  { section_key: "team", display_order: 8, enabled: true },
-  { section_key: "sponsors", display_order: 9, enabled: false },
-  { section_key: "contact", display_order: 10, enabled: true },
+  { section_key: "home", display_order: 1, enabled: true }, { section_key: "stats", display_order: 2, enabled: true }, { section_key: "events", display_order: 3, enabled: true }, { section_key: "businesses", display_order: 4, enabled: true }, { section_key: "radio", display_order: 5, enabled: true }, { section_key: "videos", display_order: 6, enabled: true }, { section_key: "social", display_order: 7, enabled: true }, { section_key: "team", display_order: 8, enabled: true }, { section_key: "sponsors", display_order: 9, enabled: false }, { section_key: "contact", display_order: 10, enabled: true },
 ];
-
 const fallbackVideos = [
   { title: "Seattle Desi TV — Community Stories", description: "Watch community interviews, events, and cultural highlights.", url: "https://www.youtube.com/@SeattleDesiTV", thumbnail: "/hero-sdtv.png" },
   { title: "Events, Interviews & Local Voices", description: "Explore SDTV coverage across the Pacific Northwest.", url: "https://www.youtube.com/@SeattleDesiTV/videos", thumbnail: "/hero-sdtv.png" },
   { title: "Seattle Desi TV Shorts", description: "Quick community moments, reels, and highlights from SDTV.", url: "https://www.youtube.com/@SeattleDesiTV/shorts", thumbnail: "/sdtv-logo.png" },
 ];
-
-const fallbackSocialStats = [
-  { platform: "YouTube", followers: 0, views: 0, videos: 0, href: "https://www.youtube.com/@SeattleDesiTV" },
-  { platform: "Instagram", followers: 0, views: 0, videos: 0, href: "https://instagram.com/seattledesitv" },
-  { platform: "Facebook", followers: 0, views: 0, videos: 0, href: "https://facebook.com/seattledesitv" },
-];
-
+const fallbackSocialStats = [{ platform: "YouTube", followers: 0, views: 0, videos: 0, href: "https://www.youtube.com/@SeattleDesiTV" }, { platform: "Instagram", followers: 0, views: 0, videos: 0, href: "https://instagram.com/seattledesitv" }, { platform: "Facebook", followers: 0, views: 0, videos: 0, href: "https://facebook.com/seattledesitv" }];
 const fallbackHero = [{ id: "default", title: "Seattle Desi TV", subtitle: "Community stories, events, culture, interviews, radio, and media coverage across the Pacific Northwest.", image_url: "/hero-sdtv.png", button_text: "Browse Events", button_url: "/events", badge: "Voice of the Desi Community", display_order: 999 }];
 
 type EventRow = { id: string; title: string; date: string; location: string; image?: string | null; image_urls?: string[] | null };
@@ -44,7 +28,6 @@ type SponsorRow = { id: string; name: string; website?: string | null; logo_url?
 type HeroItem = { id: string; title: string; subtitle?: string | null; image_url?: string | null; button_text?: string | null; button_url?: string | null; badge?: string | null; display_order?: number | null };
 type SectionSetting = { section_key: string; display_order?: number | null; enabled?: boolean | null; title?: string | null; subtitle?: string | null };
 type Counts = { events: number; businesses: number; coverage: number; team: number; radio: number };
-
 const emptyCounts: Counts = { events: 0, businesses: 0, coverage: 0, team: 0, radio: 0 };
 function firstImage(row: any) { if (Array.isArray(row?.image_urls) && row.image_urls.length > 0) return row.image_urls[0]; return row?.image || row?.photo || row?.picture || ""; }
 function formatDate(value?: string | null) { if (!value) return ""; const date = new Date(`${String(value).split("T")[0]}T00:00:00`); return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(); }
@@ -52,15 +35,8 @@ function formatNumber(value?: number | null) { return Number(value || 0).toLocal
 function isExternal(href: string) { return href.startsWith("http"); }
 function isWithinDateWindow(row: any, today: string) { return (!row.start_date || row.start_date <= today) && (!row.end_date || row.end_date >= today); }
 
-function StatCard({ label, value, note, href }: { label: string; value: string | number; note: string; href?: string }) {
-  const card = <div className="rounded-2xl bg-white border shadow-sm p-5 h-full"><p className="text-sm font-black uppercase tracking-wide text-gray-500">{label}</p><p className="text-3xl font-black text-pink-600 mt-2">{value}</p><p className="text-sm text-gray-600 mt-2">{note}</p></div>;
-  return href ? <a href={href} target={isExternal(href) ? "_blank" : undefined} rel={isExternal(href) ? "noreferrer" : undefined}>{card}</a> : card;
-}
-
-function SponsorCard({ sponsor }: { sponsor: SponsorRow }) {
-  const card = <div className="bg-white border rounded-2xl p-5 h-full text-center shadow-sm hover:shadow-xl transition"><div className="h-24 rounded-xl bg-slate-50 grid place-items-center overflow-hidden mb-4">{sponsor.logo_url ? <img src={sponsor.logo_url} alt={sponsor.name} className="max-h-20 max-w-full object-contain p-2" /> : <span className="text-pink-600 font-black">SDTV</span>}</div><h3 className="font-black text-lg">{sponsor.name}</h3>{sponsor.website && <p className="text-pink-600 text-sm font-bold mt-2">Visit Sponsor</p>}</div>;
-  return sponsor.website ? <a href={sponsor.website} target="_blank" rel="noreferrer">{card}</a> : card;
-}
+function StatCard({ label, value, note, href }: { label: string; value: string | number; note: string; href?: string }) { const card = <div className="rounded-2xl bg-white border shadow-sm p-5 h-full"><p className="text-sm font-black uppercase tracking-wide text-gray-500">{label}</p><p className="text-3xl font-black text-pink-600 mt-2">{value}</p><p className="text-sm text-gray-600 mt-2">{note}</p></div>; return href ? <a href={href} target={isExternal(href) ? "_blank" : undefined} rel={isExternal(href) ? "noreferrer" : undefined}>{card}</a> : card; }
+function SponsorCard({ sponsor }: { sponsor: SponsorRow }) { const card = <div className="bg-white border rounded-2xl p-5 h-full text-center shadow-sm hover:shadow-xl transition"><div className="h-24 rounded-xl bg-slate-50 grid place-items-center overflow-hidden mb-4">{sponsor.logo_url ? <img src={sponsor.logo_url} alt={sponsor.name} className="max-h-20 max-w-full object-contain p-2" /> : <span className="text-pink-600 font-black">SDTV</span>}</div><h3 className="font-black text-lg">{sponsor.name}</h3>{sponsor.website && <p className="text-pink-600 text-sm font-bold mt-2">Visit Sponsor</p>}</div>; return sponsor.website ? <a href={sponsor.website} target="_blank" rel="noreferrer">{card}</a> : card; }
 
 function HeroCarousel({ items }: { items: HeroItem[] }) {
   const heroItems = items.length > 0 ? items : fallbackHero;
@@ -72,92 +48,16 @@ function HeroCarousel({ items }: { items: HeroItem[] }) {
   const isEventHero = String(item.id || "").startsWith("event-");
   const previous = () => setCurrent((value) => (value - 1 + heroItems.length) % heroItems.length);
   const next = () => setCurrent((value) => (value + 1) % heroItems.length);
-
-  return (
-    <section key="home" className="relative overflow-hidden bg-slate-950 text-white h-[560px] md:h-[620px]">
-      <div className={`absolute inset-0 bg-cover bg-center transition-all duration-700 ${isEventHero ? "opacity-35 blur-sm scale-105" : ""}`} style={{ backgroundImage: `url('${image}')` }} />
-      <div className={`absolute inset-0 ${isEventHero ? "bg-gradient-to-r from-slate-950 via-slate-950/90 to-slate-950/70" : "bg-gradient-to-r from-slate-950 via-slate-950/80 to-slate-950/20"}`} />
-      <div className={`relative max-w-7xl mx-auto px-6 md:px-10 h-full grid gap-8 items-center overflow-hidden ${isEventHero ? "lg:grid-cols-[1.05fr_0.95fr]" : "lg:grid-cols-1"}`}>
-        <div className="max-w-4xl">
-          <p className="text-pink-300 font-black uppercase tracking-wide">{item.badge || "Seattle Desi TV"}</p>
-          <h1 className={`${isEventHero ? "text-4xl md:text-6xl" : "text-5xl md:text-7xl"} font-black leading-tight mt-3 line-clamp-3`}>{item.title}</h1>
-          {item.subtitle && <p className="text-lg md:text-xl text-slate-200 max-w-3xl mt-5 line-clamp-3">{item.subtitle}</p>}
-          <div className="flex flex-wrap gap-4 mt-8">
-            {item.button_text && item.button_url && <a href={item.button_url} className="bg-pink-600 text-white px-6 py-4 rounded-xl font-black">{item.button_text}</a>}
-            <a href="/radio" className="bg-white text-slate-950 px-6 py-4 rounded-xl font-black">Listen to Radio</a>
-            <a href="/businesses" className="border border-white/70 px-6 py-4 rounded-xl font-black">Local Businesses</a>
-          </div>
-        </div>
-        {isEventHero && (
-          <div className="hidden md:flex justify-center lg:justify-end max-h-[500px]">
-            <div className="w-full max-w-[340px] aspect-[4/5] rounded-[2rem] border border-white/20 bg-white/10 p-4 shadow-2xl backdrop-blur overflow-hidden">
-              <div className="w-full h-full rounded-[1.5rem] bg-white grid place-items-center overflow-hidden">
-                <img src={image} alt={item.title} className="w-full h-full object-contain" />
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-      {heroItems.length > 1 && <><button aria-label="Previous hero" onClick={previous} className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 bg-white/15 hover:bg-white/25 text-white rounded-full w-11 h-11 font-black">‹</button><button aria-label="Next hero" onClick={next} className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 bg-white/15 hover:bg-white/25 text-white rounded-full w-11 h-11 font-black">›</button><div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2">{heroItems.map((hero, index) => <button key={hero.id} aria-label={`Show hero ${index + 1}`} onClick={() => setCurrent(index)} className={`h-3 rounded-full transition-all ${index === current ? "w-8 bg-pink-400" : "w-3 bg-white/50"}`} />)}</div></>}
-    </section>
-  );
+  return <section key="home" className="relative overflow-hidden bg-slate-950 text-white h-[430px] md:h-[500px]"><div className={`absolute inset-0 bg-cover bg-center transition-all duration-700 ${isEventHero ? "opacity-35 blur-sm scale-105" : ""}`} style={{ backgroundImage: `url('${image}')` }} /><div className={`absolute inset-0 ${isEventHero ? "bg-gradient-to-r from-slate-950 via-slate-950/90 to-slate-950/70" : "bg-gradient-to-r from-slate-950 via-slate-950/80 to-slate-950/20"}`} /><div className={`relative max-w-7xl mx-auto px-6 md:px-10 h-full grid gap-6 items-center overflow-hidden ${isEventHero ? "lg:grid-cols-[1.05fr_0.95fr]" : "lg:grid-cols-1"}`}><div className="max-w-4xl"><p className="text-pink-300 font-black uppercase tracking-wide text-sm md:text-base">{item.badge || "Seattle Desi TV"}</p><h1 className={`${isEventHero ? "text-3xl md:text-5xl" : "text-4xl md:text-6xl"} font-black leading-tight mt-2 line-clamp-3`}>{item.title}</h1>{item.subtitle && <p className="text-base md:text-lg text-slate-200 max-w-3xl mt-4 line-clamp-2">{item.subtitle}</p>}<div className="flex flex-wrap gap-3 mt-6">{item.button_text && item.button_url && <a href={item.button_url} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-black">{item.button_text}</a>}<a href="/radio" className="bg-white text-slate-950 px-5 py-3 rounded-xl font-black">Listen to Radio</a><a href="/businesses" className="border border-white/70 px-5 py-3 rounded-xl font-black">Local Businesses</a></div></div>{isEventHero && <div className="hidden md:flex justify-center lg:justify-end max-h-[390px]"><div className="w-full max-w-[280px] aspect-[4/5] rounded-[1.6rem] border border-white/20 bg-white/10 p-3 shadow-2xl backdrop-blur overflow-hidden"><div className="w-full h-full rounded-[1.2rem] bg-white grid place-items-center overflow-hidden"><img src={image} alt={item.title} className="w-full h-full object-contain" /></div></div></div>}</div>{heroItems.length > 1 && <><button aria-label="Previous hero" onClick={previous} className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 bg-white/15 hover:bg-white/25 text-white rounded-full w-10 h-10 font-black">‹</button><button aria-label="Next hero" onClick={next} className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 bg-white/15 hover:bg-white/25 text-white rounded-full w-10 h-10 font-black">›</button><div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">{heroItems.map((hero, index) => <button key={hero.id} aria-label={`Show hero ${index + 1}`} onClick={() => setCurrent(index)} className={`h-3 rounded-full transition-all ${index === current ? "w-8 bg-pink-400" : "w-3 bg-white/50"}`} />)}</div></>}</section>;
 }
 
 export default function HomePage() {
-  const [events, setEvents] = useState<EventRow[]>([]);
-  const [businesses, setBusinesses] = useState<BusinessRow[]>([]);
-  const [team, setTeam] = useState<TeamRow[]>([]);
-  const [videos, setVideos] = useState<VideoRow[]>([]);
-  const [sponsors, setSponsors] = useState<SponsorRow[]>([]);
-  const [heroItems, setHeroItems] = useState<HeroItem[]>(fallbackHero);
-  const [socialRows, setSocialRows] = useState<SocialRow[]>(fallbackSocialStats);
-  const [sectionSettings, setSectionSettings] = useState<SectionSetting[]>(fallbackSectionSettings);
-  const [counts, setCounts] = useState<Counts>(emptyCounts);
-  const [loadingDynamic, setLoadingDynamic] = useState(true);
-  const [videoMessage, setVideoMessage] = useState("Loading latest videos...");
-
+  const [events, setEvents] = useState<EventRow[]>([]); const [businesses, setBusinesses] = useState<BusinessRow[]>([]); const [team, setTeam] = useState<TeamRow[]>([]); const [videos, setVideos] = useState<VideoRow[]>([]); const [sponsors, setSponsors] = useState<SponsorRow[]>([]); const [heroItems, setHeroItems] = useState<HeroItem[]>(fallbackHero); const [socialRows, setSocialRows] = useState<SocialRow[]>(fallbackSocialStats); const [sectionSettings, setSectionSettings] = useState<SectionSetting[]>(fallbackSectionSettings); const [counts, setCounts] = useState<Counts>(emptyCounts); const [loadingDynamic, setLoadingDynamic] = useState(true); const [videoMessage, setVideoMessage] = useState("Loading latest videos...");
   async function countQuery(query: any) { const result = await query; return result.count || 0; }
   function sectionText(key: string, fallbackTitle: string, fallbackSubtitle: string) { const setting = sectionSettings.find((s) => s.section_key === key); return { title: setting?.title || fallbackTitle, subtitle: setting?.subtitle || fallbackSubtitle }; }
-
-  async function loadDynamicHomepage() {
-    setLoadingDynamic(true);
-    const today = new Date().toISOString().split("T")[0];
-    const [eventsResult, businessesResult, teamResult, settingsResult, socialResult, sponsorsResult, featuredEventsResult, heroBannerResult, festivalResult, eventsCount, businessesCount, coverageCount, teamCount, radioCount] = await Promise.all([
-      supabase.from("events").select("id,title,date,location,image,image_urls").eq("status", "approved").gte("date", today).order("date", { ascending: true }).limit(6),
-      supabase.from("local_businesses").select("id,name,category,offer,discount,image,image_urls").eq("status", "approved").limit(6),
-      supabase.from("team_members").select("id,name,title,image,photo,picture").limit(6),
-      supabase.from("homepage_settings").select("section_key,display_order,enabled,title,subtitle").order("display_order", { ascending: true }),
-      supabase.from("social_media_stats").select("platform,followers,views,videos,href").order("platform", { ascending: true }),
-      supabase.from("homepage_sponsors").select("id,name,website,logo_url,tier,display_order").eq("active", true).order("tier", { ascending: true }).order("display_order", { ascending: true }),
-      supabase.from("events").select("id,title,date,location,image,image_urls,featured,featured_order").eq("status", "approved").eq("featured", true).order("featured_order", { ascending: true }).order("date", { ascending: true }).limit(5),
-      supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,banner_type,start_date,end_date,display_order,active").eq("active", true).order("display_order", { ascending: true }),
-      supabase.from("festival_hero_assets").select("id,festival_name,festival_key,title,subtitle,image_url,start_date,end_date,active").eq("active", true).order("start_date", { ascending: true }),
-      countQuery(supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "approved")),
-      countQuery(supabase.from("local_businesses").select("id", { count: "exact", head: true }).eq("status", "approved")),
-      countQuery(supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).eq("assignment_type", "owner_coverage_request")),
-      countQuery(supabase.from("team_members").select("id", { count: "exact", head: true })),
-      countQuery(supabase.from("radio_team_members").select("id", { count: "exact", head: true })),
-    ]);
-    setEvents(eventsResult.data || []); setBusinesses(businessesResult.data || []); setTeam(teamResult.data || []);
-    if (!settingsResult.error && Array.isArray(settingsResult.data) && settingsResult.data.length > 0) setSectionSettings(settingsResult.data);
-    if (!socialResult.error && Array.isArray(socialResult.data) && socialResult.data.length > 0) setSocialRows(socialResult.data);
-    if (!sponsorsResult.error && Array.isArray(sponsorsResult.data)) setSponsors(sponsorsResult.data);
-    const featuredEventHeroes: HeroItem[] = !featuredEventsResult.error && Array.isArray(featuredEventsResult.data) ? featuredEventsResult.data.map((row: any) => ({ id: `event-${row.id}`, title: row.title, subtitle: `${formatDate(row.date)}${row.location ? ` · ${row.location}` : ""}`, image_url: firstImage(row) || "/hero-sdtv.png", button_text: "View Event", button_url: `/events/${row.id}`, badge: "Featured Event", display_order: Number(row.featured_order || 0) })) : [];
-    const marketingHeroes: HeroItem[] = !heroBannerResult.error && Array.isArray(heroBannerResult.data) ? heroBannerResult.data.filter((row: any) => isWithinDateWindow(row, today)).map((row: any) => ({ id: row.id, title: row.title, subtitle: row.subtitle, image_url: row.image_url, button_text: row.button_text, button_url: row.button_url, badge: row.banner_type ? `${String(row.banner_type).toUpperCase()} FEATURE` : "Seattle Desi TV", display_order: row.display_order || 0 })) : [];
-    const festivalHeroes: HeroItem[] = !festivalResult.error && Array.isArray(festivalResult.data) ? festivalResult.data.filter((row: any) => isWithinDateWindow(row, today)).map((row: any) => ({ id: row.id, title: row.title || row.festival_name, subtitle: row.subtitle || `Celebrating ${row.festival_name} with the Seattle Desi community.`, image_url: row.image_url, button_text: "Explore Events", button_url: "/events", badge: row.festival_name, display_order: -1 })) : [];
-    const mergedHeroes = [...festivalHeroes, ...featuredEventHeroes, ...marketingHeroes].filter((hero) => hero.title).sort((a, b) => Number(a.display_order || 0) - Number(b.display_order || 0));
-    setHeroItems(mergedHeroes.length > 0 ? mergedHeroes : fallbackHero);
-    setCounts({ events: eventsCount, businesses: businessesCount, coverage: coverageCount, team: teamCount, radio: radioCount });
-    setLoadingDynamic(false);
-  }
-
+  async function loadDynamicHomepage() { setLoadingDynamic(true); const today = new Date().toISOString().split("T")[0]; const [eventsResult, businessesResult, teamResult, settingsResult, socialResult, sponsorsResult, featuredEventsResult, heroBannerResult, festivalResult, eventsCount, businessesCount, coverageCount, teamCount, radioCount] = await Promise.all([supabase.from("events").select("id,title,date,location,image,image_urls").eq("status", "approved").gte("date", today).order("date", { ascending: true }).limit(6), supabase.from("local_businesses").select("id,name,category,offer,discount,image,image_urls").eq("status", "approved").limit(6), supabase.from("team_members").select("id,name,title,image,photo,picture").limit(6), supabase.from("homepage_settings").select("section_key,display_order,enabled,title,subtitle").order("display_order", { ascending: true }), supabase.from("social_media_stats").select("platform,followers,views,videos,href").order("platform", { ascending: true }), supabase.from("homepage_sponsors").select("id,name,website,logo_url,tier,display_order").eq("active", true).order("tier", { ascending: true }).order("display_order", { ascending: true }), supabase.from("events").select("id,title,date,location,image,image_urls,featured,featured_order").eq("status", "approved").eq("featured", true).order("featured_order", { ascending: true }).order("date", { ascending: true }).limit(5), supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,banner_type,start_date,end_date,display_order,active").eq("active", true).order("display_order", { ascending: true }), supabase.from("festival_hero_assets").select("id,festival_name,festival_key,title,subtitle,image_url,start_date,end_date,active").eq("active", true).order("start_date", { ascending: true }), countQuery(supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "approved")), countQuery(supabase.from("local_businesses").select("id", { count: "exact", head: true }).eq("status", "approved")), countQuery(supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).eq("assignment_type", "owner_coverage_request")), countQuery(supabase.from("team_members").select("id", { count: "exact", head: true })), countQuery(supabase.from("radio_team_members").select("id", { count: "exact", head: true }))]); setEvents(eventsResult.data || []); setBusinesses(businessesResult.data || []); setTeam(teamResult.data || []); if (!settingsResult.error && Array.isArray(settingsResult.data) && settingsResult.data.length > 0) setSectionSettings(settingsResult.data); if (!socialResult.error && Array.isArray(socialResult.data) && socialResult.data.length > 0) setSocialRows(socialResult.data); if (!sponsorsResult.error && Array.isArray(sponsorsResult.data)) setSponsors(sponsorsResult.data); const featuredEventHeroes: HeroItem[] = !featuredEventsResult.error && Array.isArray(featuredEventsResult.data) ? featuredEventsResult.data.map((row: any) => ({ id: `event-${row.id}`, title: row.title, subtitle: `${formatDate(row.date)}${row.location ? ` · ${row.location}` : ""}`, image_url: firstImage(row) || "/hero-sdtv.png", button_text: "View Event", button_url: `/events/${row.id}`, badge: "Featured Event", display_order: Number(row.featured_order || 0) })) : []; const marketingHeroes: HeroItem[] = !heroBannerResult.error && Array.isArray(heroBannerResult.data) ? heroBannerResult.data.filter((row: any) => isWithinDateWindow(row, today)).map((row: any) => ({ id: row.id, title: row.title, subtitle: row.subtitle, image_url: row.image_url, button_text: row.button_text, button_url: row.button_url, badge: row.banner_type ? `${String(row.banner_type).toUpperCase()} FEATURE` : "Seattle Desi TV", display_order: row.display_order || 0 })) : []; const festivalHeroes: HeroItem[] = !festivalResult.error && Array.isArray(festivalResult.data) ? festivalResult.data.filter((row: any) => isWithinDateWindow(row, today)).map((row: any) => ({ id: row.id, title: row.title || row.festival_name, subtitle: row.subtitle || `Celebrating ${row.festival_name} with the Seattle Desi community.`, image_url: row.image_url, button_text: "Explore Events", button_url: "/events", badge: row.festival_name, display_order: -1 })) : []; const mergedHeroes = [...festivalHeroes, ...featuredEventHeroes, ...marketingHeroes].filter((hero) => hero.title).sort((a, b) => Number(a.display_order || 0) - Number(b.display_order || 0)); setHeroItems(mergedHeroes.length > 0 ? mergedHeroes : fallbackHero); setCounts({ events: eventsCount, businesses: businessesCount, coverage: coverageCount, team: teamCount, radio: radioCount }); setLoadingDynamic(false); }
   async function loadLatestVideos() { try { const response = await fetch("/api/youtube/latest", { cache: "no-store" }); const result = await response.json(); if (result?.ok && Array.isArray(result.videos) && result.videos.length > 0) { setVideos(result.videos); setVideoMessage("Latest videos from YouTube."); } else { setVideos([]); setVideoMessage(result?.error ? `Showing fallback videos: ${result.error}` : "Showing fallback videos."); } } catch { setVideos([]); setVideoMessage("Showing fallback videos."); } }
-
-  useEffect(() => { loadDynamicHomepage(); loadLatestVideos(); }, []);
-  const featuredTeam = useMemo(() => team.slice(0, 4), [team]);
-  const videoCards = videos.length > 0 ? videos : fallbackVideos;
-  const enabledSections = useMemo(() => sectionSettings.filter((s) => s.enabled !== false).sort((a, b) => Number(a.display_order || 999) - Number(b.display_order || 999)), [sectionSettings]);
-
+  useEffect(() => { loadDynamicHomepage(); loadLatestVideos(); }, []); const featuredTeam = useMemo(() => team.slice(0, 4), [team]); const videoCards = videos.length > 0 ? videos : fallbackVideos; const enabledSections = useMemo(() => sectionSettings.filter((s) => s.enabled !== false).sort((a, b) => Number(a.display_order || 999) - Number(b.display_order || 999)), [sectionSettings]);
   function renderSection(key: string) {
     if (key === "home") return <HeroCarousel key="home" items={heroItems} />;
     if (key === "stats") return <section key="stats" className="max-w-7xl mx-auto px-6 md:px-10 py-10"><div className="grid md:grid-cols-2 xl:grid-cols-5 gap-5"><StatCard label="Events Published" value={loadingDynamic ? "..." : counts.events} note="Approved community events" href="/events" /><StatCard label="Businesses Listed" value={loadingDynamic ? "..." : counts.businesses} note="Approved local businesses" href="/businesses" /><StatCard label="Coverage Requests" value={loadingDynamic ? "..." : counts.coverage} note="Organizer SDTV coverage asks" href="/studio/coverage" /><StatCard label="Team Members" value={loadingDynamic ? "..." : counts.team} note="Public SDTV team profiles" href="/team" /><StatCard label="Radio Hosts" value={loadingDynamic ? "..." : counts.radio} note="Radio team profiles" href="/radio-team" /></div></section>;
@@ -171,6 +71,5 @@ export default function HomePage() {
     if (key === "contact") { const text = sectionText("contact", "Get Involved", "Volunteer, sponsor, host shows, or request coverage."); return <section key="contact" id="contact" className="max-w-7xl mx-auto px-6 md:px-10 py-10"><div className="bg-slate-950 text-white rounded-3xl p-8 md:p-10 overflow-hidden relative"><div className="absolute inset-0 bg-gradient-to-r from-pink-600/20 via-transparent to-pink-400/10" /><div className="relative grid lg:grid-cols-[1.1fr_1fr] gap-8 items-center"><div><p className="text-pink-300 font-black uppercase tracking-wide">Join Seattle Desi TV</p><h2 className="text-3xl md:text-5xl font-black mt-2">{text.title}</h2><p className="text-slate-300 mt-4 text-lg">{text.subtitle}</p><p className="text-slate-400 mt-4">Tell us how you would like to support or partner with SDTV. Your request will be saved for the Studio team to review.</p></div><div className="grid sm:grid-cols-2 gap-4"><a href="/contact?interest=volunteer" className="bg-pink-600 text-white p-5 rounded-2xl font-black text-center hover:bg-pink-500 transition">Volunteer</a><a href="/contact?interest=rj-vj" className="bg-white text-slate-950 p-5 rounded-2xl font-black text-center hover:bg-slate-100 transition">Become RJ / VJ</a><a href="/contact?interest=sponsorship" className="bg-white/10 border border-white/10 text-white p-5 rounded-2xl font-black text-center hover:bg-white/15 transition">Sponsorship</a><a href="/contact?interest=coverage" className="bg-white/10 border border-white/10 text-white p-5 rounded-2xl font-black text-center hover:bg-white/15 transition">Request Coverage</a></div></div></div></section>; }
     return null;
   }
-
   return <main className="min-h-screen bg-gradient-to-b from-white to-slate-100 text-slate-950"><SiteHeader />{enabledSections.map((section) => renderSection(section.section_key))}<SiteFooter /></main>;
 }
