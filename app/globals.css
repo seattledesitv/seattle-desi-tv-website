@@ -30,6 +30,16 @@ section.h-\[430px\] a[href="/businesses"] {
   min-width: 150px;
 }
 
+/* Event hero slides have a flyer card, so keep the CTA focused on the event. */
+section.h-\[430px\]:has(.max-h-\[390px\]) a[href="/radio"],
+section.h-\[430px\]:has(.max-h-\[390px\]) a[href="/businesses"] {
+  display: none !important;
+}
+
+section.h-\[430px\]:has(.max-h-\[390px\]) a[href^="/events"] {
+  min-width: 160px;
+}
+
 @media (max-width: 767px) {
   section[key="home"] .max-h-\[390px\].hidden,
   .max-h-\[390px\].hidden.justify-center {
@@ -63,6 +73,11 @@ section.h-\[430px\] a[href="/businesses"] {
     margin-top: 1rem !important;
   }
 
+  section.h-\[430px\]:has(.max-h-\[390px\]) .flex.flex-wrap.gap-3.mt-6 {
+    display: flex !important;
+    width: min(100%, 12rem);
+  }
+
   section.h-\[430px\] a[href^="/events"],
   section.h-\[430px\] a[href="/radio"],
   section.h-\[430px\] a[href="/businesses"] {
@@ -78,5 +93,10 @@ section.h-\[430px\] a[href="/businesses"] {
 
   section.h-\[430px\] a[href^="/events"] {
     grid-column: 1 / -1;
+  }
+
+  section.h-\[430px\]:has(.max-h-\[390px\]) a[href^="/events"] {
+    width: auto;
+    min-width: 9.5rem;
   }
 }
