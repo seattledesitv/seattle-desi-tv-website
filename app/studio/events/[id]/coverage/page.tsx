@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import StudioHeader from "../../../components/StudioHeader";
-import { getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
-import { isAdminRole, isTeamRole, resolveUserRole } from "../../../lib/roles";
+import StudioHeader from "../../../../components/StudioHeader";
+import { getSupabaseBrowserClient } from "../../../../lib/supabaseBrowser";
+import { isAdminRole, isTeamRole, resolveUserRole } from "../../../../lib/roles";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -205,10 +205,7 @@ export default function EventCoverageBriefPage() {
 
           <section className="bg-white text-slate-950 rounded-3xl p-6">
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-black">Deliverables Checklist</h2>
-                <p className="text-gray-600 mt-1">Define what must be completed before this event content is considered done.</p>
-              </div>
+              <div><h2 className="text-2xl font-black">Deliverables Checklist</h2><p className="text-gray-600 mt-1">Define what must be completed before this event content is considered done.</p></div>
               <div className="bg-slate-950 text-white px-5 py-3 rounded-xl font-black">{completedCount} / {deliverables.length} Complete</div>
             </div>
             <div className="grid gap-4 mt-5">
