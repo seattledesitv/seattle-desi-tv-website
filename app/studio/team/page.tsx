@@ -2,7 +2,7 @@
 
 import { ChangeEvent, useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import StudioHeader from "../components/StudioHeader";
+import StudioHeader from "../../components/StudioHeader";
 const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
 const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
