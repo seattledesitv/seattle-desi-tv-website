@@ -93,13 +93,14 @@ export default function HomePage() {
   async function loadDynamicHomepage() {
     setLoadingDynamic(true);
     const today = new Date().toISOString().split("T")[0];
-    const [eventsResult, businessesResult, teamResult, settingsResult, socialResult, sponsorsResult, heroBannerResult, festivalResult, eventsCount, businessesCount, coverageCount, teamCount, radioCount] = await Promise.all([
+    const [eventsResult, businessesResult, teamResult, settingsResult, socialResult, sponsorsResult, featuredEventsResult, heroBannerResult, festivalResult, eventsCount, businessesCount, coverageCount, teamCount, radioCount] = await Promise.all([
       supabase.from("events").select("id,title,date,location,image,image_urls").eq("status", "approved").gte("date", today).order("date", { ascending: true }).limit(6),
       supabase.from("local_businesses").select("id,name,category,offer,discount,image,image_urls").eq("status", "approved").limit(6),
       supabase.from("team_members").select("id,name,title,image,photo,picture").limit(6),
       supabase.from("homepage_settings").select("section_key,display_order,enabled,title,subtitle").order("display_order", { ascending: true }),
       supabase.from("social_media_stats").select("platform,followers,views,videos,href").order("platform", { ascending: true }),
       supabase.from("homepage_sponsors").select("id,name,website,logo_url,tier,display_order").eq("active", true).order("tier", { ascending: true }).order("display_order", { ascending: true }),
+      supabase.from("events").select("id,title,date,location,image,image_urls,featured,featured_order").eq("status", "approved").eq("featured", true).gte("date", today).order("featured_order", { ascending: true }).order("date", { ascending: true }).limit(5),
       supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,banner_type,start_date,end_date,display_order,active").eq("active", true).order("display_order", { ascending: true }),
       supabase.from("festival_hero_assets").select("id,festival_name,festival_key,title,subtitle,image_url,start_date,end_date,active").eq("active", true).order("start_date", { ascending: true }),
       countQuery(supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "approved")),
@@ -112,9 +113,10 @@ export default function HomePage() {
     if (!settingsResult.error && Array.isArray(settingsResult.data) && settingsResult.data.length > 0) setSectionSettings(settingsResult.data);
     if (!socialResult.error && Array.isArray(socialResult.data) && socialResult.data.length > 0) setSocialRows(socialResult.data);
     if (!sponsorsResult.error && Array.isArray(sponsorsResult.data)) setSponsors(sponsorsResult.data);
+    const featuredEventHeroes: HeroItem[] = !featuredEventsResult.error && Array.isArray(featuredEventsResult.data) ? featuredEventsResult.data.map((row: any) => ({ id: `event-${row.id}`, title: row.title, subtitle: `${formatDate(row.date)}${row.location ? ` · ${row.location}` : ""}`, image_url: firstImage(row) || "/hero-sdtv.png", button_text: "View Event", button_url: `/events/${row.id}`, badge: "Featured Event", display_order: Number(row.featured_order || 0) })) : [];
     const marketingHeroes: HeroItem[] = !heroBannerResult.error && Array.isArray(heroBannerResult.data) ? heroBannerResult.data.filter((row: any) => isWithinDateWindow(row, today)).map((row: any) => ({ id: row.id, title: row.title, subtitle: row.subtitle, image_url: row.image_url, button_text: row.button_text, button_url: row.button_url, badge: row.banner_type ? `${String(row.banner_type).toUpperCase()} FEATURE` : "Seattle Desi TV", display_order: row.display_order || 0 })) : [];
     const festivalHeroes: HeroItem[] = !festivalResult.error && Array.isArray(festivalResult.data) ? festivalResult.data.filter((row: any) => isWithinDateWindow(row, today)).map((row: any) => ({ id: row.id, title: row.title || row.festival_name, subtitle: row.subtitle || `Celebrating ${row.festival_name} with the Seattle Desi community.`, image_url: row.image_url, button_text: "Explore Events", button_url: "/events", badge: row.festival_name, display_order: -1 })) : [];
-    const mergedHeroes = [...festivalHeroes, ...marketingHeroes].filter((hero) => hero.title).sort((a, b) => Number(a.display_order || 0) - Number(b.display_order || 0));
+    const mergedHeroes = [...festivalHeroes, ...featuredEventHeroes, ...marketingHeroes].filter((hero) => hero.title).sort((a, b) => Number(a.display_order || 0) - Number(b.display_order || 0));
     setHeroItems(mergedHeroes.length > 0 ? mergedHeroes : fallbackHero);
     setCounts({ events: eventsCount, businesses: businessesCount, coverage: coverageCount, team: teamCount, radio: radioCount });
     setLoadingDynamic(false);
