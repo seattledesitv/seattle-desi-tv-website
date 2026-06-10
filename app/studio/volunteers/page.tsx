@@ -33,6 +33,11 @@ export default function StudioVolunteersPage() {
     return map;
   }, [submissions]);
 
+  async function notifyVolunteer(request: any, title: string, body: string, link: string) {
+    if (!request?.user_id) return;
+    await supabase.from("notifications").insert({ user_id: request.user_id, title, message: body, link, read: false });
+  }
+
   async function loadVolunteers() {
     const requestResult = await supabase.from("user_role_requests").select("id,user_id,email,requested_role,status,approved_role,approved_by,approved_at,created_at").eq("requested_role", "volunteer").order("created_at", { ascending: false });
     if (requestResult.error) { setActionMessage(`Could not load volunteer requests: ${requestResult.error.message}`); return; }
@@ -60,6 +65,7 @@ export default function StudioVolunteersPage() {
     if (status === "approved" || status === "rejected") { patch.approved_by = user?.email || user?.id || null; patch.approved_at = new Date().toISOString(); }
     const { error } = await supabase.from("user_role_requests").update(patch).eq("id", request.id);
     if (error) { setActionMessage(`Status update failed: ${error.message}`); return; }
+    if (status === "awaiting_onboarding") await notifyVolunteer(request, "Volunteer onboarding ready", "Your SDTV orientation is complete. Please complete your onboarding form.", "/onboarding");
     setActionMessage(`Updated ${request.email} to ${label(status)}.`);
     await loadVolunteers();
   }
@@ -70,6 +76,7 @@ export default function StudioVolunteersPage() {
     if (upsertResult.error) { setActionMessage(`Could not assign team member role: ${upsertResult.error.message}`); return; }
     const updateResult = await supabase.from("user_role_requests").update({ status: "approved", approved_role: "team_member", approved_by: user?.email || user?.id || null, approved_at: new Date().toISOString() }).eq("id", request.id);
     if (updateResult.error) { setActionMessage(`Role assigned, but request update failed: ${updateResult.error.message}`); return; }
+    await notifyVolunteer(request, "SDTV team access approved", "Your SDTV team access is approved. You can now use team features in My Hub.", "/my-hub");
     setActionMessage(`Approved ${request.email} as team_member.`);
     await loadVolunteers();
   }
