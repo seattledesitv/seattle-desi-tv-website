@@ -94,6 +94,13 @@ export default function MyHubPage() {
     { title: "Studio", note: "Admin operations and content management.", href: "/studio", value: admin ? "Admin" : "Locked" },
   ];
 
+  const stats = [
+    { title: "Approved Assignments", value: counts.assignments, note: "Event coverage assigned to you." },
+    { title: "Coverage Items", value: counts.coverage, note: "Coverage records connected to your account." },
+    { title: "Availability Dates", value: counts.availability, note: "Upcoming availability shared by you." },
+    { title: "Unread Alerts", value: counts.notifications, note: "Notifications waiting for your review." },
+  ];
+
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <MyHubHeader />
@@ -107,6 +114,24 @@ export default function MyHubPage() {
             <button onClick={loadHub} className="bg-white text-slate-950 px-4 py-2 rounded-xl font-bold text-sm">Refresh</button>
           </div>
         </div>
+
+        {!loading && team && <section className="mb-8">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-4">
+            <div>
+              <p className="text-pink-300 font-black uppercase tracking-wide">My SDTV Stats</p>
+              <h2 className="text-3xl font-black mt-2">Coverage Scoreboard</h2>
+              <p className="text-slate-300 mt-1">Your SDTV assignments, availability, and alerts at a glance.</p>
+            </div>
+            <a href="/my-assignments" className="bg-pink-600 text-white px-4 py-2 rounded-xl font-bold w-fit">Open Assignments</a>
+          </div>
+          <div className="grid md:grid-cols-4 gap-4">
+            {stats.map((stat) => <div key={stat.title} className="bg-white text-slate-950 rounded-2xl p-5">
+              <p className="text-sm text-gray-500 font-black uppercase">{stat.title}</p>
+              <p className="text-4xl font-black text-pink-600 mt-2">{stat.value}</p>
+              <p className="text-gray-600 text-sm mt-2">{stat.note}</p>
+            </div>)}
+          </div>
+        </section>}
 
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
           {cards.map((card) => (
