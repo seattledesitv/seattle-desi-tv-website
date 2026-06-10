@@ -68,6 +68,42 @@ export default function LoginPage() {
     else { setLoading(false); setMessage("Login completed but no user session was returned."); }
   }
 
+  async function signUp() {
+    setMessage("");
+    if (!email || !password) { setMessage("Please enter email and password to create an account."); return; }
+    setLoading(true);
+    const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/login` } });
+    setLoading(false);
+    if (error) { setMessage(error.message); return; }
+    if (data.user && data.session) {
+      setCurrentUser(data.user);
+      await loadAccessState(data.user);
+      setMessage("Account created and logged in.");
+      return;
+    }
+    setMessage("Account created. Please check your email to confirm your account before logging in.");
+  }
+
+  async function sendMagicLink() {
+    setMessage("");
+    if (!email) { setMessage("Please enter your email to receive a magic link."); return; }
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: `${window.location.origin}/login` } });
+    setLoading(false);
+    if (error) { setMessage(error.message); return; }
+    setMessage("Magic link sent. Please check your email.");
+  }
+
+  async function resetPassword() {
+    setMessage("");
+    if (!email) { setMessage("Please enter your email to reset your password."); return; }
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/login` });
+    setLoading(false);
+    if (error) { setMessage(error.message); return; }
+    setMessage("Password reset email sent. Please check your inbox.");
+  }
+
   async function requestVolunteer() {
     setRoleRequestMessage("");
     if (!currentUser?.email) { setRoleRequestMessage("Please login first."); return; }
@@ -167,7 +203,12 @@ export default function LoginPage() {
           <>
             <input className="w-full border rounded-lg p-3 mb-3" placeholder="Email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} />
             <input className="w-full border rounded-lg p-3 mb-3" placeholder="Password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
-            <button type="button" onClick={signIn} disabled={loading || checkingSession} className="w-full bg-pink-600 text-white py-3 rounded-xl font-black disabled:opacity-60">{checkingSession ? "Checking login..." : loading ? "Logging in..." : "Login"}</button>
+            <button type="button" onClick={signIn} disabled={loading || checkingSession} className="w-full bg-pink-600 text-white py-3 rounded-xl font-black disabled:opacity-60">{checkingSession ? "Checking login..." : loading ? "Please wait..." : "Login"}</button>
+            <div className="grid gap-2 mt-3">
+              <button type="button" onClick={signUp} disabled={loading || checkingSession} className="w-full border border-pink-600 text-pink-600 py-3 rounded-xl font-black disabled:opacity-60">Sign Up</button>
+              <button type="button" onClick={sendMagicLink} disabled={loading || checkingSession} className="w-full border border-slate-900 text-slate-900 py-3 rounded-xl font-black disabled:opacity-60">Send Magic Link</button>
+              <button type="button" onClick={resetPassword} disabled={loading || checkingSession} className="w-full text-sm font-bold text-slate-600 underline disabled:opacity-60">Reset Password</button>
+            </div>
           </>
         )}
 
