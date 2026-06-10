@@ -13,11 +13,11 @@ export const metadata: Metadata = {
     title: "Seattle Desi TV",
     statusBarStyle: "black-translucent",
   },
-  icons: {
-    icon: "/sdtv-logo.png",
-    shortcut: "/sdtv-logo.png",
-    apple: "/sdtv-logo.png",
-  },
+ icons: {
+  icon: "/icons/icon-512.png",
+  shortcut: "/icons/icon-192.png",
+  apple: "/icons/apple-touch-icon.png",
+},
   openGraph: {
     title: "Seattle Desi TV",
     description:
