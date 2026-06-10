@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import SiteHeader from "../../components/SiteHeader";
 import SiteFooter from "../../components/SiteFooter";
@@ -17,8 +18,10 @@ function coverageLabel(status?: string) { const value = String(status || "not_re
 function formatError(error: any) { return [error?.message, error?.details, error?.hint, error?.code].filter(Boolean).join(" | ") || String(error || "Unknown error"); }
 function siteOrigin() { return typeof window !== "undefined" ? window.location.origin : "https://seattledesitv.com"; }
 
-export default function EventDetailPage({ params }: { params: { id: string } }) {
-  const eventId = params.id;
+export default function EventDetailPage() {
+  const params = useParams();
+  const rawEventId = Array.isArray(params?.id) ? params.id[0] : params?.id;
+  const eventId = String(rawEventId || "");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading event...");
   const [actionMessage, setActionMessage] = useState("");
@@ -59,13 +62,19 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   }
 
   async function init() {
+    if (!eventId || eventId === "undefined") {
+      setEvent(null);
+      setMessage("Invalid event id.");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const { data } = await supabase.auth.getUser();
     const currentUser = data?.user || null;
     setUser(currentUser);
     await loadRole(currentUser);
-    await loadEvent();
-    await loadRequests(currentUser);
+    const loadedEvent = await loadEvent();
+    if (loadedEvent) await loadRequests(currentUser);
     setLoading(false);
   }
 
