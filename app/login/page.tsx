@@ -13,6 +13,15 @@ function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
   });
 }
 
+function statusLabel(status?: string | null) {
+  if (status === "awaiting_orientation") return "Awaiting Orientation";
+  if (status === "awaiting_onboarding") return "Complete Your Onboarding";
+  if (status === "awaiting_team_role_access") return "Onboarding Submitted";
+  if (status === "approved") return "Approved";
+  if (status === "pending") return "Pending Approval";
+  return "Not Started";
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,14 +29,33 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [checkingSession, setCheckingSession] = useState(true);
-  const [requestedRole, setRequestedRole] = useState("general_public");
+  const [role, setRole] = useState("general_public");
+  const [volunteerStatus, setVolunteerStatus] = useState("");
+  const [teamAccessStatus, setTeamAccessStatus] = useState("");
   const [roleRequestMessage, setRoleRequestMessage] = useState("");
+
+  async function loadAccessState(user: any) {
+    if (!user?.email) return;
+    const nextRole = await resolveUserRole(supabase, user);
+    setRole(nextRole);
+    const { data } = await supabase
+      .from("user_role_requests")
+      .select("requested_role,status,created_at")
+      .or(`user_id.eq.${user.id},email.eq.${user.email}`)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    const rows = data || [];
+    const volunteer = rows.find((row: any) => row.requested_role === "volunteer");
+    const team = rows.find((row: any) => row.requested_role === "team_member");
+    setVolunteerStatus(volunteer?.status || "");
+    setTeamAccessStatus(team?.status || "");
+  }
 
   async function redirectForUser(user: any) {
     setLoading(true);
     setMessage("Redirecting...");
-    const role = await resolveUserRole(supabase, user);
-    window.location.assign(isAdminRole(role) ? "/studio" : "/");
+    const nextRole = await resolveUserRole(supabase, user);
+    window.location.assign(isAdminRole(nextRole) ? "/studio" : "/my-hub");
   }
 
   async function signIn() {
@@ -36,24 +64,38 @@ export default function LoginPage() {
     setLoading(true);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { setLoading(false); setMessage(error.message); return; }
-    if (data.user) { setCurrentUser(data.user); setMessage("Login successful. Redirecting..."); await redirectForUser(data.user); }
+    if (data.user) { setCurrentUser(data.user); await loadAccessState(data.user); setMessage("Login successful. Redirecting..."); await redirectForUser(data.user); }
     else { setLoading(false); setMessage("Login completed but no user session was returned."); }
   }
 
-  async function requestRole() {
+  async function requestVolunteer() {
     setRoleRequestMessage("");
     if (!currentUser?.email) { setRoleRequestMessage("Please login first."); return; }
-    const safeRole = requestedRole === "team_member" ? "team_member" : "general_public";
-    const roleRequestPayload: any = {
+    const { error } = await supabase.from("user_role_requests").insert({
       user_id: currentUser.id,
       email: currentUser.email,
-      requested_role: safeRole,
-      status: safeRole === "general_public" ? "approved" : "pending",
-      approved_role: safeRole === "general_public" ? "general_public" : null,
-    };
-    const { error } = await supabase.from("user_role_requests").insert(roleRequestPayload);
-    if (error) { setRoleRequestMessage(`Role request failed: ${error.message}`); return; }
-    setRoleRequestMessage(safeRole === "team_member" ? "Team member request submitted for admin approval." : "General public role request saved.");
+      requested_role: "volunteer",
+      status: "awaiting_orientation",
+      approved_role: null,
+    });
+    if (error) { setRoleRequestMessage(`Volunteer request failed: ${error.message}`); return; }
+    setVolunteerStatus("awaiting_orientation");
+    setRoleRequestMessage("Volunteer request submitted. SDTV team will contact you for orientation.");
+  }
+
+  async function requestTeamAccess() {
+    setRoleRequestMessage("");
+    if (!currentUser?.email) { setRoleRequestMessage("Please login first."); return; }
+    const { error } = await supabase.from("user_role_requests").insert({
+      user_id: currentUser.id,
+      email: currentUser.email,
+      requested_role: "team_member",
+      status: "pending",
+      approved_role: null,
+    });
+    if (error) { setRoleRequestMessage(`Team access request failed: ${error.message}`); return; }
+    setTeamAccessStatus("pending");
+    setRoleRequestMessage("Team access request submitted for admin approval.");
   }
 
   async function cleanLogout() {
@@ -75,7 +117,7 @@ export default function LoginPage() {
         if (cancelled) return;
         const user = data?.user || null;
         setCurrentUser(user);
-        if (user) { setEmail(user.email || ""); setMessage(`Already logged in as ${user.email}. Use Continue, Go to Studio, request role, or Logout below.`); }
+        if (user) { setEmail(user.email || ""); await loadAccessState(user); setMessage(`Already logged in as ${user.email}.`); }
         else setMessage("");
       } catch {
         if (cancelled) return;
@@ -87,28 +129,37 @@ export default function LoginPage() {
     return () => { cancelled = true; clearTimeout(fallback); };
   }, []);
 
+  const activeTeam = role !== "general_public" && role !== "";
+  const showVolunteerButton = !activeTeam && !volunteerStatus;
+  const showOnboardingLink = volunteerStatus === "awaiting_onboarding";
+  const showTeamAccessButton = !activeTeam && teamAccessStatus !== "pending" && teamAccessStatus !== "approved";
+
   return (
     <main className="min-h-screen bg-slate-950 text-white px-6 py-12 grid place-items-center">
       <div className="w-full max-w-md bg-white text-slate-950 rounded-2xl p-8 shadow-2xl">
         <a href="/" className="text-sm font-bold text-pink-600">← Back to Seattle Desi TV</a>
-        <h1 className="text-3xl font-black mt-4">Login</h1>
+        <h1 className="text-3xl font-black mt-4">Account</h1>
         <p className="text-gray-500 mt-2 mb-6">Use your Seattle Desi TV account.</p>
 
         {currentUser && !checkingSession ? (
           <div className="bg-green-50 border border-green-200 text-green-800 rounded-xl p-4 mb-5 text-sm">
             <p>Currently logged in as <b>{currentUser.email}</b>.</p>
+            <p className="mt-2">Current Role: <b>{activeTeam ? role.replaceAll("_", " ") : "General Public"}</b></p>
             <div className="grid gap-3 mt-4">
-              <button type="button" onClick={() => redirectForUser(currentUser)} disabled={loading} className="w-full bg-pink-600 text-white py-3 rounded-xl font-black disabled:opacity-60">{loading ? "Redirecting..." : "Continue"}</button>
-              <a href="/studio" className="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-center">Go to Studio</a>
-              <div className="border rounded-xl p-3 bg-white">
-                <label className="block text-xs font-bold text-gray-500 mb-2">Request account type</label>
-                <select className="w-full border rounded-lg p-3 mb-3" value={requestedRole} onChange={(event) => setRequestedRole(event.target.value)}>
-                  <option value="general_public">General Public</option>
-                  <option value="team_member">SDTV Team Member</option>
-                </select>
-                <button type="button" onClick={requestRole} className="w-full border border-pink-600 text-pink-600 py-3 rounded-xl font-black">Submit Role Request</button>
+              <button type="button" onClick={() => redirectForUser(currentUser)} disabled={loading} className="w-full bg-pink-600 text-white py-3 rounded-xl font-black disabled:opacity-60">{loading ? "Redirecting..." : "Go to My Hub"}</button>
+              {isAdminRole(role) && <a href="/studio" className="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-center">Go to Studio</a>}
+
+              {!activeTeam && <div className="border rounded-xl p-3 bg-white text-slate-950">
+                <h2 className="font-black text-lg">Volunteer & Team Access</h2>
+                {volunteerStatus && <div className="bg-pink-50 rounded-xl p-3 mt-3"><p className="text-xs font-black uppercase text-pink-600">Volunteer Status</p><p className="font-black mt-1">{statusLabel(volunteerStatus)}</p>{volunteerStatus === "awaiting_orientation" && <p className="text-sm text-gray-600 mt-1">Thank you for your interest. SDTV team will contact you for orientation.</p>}{volunteerStatus === "awaiting_team_role_access" && <p className="text-sm text-gray-600 mt-1">Your onboarding has been submitted and is awaiting team role access approval.</p>}</div>}
+                {teamAccessStatus && <div className="bg-slate-50 rounded-xl p-3 mt-3"><p className="text-xs font-black uppercase text-slate-600">Team Access Status</p><p className="font-black mt-1">{statusLabel(teamAccessStatus)}</p></div>}
+                {showVolunteerButton && <button type="button" onClick={requestVolunteer} className="w-full border border-pink-600 text-pink-600 py-3 rounded-xl font-black mt-3">Request to Volunteer</button>}
+                {showOnboardingLink && <a href="/onboarding" className="block w-full bg-pink-600 text-white py-3 rounded-xl font-black text-center mt-3">Complete Onboarding</a>}
+                {showTeamAccessButton && <button type="button" onClick={requestTeamAccess} className="w-full border border-slate-900 text-slate-900 py-3 rounded-xl font-black mt-3">Already Joined? Request Team Access</button>}
                 {roleRequestMessage && <p className="text-xs text-orange-600 mt-2">{roleRequestMessage}</p>}
-              </div>
+              </div>}
+
+              {activeTeam && <div className="border rounded-xl p-3 bg-white text-slate-950"><p className="font-black text-green-700">✓ Active SDTV Team Member</p></div>}
               <button type="button" onClick={cleanLogout} disabled={loading} className="w-full border border-red-500 text-red-600 py-3 rounded-xl font-black disabled:opacity-60">Logout / Clear Session</button>
             </div>
           </div>
