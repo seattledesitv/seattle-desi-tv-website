@@ -33,6 +33,11 @@ export default function MyHubHeader() {
   const links: HubLink[] = [
     { label: "Hub Home", href: "/my-hub", show: true, tone: "primary" },
     { label: "Portal", href: "/portal", show: true },
+    { label: "Events", href: "/my-events", show: true },
+    { label: "Businesses", href: "/my-businesses", show: true },
+    { label: "Coverage", href: "/my-coverage", show: true },
+    { label: "Contacts", href: "/my-contact-requests", show: true },
+    { label: "Role Requests", href: "/my-role-requests", show: true },
     { label: "Assignments", href: "/my-assignments", show: true, tone: canSeeTeamTools ? "default" : "team" },
     { label: "Availability", href: "/my-availability", show: true, tone: canSeeTeamTools ? "default" : "team" },
     { label: "Notifications", href: "/notifications?from=hub", show: Boolean(email) },
