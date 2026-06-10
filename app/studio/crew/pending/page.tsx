@@ -56,15 +56,49 @@ export default function PendingCrewPage() {
     if (error) throw error;
   }
 
+  async function resolveCrewIdentity(assignment: any) {
+    const currentEmail = assignment?.user_email || "";
+    const currentUserId = assignment?.user_id || null;
+    if (!currentUserId) return { user_id: currentUserId, user_email: currentEmail };
+
+    const onboardingResult = await supabase
+      .from("volunteer_onboarding_submissions")
+      .select("user_id,email")
+      .eq("user_id", currentUserId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (onboardingResult.data?.email) {
+      return { user_id: onboardingResult.data.user_id || currentUserId, user_email: onboardingResult.data.email };
+    }
+
+    const roleResult = await supabase
+      .from("admins")
+      .select("user_id,email")
+      .eq("user_id", currentUserId)
+      .limit(1)
+      .maybeSingle();
+
+    if (roleResult.data?.email) {
+      return { user_id: roleResult.data.user_id || currentUserId, user_email: roleResult.data.email };
+    }
+
+    return { user_id: currentUserId, user_email: currentEmail };
+  }
+
   async function updateCrewStatus(assignment: any, status: string, assignedEvent: any) {
     setActionMessage("Updating crew request...");
     try {
       const payload: any = { status };
       const addsCrew = status === "approved" && shouldAddToEventCrew(assignment);
       if (status === "approved") {
+        const normalizedIdentity = await resolveCrewIdentity(assignment);
+        payload.user_id = normalizedIdentity.user_id || assignment.user_id;
+        payload.user_email = normalizedIdentity.user_email || assignment.user_email || null;
         payload.approved_by = user?.email || user?.id || null;
         payload.approved_at = new Date().toISOString();
-        if (addsCrew) await addCrewToEvent(assignment, assignedEvent);
+        if (addsCrew) await addCrewToEvent({ ...assignment, user_id: payload.user_id }, assignedEvent);
       }
       if (assignedEvent?.title) payload.event_title = assignedEvent.title;
       const { error } = await supabase.from("event_crew_assignments").update(payload).eq("id", assignment.id);
