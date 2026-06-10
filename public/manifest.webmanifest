@@ -1,0 +1,26 @@
+{
+  "name": "Seattle Desi TV",
+  "short_name": "SDTV",
+  "description": "Seattle Desi TV community media, events, radio, businesses, and volunteer hub.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050b18",
+  "theme_color": "#db2777",
+  "orientation": "portrait-primary",
+  "categories": ["entertainment", "news", "lifestyle", "social"],
+  "icons": [
+    {
+      "src": "/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/sdtv-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
