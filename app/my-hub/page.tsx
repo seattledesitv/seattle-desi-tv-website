@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import MyHubHeader from "../components/MyHubHeader";
 import SiteFooter from "../components/SiteFooter";
+import InstallPWAButton from "../components/InstallPWAButton";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, isTeamRole, resolveUserRole } from "../lib/roles";
 
@@ -115,6 +116,8 @@ export default function MyHubPage() {
             <button onClick={loadHub} className="bg-white text-slate-950 px-4 py-2 rounded-xl font-bold text-sm">Refresh</button>
           </div>
         </div>
+
+        <div className="mb-8"><InstallPWAButton /></div>
 
         {!loading && team && <section className="mb-8">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-4">
