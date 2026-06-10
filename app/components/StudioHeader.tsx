@@ -21,6 +21,7 @@ export default function StudioHeader() {
     ["Contact Requests", "/studio/contact-requests"],
     ["Coverage", "/studio/coverage"],
     ["Crew", "/studio/crew/pending"],
+    ["Volunteers", "/studio/volunteers"],
     ["Video Production", "/studio/video-production"],
     ["Calendar", "/studio/assignments-calendar"],
     ["Roles", "/studio/roles"],
