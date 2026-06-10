@@ -82,6 +82,7 @@ export default function MyHubPage() {
 
   const cards = [
     { title: "Portal", note: "General SDTV links and workspace entry point.", href: "/portal", value: "Open" },
+    { title: "Volunteer Recognition", note: "Leaderboard, monthly champions, and SDTV hall of fame.", href: "/recognition", value: "View" },
     { title: "My Assignments", note: "Confirm, complete, and track event coverage.", href: "/my-assignments", value: team ? counts.assignments : "Team" },
     { title: "My Availability", note: "Share dates you can support coverage.", href: "/my-availability", value: team ? counts.availability : "Team" },
     { title: "My Events", note: "Events submitted from your account.", href: "/my-events", value: counts.events },
@@ -122,7 +123,10 @@ export default function MyHubPage() {
               <h2 className="text-3xl font-black mt-2">Coverage Scoreboard</h2>
               <p className="text-slate-300 mt-1">Your SDTV assignments, availability, and alerts at a glance.</p>
             </div>
-            <a href="/my-assignments" className="bg-pink-600 text-white px-4 py-2 rounded-xl font-bold w-fit">Open Assignments</a>
+            <div className="flex flex-wrap gap-2">
+              <a href="/recognition" className="bg-white text-slate-950 px-4 py-2 rounded-xl font-bold w-fit">View Recognition</a>
+              <a href="/my-assignments" className="bg-pink-600 text-white px-4 py-2 rounded-xl font-bold w-fit">Open Assignments</a>
+            </div>
           </div>
           <div className="grid md:grid-cols-4 gap-4">
             {stats.map((stat) => <div key={stat.title} className="bg-white text-slate-950 rounded-2xl p-5">
