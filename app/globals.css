@@ -8,7 +8,6 @@ body { margin: 0; background: #fff; color: #081024; }
 a { text-decoration: none; }
 button { cursor: pointer; }
 
-/* Homepage hero button polish */
 section.h-\[430px\] a[href^="/events"],
 section.h-\[430px\] a[href="/radio"],
 section.h-\[430px\] a[href="/businesses"] {
@@ -25,104 +24,141 @@ section.h-\[430px\] a[href="/radio"], section.h-\[430px\] a[href="/businesses"] 
 section.h-\[430px\]:has(.max-h-\[390px\]) a[href="/radio"], section.h-\[430px\]:has(.max-h-\[390px\]) a[href="/businesses"] { display: none !important; }
 section.h-\[430px\]:has(.max-h-\[390px\]) a[href^="/events"] { min-width: 160px; }
 
-/* Modern SDTV homepage visual rhythm */
 main.bg-gradient-to-b {
   background: radial-gradient(circle at top left, rgba(219, 39, 119, 0.10), transparent 28rem), radial-gradient(circle at 80% 18%, rgba(250, 204, 21, 0.10), transparent 22rem), linear-gradient(180deg, #f8fafc 0%, #ffffff 34%, #fff7ed 70%, #f8fafc 100%) !important;
 }
 main.bg-gradient-to-b > section:not(.h-\[430px\]) { position: relative; }
 main.bg-gradient-to-b > section:not(.h-\[430px\]) > div { position: relative; z-index: 1; }
-main.bg-gradient-to-b > section:nth-of-type(3), main.bg-gradient-to-b > section:nth-of-type(6) { background: radial-gradient(circle at 15% 0%, rgba(236, 72, 153, 0.24), transparent 24rem), radial-gradient(circle at 85% 100%, rgba(250, 204, 21, 0.15), transparent 22rem), #050b18; color: white; margin-block: 1.5rem; padding-block: 1.25rem; box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.08); }
-main.bg-gradient-to-b > section:nth-of-type(3) .bg-white, main.bg-gradient-to-b > section:nth-of-type(6) .bg-white { background: rgba(255,255,255,0.10) !important; color: white !important; border-color: rgba(255,255,255,0.14) !important; backdrop-filter: blur(18px); }
-main.bg-gradient-to-b > section:nth-of-type(3) .text-gray-600, main.bg-gradient-to-b > section:nth-of-type(3) .text-slate-950, main.bg-gradient-to-b > section:nth-of-type(6) .text-gray-600, main.bg-gradient-to-b > section:nth-of-type(6) .text-slate-950 { color: rgba(255,255,255,0.74) !important; }
-main.bg-gradient-to-b > section:nth-of-type(4) { background: linear-gradient(135deg, #fff7ed 0%, #ffffff 55%, #fdf2f8 100%); margin-block: 1rem; padding-block: 1.25rem; }
-main.bg-gradient-to-b > section:nth-of-type(5) { background: radial-gradient(circle at 10% 15%, rgba(250, 204, 21, 0.18), transparent 18rem), radial-gradient(circle at 90% 10%, rgba(219, 39, 119, 0.12), transparent 22rem), linear-gradient(135deg, #ffffff 0%, #fffbeb 100%); margin-block: 1rem; padding-block: 1.25rem; }
-main.bg-gradient-to-b > section a.bg-white, main.bg-gradient-to-b > section div.bg-white, main.bg-gradient-to-b > section article.bg-white { border-color: rgba(15, 23, 42, 0.08) !important; box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08); }
-main.bg-gradient-to-b > section a.bg-white:hover, main.bg-gradient-to-b > section a.border:hover { transform: translateY(-3px); box-shadow: 0 24px 64px rgba(15, 23, 42, 0.14); }
-main.bg-gradient-to-b section h2, main.bg-gradient-to-b section h3 { letter-spacing: -0.035em; }
-main.bg-gradient-to-b section .text-pink-600, main.bg-gradient-to-b section .text-pink-300 { letter-spacing: 0.06em; }
 main.bg-gradient-to-b img { transition: transform 240ms ease, filter 240ms ease; }
 main.bg-gradient-to-b a:hover img { transform: scale(1.035); filter: saturate(1.08) contrast(1.03); }
-main.bg-gradient-to-b > section:nth-of-type(2)::before, main.bg-gradient-to-b > section:nth-of-type(4)::before, main.bg-gradient-to-b > section:nth-of-type(5)::before { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: linear-gradient(90deg, rgba(219,39,119,0.06) 1px, transparent 1px), linear-gradient(0deg, rgba(219,39,119,0.04) 1px, transparent 1px); background-size: 56px 56px; mask-image: linear-gradient(180deg, transparent 0%, black 20%, black 80%, transparent 100%); }
 section.h-\[430px\]::after { content: ""; position: absolute; inset: auto 0 0; height: 7rem; background: linear-gradient(180deg, transparent, rgba(5, 11, 24, 0.88)); pointer-events: none; }
 section.h-\[430px\] .relative { z-index: 2; }
 
-/* Home V2 Recognition Wall precise polish */
+/* Premium Recognition Wall */
 main > section:has(a[href="/recognition"]) {
-  background: radial-gradient(circle at 10% 0%, rgba(255, 198, 41, 0.18), transparent 15rem), radial-gradient(circle at 88% 18%, rgba(236, 72, 153, 0.22), transparent 18rem), linear-gradient(100deg, #160717 0%, #240719 46%, #120513 100%) !important;
-  min-height: 260px;
-  border-top: 1px solid rgba(250, 204, 21, 0.18);
-  border-bottom: 1px solid rgba(250, 204, 21, 0.20);
+  min-height: 330px !important;
+  overflow: hidden !important;
+  border-top: 1px solid rgba(250, 204, 21, .20);
+  border-bottom: 1px solid rgba(250, 204, 21, .20);
+  background:
+    radial-gradient(circle at 16% 16%, rgba(255, 225, 87, .42), transparent 18rem),
+    radial-gradient(circle at 82% 12%, rgba(236, 72, 153, .28), transparent 18rem),
+    linear-gradient(100deg, #12040f 0%, #2a0719 42%, #170513 100%) !important;
 }
 main > section:has(a[href="/recognition"])::before {
   content: "";
   position: absolute;
   inset: 0;
+  z-index: 0;
   pointer-events: none;
-  background-image: radial-gradient(circle, rgba(250,204,21,.42) 1px, transparent 1.8px), radial-gradient(circle, rgba(255,255,255,.14) 1px, transparent 1.7px);
-  background-size: 42px 42px, 74px 74px;
-  background-position: 0 0, 20px 12px;
-  mask-image: linear-gradient(90deg, black, transparent 32%, transparent 70%, black);
+  background-image:
+    radial-gradient(circle, rgba(250, 204, 21, .48) 1px, transparent 1.9px),
+    radial-gradient(circle, rgba(255, 255, 255, .16) 1px, transparent 1.7px),
+    linear-gradient(102deg, transparent 0 10%, rgba(255, 214, 74, .10) 15%, rgba(255, 214, 74, .78) 30%, rgba(255, 231, 135, .25) 44%, transparent 58%),
+    linear-gradient(96deg, transparent 0 22%, rgba(255, 190, 40, .16) 33%, rgba(255, 230, 140, .72) 49%, rgba(255, 190, 40, .12) 64%, transparent 75%),
+    linear-gradient(108deg, transparent 0 38%, rgba(255, 210, 83, .18) 46%, rgba(255, 245, 176, .62) 60%, transparent 78%);
+  background-size: 38px 38px, 72px 72px, 100% 84px, 100% 92px, 100% 108px;
+  background-position: 0 0, 20px 12px, center 44px, center 104px, center 152px;
+  background-repeat: repeat, repeat, no-repeat, no-repeat, no-repeat;
+  filter: saturate(1.18);
 }
 main > section:has(a[href="/recognition"])::after {
   content: "";
   position: absolute;
-  left: -5%;
-  right: -5%;
-  bottom: -2px;
-  height: 92px;
+  left: -12%;
+  right: -12%;
+  bottom: -76px;
+  height: 150px;
+  z-index: 1;
   pointer-events: none;
-  background: radial-gradient(ellipse at 16% 100%, rgba(250,204,21,.48), transparent 34%), radial-gradient(ellipse at 86% 100%, rgba(250,204,21,.55), transparent 36%), linear-gradient(175deg, transparent 0 42%, rgba(250,204,21,.22) 43%, rgba(250,204,21,.08) 48%, transparent 56%);
-  filter: blur(.15px);
+  background:
+    radial-gradient(120% 92% at 50% 100%, #ffffff 0 58%, rgba(255, 255, 255, .94) 59%, transparent 60%),
+    linear-gradient(175deg, transparent 0 24%, rgba(250, 204, 21, .38) 28%, rgba(255, 236, 151, .18) 36%, transparent 46%);
 }
 main > section:has(a[href="/recognition"]) > div.relative.max-w-7xl {
-  padding-top: 2.15rem !important;
-  padding-bottom: 2.25rem !important;
-  gap: 1.75rem !important;
+  z-index: 2;
+  min-height: 300px;
+  padding-top: 3.1rem !important;
+  padding-bottom: 5.2rem !important;
   align-items: center !important;
+  gap: 1.75rem !important;
 }
 main > section:has(a[href="/recognition"]) p.text-yellow-300 {
   color: #facc15 !important;
-  font-size: .73rem !important;
-  letter-spacing: .12em !important;
+  font-size: .78rem !important;
+  letter-spacing: .16em !important;
   text-transform: uppercase;
 }
 main > section:has(a[href="/recognition"]) h2 {
-  font-size: clamp(1.55rem, 2.35vw, 2.35rem) !important;
-  line-height: 1.04 !important;
-  letter-spacing: -.045em !important;
-  margin-top: .55rem !important;
+  color: white !important;
+  font-size: clamp(2.8rem, 4.7vw, 4.9rem) !important;
+  line-height: .92 !important;
+  letter-spacing: -.07em !important;
+  text-shadow: 0 12px 28px rgba(0, 0, 0, .25);
 }
 main > section:has(a[href="/recognition"]) p.text-slate-300 {
-  max-width: 19rem;
+  max-width: 28rem !important;
+  font-size: clamp(.95rem, 1.25vw, 1.12rem) !important;
   line-height: 1.55 !important;
-  font-size: .78rem !important;
-  color: rgba(255,255,255,.82) !important;
-  margin-top: .65rem !important;
+  color: rgba(255,255,255,.84) !important;
 }
-main > section:has(a[href="/recognition"]) a[href="/recognition"].inline-block {
-  background: linear-gradient(135deg, #facc15, #e9a90b) !important;
-  color: #2a1600 !important;
-  border-radius: .65rem !important;
-  padding: .62rem 1.05rem !important;
-  font-size: .76rem !important;
-  box-shadow: 0 12px 30px rgba(250, 204, 21, .22);
-  margin-top: 1rem !important;
+main > section:has(a[href="/recognition"]) a[href="/recognition"].inline-block,
+main > section:has(a[href="/recognition"]) a[href="/team"]:not(:has(div)) {
+  background: rgba(20, 9, 3, .38) !important;
+  color: #ffe58f !important;
+  border: 1px solid rgba(250, 204, 21, .72) !important;
+  border-radius: 999px !important;
+  padding: .72rem 1.12rem !important;
+  box-shadow: 0 18px 40px rgba(250, 204, 21, .18), inset 0 1px 0 rgba(255, 255, 255, .18) !important;
+  backdrop-filter: blur(10px);
 }
 main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end {
-  gap: 1.15rem !important;
-  justify-content: flex-end !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: clamp(1rem, 2.6vw, 2.1rem) !important;
+  padding-top: 1rem;
 }
 main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a {
+  position: relative;
   min-width: 84px;
+  text-align: center;
+  animation: recognitionFloat 4.6s ease-in-out infinite;
+  filter: drop-shadow(0 28px 30px rgba(0, 0, 0, .28));
 }
+main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(2) { animation-delay: .35s; margin-top: 2rem; }
+main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(3) { animation-delay: .7s; margin-top: 1.4rem; }
+main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(n+4) { margin-top: 3.7rem; }
 main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a > div {
-  box-shadow: 0 0 0 3px rgba(250,204,21,.14), 0 18px 42px rgba(250,204,21,.14) !important;
+  width: 132px !important;
+  height: 132px !important;
+  border-radius: 999px !important;
+  padding: 9px !important;
+  border: 0 !important;
+  background: linear-gradient(135deg, #ec4899, #6d072f, #f472b6) !important;
+  box-shadow: 0 0 0 8px rgba(255, 255, 255, .10), 0 0 42px rgba(250, 204, 21, .36), inset 0 2px 12px rgba(255, 255, 255, .45) !important;
 }
-main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(1) > div { background: linear-gradient(135deg, #facc15, #f59e0b, #facc15) !important; }
+main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(1) > div {
+  width: 174px !important;
+  height: 174px !important;
+  padding: 12px !important;
+  background: linear-gradient(135deg, #facc15, #f59e0b, #facc15) !important;
+  box-shadow: 0 0 0 8px rgba(250, 204, 21, .20), 0 0 48px rgba(250, 204, 21, .70), 0 0 92px rgba(250, 204, 21, .28), inset 0 2px 16px rgba(255, 255, 255, .50) !important;
+}
 main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(2) > div { background: linear-gradient(135deg, #e5e7eb, #94a3b8, #f8fafc) !important; }
 main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(3) > div { background: linear-gradient(135deg, #fdba74, #b45309, #f59e0b) !important; }
-main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(n+4) > div { background: linear-gradient(135deg, #ec4899, #6d072f, #f472b6) !important; }
+main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(n+4) > div { width: 120px !important; height: 120px !important; }
+main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end img,
+main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a > div > div {
+  border-radius: 999px !important;
+  box-shadow: inset 0 0 0 5px #fff;
+}
 main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end span.absolute {
+  width: 36px !important;
+  height: 36px !important;
+  font-size: 1rem !important;
+  left: -4px !important;
+  top: -10px !important;
+  z-index: 5;
   border: 2px solid rgba(255,255,255,.82);
   box-shadow: 0 8px 16px rgba(0,0,0,.28);
 }
@@ -131,23 +167,31 @@ main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-chi
 main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(3) span.absolute { background: #c47a2c !important; color: white !important; }
 main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(n+4) span.absolute { background: #0f172a !important; color: white !important; }
 main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end h3 {
-  font-size: .78rem !important;
-  margin-top: .55rem !important;
-  color: white !important;
+  display: inline-block;
+  max-width: 13rem;
+  margin-top: .8rem !important;
+  padding: .42rem .9rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .48);
+  color: #fff !important;
+  font-size: .92rem !important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .5);
+  backdrop-filter: blur(8px);
 }
-main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end p {
-  font-size: .63rem !important;
-  color: rgba(255,255,255,.76) !important;
-}
+main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end p { color: rgba(255, 255, 255, .84) !important; font-size: .72rem !important; }
+@keyframes recognitionFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 
 @media (max-width: 767px) {
+  main > section:has(a[href="/recognition"]) { min-height: auto !important; }
   main > section:has(a[href="/recognition"]) > div.relative.max-w-7xl { padding-top: 2rem !important; padding-bottom: 2rem !important; }
+  main > section:has(a[href="/recognition"]) h2 { font-size: clamp(2.3rem, 13vw, 3.35rem) !important; }
   main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end { justify-content: center !important; }
   main > section:has(a[href="/recognition"]) p.text-slate-300 { max-width: 100%; }
-  main.bg-gradient-to-b > section:nth-of-type(3), main.bg-gradient-to-b > section:nth-of-type(4), main.bg-gradient-to-b > section:nth-of-type(5), main.bg-gradient-to-b > section:nth-of-type(6) { margin-block: 0.5rem; padding-block: 0.5rem; }
-  section[key="home"] .max-h-\[390px\].hidden, .max-h-\[390px\].hidden.justify-center { display: flex !important; position: absolute; right: 0.75rem; top: 0.75rem; bottom: auto; z-index: 15; width: 6.5rem; max-height: 8.5rem; pointer-events: none; }
-  .max-h-\[390px\].hidden.justify-center > div { max-width: 6.5rem !important; padding: 0.35rem !important; border-radius: 1rem !important; background: rgba(255, 255, 255, 0.14) !important; }
-  .max-h-\[390px\].hidden.justify-center > div > div { border-radius: 0.75rem !important; }
+  main > section:has(a[href="/recognition"])::after { bottom: -92px !important; }
+  main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(n) { margin-top: .6rem !important; }
+  main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a > div,
+  main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(1) > div,
+  main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(n+4) > div { width: 112px !important; height: 112px !important; }
   section.h-\[430px\] .flex.flex-wrap.gap-3.mt-6 { display: grid !important; grid-template-columns: 1fr 1fr; width: min(100%, 20rem); gap: 0.6rem !important; margin-top: 1rem !important; }
   section.h-\[430px\]:has(.max-h-\[390px\]) .flex.flex-wrap.gap-3.mt-6 { display: flex !important; width: min(100%, 12rem); }
   section.h-\[430px\] a[href^="/events"], section.h-\[430px\] a[href="/radio"], section.h-\[430px\] a[href="/businesses"] { min-width: 0; width: 100%; min-height: 42px; padding: 0.65rem 0.8rem !important; border-radius: 0.8rem !important; font-size: 0.85rem; white-space: normal; text-align: center; }
