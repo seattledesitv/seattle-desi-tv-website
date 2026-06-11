@@ -66,6 +66,17 @@ export default function HomeV2Layout({ children }: { children: ReactNode }) {
           padding-bottom: 2.1rem !important;
         }
 
+        main > section:has(a[href="/recognition"]) > div.relative.max-w-7xl::after {
+          content: "View All Volunteers →";
+          position: absolute;
+          right: 2.5rem;
+          top: 1.65rem;
+          color: #f472b6;
+          font-size: .72rem;
+          font-weight: 900;
+          z-index: 9;
+        }
+
         main > section:has(a[href="/recognition"]) h2 {
           text-shadow: 0 2px 18px rgba(0,0,0,.38);
         }
@@ -76,8 +87,48 @@ export default function HomeV2Layout({ children }: { children: ReactNode }) {
           box-shadow: 0 10px 26px rgba(250, 204, 21, .28), inset 0 1px 0 rgba(255,255,255,.45) !important;
         }
 
+        main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end {
+          position: relative;
+          padding-top: 1.25rem;
+          padding-bottom: .25rem;
+        }
+
+        main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end::before {
+          content: "";
+          position: absolute;
+          left: 1.5rem;
+          right: .5rem;
+          top: 48%;
+          height: 90px;
+          z-index: -1;
+          pointer-events: none;
+          background:
+            radial-gradient(ellipse at 48% 52%, rgba(250,204,21,.24), transparent 52%),
+            linear-gradient(174deg, transparent 0 42%, rgba(255,214,87,.18) 43%, rgba(250,204,21,.48) 46%, rgba(255,214,87,.16) 49%, transparent 56%);
+          filter: blur(.2px) drop-shadow(0 0 18px rgba(250,204,21,.22));
+          transform: rotate(-2deg);
+        }
+
+        main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a {
+          transition: transform .22s ease;
+        }
+
+        main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(1) { transform: translateY(-14px); }
+        main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(2) { transform: translateY(0px); }
+        main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(3) { transform: translateY(-7px); }
+        main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(4) { transform: translateY(10px); }
+        main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(5) { transform: translateY(16px); }
+        main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:hover { transform: translateY(-18px) scale(1.04); }
+
         main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a > div {
           position: relative;
+        }
+
+        main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(1) > div,
+        main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(2) > div,
+        main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(3) > div {
+          width: 7.25rem !important;
+          height: 7.25rem !important;
         }
 
         main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a > div::after {
@@ -88,6 +139,17 @@ export default function HomeV2Layout({ children }: { children: ReactNode }) {
           border: 1px solid rgba(250,204,21,.24);
           box-shadow: 0 0 24px rgba(250,204,21,.18);
           pointer-events: none;
+        }
+
+        @media (max-width: 767px) {
+          main > section:has(a[href="/recognition"]) > div.relative.max-w-7xl::after { display: none; }
+          main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a { transform: none !important; }
+          main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(1) > div,
+          main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(2) > div,
+          main > section:has(a[href="/recognition"]) .flex.flex-wrap.items-end > a:nth-child(3) > div {
+            width: 6rem !important;
+            height: 6rem !important;
+          }
         }
       ` }} />
       {children}
