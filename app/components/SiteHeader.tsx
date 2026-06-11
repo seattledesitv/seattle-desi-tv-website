@@ -18,6 +18,7 @@ export default function SiteHeader() {
   const [unreadCount, setUnreadCount] = useState(Number(cached.unreadCount || 0));
   const [isLoggedIn, setIsLoggedIn] = useState(Boolean(cached.email));
   const [role, setRole] = useState(cached.role || "general_public");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     async function loadState() {
@@ -36,6 +37,16 @@ export default function SiteHeader() {
   }, []);
 
   const canSeeStudio = Boolean(isLoggedIn && isAdminRole(role));
+  const links = [
+    { label: "Home", href: "/", show: true },
+    { label: "Events", href: "/events", show: true },
+    { label: "Radio", href: "/radio", show: true },
+    { label: "Businesses", href: "/businesses", show: true },
+    { label: "Team", href: "/team", show: true },
+    { label: "Contact", href: "/contact", show: true },
+    { label: unreadCount > 0 ? `My Hub (${unreadCount})` : "My Hub", href: "/my-hub", show: true },
+    { label: "Studio", href: "/studio", show: canSeeStudio },
+  ];
 
   return (
     <>
@@ -47,23 +58,17 @@ export default function SiteHeader() {
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <a href="/" className="flex items-center gap-3 font-black text-lg md:text-xl"><img src="/sdtv-logo.png" alt="Seattle Desi TV" className="h-11 md:h-14 w-auto" /><span>Seattle Desi TV</span></a>
           <nav className="hidden lg:flex items-center gap-3 font-bold text-sm">
-            <a href="/" className="hover:text-pink-600">Home</a><a href="/events" className="hover:text-pink-600">Events</a><a href="/businesses" className="hover:text-pink-600">Businesses</a><a href="/radio" className="hover:text-pink-600">Radio</a><a href="/team" className="hover:text-pink-600">Team</a><a href="/contact" className="hover:text-pink-600">Contact</a>
-            <a href="/my-hub" className="hover:text-pink-600">My Hub{unreadCount > 0 ? ` ${unreadCount}` : ""}</a>
-            {canSeeStudio && <a href="/studio" className="hover:text-pink-600">Studio</a>}
+            {links.filter((link) => link.show).map((link) => <a key={link.href + link.label} href={link.href} className="hover:text-pink-600">{link.label}</a>)}
             <a href="/login" className="bg-pink-600 text-white px-4 py-2 rounded-xl">{isLoggedIn ? "Account" : "Login"}</a>
           </nav>
-          <a href="/login" className="lg:hidden bg-pink-600 text-white px-3 py-2 rounded-xl font-bold text-sm">{isLoggedIn ? "Account" : "Login"}</a>
+          <div className="lg:hidden flex items-center gap-2">
+            <a href="/login" className="bg-pink-600 text-white px-3 py-2 rounded-xl font-bold text-sm">{isLoggedIn ? "Account" : "Login"}</a>
+            <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} className="border border-slate-300 px-3 py-2 rounded-xl font-black text-sm">{menuOpen ? "Close" : "Menu"}</button>
+          </div>
         </div>
-        <nav className="lg:hidden max-w-7xl mx-auto mt-3 overflow-x-auto whitespace-nowrap flex gap-2 text-sm font-bold pb-1">
-          <a href="/" className="bg-slate-100 px-3 py-2 rounded-xl">Home</a>
-          <a href="/events" className="bg-slate-100 px-3 py-2 rounded-xl">Events</a>
-          <a href="/radio" className="bg-slate-100 px-3 py-2 rounded-xl">Radio</a>
-          <a href="/businesses" className="bg-slate-100 px-3 py-2 rounded-xl">Businesses</a>
-          <a href="/team" className="bg-slate-100 px-3 py-2 rounded-xl">Team</a>
-          <a href="/contact" className="bg-slate-100 px-3 py-2 rounded-xl">Contact</a>
-          <a href="/my-hub" className="bg-pink-50 text-pink-700 px-3 py-2 rounded-xl">My Hub{unreadCount > 0 ? ` ${unreadCount}` : ""}</a>
-          {canSeeStudio && <a href="/studio" className="bg-slate-950 text-white px-3 py-2 rounded-xl">Studio</a>}
-        </nav>
+        {menuOpen && <nav className="lg:hidden max-w-7xl mx-auto mt-3 grid grid-cols-2 gap-2 text-sm font-bold">
+          {links.filter((link) => link.show).map((link) => <a key={link.href + link.label} href={link.href} onClick={() => setMenuOpen(false)} className="bg-slate-100 px-3 py-3 rounded-xl text-center">{link.label}</a>)}
+        </nav>}
       </header>
     </>
   );
