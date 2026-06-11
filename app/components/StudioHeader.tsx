@@ -7,6 +7,7 @@ const supabase = getSupabaseBrowserClient();
 
 export default function StudioHeader() {
   const [unreadCount, setUnreadCount] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const links = [
     ["Dashboard", "/studio"],
@@ -39,15 +40,29 @@ export default function StudioHeader() {
 
   useEffect(() => { loadUnreadCount(); }, []);
 
+  const notificationLabel = unreadCount > 0 ? `Notifications (${unreadCount})` : "Notifications";
+
   return (
     <div className="bg-slate-950 text-white border-b border-white/10">
-      <div className="max-w-7xl mx-auto px-6 py-4">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div><a href="/" className="text-pink-300 font-bold text-sm">← Public Site</a><h1 className="text-2xl font-black">SDTV Studio</h1></div>
-          <nav className="flex flex-wrap gap-2 text-sm font-bold">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <a href="/" className="text-pink-300 font-bold text-sm">← Public Site</a>
+              <h1 className="text-2xl font-black">SDTV Studio</h1>
+            </div>
+            <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} className="lg:hidden border border-white/20 px-3 py-2 rounded-lg transition text-sm font-black">{menuOpen ? "Close" : "Menu"}</button>
+          </div>
+
+          <nav className="hidden lg:flex flex-wrap gap-2 text-sm font-bold">
             {links.map(([label, href]) => <a key={href} href={href} className="bg-white/10 hover:bg-pink-600 px-3 py-2 rounded-lg transition">{label}</a>)}
-            <a href="/notifications?from=studio" className="bg-white/10 hover:bg-pink-600 px-3 py-2 rounded-lg transition relative">Notifications{unreadCount > 0 && <span className="ml-2 bg-pink-600 text-white rounded-full px-2 py-0.5 text-xs">{unreadCount}</span>}</a>
+            <a href="/notifications?from=studio" className="bg-white/10 hover:bg-pink-600 px-3 py-2 rounded-lg transition relative">{notificationLabel}</a>
           </nav>
+
+          {menuOpen && <nav className="lg:hidden grid grid-cols-2 gap-2 text-sm font-bold">
+            {links.map(([label, href]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="bg-white/10 hover:bg-pink-600 px-3 py-3 rounded-lg transition text-center">{label}</a>)}
+            <a href="/notifications?from=studio" onClick={() => setMenuOpen(false)} className="bg-pink-600 hover:bg-pink-700 px-3 py-3 rounded-lg transition text-center col-span-2">{notificationLabel}</a>
+          </nav>}
         </div>
       </div>
     </div>
