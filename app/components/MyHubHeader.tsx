@@ -16,6 +16,7 @@ type HubLink = {
 export default function MyHubHeader() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("general_public");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -55,22 +56,33 @@ export default function MyHubHeader() {
     <div className="bg-slate-950 text-white border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          <div className="flex items-start justify-between gap-3">
             <div>
               <a href="/" className="text-pink-300 font-bold text-sm">← Public Site</a>
               <h1 className="text-2xl font-black">My Hub</h1>
               <p className="text-xs text-slate-400 mt-1">{email ? `${email} · ${role}` : "Login to access team tools"}</p>
             </div>
-            <a href="/login" className="lg:hidden bg-pink-600 hover:bg-pink-700 px-3 py-2 rounded-lg transition text-sm font-bold text-center">Account</a>
+            <div className="flex gap-2 shrink-0">
+              <a href="/login" className="lg:hidden bg-pink-600 hover:bg-pink-700 px-3 py-2 rounded-lg transition text-sm font-bold text-center">Account</a>
+              <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} className="lg:hidden border border-white/20 px-3 py-2 rounded-lg transition text-sm font-black">{menuOpen ? "Close" : "Menu"}</button>
+            </div>
           </div>
 
-          <nav className="overflow-x-auto whitespace-nowrap flex gap-2 text-sm font-bold pb-1 -mx-1 px-1">
+          <nav className="hidden lg:flex flex-wrap gap-2 text-sm font-bold">
             {links.filter((link) => link.show).map((link) => (
-              <a key={link.href + link.label} href={link.href} className={`${linkClass(link.tone)} px-3 py-2 rounded-lg transition shrink-0`}>
+              <a key={link.href + link.label} href={link.href} className={`${linkClass(link.tone)} px-3 py-2 rounded-lg transition`}>
                 {link.label}{link.tone === "team" ? " · Team" : ""}
               </a>
             ))}
           </nav>
+
+          {menuOpen && <nav className="lg:hidden grid grid-cols-2 gap-2 text-sm font-bold">
+            {links.filter((link) => link.show).map((link) => (
+              <a key={link.href + link.label} href={link.href} onClick={() => setMenuOpen(false)} className={`${linkClass(link.tone)} px-3 py-3 rounded-lg transition text-center`}>
+                {link.label}{link.tone === "team" ? " · Team" : ""}
+              </a>
+            ))}
+          </nav>}
         </div>
       </div>
     </div>
