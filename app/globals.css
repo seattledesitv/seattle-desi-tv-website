@@ -40,7 +40,131 @@ section.h-\[430px\]:has(.max-h-\[390px\]) a[href^="/events"] {
   min-width: 160px;
 }
 
+/* Modern SDTV homepage visual rhythm */
+main.bg-slate-50 {
+  background:
+    radial-gradient(circle at top left, rgba(219, 39, 119, 0.08), transparent 28rem),
+    radial-gradient(circle at 80% 20%, rgba(250, 204, 21, 0.08), transparent 22rem),
+    linear-gradient(180deg, #f8fafc 0%, #ffffff 35%, #fff7ed 70%, #f8fafc 100%);
+}
+
+main.bg-slate-50 > section:not(.h-\[430px\]) {
+  position: relative;
+}
+
+main.bg-slate-50 > section:not(.h-\[430px\]) > div {
+  position: relative;
+  z-index: 1;
+}
+
+main.bg-slate-50 > section:nth-of-type(3),
+main.bg-slate-50 > section:nth-of-type(6) {
+  background:
+    radial-gradient(circle at 15% 0%, rgba(236, 72, 153, 0.20), transparent 24rem),
+    radial-gradient(circle at 85% 100%, rgba(250, 204, 21, 0.12), transparent 22rem),
+    #050b18;
+  color: white;
+  margin-block: 1.5rem;
+  padding-block: 1.25rem;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.08);
+}
+
+main.bg-slate-50 > section:nth-of-type(3) .bg-white,
+main.bg-slate-50 > section:nth-of-type(6) .bg-white {
+  background: rgba(255,255,255,0.10) !important;
+  color: white !important;
+  border-color: rgba(255,255,255,0.14) !important;
+  backdrop-filter: blur(18px);
+}
+
+main.bg-slate-50 > section:nth-of-type(3) .text-gray-600,
+main.bg-slate-50 > section:nth-of-type(3) .text-slate-950,
+main.bg-slate-50 > section:nth-of-type(6) .text-gray-600,
+main.bg-slate-50 > section:nth-of-type(6) .text-slate-950 {
+  color: rgba(255,255,255,0.74) !important;
+}
+
+main.bg-slate-50 > section:nth-of-type(4) {
+  background: linear-gradient(135deg, #fff7ed 0%, #ffffff 55%, #fdf2f8 100%);
+  margin-block: 1rem;
+  padding-block: 1.25rem;
+}
+
+main.bg-slate-50 > section:nth-of-type(5) {
+  background:
+    radial-gradient(circle at 10% 15%, rgba(250, 204, 21, 0.16), transparent 18rem),
+    radial-gradient(circle at 90% 10%, rgba(219, 39, 119, 0.10), transparent 22rem),
+    linear-gradient(135deg, #ffffff 0%, #fffbeb 100%);
+  margin-block: 1rem;
+  padding-block: 1.25rem;
+}
+
+main.bg-slate-50 > section a.bg-white,
+main.bg-slate-50 > section div.bg-white,
+main.bg-slate-50 > section article.bg-white {
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+}
+
+main.bg-slate-50 > section a.bg-white:hover,
+main.bg-slate-50 > section a.border:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.14);
+}
+
+main.bg-slate-50 section h2,
+main.bg-slate-50 section h3 {
+  letter-spacing: -0.035em;
+}
+
+main.bg-slate-50 section .text-pink-600,
+main.bg-slate-50 section .text-pink-300 {
+  letter-spacing: 0.06em;
+}
+
+main.bg-slate-50 img {
+  transition: transform 240ms ease, filter 240ms ease;
+}
+
+main.bg-slate-50 a:hover img {
+  transform: scale(1.035);
+  filter: saturate(1.08) contrast(1.03);
+}
+
+main.bg-slate-50 > section:nth-of-type(2)::before,
+main.bg-slate-50 > section:nth-of-type(4)::before,
+main.bg-slate-50 > section:nth-of-type(5)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(90deg, rgba(219,39,119,0.06) 1px, transparent 1px), linear-gradient(0deg, rgba(219,39,119,0.04) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(180deg, transparent 0%, black 20%, black 80%, transparent 100%);
+}
+
+section.h-\[430px\]::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 7rem;
+  background: linear-gradient(180deg, transparent, rgba(5, 11, 24, 0.88));
+  pointer-events: none;
+}
+
+section.h-\[430px\] .relative {
+  z-index: 2;
+}
+
 @media (max-width: 767px) {
+  main.bg-slate-50 > section:nth-of-type(3),
+  main.bg-slate-50 > section:nth-of-type(4),
+  main.bg-slate-50 > section:nth-of-type(5),
+  main.bg-slate-50 > section:nth-of-type(6) {
+    margin-block: 0.5rem;
+    padding-block: 0.5rem;
+  }
+
   section[key="home"] .max-h-\[390px\].hidden,
   .max-h-\[390px\].hidden.justify-center {
     display: flex !important;
