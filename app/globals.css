@@ -129,8 +129,7 @@ main > section:has(a[href="/recognition"]) p.text-slate-300 {
   line-height: 1.55 !important;
   color: rgba(255,255,255,.84) !important;
 }
-main > section:has(a[href="/recognition"]) a[href="/recognition"].inline-block,
-main > section:has(a[href="/recognition"]) a[href="/team"]:not(:has(div)) {
+main > section:has(a[href="/recognition"]) a[href="/recognition"].inline-block {
   background: rgba(20, 9, 3, .38) !important;
   color: #ffe58f !important;
   border: 1px solid rgba(250, 204, 21, .72) !important;
