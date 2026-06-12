@@ -7,20 +7,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
 body { margin: 0; background: #fff; color: #081024; }
 a { text-decoration: none; }
 button { cursor: pointer; }
-body::before {
-  content: "DEPLOY TEST e34";
-  position: fixed;
-  right: 12px;
-  bottom: 12px;
-  z-index: 999999;
-  background: #0f172a;
-  color: #facc15;
-  border: 2px solid #facc15;
-  border-radius: 999px;
-  padding: 8px 12px;
-  font: 800 12px/1 system-ui, sans-serif;
-  box-shadow: 0 10px 30px rgba(0,0,0,.25);
-}
 
 /* Homepage hero button polish */
 section.h-\[430px\] a[href^="/events"],
