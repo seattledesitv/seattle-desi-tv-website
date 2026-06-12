@@ -20,7 +20,8 @@ export default function RecognitionWallPremium({ people }: { people: PersonRow[]
   const ordered = [ranked[1], ranked[0], ranked[2], ranked[3], ranked[4]];
 
   return (
-    <section className="relative bg-[#fcf9f4] px-4 py-12 md:px-8">
+    <section className="relative bg-[#050b18] px-4 py-12 md:px-8">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(236,72,153,.12),transparent_24rem),radial-gradient(circle_at_82%_20%,rgba(255,210,100,.08),transparent_18rem)]" />
       <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-[#080201] px-6 py-9 text-white shadow-2xl md:px-12" style={{ minHeight: 620 }}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(255,210,100,.18),transparent_22rem),linear-gradient(100deg,#070201,#210715,#070201)]" />
         <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle,rgba(255,210,100,.55)_1px,transparent_2px)] [background-size:38px_38px]" />
