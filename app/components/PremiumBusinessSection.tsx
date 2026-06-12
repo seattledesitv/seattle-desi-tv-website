@@ -38,7 +38,7 @@ function Impact({ value, label }: { value: string; label: string }) {
 
 export default function PremiumBusinessSection({ businesses }: { businesses: BusinessRow[] }) {
   return (
-    <section key="businesses" className="bg-[#fcf9f4] px-4 py-12 md:px-8">
+    <section key="businesses" className="bg-[#050b18] px-4 py-12 md:px-8">
       <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-[#080201] px-5 py-8 text-white shadow-2xl md:px-10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(255,210,100,.20),transparent_20rem),radial-gradient(circle_at_88%_20%,rgba(236,72,153,.16),transparent_18rem),linear-gradient(100deg,#070201,#210715,#070201)]" />
         <div className="absolute inset-0 opacity-35 bg-[radial-gradient(circle,rgba(255,210,100,.50)_1px,transparent_2px)] [background-size:34px_34px]" />
