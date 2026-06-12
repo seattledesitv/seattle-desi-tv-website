@@ -25,6 +25,35 @@ section.h-\[430px\] a[href="/radio"], section.h-\[430px\] a[href="/businesses"] 
 section.h-\[430px\]:has(.max-h-\[390px\]) a[href="/radio"], section.h-\[430px\]:has(.max-h-\[390px\]) a[href="/businesses"] { display: none !important; }
 section.h-\[430px\]:has(.max-h-\[390px\]) a[href^="/events"] { min-width: 160px; }
 
+/* Homepage radio CTA: avoid the blue emoji-style play icon */
+a[href="/radio"].inline-block.bg-pink-600 {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0 !important;
+  min-height: 46px;
+  border-radius: 0.9rem !important;
+  box-shadow: 0 14px 30px rgba(219, 39, 119, 0.30);
+}
+a[href="/radio"].inline-block.bg-pink-600::before {
+  content: "Listen Live Now";
+  font-size: 0.875rem;
+  line-height: 1;
+}
+a[href="/radio"].inline-block.bg-pink-600::after {
+  content: "▶";
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 0.65rem;
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1;
+}
+
 /* Modern SDTV homepage visual rhythm */
 main.bg-gradient-to-b {
   background: radial-gradient(circle at top left, rgba(219, 39, 119, 0.10), transparent 28rem), radial-gradient(circle at 80% 18%, rgba(250, 204, 21, 0.10), transparent 22rem), linear-gradient(180deg, #f8fafc 0%, #ffffff 34%, #fff7ed 70%, #f8fafc 100%) !important;
