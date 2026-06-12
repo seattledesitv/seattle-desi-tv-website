@@ -57,11 +57,11 @@ section:has(a[href="/studio/coverage"]) a > div p:first-child { color: #64748b !
 section:has(a[href="/studio/coverage"]) a > div p:nth-child(2) { color: #db2777 !important; }
 section:has(a[href="/studio/coverage"]) a > div p:nth-child(3) { color: #475569 !important; }
 
-/* Extend the get-involved color full width without adding another volunteer section */
+/* Keep the compact get-involved strip on a white page background */
 section:has(a[href="/contact?interest=volunteer"]) {
   max-width: none !important;
   margin: 0 !important;
-  background: #050b18 !important;
+  background: #fff !important;
   padding: 3rem 1.5rem !important;
 }
 section:has(a[href="/contact?interest=volunteer"]) > div {
