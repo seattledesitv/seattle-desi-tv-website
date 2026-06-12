@@ -60,12 +60,29 @@ function Stat({ value, label }: { value: string; label: string }) {
 function RingSwirls({ rank }: { rank: number }) {
   const color = rank === 1 ? "#ffe099" : rank === 2 ? "#dbeafe" : rank === 3 ? "#fb923c" : "#ec4899";
   return (
-    <svg className="absolute -inset-3 h-[calc(100%+1.5rem)] w-[calc(100%+1.5rem)]" viewBox="0 0 120 120" fill="none" aria-hidden="true">
-      <path d="M23 86C8 58 22 24 52 15" stroke={color} strokeWidth="4" strokeLinecap="round" opacity="0.82" />
-      <path d="M80 17C107 31 113 68 92 93" stroke={color} strokeWidth="4" strokeLinecap="round" opacity="0.82" />
-      <path d="M37 103C47 111 70 112 82 103" stroke={color} strokeWidth="4" strokeLinecap="round" opacity="0.82" />
-      <path d="M15 61C13 49 16 39 22 30" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.45" />
-      <path d="M105 50C108 63 106 75 99 86" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.45" />
+    <svg
+      viewBox="0 0 160 160"
+      fill="none"
+      aria-hidden="true"
+      style={{
+        position: "absolute",
+        left: -28,
+        top: -28,
+        width: "calc(100% + 56px)",
+        height: "calc(100% + 56px)",
+        zIndex: 1,
+        pointerEvents: "none",
+        overflow: "visible",
+        filter: `drop-shadow(0 0 10px ${color})`,
+      }}
+    >
+      <path d="M43 124C18 100 18 58 43 36" stroke={color} strokeWidth="6" strokeLinecap="round" opacity="0.9" />
+      <path d="M32 103C22 91 19 75 25 59" stroke={color} strokeWidth="3" strokeLinecap="round" opacity="0.62" />
+      <path d="M117 124C142 100 142 58 117 36" stroke={color} strokeWidth="6" strokeLinecap="round" opacity="0.9" />
+      <path d="M128 103C138 91 141 75 135 59" stroke={color} strokeWidth="3" strokeLinecap="round" opacity="0.62" />
+      <path d="M60 138C72 148 88 148 100 138" stroke={color} strokeWidth="5" strokeLinecap="round" opacity="0.9" />
+      <path d="M48 27C56 19 68 15 80 15" stroke={color} strokeWidth="4" strokeLinecap="round" opacity="0.55" />
+      <path d="M112 27C104 19 92 15 80 15" stroke={color} strokeWidth="4" strokeLinecap="round" opacity="0.55" />
     </svg>
   );
 }
@@ -76,9 +93,9 @@ function Volunteer({ person, rank, featured = false }: { person: PersonRow; rank
   const badge = rank === 1 ? "bg-[#ffe099] text-black" : rank === 2 ? "bg-white text-black" : rank === 3 ? "bg-[#e68a3e] text-black" : "bg-black text-white border border-white/30";
   return (
     <a href="/recognition" className={`flex flex-col items-center text-center ${featured ? "md:-translate-y-6" : ""}`}>
-      <div className="relative">
+      <div className="relative" style={{ overflow: "visible" }}>
         <RingSwirls rank={rank} />
-        <span className={`absolute -left-2 -top-2 z-20 grid h-8 w-8 place-items-center rounded-full text-sm font-black shadow-xl ${badge}`}>{rank}</span>
+        <span className={`absolute -left-2 -top-2 z-30 grid h-8 w-8 place-items-center rounded-full text-sm font-black shadow-xl ${badge}`}>{rank}</span>
         <div className={`${featured ? "h-36 w-36 md:h-44 md:w-44" : "h-32 w-32 md:h-36 md:w-36"} relative z-10 grid place-items-center rounded-full bg-gradient-to-br ${ring} p-2 shadow-[0_18px_38px_rgba(0,0,0,.55)]`}>
           <div className="h-full w-full overflow-hidden rounded-full bg-white">
             {img ? <img src={img} alt={person.name} className="h-full w-full object-cover" /> : <div className="grid h-full w-full place-items-center text-xl font-black text-pink-600">{initials(person.name)}</div>}
