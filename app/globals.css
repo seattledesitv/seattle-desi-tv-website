@@ -43,11 +43,12 @@ main > section:has(a[href="/recognition"]) {
   border-top: 1px solid rgba(250, 204, 21, .20);
   border-bottom: 1px solid rgba(250, 204, 21, .20);
   background:
-    radial-gradient(circle at 0% 8%, rgba(0, 0, 0, .88), transparent 18rem),
-    radial-gradient(circle at 100% 10%, rgba(0, 0, 0, .88), transparent 18rem),
-    radial-gradient(circle at 12% 96%, rgba(255, 205, 50, .36), transparent 18rem),
-    radial-gradient(circle at 90% 96%, rgba(255, 210, 52, .34), transparent 18rem),
-    linear-gradient(100deg, #10040e 0%, #2a0719 45%, #10040e 100%) !important;
+    radial-gradient(circle at 50% 42%, rgba(0, 0, 0, .92), transparent 28rem),
+    radial-gradient(circle at 0% 6%, rgba(0, 0, 0, .95), transparent 20rem),
+    radial-gradient(circle at 100% 8%, rgba(0, 0, 0, .95), transparent 20rem),
+    radial-gradient(circle at 7% 100%, rgba(255, 205, 50, .34), transparent 15rem),
+    radial-gradient(circle at 94% 100%, rgba(255, 210, 52, .32), transparent 15rem),
+    linear-gradient(100deg, #080207 0%, #170410 28%, #070205 50%, #170410 72%, #080207 100%) !important;
 }
 main > section:has(a[href="/recognition"])::before {
   content: "";
@@ -56,15 +57,15 @@ main > section:has(a[href="/recognition"])::before {
   z-index: 0;
   pointer-events: none;
   background-image:
-    radial-gradient(circle, rgba(250, 204, 21, .46) 1px, transparent 1.9px),
-    radial-gradient(circle, rgba(255, 255, 255, .14) 1px, transparent 1.7px),
-    linear-gradient(112deg, transparent 0 4%, rgba(255, 219, 68, .58) 14%, rgba(255, 239, 170, .16) 30%, transparent 46%),
-    linear-gradient(68deg, transparent 0 58%, rgba(255, 224, 79, .18) 70%, rgba(255, 238, 166, .62) 85%, transparent 100%),
-    linear-gradient(98deg, transparent 0 10%, rgba(255, 214, 74, .12) 18%, rgba(255, 214, 74, .72) 34%, rgba(255, 231, 135, .22) 50%, transparent 66%);
-  background-size: 40px 40px, 74px 74px, 100% 165px, 100% 165px, 100% 100px;
-  background-position: 0 0, 18px 11px, left bottom, right bottom, center 68px;
+    radial-gradient(circle, rgba(250, 204, 21, .42) 1px, transparent 1.9px),
+    radial-gradient(circle, rgba(255, 255, 255, .11) 1px, transparent 1.7px),
+    linear-gradient(128deg, transparent 0 2%, rgba(255, 219, 68, .68) 13%, rgba(255, 239, 170, .22) 29%, transparent 47%),
+    linear-gradient(52deg, transparent 0 55%, rgba(255, 224, 79, .24) 70%, rgba(255, 238, 166, .70) 86%, transparent 100%),
+    linear-gradient(100deg, transparent 0 18%, rgba(255, 214, 74, .12) 28%, rgba(255, 214, 74, .34) 39%, rgba(0,0,0,.45) 51%, rgba(255, 214, 74, .28) 62%, transparent 78%);
+  background-size: 42px 42px, 78px 78px, 100% 185px, 100% 185px, 100% 92px;
+  background-position: 0 0, 18px 11px, left bottom, right bottom, center 78px;
   background-repeat: repeat, repeat, no-repeat, no-repeat, no-repeat;
-  filter: saturate(1.16);
+  filter: saturate(1.12);
 }
 main > section:has(a[href="/recognition"])::after {
   content: "";
