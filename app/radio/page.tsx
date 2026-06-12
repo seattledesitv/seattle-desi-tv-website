@@ -62,34 +62,35 @@ function RadioPlayer() {
   }, []);
 
   return (
-    <div className="w-full max-w-full sm:max-w-xl mx-auto bg-gradient-to-br from-black to-zinc-900 rounded-[22px] p-4 sm:p-5 shadow-2xl text-white overflow-hidden">
-      <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 items-center min-w-0">
+    <div className="relative w-full max-w-full sm:max-w-xl mx-auto rounded-[1.5rem] border border-white/15 bg-slate-950 p-4 sm:p-5 shadow-2xl text-white overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_28%,rgba(219,39,119,0.42),transparent_14rem),radial-gradient(circle_at_8%_10%,rgba(244,114,182,0.18),transparent_12rem)]" />
+      <div className="relative flex flex-col sm:flex-row gap-4 sm:gap-5 items-center min-w-0">
         <img
           src={thumbnail}
           alt="Now playing"
-          className="w-24 h-24 sm:w-36 sm:h-36 md:w-40 md:h-40 shrink-0 rounded-2xl object-cover border-4 border-yellow-400 shadow-[0_0_20px_rgba(250,204,21,.65)]"
+          className="w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 shrink-0 rounded-2xl object-cover border border-white/15 bg-white p-1 shadow-[0_0_24px_rgba(236,72,153,.45)]"
         />
         <div className="flex-1 overflow-hidden w-full text-center sm:text-left min-w-0">
-          <h2 className="text-yellow-300 text-xl sm:text-3xl font-black m-0 break-words">Seattle Desi Radio</h2>
-          <div className="overflow-hidden whitespace-nowrap mt-3 max-w-full">
-            <div key={trackText} className="inline-block pl-full text-sm sm:text-lg animate-[sdtvScroll_12s_linear_infinite]">{trackText}</div>
+          <span className="inline-flex items-center gap-2 rounded-full bg-pink-600 px-3 py-1 text-[10px] font-black text-white shadow-lg shadow-pink-600/30">● LIVE</span>
+          <h2 className="text-white text-xl sm:text-3xl font-black mt-3 m-0 break-words">Seattle Desi Radio</h2>
+          <div className="overflow-hidden whitespace-nowrap mt-3 max-w-full rounded-full bg-white/5 px-3 py-2 border border-white/10">
+            <div key={trackText} className="inline-block pl-full text-sm text-slate-200 animate-[sdtvScroll_12s_linear_infinite]">{trackText}</div>
           </div>
-          <div className="mt-2 text-green-400 text-sm font-black">🟢 LIVE</div>
         </div>
         <button
           onClick={togglePlay}
-          className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 shrink-0 rounded-full border-0 bg-yellow-400 text-black text-xl sm:text-3xl md:text-4xl cursor-pointer shadow-[0_0_24px_rgba(250,204,21,.75)] font-black"
+          className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 rounded-full border border-pink-300/30 bg-pink-600 text-white text-sm sm:text-base cursor-pointer shadow-[0_0_28px_rgba(236,72,153,.65)] font-black hover:bg-pink-500 transition"
           aria-label={playing ? "Pause radio" : "Play radio"}
         >
-          {playing ? "❚❚" : "▶"}
+          {playing ? "Pause" : "Play"}
         </button>
       </div>
-      <div className="flex gap-2 justify-center mt-4 sm:mt-6 opacity-70 h-8 sm:h-14 items-end overflow-hidden">
-        {[0, 1, 2, 3, 4].map((bar) => (
+      <div className="relative flex gap-1.5 justify-center mt-4 sm:mt-6 h-10 sm:h-14 items-end overflow-hidden">
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((bar) => (
           <span
             key={bar}
-            className="w-2 sm:w-3 bg-yellow-400 animate-[sdtvBeat_1s_infinite_ease-in-out]"
-            style={{ animationDelay: `${bar * 0.18}s` }}
+            className="w-1.5 sm:w-2 rounded-t bg-pink-500 animate-[sdtvBeat_1s_infinite_ease-in-out] shadow-lg shadow-pink-500/30"
+            style={{ animationDelay: `${bar * 0.11}s` }}
           />
         ))}
       </div>
@@ -98,8 +99,8 @@ function RadioPlayer() {
       </audio>
       <style jsx>{`
         @keyframes sdtvScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-        @keyframes sdtvBeat { 0% { height: 10px; } 50% { height: 30px; } 100% { height: 10px; } }
-        @media (min-width: 640px) { @keyframes sdtvBeat { 0% { height: 15px; } 50% { height: 50px; } 100% { height: 15px; } } }
+        @keyframes sdtvBeat { 0% { height: 10px; } 50% { height: 34px; } 100% { height: 10px; } }
+        @media (min-width: 640px) { @keyframes sdtvBeat { 0% { height: 14px; } 50% { height: 48px; } 100% { height: 14px; } } }
         .pl-full { padding-left: 100%; }
       `}</style>
     </div>
