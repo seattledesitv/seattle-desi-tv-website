@@ -4,6 +4,24 @@ import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 
 const requestTypes = ["General Inquiry", "Volunteer", "Internship", "RJ / Radio Host", "VJ / Anchor", "Sponsorship", "Event Coverage", "Business Listing", "Partnership"];
+const interestAliases: Record<string, string> = {
+  volunteer: "Volunteer",
+  intern: "Internship",
+  internship: "Internship",
+  "rj-vj": "RJ / Radio Host",
+  rj: "RJ / Radio Host",
+  radio: "RJ / Radio Host",
+  "radio-host": "RJ / Radio Host",
+  vj: "VJ / Anchor",
+  anchor: "VJ / Anchor",
+  sponsorship: "Sponsorship",
+  sponsor: "Sponsorship",
+  coverage: "Event Coverage",
+  "event-coverage": "Event Coverage",
+  business: "Business Listing",
+  "business-listing": "Business Listing",
+  partnership: "Partnership",
+};
 const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY || "";
 const ctaCards = [
   ["Join as Volunteer", "Support SDTV events, production, community outreach, and operations.", "Volunteer"],
@@ -21,8 +39,9 @@ declare global {
 
 function normalizedInterest(value: string | null | undefined) {
   if (!value) return "";
-  const decoded = decodeURIComponent(value);
-  return requestTypes.includes(decoded) ? decoded : "";
+  const decoded = decodeURIComponent(value).trim();
+  if (requestTypes.includes(decoded)) return decoded;
+  return interestAliases[decoded.toLowerCase()] || "";
 }
 
 export default function ContactSection({ compact = false, initialInterest = "" }: { compact?: boolean; initialInterest?: string }) {
