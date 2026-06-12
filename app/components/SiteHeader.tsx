@@ -42,6 +42,7 @@ export default function SiteHeader() {
     { label: "Events", href: "/events", show: true },
     { label: "Radio", href: "/radio", show: true },
     { label: "Businesses", href: "/businesses", show: true },
+    { label: "Advertise", href: "/marketing-packages", show: true },
     { label: "Team", href: "/team", show: true },
     { label: "Contact", href: "/contact", show: true },
     { label: unreadCount > 0 ? `My Hub (${unreadCount})` : "My Hub", href: "/my-hub", show: true },
