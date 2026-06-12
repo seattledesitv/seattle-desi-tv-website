@@ -21,10 +21,10 @@ export default function RecognitionWallPremium({ people }: { people: PersonRow[]
 
   return (
     <section className="relative bg-[#fcf9f4] px-4 py-12 md:px-8">
-      <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-[#080201] px-6 py-10 text-white shadow-2xl md:px-12" style={{ minHeight: 560 }}>
+      <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-[#080201] px-6 py-9 text-white shadow-2xl md:px-12" style={{ minHeight: 620 }}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(255,210,100,.18),transparent_22rem),linear-gradient(100deg,#070201,#210715,#070201)]" />
         <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle,rgba(255,210,100,.55)_1px,transparent_2px)] [background-size:38px_38px]" />
-        <div className="absolute left-[-8%] right-[-8%] bottom-8 h-24 rotate-[-3deg] rounded-full bg-gradient-to-r from-transparent via-[#f5af23]/55 to-transparent blur-sm" />
+        <div className="absolute left-[-8%] right-[-8%] bottom-20 h-20 rotate-[-3deg] rounded-full bg-gradient-to-r from-transparent via-[#f5af23]/42 to-transparent blur-sm" />
 
         <div className="relative z-10 text-center">
           <p className="text-[11px] font-black uppercase tracking-[0.25em] text-[#ffe099]">🏆 SDTV Hall of Fame</p>
@@ -39,13 +39,13 @@ export default function RecognitionWallPremium({ people }: { people: PersonRow[]
           })}
         </div>
 
-        <div className="relative z-10 mx-auto mt-9 grid max-w-3xl grid-cols-3 gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 text-center backdrop-blur">
+        <div className="relative z-10 mx-auto mt-7 grid max-w-3xl grid-cols-3 gap-3 rounded-2xl border border-white/10 bg-black/30 p-3 text-center backdrop-blur">
           <Stat value="250+" label="Volunteers" />
           <Stat value="75+" label="Events" />
           <Stat value="1200+" label="Hours" />
         </div>
 
-        <div className="relative z-10 mt-7 text-center">
+        <div className="relative z-20 mt-5 pb-3 text-center">
           <a href="/recognition" className="inline-flex rounded-xl bg-gradient-to-r from-[#ffe099] via-[#f5af23] to-[#cf8b0e] px-7 py-3.5 text-xs font-black tracking-wide text-black shadow-[0_0_30px_rgba(245,175,35,0.55)]">🏆 View Recognition Leaderboard</a>
         </div>
       </div>
@@ -57,6 +57,19 @@ function Stat({ value, label }: { value: string; label: string }) {
   return <div><p className="text-xl font-black text-[#ffe099]">{value}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-white/55">{label}</p></div>;
 }
 
+function RingSwirls({ rank }: { rank: number }) {
+  const color = rank === 1 ? "#ffe099" : rank === 2 ? "#dbeafe" : rank === 3 ? "#fb923c" : "#ec4899";
+  return (
+    <svg className="absolute -inset-3 h-[calc(100%+1.5rem)] w-[calc(100%+1.5rem)]" viewBox="0 0 120 120" fill="none" aria-hidden="true">
+      <path d="M23 86C8 58 22 24 52 15" stroke={color} strokeWidth="4" strokeLinecap="round" opacity="0.82" />
+      <path d="M80 17C107 31 113 68 92 93" stroke={color} strokeWidth="4" strokeLinecap="round" opacity="0.82" />
+      <path d="M37 103C47 111 70 112 82 103" stroke={color} strokeWidth="4" strokeLinecap="round" opacity="0.82" />
+      <path d="M15 61C13 49 16 39 22 30" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.45" />
+      <path d="M105 50C108 63 106 75 99 86" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.45" />
+    </svg>
+  );
+}
+
 function Volunteer({ person, rank, featured = false }: { person: PersonRow; rank: number; featured?: boolean }) {
   const img = firstImage(person);
   const ring = rank === 1 ? "from-[#cf8b0e] via-[#fff5d6] to-[#f5af23]" : rank === 2 ? "from-slate-300 via-white to-slate-600" : rank === 3 ? "from-[#9a4f15] via-[#ffba82] to-[#e68a3e]" : "from-[#d64b8b] via-[#6d0a32] to-[#25020f]";
@@ -64,8 +77,9 @@ function Volunteer({ person, rank, featured = false }: { person: PersonRow; rank
   return (
     <a href="/recognition" className={`flex flex-col items-center text-center ${featured ? "md:-translate-y-6" : ""}`}>
       <div className="relative">
+        <RingSwirls rank={rank} />
         <span className={`absolute -left-2 -top-2 z-20 grid h-8 w-8 place-items-center rounded-full text-sm font-black shadow-xl ${badge}`}>{rank}</span>
-        <div className={`${featured ? "h-36 w-36 md:h-44 md:w-44" : "h-30 w-30 md:h-36 md:w-36"} grid place-items-center rounded-full bg-gradient-to-br ${ring} p-2 shadow-[0_18px_38px_rgba(0,0,0,.55)]`}>
+        <div className={`${featured ? "h-36 w-36 md:h-44 md:w-44" : "h-32 w-32 md:h-36 md:w-36"} relative z-10 grid place-items-center rounded-full bg-gradient-to-br ${ring} p-2 shadow-[0_18px_38px_rgba(0,0,0,.55)]`}>
           <div className="h-full w-full overflow-hidden rounded-full bg-white">
             {img ? <img src={img} alt={person.name} className="h-full w-full object-cover" /> : <div className="grid h-full w-full place-items-center text-xl font-black text-pink-600">{initials(person.name)}</div>}
           </div>
