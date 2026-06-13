@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import StudioHeader from "../../components/StudioHeader";
+import CheckedExternalLink from "../../components/CheckedExternalLink";
 
 const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
 
@@ -196,7 +197,7 @@ export default function StudioBusinessesPage() {
                     <div>
                       <h3 className="text-xl font-black">{business.name}</h3>
                       <p className="text-sm text-gray-600">{business.category || "Uncategorized"} · {business.address || "No address"}</p>
-                      {business.website && <a href={business.website} target="_blank" className="inline-block text-sm text-pink-600 font-bold mt-2">Website</a>}
+                      {business.website && <CheckedExternalLink href={business.website} notFoundMessage="Page not found. This business website is not available." className="inline-block text-sm text-pink-600 font-bold mt-2 disabled:opacity-60">Website</CheckedExternalLink>}
                       {(business.offer || business.discount) && <p className="text-sm text-gray-700 mt-2">{business.offer || business.discount}</p>}
                       <div className="flex flex-wrap gap-2 mt-3">
                         <span className={`inline-block text-sm font-bold px-3 py-1 rounded-full ${statusClass(business.status)}`}>{business.status || "pending"}</span>
