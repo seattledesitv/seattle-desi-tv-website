@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import SiteHeader from "../components/SiteHeader";
 import SiteFooter from "../components/SiteFooter";
+import CheckedExternalLink from "../components/CheckedExternalLink";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { canRequestCrew as roleCanRequestCrew, resolveUserRole } from "../lib/roles";
 
@@ -274,7 +275,6 @@ export default function EventsPage() {
     const image = firstImage(event);
     const isOwner = Boolean(user?.id && event.created_by === user.id);
     const coverageRequest = coverageByEvent[event.id];
-    const ticketUrl = safeExternalUrl(event.ticket_url);
 
     return (
       <article className="border rounded-2xl overflow-hidden shadow-sm bg-white">
@@ -286,7 +286,7 @@ export default function EventsPage() {
           {isOwner && <div className="mt-4 rounded-xl border bg-slate-50 p-3 text-sm"><p className="font-black text-slate-900">Private Organizer View</p><p className="text-slate-600">{coverageLabel(coverageRequest?.status)}</p></div>}
           <div className="flex flex-wrap gap-3 mt-5">
             <a href={`/events/${event.id}`} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm">Details</a>
-            {ticketUrl ? <a href={ticketUrl} target="_blank" rel="noreferrer" className="bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Tickets / Register</a> : event.ticket_url ? <span className="bg-slate-100 text-slate-500 px-4 py-2 rounded-lg font-bold text-sm">Page not found</span> : null}
+            {event.ticket_url && <CheckedExternalLink href={event.ticket_url} notFoundMessage="Page not found. This ticket/register link is not available." className="bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-60">Tickets / Register</CheckedExternalLink>}
             {event.location && <a href={`https://www.google.com/maps?q=${encodeURIComponent(event.location)}`} target="_blank" rel="noreferrer" className="border px-4 py-2 rounded-lg font-bold text-sm">Map</a>}
             {isOwner && !coverageRequest && <button type="button" onClick={() => requestOwnerCoverage(event)} disabled={requestingCoverageEventId === event.id} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-60">{requestingCoverageEventId === event.id ? "Requesting..." : "Request SDTV Coverage"}</button>}
             {canRequestCrew && <button type="button" onClick={() => requestCrew(event)} disabled={requestingCrewEventId === event.id} className="border border-pink-600 text-pink-600 px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-60">{requestingCrewEventId === event.id ? "Requesting..." : "Request to Cover"}</button>}
