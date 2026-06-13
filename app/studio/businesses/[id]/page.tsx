@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import CheckedExternalLink from "../../../components/CheckedExternalLink";
 
 const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
@@ -209,7 +210,7 @@ export default function BusinessEditPage({ params }: { params: { id: string } })
               <label className="grid gap-2 text-sm font-bold">Business Name<input className="border rounded-lg p-3 font-normal" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
               <label className="grid gap-2 text-sm font-bold">Category<input className="border rounded-lg p-3 font-normal" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></label>
               <label className="grid gap-2 text-sm font-bold">Address<input className="border rounded-lg p-3 font-normal" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></label>
-              <label className="grid gap-2 text-sm font-bold">Website<input className="border rounded-lg p-3 font-normal" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} /></label>
+              <label className="grid gap-2 text-sm font-bold">Website<div className="flex flex-col gap-2"><input className="border rounded-lg p-3 font-normal" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />{form.website && <CheckedExternalLink href={form.website} notFoundMessage="Page not found. This business website is not available." className="self-start bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-60">Check / Open Website</CheckedExternalLink>}</div></label>
               <label className="grid gap-2 text-sm font-bold">Offer<input className="border rounded-lg p-3 font-normal" value={form.offer} onChange={(e) => setForm({ ...form, offer: e.target.value })} /></label>
               <label className="grid gap-2 text-sm font-bold">Discount<input className="border rounded-lg p-3 font-normal" value={form.discount} onChange={(e) => setForm({ ...form, discount: e.target.value })} /></label>
               <label className="grid gap-2 text-sm font-bold">POC Name<input className="border rounded-lg p-3 font-normal" value={form.poc_name} onChange={(e) => setForm({ ...form, poc_name: e.target.value })} /></label>
