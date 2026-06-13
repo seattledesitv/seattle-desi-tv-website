@@ -49,6 +49,17 @@ function formatError(error: any) {
   return [error?.message, error?.details, error?.hint, error?.code].filter(Boolean).join(" | ") || String(error || "Unknown error");
 }
 
+function safeExternalUrl(value?: string | null) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+  try {
+    const url = new URL(trimmed.startsWith("http://") || trimmed.startsWith("https://") ? trimmed : `https://${trimmed}`);
+    return ["http:", "https:"].includes(url.protocol) ? url.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
 function coverageLabel(status?: string) {
   const value = String(status || "not_requested").toLowerCase();
   if (value === "approved") return "Coverage request approved";
@@ -77,9 +88,6 @@ export default function EventsPage() {
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState("general_public");
   const [authChecked, setAuthChecked] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [authMessage, setAuthMessage] = useState("");
   const [submitMessage, setSubmitMessage] = useState("");
   const [crewMessage, setCrewMessage] = useState("");
   const [saving, setSaving] = useState(false);
@@ -134,20 +142,6 @@ export default function EventsPage() {
     setUserRole(await resolveUserRole(supabase, currentUser));
   }
 
-  async function signIn() {
-    setAuthMessage("");
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setAuthMessage(formatError(error));
-      return;
-    }
-    const nextUser = data.user || null;
-    setUser(nextUser);
-    await loadRole(nextUser);
-    await loadCoverageRequests(nextUser);
-    setPassword("");
-  }
-
   async function signOut() {
     await supabase.auth.signOut();
     setUser(null);
@@ -179,7 +173,7 @@ export default function EventsPage() {
     setSaving(true);
     try {
       const image = imageFiles[0] ? await uploadImage(imageFiles[0]) : "";
-      const eventPayload: any = { ...form, image: image || null, poc_email: form.poc_email || user.email || null, created_by: user.id, status: "pending", approved: false };
+      const eventPayload: any = { ...form, ticket_url: safeExternalUrl(form.ticket_url) || null, image: image || null, poc_email: form.poc_email || user.email || null, created_by: user.id, status: "pending", approved: false };
       const { data, error } = await supabase
         .from("events")
         .insert(eventPayload)
@@ -280,6 +274,7 @@ export default function EventsPage() {
     const image = firstImage(event);
     const isOwner = Boolean(user?.id && event.created_by === user.id);
     const coverageRequest = coverageByEvent[event.id];
+    const ticketUrl = safeExternalUrl(event.ticket_url);
 
     return (
       <article className="border rounded-2xl overflow-hidden shadow-sm bg-white">
@@ -291,7 +286,7 @@ export default function EventsPage() {
           {isOwner && <div className="mt-4 rounded-xl border bg-slate-50 p-3 text-sm"><p className="font-black text-slate-900">Private Organizer View</p><p className="text-slate-600">{coverageLabel(coverageRequest?.status)}</p></div>}
           <div className="flex flex-wrap gap-3 mt-5">
             <a href={`/events/${event.id}`} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm">Details</a>
-            {event.ticket_url && <a href={event.ticket_url} target="_blank" rel="noreferrer" className="bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Tickets / Register</a>}
+            {ticketUrl ? <a href={ticketUrl} target="_blank" rel="noreferrer" className="bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Tickets / Register</a> : event.ticket_url ? <span className="bg-slate-100 text-slate-500 px-4 py-2 rounded-lg font-bold text-sm">Page not found</span> : null}
             {event.location && <a href={`https://www.google.com/maps?q=${encodeURIComponent(event.location)}`} target="_blank" rel="noreferrer" className="border px-4 py-2 rounded-lg font-bold text-sm">Map</a>}
             {isOwner && !coverageRequest && <button type="button" onClick={() => requestOwnerCoverage(event)} disabled={requestingCoverageEventId === event.id} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-60">{requestingCoverageEventId === event.id ? "Requesting..." : "Request SDTV Coverage"}</button>}
             {canRequestCrew && <button type="button" onClick={() => requestCrew(event)} disabled={requestingCrewEventId === event.id} className="border border-pink-600 text-pink-600 px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-60">{requestingCrewEventId === event.id ? "Requesting..." : "Request to Cover"}</button>}
@@ -325,10 +320,7 @@ export default function EventsPage() {
             </div> : <div>
               <h2 className="text-2xl font-black mb-3">Login to Add Event</h2>
               <p className="text-sm text-gray-500 mb-4">Public users can submit events. Approved SDTV team members can request to cover events.</p>
-              <input className="w-full border rounded-lg p-3 mb-3" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} />
-              <input className="w-full border rounded-lg p-3 mb-3" placeholder="Password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
-              {authMessage && <p className="text-sm text-orange-600 mb-3 whitespace-pre-line">{authMessage}</p>}
-              <button type="button" onClick={signIn} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full">Login</button>
+              <a href="/login" className="block text-center bg-pink-600 text-white px-5 py-3 rounded-xl font-bold w-full">Login to continue</a>
             </div>}
           </aside>
           <section>
