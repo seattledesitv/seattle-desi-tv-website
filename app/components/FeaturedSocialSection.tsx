@@ -30,8 +30,8 @@ function platformLabel(value?: string | null) {
 function platformAction(item: FeaturedSocialItem) {
   const platform = String(item.platform || "").toLowerCase();
   if (item.button_text) return item.button_text;
-  if (platform === "youtube" || item.content_url.includes("youtube.com") || item.content_url.includes("youtu.be")) return "Watch Now";
-  if (platform === "instagram" || item.content_url.includes("instagram.com")) return "View Reel";
+  if (platform === "youtube" || item.content_url.includes("youtube.com") || item.content_url.includes("youtu.be")) return "Watch Video";
+  if (platform === "instagram" || item.content_url.includes("instagram.com")) return "Watch Reel";
   return "Open Link";
 }
 
@@ -58,7 +58,9 @@ function SocialCard({ item, featured = false }: { item: FeaturedSocialItem; feat
       <div className={featured ? "p-6" : "p-5"}>
         <h3 className={`${featured ? "text-2xl md:text-3xl" : "text-lg"} font-black leading-tight`}>{item.title}</h3>
         {item.subtitle && <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-300">{item.subtitle}</p>}
-        <p className="mt-4 text-sm font-black text-pink-300">{platformAction(item)} →</p>
+        <span className="mt-5 inline-flex items-center justify-center rounded-full bg-pink-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-pink-600/25 transition group-hover:bg-pink-500">
+          {platformAction(item)} <span className="ml-2">→</span>
+        </span>
       </div>
     </a>
   );
