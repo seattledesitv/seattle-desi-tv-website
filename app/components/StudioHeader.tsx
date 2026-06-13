@@ -14,6 +14,8 @@ export default function StudioHeader() {
     ["Homepage", "/studio/homepage"],
     ["Hero", "/studio/hero"],
     ["Featured Events", "/studio/featured-events"],
+    ["Featured Social", "/studio/featured-social"],
+    ["Testimonials", "/studio/testimonials"],
     ["Sponsors", "/studio/sponsors"],
     ["Analytics", "/studio/analytics"],
     ["Events", "/studio/events"],
