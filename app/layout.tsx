@@ -2,37 +2,77 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seattledesitv.com";
+
 export const metadata: Metadata = {
-  title: "Seattle Desi TV | South Asian Community Media in Seattle",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "Seattle Desi TV | South Asian Community, Events & Media",
+    template: "%s | Seattle Desi TV",
+  },
   description:
-    "Seattle Desi TV shares South Asian community stories, events, businesses, radio, interviews, and cultural media across Seattle and the Pacific Northwest.",
+    "Seattle Desi TV connects the South Asian community through Seattle events, interviews, radio, business spotlights, cultural stories, and community media across the Pacific Northwest.",
   manifest: "/manifest.webmanifest",
   applicationName: "Seattle Desi TV",
+  keywords: [
+    "Seattle Desi TV",
+    "Seattle Indian events",
+    "Seattle South Asian community",
+    "Seattle Desi Radio",
+    "Indian community Seattle",
+    "South Asian businesses Seattle",
+    "Pacific Northwest Desi events",
+  ],
+  authors: [{ name: "Seattle Desi TV" }],
+  creator: "Seattle Desi TV",
+  publisher: "Seattle Desi TV",
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   appleWebApp: {
     capable: true,
     title: "Seattle Desi TV",
     statusBarStyle: "black-translucent",
   },
- icons: {
-  icon: "/icons/icon-512.png",
-  shortcut: "/icons/icon-192.png",
-  apple: "/icons/apple-touch-icon.png",
-},
+  icons: {
+    icon: "/icons/icon-512.png",
+    shortcut: "/icons/icon-192.png",
+    apple: "/icons/apple-touch-icon.png",
+  },
   openGraph: {
-    title: "Seattle Desi TV",
+    title: "Seattle Desi TV | South Asian Community, Events & Media",
     description:
-      "South Asian community media, events, businesses, radio, and stories in Seattle.",
-    url: "https://seattledesitv.com",
+      "Discover South Asian community events, interviews, local businesses, radio, and cultural stories from Seattle Desi TV.",
+    url: siteUrl,
     siteName: "Seattle Desi TV",
     type: "website",
+    locale: "en_US",
     images: [
       {
         url: "/sdtv-logo.png",
         width: 500,
         height: 500,
-        alt: "Seattle Desi TV",
+        alt: "Seattle Desi TV logo",
       },
     ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Seattle Desi TV | South Asian Community, Events & Media",
+    description:
+      "Seattle Desi TV shares South Asian community events, interviews, radio, businesses, and stories across the Pacific Northwest.",
+    images: ["/sdtv-logo.png"],
   },
 };
 
@@ -44,6 +84,21 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Seattle Desi TV",
+    url: siteUrl,
+    logo: `${siteUrl}/sdtv-logo.png`,
+    sameAs: [
+      "https://www.youtube.com/@SeattleDesiTV",
+      "https://instagram.com/seattledesitv",
+      "https://facebook.com/seattledesitv",
+    ],
+    description:
+      "Seattle Desi TV is a South Asian community media platform covering events, interviews, radio, businesses, and cultural stories across Seattle and the Pacific Northwest.",
+  };
+
   return (
     <html lang="en">
       <head>
@@ -52,6 +107,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-title" content="Seattle Desi TV" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="apple-touch-icon" href="/sdtv-logo.png" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
       </head>
       <body>
         {children}
