@@ -157,6 +157,47 @@ export default function StudioVolunteersPage() {
     }, { onConflict: "volunteer_request_id" });
   }
 
+  async function publishToTeamPage(request: any, onboardingOverride?: any) {
+    const onboarding = onboardingOverride || submissionByRequestId[request.id];
+    if (!onboarding) {
+      setActionMessage("No onboarding profile found. Ask the volunteer to complete onboarding before publishing to Team page.");
+      return false;
+    }
+
+    const teamArea = teamAreas[request.id] || "General Team";
+    const name = String(onboarding.full_name || request.email || "SDTV Team Member").trim();
+    const title = teamArea;
+    const image = String(onboarding.photo_url || "").trim();
+    const now = new Date().toISOString();
+
+    const modernPayload: any = {
+      user_id: request.user_id,
+      email: request.email,
+      name,
+      title,
+      image,
+      show_on_public_team: true,
+      created_by: user?.id || user?.email || null,
+      updated_at: now,
+    };
+
+    const modernResult = await supabase.from("team_members").upsert(modernPayload, { onConflict: "user_id" });
+    if (!modernResult.error) return true;
+
+    const { data: existing } = await supabase.from("team_members").select("id,name,title,image").eq("name", name).limit(1).maybeSingle();
+    const legacyPayload: any = { name, title, image };
+    const legacyResult = existing?.id
+      ? await supabase.from("team_members").update(legacyPayload).eq("id", existing.id)
+      : await supabase.from("team_members").insert({ ...legacyPayload, created_by: user?.id || null });
+
+    if (legacyResult.error) {
+      setActionMessage(`Team access was processed, but Team page publish failed: ${legacyResult.error.message}. Run supabase/team-profile-enhancements.sql if you want user-linked team publishing.`);
+      return false;
+    }
+
+    return true;
+  }
+
   async function approveTeamAccess(request: any) {
     const teamArea = teamAreas[request.id] || "General Team";
     setActionMessage(`Approving ${request.email} for ${teamArea}...`);
@@ -182,8 +223,9 @@ export default function StudioVolunteersPage() {
       return;
     }
 
+    const published = await publishToTeamPage(request);
     await notifyVolunteer(request, "SDTV team access approved", `Your SDTV team access is approved. Assigned area: ${teamArea}.`, "/my-hub");
-    setActionMessage(`Approved ${request.email} as team_member for ${teamArea}.`);
+    setActionMessage(`Approved ${request.email} as team_member for ${teamArea}.${published ? " Team page profile published/updated." : ""}`);
     await loadVolunteers();
   }
 
@@ -239,7 +281,9 @@ export default function StudioVolunteersPage() {
       return;
     }
 
-    setActionMessage("Volunteer profile updated.");
+    const updatedOnboarding = { ...selected.onboarding, ...editProfile };
+    if (selected.request.status === "approved") await publishToTeamPage(selected.request, updatedOnboarding);
+    setActionMessage("Volunteer profile updated. Approved team profiles are also synced to the Team page.");
     setSelected(null);
     setEditProfile(null);
     await loadVolunteers();
@@ -264,7 +308,9 @@ export default function StudioVolunteersPage() {
 
       {(status === "awaiting_team_role_access" || status === "approved") && <button onClick={() => openReview(request, onboarding)} className="bg-slate-900 text-white px-4 py-2 rounded-xl font-bold text-sm">Review / Edit Profile</button>}
 
-      {status === "awaiting_team_role_access" && <button onClick={() => approveTeamAccess(request)} className="bg-green-600 text-white px-4 py-2 rounded-xl font-bold text-sm">Approve Team Access</button>}
+      {status === "awaiting_team_role_access" && <button onClick={() => approveTeamAccess(request)} className="bg-green-600 text-white px-4 py-2 rounded-xl font-bold text-sm">Approve Team Access + Publish</button>}
+
+      {status === "approved" && <button onClick={() => publishToTeamPage(request)} className="border border-green-700 text-green-700 px-4 py-2 rounded-xl font-bold text-sm">Update Team Page Profile</button>}
 
       {(status === "awaiting_orientation" || status === "awaiting_onboarding" || status === "awaiting_team_role_access") && <button onClick={() => updateStatus(request, "rejected")} className="border border-red-600 text-red-700 px-4 py-2 rounded-xl font-bold text-sm">Reject</button>}
 
@@ -353,8 +399,8 @@ export default function StudioVolunteersPage() {
               <label className="font-bold">Full Name<input className="w-full border rounded-xl p-3 mt-1 font-normal" value={editProfile.full_name} onChange={(e) => setEditProfile({ ...editProfile, full_name: e.target.value })} /></label>
               <label className="font-bold">Phone<input className="w-full border rounded-xl p-3 mt-1 font-normal" value={editProfile.phone} onChange={(e) => setEditProfile({ ...editProfile, phone: e.target.value })} /></label>
               <label className="font-bold">City / Area<input className="w-full border rounded-xl p-3 mt-1 font-normal" value={editProfile.city} onChange={(e) => setEditProfile({ ...editProfile, city: e.target.value })} /></label>
-              <label className="font-bold">Replace Photo<input type="file" accept="image/*" className="w-full border rounded-xl p-3 mt-1 font-normal" onChange={(e) => uploadAdminProfilePhoto(e.target.files?.[0])} /></label>
-              <label className="font-bold md:col-span-2">Profile Photo URL<input className="w-full border rounded-xl p-3 mt-1 font-normal" value={editProfile.photo_url} onChange={(e) => setEditProfile({ ...editProfile, photo_url: e.target.value })} /></label>
+              <label className="font-bold">Replace Photo / ID Card Image<input type="file" accept="image/*" className="w-full border rounded-xl p-3 mt-1 font-normal" onChange={(e) => uploadAdminProfilePhoto(e.target.files?.[0])} /></label>
+              <label className="font-bold md:col-span-2">Profile / ID Card Image URL<input className="w-full border rounded-xl p-3 mt-1 font-normal" value={editProfile.photo_url} onChange={(e) => setEditProfile({ ...editProfile, photo_url: e.target.value })} /></label>
               {photoMessage && <p className="md:col-span-2 text-sm text-pink-700 font-bold">{photoMessage}</p>}
             </div>
 
@@ -365,7 +411,8 @@ export default function StudioVolunteersPage() {
 
             <div className="flex flex-wrap gap-3">
               <button onClick={saveProfileChanges} disabled={savingProfile || photoUploading} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-black disabled:opacity-60">{photoUploading ? "Uploading Photo..." : savingProfile ? "Saving..." : "Save Profile Changes"}</button>
-              {selected.request.status === "awaiting_team_role_access" && <button onClick={() => { approveTeamAccess(selected.request); setSelected(null); }} className="bg-green-600 text-white px-5 py-3 rounded-xl font-black">Approve Team Access</button>}
+              {selected.request.status === "awaiting_team_role_access" && <button onClick={() => { approveTeamAccess(selected.request); setSelected(null); }} className="bg-green-600 text-white px-5 py-3 rounded-xl font-black">Approve Team Access + Publish</button>}
+              {selected.request.status === "approved" && <button onClick={() => publishToTeamPage(selected.request, { ...selected.onboarding, ...editProfile })} className="border border-green-700 text-green-700 px-5 py-3 rounded-xl font-black">Update Team Page Profile</button>}
               {selected.request.status !== "approved" && <button onClick={() => { updateStatus(selected.request, "rejected"); setSelected(null); }} className="border border-red-600 text-red-700 px-5 py-3 rounded-xl font-black">Reject</button>}
             </div>
           </div>}
