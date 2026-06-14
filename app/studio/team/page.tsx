@@ -76,6 +76,7 @@ export default function StudioTeamPage() {
   const [role, setRole] = useState("");
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [form, setForm] = useState(emptyForm());
+  const [linkEmail, setLinkEmail] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -196,6 +197,7 @@ export default function StudioTeamPage() {
       title: member.title || "",
       image: member.image || "",
     });
+    setLinkEmail(member.email || "");
     setActionMessage(`Editing ${member.name}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -203,6 +205,7 @@ export default function StudioTeamPage() {
   function resetForm() {
     setEditingId(null);
     setForm(emptyForm());
+    setLinkEmail("");
     setActionMessage("");
   }
 
@@ -282,6 +285,78 @@ export default function StudioTeamPage() {
     setSaving(false);
   }
 
+  async function linkMemberToUser() {
+    if (!editingId) {
+      setActionMessage("Select a team member to link first.");
+      return;
+    }
+    const email = linkEmail.trim().toLowerCase();
+    if (!email) {
+      setActionMessage("Enter the approved user's email to link this team record.");
+      return;
+    }
+
+    setSaving(true);
+    setActionMessage(`Looking up approved user ${email}...`);
+
+    const adminResult = await supabase
+      .from("admins")
+      .select("user_id,email,role")
+      .ilike("email", email)
+      .limit(1)
+      .maybeSingle();
+
+    if (adminResult.error) {
+      setSaving(false);
+      setActionMessage(`Could not look up approved role: ${adminResult.error.message}`);
+      return;
+    }
+
+    const profileResult = await supabase
+      .from("volunteer_onboarding_submissions")
+      .select("user_id,email,full_name,photo_url,created_at")
+      .ilike("email", email)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const adminRow: any = adminResult.data || {};
+    const profileRow: any = profileResult.data || {};
+    const userId = adminRow.user_id || profileRow.user_id || null;
+    const roleValue = adminRow.role || "";
+
+    if (!userId || !roleValue) {
+      setSaving(false);
+      setActionMessage(`Could not link ${email}. Make sure this user is approved in the admins table as team_member first.`);
+      return;
+    }
+
+    const payload: any = {
+      user_id: userId,
+      email,
+      show_on_public_team: true,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (!form.name.trim() && profileRow.full_name) payload.name = profileRow.full_name;
+    if (!form.image.trim() && profileRow.photo_url) payload.image = profileRow.photo_url;
+
+    let result = await supabase.from("team_members").update(payload).eq("id", editingId);
+    if (result.error && String(result.error.message || "").includes("updated_at")) {
+      delete payload.updated_at;
+      result = await supabase.from("team_members").update(payload).eq("id", editingId);
+    }
+
+    setSaving(false);
+    if (result.error) {
+      setActionMessage(`Link failed: ${result.error.message}. Run supabase/team-profile-enhancements.sql if user_id/email columns are missing.`);
+      return;
+    }
+
+    setActionMessage(`Linked this Team page record to ${email} (${roleLabel(roleValue)}).`);
+    await loadMembers();
+  }
+
   async function deleteMember(member: TeamMember) {
     const ok = window.confirm(`Delete team member: ${member.name}? This only removes them from the public Team page. It does not remove their login or team role.`);
     if (!ok) return;
@@ -350,7 +425,7 @@ export default function StudioTeamPage() {
                     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-5">
                       <div>
                         <h2 className="text-2xl font-black">Edit Team Member</h2>
-                        <p className="text-gray-600 text-sm mt-1">Edit the public Team page profile. User role/access is shown for reference and is managed from volunteer approval/admin access.</p>
+                        <p className="text-gray-600 text-sm mt-1">Edit the public Team page profile. Use the link tool below to connect older/manual records to an approved SDTV user.</p>
                       </div>
                       <span className={`text-xs font-black rounded-full px-3 py-2 w-fit ${editingMember.user_role ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>{roleLabel(editingMember.user_role)}</span>
                     </div>
@@ -362,6 +437,15 @@ export default function StudioTeamPage() {
                       <div className="bg-slate-50 rounded-xl p-3"><b>User profile created</b><p className="mt-1">{formatDate(editingMember.profile_created_at)}</p></div>
                       <div className="bg-slate-50 rounded-xl p-3"><b>Public Team</b><p className="mt-1">{editingMember.show_on_public_team === false ? "Hidden" : "Visible"}</p></div>
                       <div className="bg-slate-50 rounded-xl p-3"><b>Last updated</b><p className="mt-1">{formatDate(editingMember.updated_at)}</p></div>
+                    </div>
+
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 mb-5">
+                      <p className="font-black text-yellow-900">Connect this Team record to an approved user</p>
+                      <p className="text-xs text-yellow-800 mt-1">Use this for older/manual team records that show “Not connected”. The user must already be approved as team_member/admin.</p>
+                      <div className="flex flex-col md:flex-row gap-3 mt-3">
+                        <input className="border rounded-xl p-3 flex-1" placeholder="abharathkumar@gmail.com" value={linkEmail} onChange={(event) => setLinkEmail(event.target.value)} />
+                        <button onClick={linkMemberToUser} disabled={saving} className="bg-yellow-500 text-yellow-950 px-5 py-3 rounded-xl font-black disabled:opacity-60">Link User</button>
+                      </div>
                     </div>
 
                     <div className="grid md:grid-cols-[1fr_1fr_1.4fr] gap-4">
