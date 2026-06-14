@@ -36,8 +36,23 @@ type TeamMember = {
   profile_created_at?: string | null;
 };
 
+type ApprovedUser = {
+  user_id: string | null;
+  email: string;
+  role: string;
+  full_name?: string | null;
+  photo_url?: string | null;
+  profile_created_at?: string | null;
+  already_linked?: boolean;
+};
+
 function roleContainsAdmin(role: string) {
   return String(role || "").toLowerCase().trim().includes("admin");
+}
+
+function roleCanBeTeamMember(role?: string | null) {
+  const normalized = String(role || "").toLowerCase().trim();
+  return normalized.includes("admin") || normalized.includes("team_member") || normalized.includes("team member");
 }
 
 function formatDate(value?: string | null) {
@@ -75,6 +90,7 @@ export default function StudioTeamPage() {
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState("");
   const [members, setMembers] = useState<TeamMember[]>([]);
+  const [approvedUsers, setApprovedUsers] = useState<ApprovedUser[]>([]);
   const [form, setForm] = useState(emptyForm());
   const [linkEmail, setLinkEmail] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -84,6 +100,7 @@ export default function StudioTeamPage() {
   const canAccess = Boolean(user && roleContainsAdmin(role));
   const cloudinaryReady = Boolean(CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET);
   const editingMember = members.find((member) => member.id === editingId) || null;
+  const selectedApprovedUser = approvedUsers.find((item) => item.email.toLowerCase() === linkEmail.toLowerCase()) || null;
 
   async function enrichMembers(rows: TeamMember[]) {
     const emails = Array.from(new Set(rows.map((row) => String(row.email || "").toLowerCase()).filter(Boolean)));
@@ -154,6 +171,66 @@ export default function StudioTeamPage() {
     setMembers(legacyResult.data || []);
   }
 
+  async function loadApprovedUsers(currentMembers: TeamMember[] = members) {
+    const adminResult = await supabase
+      .from("admins")
+      .select("user_id,email,role,created_at")
+      .order("created_at", { ascending: false });
+
+    if (adminResult.error) {
+      setActionMessage(`Could not load approved users: ${adminResult.error.message}`);
+      setApprovedUsers([]);
+      return;
+    }
+
+    const rows = (adminResult.data || [])
+      .filter((item: any) => item.email && roleCanBeTeamMember(item.role))
+      .map((item: any) => ({ ...item, email: String(item.email || "").toLowerCase() }));
+
+    const emails = Array.from(new Set(rows.map((item: any) => item.email).filter(Boolean)));
+    const userIds = Array.from(new Set(rows.map((item: any) => item.user_id).filter(Boolean))) as string[];
+    const profileByEmail: Record<string, any> = {};
+    const profileByUserId: Record<string, any> = {};
+
+    if (emails.length > 0 || userIds.length > 0) {
+      let profileQuery = supabase.from("volunteer_onboarding_submissions").select("user_id,email,full_name,photo_url,created_at");
+      if (emails.length > 0 && userIds.length > 0) profileQuery = profileQuery.or(`email.in.(${emails.join(",")}),user_id.in.(${userIds.join(",")})`);
+      else if (emails.length > 0) profileQuery = profileQuery.in("email", emails);
+      else profileQuery = profileQuery.in("user_id", userIds);
+      const { data } = await profileQuery.order("created_at", { ascending: false });
+      (data || []).forEach((item: any) => {
+        if (item.email && !profileByEmail[String(item.email).toLowerCase()]) profileByEmail[String(item.email).toLowerCase()] = item;
+        if (item.user_id && !profileByUserId[item.user_id]) profileByUserId[item.user_id] = item;
+      });
+    }
+
+    const linkedEmails = new Set(currentMembers.map((member) => String(member.email || "").toLowerCase()).filter(Boolean));
+    const linkedUserIds = new Set(currentMembers.map((member) => member.user_id).filter(Boolean));
+    const seen = new Set<string>();
+
+    const enriched = rows
+      .filter((item: any) => {
+        const key = item.email || item.user_id;
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map((item: any) => {
+        const profile = profileByUserId[item.user_id || ""] || profileByEmail[item.email] || {};
+        return {
+          user_id: item.user_id || profile.user_id || null,
+          email: item.email,
+          role: item.role || "team_member",
+          full_name: profile.full_name || null,
+          photo_url: profile.photo_url || null,
+          profile_created_at: profile.created_at || null,
+          already_linked: linkedEmails.has(item.email) || linkedUserIds.has(item.user_id),
+        };
+      });
+
+    setApprovedUsers(enriched);
+  }
+
   async function init() {
     setLoading(true);
     setMessage("Checking access...");
@@ -165,6 +242,7 @@ export default function StudioTeamPage() {
     if (!currentUser) {
       setRole("");
       setMembers([]);
+      setApprovedUsers([]);
       setMessage("Please login to access Studio Team.");
       setLoading(false);
       return;
@@ -186,6 +264,13 @@ export default function StudioTeamPage() {
     }
 
     await loadMembers();
+    const latestMembersResult = await supabase
+      .from("team_members")
+      .select("id,name,title,image,user_id,email,show_on_public_team,created_by,created_at,updated_at")
+      .order("created_at", { ascending: false });
+    const latestMembers = latestMembersResult.error ? [] : await enrichMembers(latestMembersResult.data || []);
+    if (!latestMembersResult.error) setMembers(latestMembers);
+    await loadApprovedUsers(latestMembers);
     setMessage("");
     setLoading(false);
   }
@@ -290,46 +375,24 @@ export default function StudioTeamPage() {
       setActionMessage("Select a team member to link first.");
       return;
     }
-    const email = linkEmail.trim().toLowerCase();
-    if (!email) {
-      setActionMessage("Enter the approved user's email to link this team record.");
+
+    const selectedUser = selectedApprovedUser;
+    if (!selectedUser) {
+      setActionMessage("Select an approved team user from the list. Only users already approved as team_member/admin are shown.");
+      return;
+    }
+
+    const email = selectedUser.email.toLowerCase();
+    const userId = selectedUser.user_id || null;
+    const roleValue = selectedUser.role || "team_member";
+
+    if (!email || !userId || !roleCanBeTeamMember(roleValue)) {
+      setActionMessage(`Could not link ${email || "this user"}. Make sure this user has an approved team_member/admin role and a user_id.`);
       return;
     }
 
     setSaving(true);
-    setActionMessage(`Looking up approved user ${email}...`);
-
-    const adminResult = await supabase
-      .from("admins")
-      .select("user_id,email,role")
-      .ilike("email", email)
-      .limit(1)
-      .maybeSingle();
-
-    if (adminResult.error) {
-      setSaving(false);
-      setActionMessage(`Could not look up approved role: ${adminResult.error.message}`);
-      return;
-    }
-
-    const profileResult = await supabase
-      .from("volunteer_onboarding_submissions")
-      .select("user_id,email,full_name,photo_url,created_at")
-      .ilike("email", email)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const adminRow: any = adminResult.data || {};
-    const profileRow: any = profileResult.data || {};
-    const userId = adminRow.user_id || profileRow.user_id || null;
-    const roleValue = adminRow.role || "";
-
-    if (!userId || !roleValue) {
-      setSaving(false);
-      setActionMessage(`Could not link ${email}. Make sure this user is approved in the admins table as team_member first.`);
-      return;
-    }
+    setActionMessage(`Linking this Team page record to ${email}...`);
 
     const payload: any = {
       user_id: userId,
@@ -338,8 +401,8 @@ export default function StudioTeamPage() {
       updated_at: new Date().toISOString(),
     };
 
-    if (!form.name.trim() && profileRow.full_name) payload.name = profileRow.full_name;
-    if (!form.image.trim() && profileRow.photo_url) payload.image = profileRow.photo_url;
+    if (!form.name.trim() && selectedUser.full_name) payload.name = selectedUser.full_name;
+    if (!form.image.trim() && selectedUser.photo_url) payload.image = selectedUser.photo_url;
 
     let result = await supabase.from("team_members").update(payload).eq("id", editingId);
     if (result.error && String(result.error.message || "").includes("updated_at")) {
@@ -355,6 +418,7 @@ export default function StudioTeamPage() {
 
     setActionMessage(`Linked this Team page record to ${email} (${roleLabel(roleValue)}).`);
     await loadMembers();
+    await loadApprovedUsers();
   }
 
   async function deleteMember(member: TeamMember) {
@@ -369,6 +433,7 @@ export default function StudioTeamPage() {
     }
     setActionMessage("Team member removed from public Team page.");
     await loadMembers();
+    await loadApprovedUsers();
   }
 
   async function logout() {
@@ -425,7 +490,7 @@ export default function StudioTeamPage() {
                     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-5">
                       <div>
                         <h2 className="text-2xl font-black">Edit Team Member</h2>
-                        <p className="text-gray-600 text-sm mt-1">Edit the public Team page profile. Use the link tool below to connect older/manual records to an approved SDTV user.</p>
+                        <p className="text-gray-600 text-sm mt-1">Edit the public Team page profile. Use the approved-user dropdown to connect older/manual records without typing an email by hand.</p>
                       </div>
                       <span className={`text-xs font-black rounded-full px-3 py-2 w-fit ${editingMember.user_role ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>{roleLabel(editingMember.user_role)}</span>
                     </div>
@@ -441,11 +506,31 @@ export default function StudioTeamPage() {
 
                     <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 mb-5">
                       <p className="font-black text-yellow-900">Connect this Team record to an approved user</p>
-                      <p className="text-xs text-yellow-800 mt-1">Use this for older/manual team records that show “Not connected”. The user must already be approved as team_member/admin.</p>
-                      <div className="flex flex-col md:flex-row gap-3 mt-3">
-                        <input className="border rounded-xl p-3 flex-1" placeholder="abharathkumar@gmail.com" value={linkEmail} onChange={(event) => setLinkEmail(event.target.value)} />
-                        <button onClick={linkMemberToUser} disabled={saving} className="bg-yellow-500 text-yellow-950 px-5 py-3 rounded-xl font-black disabled:opacity-60">Link User</button>
+                      <p className="text-xs text-yellow-800 mt-1">Only approved team_member/admin users are listed here. This prevents wrong email/manual ID mismatches.</p>
+                      <div className="grid md:grid-cols-[1fr_auto] gap-3 mt-3">
+                        <select className="border rounded-xl p-3 flex-1 bg-white" value={linkEmail} onChange={(event) => setLinkEmail(event.target.value)}>
+                          <option value="">Select approved user...</option>
+                          {approvedUsers.map((item) => (
+                            <option key={`${item.email}-${item.user_id || "no-id"}`} value={item.email}>
+                              {item.full_name ? `${item.full_name} · ` : ""}{item.email} · {roleLabel(item.role)}{item.already_linked ? " · already linked" : ""}
+                            </option>
+                          ))}
+                        </select>
+                        <button onClick={linkMemberToUser} disabled={saving || !selectedApprovedUser} className="bg-yellow-500 text-yellow-950 px-5 py-3 rounded-xl font-black disabled:opacity-60">Link Selected User</button>
                       </div>
+                      {selectedApprovedUser && (
+                        <div className="mt-3 bg-white rounded-xl p-3 text-xs text-gray-700 flex gap-3 items-center">
+                          <ImageThumb src={selectedApprovedUser.photo_url || undefined} label={selectedApprovedUser.full_name || selectedApprovedUser.email} />
+                          <div className="grid gap-1">
+                            <p><b>Selected:</b> {selectedApprovedUser.full_name || selectedApprovedUser.email}</p>
+                            <p><b>Email:</b> {selectedApprovedUser.email}</p>
+                            <p><b>User ID:</b> {shortId(selectedApprovedUser.user_id)}</p>
+                            <p><b>Role:</b> {roleLabel(selectedApprovedUser.role)}</p>
+                            <p><b>Onboarding profile:</b> {formatDate(selectedApprovedUser.profile_created_at)}</p>
+                          </div>
+                        </div>
+                      )}
+                      {approvedUsers.length === 0 && <p className="text-xs text-red-700 mt-3">No approved team users found. Approve the volunteer for Team Access first.</p>}
                     </div>
 
                     <div className="grid md:grid-cols-[1fr_1fr_1.4fr] gap-4">
@@ -474,7 +559,8 @@ export default function StudioTeamPage() {
             ) : (
               <section className="bg-white text-slate-950 rounded-2xl p-6">
                 <h2 className="text-2xl font-black">Team Profiles</h2>
-                <p className="text-gray-600 mt-2">Team members should be added through <b>Studio → Volunteer Requests → Approve Team Access + Publish</b>. Use this page to edit already-published team profiles.</p>
+                <p className="text-gray-600 mt-2">Team members should be added through <b>Studio → Volunteer Requests → Approve Team Access + Publish</b>. Use this page to edit already-published team profiles or link older records to approved users.</p>
+                <p className="text-sm text-gray-500 mt-3">Approved linkable users loaded: {approvedUsers.length}</p>
               </section>
             )}
 
@@ -505,7 +591,7 @@ export default function StudioTeamPage() {
                       </div>
 
                       <div className="flex flex-wrap gap-2 mt-4">
-                        <button onClick={() => startEdit(member)} className="bg-slate-900 text-white px-3 py-2 rounded-lg font-bold text-sm">Edit</button>
+                        <button onClick={() => startEdit(member)} className="bg-slate-900 text-white px-3 py-2 rounded-lg font-bold text-sm">Edit / Link</button>
                         <button onClick={() => deleteMember(member)} className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm">Remove from Team Page</button>
                       </div>
                     </div>
