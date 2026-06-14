@@ -82,6 +82,7 @@ export default function StudioTeamPage() {
 
   const canAccess = Boolean(user && roleContainsAdmin(role));
   const cloudinaryReady = Boolean(CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET);
+  const editingMember = members.find((member) => member.id === editingId) || null;
 
   async function enrichMembers(rows: TeamMember[]) {
     const emails = Array.from(new Set(rows.map((row) => String(row.email || "").toLowerCase()).filter(Boolean)));
@@ -234,7 +235,7 @@ export default function StudioTeamPage() {
       }
 
       setForm((current) => ({ ...current, image: result.secure_url }));
-      setActionMessage("Image uploaded. Save the team member to keep it.");
+      setActionMessage("Image uploaded. Save changes to keep it.");
     } catch (error: any) {
       setActionMessage(`Image upload failed: ${error?.message || String(error)}`);
     } finally {
@@ -244,13 +245,17 @@ export default function StudioTeamPage() {
   }
 
   async function saveMember() {
+    if (!editingId) {
+      setActionMessage("Select a team member to edit first.");
+      return;
+    }
     if (!form.name.trim()) {
       setActionMessage("Name is required.");
       return;
     }
 
     setSaving(true);
-    setActionMessage(editingId ? "Updating team member..." : "Adding team member...");
+    setActionMessage("Updating team member...");
 
     const payload: any = {
       name: form.name.trim(),
@@ -259,39 +264,26 @@ export default function StudioTeamPage() {
       updated_at: new Date().toISOString(),
     };
 
-    let error = null;
-
-    if (editingId) {
-      const result = await supabase.from("team_members").update(payload).eq("id", editingId);
-      error = result.error;
-    } else {
-      payload.created_by = user?.id || null;
-      const result = await supabase.from("team_members").insert(payload);
-      error = result.error;
-    }
-
-    if (error && String(error.message || "").includes("updated_at")) {
+    let result = await supabase.from("team_members").update(payload).eq("id", editingId);
+    if (result.error && String(result.error.message || "").includes("updated_at")) {
       delete payload.updated_at;
-      const retry = editingId
-        ? await supabase.from("team_members").update(payload).eq("id", editingId)
-        : await supabase.from("team_members").insert({ ...payload, created_by: user?.id || null });
-      error = retry.error;
+      result = await supabase.from("team_members").update(payload).eq("id", editingId);
     }
 
-    if (error) {
-      setActionMessage(`Save failed: ${error.message}`);
+    if (result.error) {
+      setActionMessage(`Save failed: ${result.error.message}`);
       setSaving(false);
       return;
     }
 
-    setActionMessage(editingId ? "Team member updated." : "Team member added.");
+    setActionMessage("Team member updated.");
     resetForm();
     await loadMembers();
     setSaving(false);
   }
 
   async function deleteMember(member: TeamMember) {
-    const ok = window.confirm(`Delete team member: ${member.name}? This cannot be undone.`);
+    const ok = window.confirm(`Delete team member: ${member.name}? This only removes them from the public Team page. It does not remove their login or team role.`);
     if (!ok) return;
 
     setActionMessage("Deleting team member...");
@@ -300,7 +292,7 @@ export default function StudioTeamPage() {
       setActionMessage(`Delete failed: ${error.message}`);
       return;
     }
-    setActionMessage("Team member deleted.");
+    setActionMessage("Team member removed from public Team page.");
     await loadMembers();
   }
 
@@ -347,30 +339,60 @@ export default function StudioTeamPage() {
           <div className="space-y-8">
             {actionMessage && <div className="bg-yellow-100 text-yellow-900 rounded-2xl p-4 font-bold">{actionMessage}</div>}
 
-            <section className="bg-white text-slate-950 rounded-2xl p-6">
-              <h2 className="text-2xl font-black mb-4">{editingId ? "Edit Team Member" : "Add Team Member"}</h2>
-              <div className="grid md:grid-cols-[1fr_1fr_1.4fr] gap-4">
-                <label className="grid gap-2 text-sm font-bold">
-                  Name
-                  <input className="border rounded-lg p-3 font-normal" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Team member name" />
-                </label>
-                <label className="grid gap-2 text-sm font-bold">
-                  Title / Role
-                  <input className="border rounded-lg p-3 font-normal" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Founder, Host, Volunteer..." />
-                </label>
-                <div className="grid gap-2 text-sm font-bold">
-                  Image
-                  <input type="file" accept="image/*" onChange={uploadImage} disabled={uploadingImage} className="border rounded-lg p-3 font-normal" />
-                  <input className="border rounded-lg p-3 font-normal" value={form.image} onChange={(event) => setForm({ ...form, image: event.target.value })} placeholder="Or paste image URL" />
-                  {form.image && <img src={form.image} alt="Preview" className="w-24 h-24 object-cover rounded-xl border" />}
-                  {!cloudinaryReady && <p className="text-xs text-orange-600">Cloudinary upload is not configured; image URL still works.</p>}
+            {editingMember ? (
+              <section className="bg-white text-slate-950 rounded-2xl p-6">
+                <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+                  <div className="shrink-0">
+                    <p className="text-xs font-black uppercase text-gray-500 mb-2">Profile / ID Image</p>
+                    <ImageThumb src={form.image || editingMember.profile_photo_url || editingMember.image} label={editingMember.name} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-5">
+                      <div>
+                        <h2 className="text-2xl font-black">Edit Team Member</h2>
+                        <p className="text-gray-600 text-sm mt-1">Edit the public Team page profile. User role/access is shown for reference and is managed from volunteer approval/admin access.</p>
+                      </div>
+                      <span className={`text-xs font-black rounded-full px-3 py-2 w-fit ${editingMember.user_role ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>{roleLabel(editingMember.user_role)}</span>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3 mb-5 text-xs text-gray-600">
+                      <div className="bg-slate-50 rounded-xl p-3"><b>Email</b><p className="break-words mt-1">{editingMember.email || "Not linked"}</p></div>
+                      <div className="bg-slate-50 rounded-xl p-3"><b>User ID</b><p className="break-words mt-1">{shortId(editingMember.user_id)}</p></div>
+                      <div className="bg-slate-50 rounded-xl p-3"><b>Team row created</b><p className="mt-1">{formatDate(editingMember.created_at)}</p></div>
+                      <div className="bg-slate-50 rounded-xl p-3"><b>User profile created</b><p className="mt-1">{formatDate(editingMember.profile_created_at)}</p></div>
+                      <div className="bg-slate-50 rounded-xl p-3"><b>Public Team</b><p className="mt-1">{editingMember.show_on_public_team === false ? "Hidden" : "Visible"}</p></div>
+                      <div className="bg-slate-50 rounded-xl p-3"><b>Last updated</b><p className="mt-1">{formatDate(editingMember.updated_at)}</p></div>
+                    </div>
+
+                    <div className="grid md:grid-cols-[1fr_1fr_1.4fr] gap-4">
+                      <label className="grid gap-2 text-sm font-bold">
+                        Name
+                        <input className="border rounded-lg p-3 font-normal" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Team member name" />
+                      </label>
+                      <label className="grid gap-2 text-sm font-bold">
+                        Title / Role Display
+                        <input className="border rounded-lg p-3 font-normal" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Founder, Host, Volunteer..." />
+                      </label>
+                      <div className="grid gap-2 text-sm font-bold">
+                        Team Page / ID Image
+                        <input type="file" accept="image/*" onChange={uploadImage} disabled={uploadingImage} className="border rounded-lg p-3 font-normal" />
+                        <input className="border rounded-lg p-3 font-normal" value={form.image} onChange={(event) => setForm({ ...form, image: event.target.value })} placeholder="Or paste image URL" />
+                        {!cloudinaryReady && <p className="text-xs text-orange-600">Cloudinary upload is not configured; image URL still works.</p>}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-3 mt-5">
+                      <button onClick={saveMember} disabled={saving || uploadingImage} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold disabled:opacity-60">{saving ? "Saving..." : "Update Member"}</button>
+                      <button onClick={resetForm} className="border border-gray-400 text-gray-700 px-5 py-3 rounded-xl font-bold">Cancel Edit</button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-3 mt-5">
-                <button onClick={saveMember} disabled={saving || uploadingImage} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold disabled:opacity-60">{saving ? "Saving..." : editingId ? "Update Member" : "Add Member"}</button>
-                {editingId && <button onClick={resetForm} className="border border-gray-400 text-gray-700 px-5 py-3 rounded-xl font-bold">Cancel Edit</button>}
-              </div>
-            </section>
+              </section>
+            ) : (
+              <section className="bg-white text-slate-950 rounded-2xl p-6">
+                <h2 className="text-2xl font-black">Team Profiles</h2>
+                <p className="text-gray-600 mt-2">Team members should be added through <b>Studio → Volunteer Requests → Approve Team Access + Publish</b>. Use this page to edit already-published team profiles.</p>
+              </section>
+            )}
 
             <section className="bg-white text-slate-950 rounded-2xl p-6">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
@@ -400,7 +422,7 @@ export default function StudioTeamPage() {
 
                       <div className="flex flex-wrap gap-2 mt-4">
                         <button onClick={() => startEdit(member)} className="bg-slate-900 text-white px-3 py-2 rounded-lg font-bold text-sm">Edit</button>
-                        <button onClick={() => deleteMember(member)} className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm">Delete</button>
+                        <button onClick={() => deleteMember(member)} className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm">Remove from Team Page</button>
                       </div>
                     </div>
                   </article>
