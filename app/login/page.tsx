@@ -195,7 +195,7 @@ export default function LoginPage() {
                 {roleRequestMessage && <p className="text-xs text-orange-600 mt-2">{roleRequestMessage}</p>}
               </div>}
 
-              {activeTeam && <div className="border rounded-xl p-3 bg-white text-slate-950"><p className="font-black text-green-700">✓ Active SDTV Team Member</p></div>}
+              {activeTeam && <div className="border rounded-xl p-3 bg-white text-slate-950"><p className="font-black text-green-700">✓ Active SDTV Team Member</p><a href="/account/profile" className="block w-full bg-slate-900 text-white py-3 rounded-xl font-black text-center mt-3">Edit My Team Profile / ID Image</a></div>}
               <button type="button" onClick={cleanLogout} disabled={loading} className="w-full border border-red-500 text-red-600 py-3 rounded-xl font-black disabled:opacity-60">Logout / Clear Session</button>
             </div>
           </div>
