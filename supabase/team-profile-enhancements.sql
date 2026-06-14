@@ -21,6 +21,22 @@ for update
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
+-- Let approved team members update only their linked public team row.
+alter table public.team_members enable row level security;
+
+drop policy if exists "Users can update own team member profile" on public.team_members;
+create policy "Users can update own team member profile"
+on public.team_members
+for update
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+drop policy if exists "Users can insert own team member profile" on public.team_members;
+create policy "Users can insert own team member profile"
+on public.team_members
+for insert
+with check (auth.uid() = user_id);
+
 -- Helpful updated_at trigger for onboarding submissions.
 create or replace function public.set_updated_at()
 returns trigger
@@ -35,5 +51,11 @@ $$;
 drop trigger if exists volunteer_onboarding_set_updated_at on public.volunteer_onboarding_submissions;
 create trigger volunteer_onboarding_set_updated_at
 before update on public.volunteer_onboarding_submissions
+for each row
+execute function public.set_updated_at();
+
+drop trigger if exists team_members_set_updated_at on public.team_members;
+create trigger team_members_set_updated_at
+before update on public.team_members
 for each row
 execute function public.set_updated_at();
