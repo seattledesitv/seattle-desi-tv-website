@@ -25,12 +25,34 @@ type TeamMember = {
   name: string;
   title: string;
   image: string;
-  created_by?: string;
-  created_at?: string;
+  user_id?: string | null;
+  email?: string | null;
+  show_on_public_team?: boolean | null;
+  created_by?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  user_role?: string;
+  profile_photo_url?: string;
+  profile_created_at?: string | null;
 };
 
 function roleContainsAdmin(role: string) {
   return String(role || "").toLowerCase().trim().includes("admin");
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+function shortId(value?: string | null) {
+  if (!value) return "—";
+  return value.length > 12 ? `${value.slice(0, 8)}…${value.slice(-4)}` : value;
+}
+
+function roleLabel(value?: string | null) {
+  return value ? value.replaceAll("_", " ") : "Not connected";
 }
 
 function ImageThumb({ src, label }: { src?: string; label: string }) {
@@ -61,18 +83,73 @@ export default function StudioTeamPage() {
   const canAccess = Boolean(user && roleContainsAdmin(role));
   const cloudinaryReady = Boolean(CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET);
 
+  async function enrichMembers(rows: TeamMember[]) {
+    const emails = Array.from(new Set(rows.map((row) => String(row.email || "").toLowerCase()).filter(Boolean)));
+    const userIds = Array.from(new Set(rows.map((row) => row.user_id).filter(Boolean))) as string[];
+
+    const roleByEmail: Record<string, string> = {};
+    const roleByUserId: Record<string, string> = {};
+    if (emails.length > 0 || userIds.length > 0) {
+      let adminQuery = supabase.from("admins").select("user_id,email,role");
+      if (emails.length > 0 && userIds.length > 0) adminQuery = adminQuery.or(`email.in.(${emails.join(",")}),user_id.in.(${userIds.join(",")})`);
+      else if (emails.length > 0) adminQuery = adminQuery.in("email", emails);
+      else adminQuery = adminQuery.in("user_id", userIds);
+      const { data } = await adminQuery;
+      (data || []).forEach((item: any) => {
+        if (item.email) roleByEmail[String(item.email).toLowerCase()] = item.role;
+        if (item.user_id) roleByUserId[item.user_id] = item.role;
+      });
+    }
+
+    const profileByEmail: Record<string, any> = {};
+    const profileByUserId: Record<string, any> = {};
+    if (emails.length > 0 || userIds.length > 0) {
+      let profileQuery = supabase.from("volunteer_onboarding_submissions").select("user_id,email,photo_url,created_at");
+      if (emails.length > 0 && userIds.length > 0) profileQuery = profileQuery.or(`email.in.(${emails.join(",")}),user_id.in.(${userIds.join(",")})`);
+      else if (emails.length > 0) profileQuery = profileQuery.in("email", emails);
+      else profileQuery = profileQuery.in("user_id", userIds);
+      const { data } = await profileQuery.order("created_at", { ascending: false });
+      (data || []).forEach((item: any) => {
+        if (item.email && !profileByEmail[String(item.email).toLowerCase()]) profileByEmail[String(item.email).toLowerCase()] = item;
+        if (item.user_id && !profileByUserId[item.user_id]) profileByUserId[item.user_id] = item;
+      });
+    }
+
+    return rows.map((member) => {
+      const emailKey = String(member.email || "").toLowerCase();
+      const profile = profileByUserId[member.user_id || ""] || profileByEmail[emailKey] || {};
+      return {
+        ...member,
+        user_role: roleByUserId[member.user_id || ""] || roleByEmail[emailKey] || "",
+        profile_photo_url: profile.photo_url || member.image || "",
+        profile_created_at: profile.created_at || null,
+      };
+    });
+  }
+
   async function loadMembers() {
-    const { data, error } = await supabase
+    const modernResult = await supabase
+      .from("team_members")
+      .select("id,name,title,image,user_id,email,show_on_public_team,created_by,created_at,updated_at")
+      .order("created_at", { ascending: false });
+
+    if (!modernResult.error) {
+      setMembers(await enrichMembers(modernResult.data || []));
+      return;
+    }
+
+    const legacyResult = await supabase
       .from("team_members")
       .select("id,name,title,image,created_by,created_at")
       .order("created_at", { ascending: false });
 
-    if (error) {
-      setActionMessage(`Could not load team members: ${error.message}`);
+    if (legacyResult.error) {
+      setActionMessage(`Could not load team members: ${legacyResult.error.message}`);
       return;
     }
 
-    setMembers(data || []);
+    setActionMessage("Team members loaded in legacy mode. Run supabase/team-profile-enhancements.sql to show user role/email connections.");
+    setMembers(legacyResult.data || []);
   }
 
   async function init() {
@@ -179,6 +256,7 @@ export default function StudioTeamPage() {
       name: form.name.trim(),
       title: form.title.trim(),
       image: form.image.trim(),
+      updated_at: new Date().toISOString(),
     };
 
     let error = null;
@@ -190,6 +268,14 @@ export default function StudioTeamPage() {
       payload.created_by = user?.id || null;
       const result = await supabase.from("team_members").insert(payload);
       error = result.error;
+    }
+
+    if (error && String(error.message || "").includes("updated_at")) {
+      delete payload.updated_at;
+      const retry = editingId
+        ? await supabase.from("team_members").update(payload).eq("id", editingId)
+        : await supabase.from("team_members").insert({ ...payload, created_by: user?.id || null });
+      error = retry.error;
     }
 
     if (error) {
@@ -234,12 +320,11 @@ export default function StudioTeamPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
-  <StudioHeader />
-  <div className="max-w-7xl mx-auto px-6 py-10">
-     
+      <StudioHeader />
+      <div className="max-w-7xl mx-auto px-6 py-10">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
-                        <h1 className="text-4xl md:text-5xl font-black mt-3">Team Management</h1>
+            <h1 className="text-4xl md:text-5xl font-black mt-3">Team Management</h1>
             <p className="text-slate-300 mt-2">{user?.email ? `Logged in as ${user.email} · Role: ${role || "none"}` : "Studio team"}</p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -294,11 +379,25 @@ export default function StudioTeamPage() {
               </div>
               <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {members.map((member) => (
-                  <article key={member.id} className="border rounded-xl p-4 flex gap-4 items-center">
-                    <ImageThumb src={member.image} label={member.name} />
+                  <article key={member.id} className="border rounded-xl p-4 flex gap-4 items-start">
+                    <ImageThumb src={member.profile_photo_url || member.image} label={member.name} />
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-black truncate">{member.name}</h3>
-                      <p className="text-sm text-gray-600">{member.title || "No title"}</p>
+                      <div className="flex flex-wrap gap-2 items-start justify-between">
+                        <div>
+                          <h3 className="text-lg font-black truncate">{member.name}</h3>
+                          <p className="text-sm text-gray-600">{member.title || "No title"}</p>
+                        </div>
+                        <span className={`text-xs font-black rounded-full px-2 py-1 ${member.user_role ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>{roleLabel(member.user_role)}</span>
+                      </div>
+
+                      <div className="mt-3 grid gap-1 text-xs text-gray-600 break-words">
+                        <p><b>Email:</b> {member.email || "Not linked"}</p>
+                        <p><b>User ID:</b> {shortId(member.user_id)}</p>
+                        <p><b>Team row created:</b> {formatDate(member.created_at)}</p>
+                        <p><b>User profile created:</b> {formatDate(member.profile_created_at)}</p>
+                        <p><b>Public Team:</b> {member.show_on_public_team === false ? "Hidden" : "Visible"}</p>
+                      </div>
+
                       <div className="flex flex-wrap gap-2 mt-4">
                         <button onClick={() => startEdit(member)} className="bg-slate-900 text-white px-3 py-2 rounded-lg font-bold text-sm">Edit</button>
                         <button onClick={() => deleteMember(member)} className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm">Delete</button>
@@ -311,7 +410,6 @@ export default function StudioTeamPage() {
             </section>
           </div>
         )}
-       
       </div>
     </main>
   );
