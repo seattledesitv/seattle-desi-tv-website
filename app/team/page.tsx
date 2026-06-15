@@ -10,7 +10,15 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 );
 
-type TeamMember = { id: string; name: string; title: string; image: string; };
+type TeamMember = {
+  id: string;
+  name: string;
+  title: string;
+  image: string;
+  email?: string | null;
+  user_id?: string | null;
+  profile_photo_url?: string | null;
+};
 type Spotlight = { key: string; name: string; email: string; count: number; photo?: string; };
 type CoverageThanks = { key: string; name: string; email: string; eventTitles: string[]; count: number; photo?: string; };
 
@@ -47,13 +55,32 @@ export default function PublicTeamPage() {
   useEffect(() => {
     async function loadTeam() {
       const [teamResult, assignmentsResult, profilesResult] = await Promise.all([
-        supabase.from("team_members").select("id,name,title,image").order("created_at", { ascending: true }),
+        supabase
+          .from("team_members")
+          .select("id,name,title,image,email,user_id,show_on_public_team")
+          .eq("show_on_public_team", true)
+          .order("created_at", { ascending: true }),
         supabase.from("event_crew_assignments").select("id,user_id,user_email,event_title,coverage_completed,completed_at,status").eq("coverage_completed", true).order("completed_at", { ascending: false }).limit(500),
-        supabase.from("volunteer_onboarding_submissions").select("email,full_name,photo_url"),
+        supabase.from("volunteer_onboarding_submissions").select("user_id,email,full_name,photo_url"),
       ]);
 
-      if (teamResult.error) setError(teamResult.error.message);
-      else setMembers(teamResult.data || []);
+      if (teamResult.error) {
+        const legacyResult = await supabase.from("team_members").select("id,name,title,image").order("created_at", { ascending: true });
+        if (legacyResult.error) setError(legacyResult.error.message);
+        else setMembers(legacyResult.data || []);
+      } else {
+        const profilesByEmail: Record<string, any> = {};
+        const profilesByUserId: Record<string, any> = {};
+        (profilesResult.data || []).forEach((profile: any) => {
+          if (profile.email) profilesByEmail[String(profile.email).toLowerCase()] = profile;
+          if (profile.user_id) profilesByUserId[profile.user_id] = profile;
+        });
+
+        setMembers((teamResult.data || []).map((member: any) => {
+          const profile = profilesByUserId[member.user_id || ""] || profilesByEmail[String(member.email || "").toLowerCase()] || {};
+          return { ...member, profile_photo_url: profile.photo_url || null };
+        }));
+      }
 
       const profilesByEmail: Record<string, any> = {};
       (profilesResult.data || []).forEach((profile: any) => { if (profile.email) profilesByEmail[profile.email] = profile; });
@@ -149,15 +176,18 @@ export default function PublicTeamPage() {
             {!error && <section>
               <h2 className="text-3xl font-black mb-5">Team Members</h2>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {members.map((member) => (
-                  <article key={member.id} className="bg-white text-slate-950 rounded-2xl overflow-hidden shadow-xl">
-                    {member.image ? <img src={member.image} alt={member.name} className="w-full h-72 object-cover" /> : <div className="w-full h-72 bg-pink-50 grid place-items-center text-pink-600 font-black">No image</div>}
-                    <div className="p-5">
-                      <h2 className="text-xl font-black">{member.name}</h2>
-                      <p className="text-pink-600 font-bold mt-1">{member.title}</p>
-                    </div>
-                  </article>
-                ))}
+                {members.map((member) => {
+                  const displayImage = member.image || member.profile_photo_url || "";
+                  return (
+                    <article key={member.id} className="bg-white text-slate-950 rounded-2xl overflow-hidden shadow-xl">
+                      {displayImage ? <img src={displayImage} alt={member.name} className="w-full h-72 object-cover" /> : <div className="w-full h-72 bg-pink-50 grid place-items-center text-pink-600 font-black">No image</div>}
+                      <div className="p-5">
+                        <h2 className="text-xl font-black">{member.name}</h2>
+                        <p className="text-pink-600 font-bold mt-1">{member.title}</p>
+                      </div>
+                    </article>
+                  );
+                })}
                 {members.length === 0 && <p className="text-slate-300">No team members found.</p>}
               </div>
             </section>}
