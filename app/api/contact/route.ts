@@ -2,6 +2,19 @@ import { Resend } from "resend";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+const PHONE_REGEX = /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]{6,}$/;
+
+function clean(value: unknown) {
+  return String(value || "").trim();
+}
+
+function validPhone(value: string) {
+  if (!value) return true;
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 10 && digits.length <= 15 && PHONE_REGEX.test(value);
+}
+
 function escapeHtml(value: string) {
   return String(value || "")
     .replace(/&/g, "&amp;")
@@ -14,11 +27,17 @@ function escapeHtml(value: string) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, email, phone, interest, message, captchaToken } = body;
+    const name = clean(body.name);
+    const email = clean(body.email).toLowerCase();
+    const phone = clean(body.phone);
+    const interest = clean(body.interest);
+    const message = clean(body.message);
+    const captchaToken = body.captchaToken;
 
-    if (!name || !email || !message) {
-      return NextResponse.json({ success: false, error: "Name, email, and message are required" }, { status: 400 });
-    }
+    if (name.length < 2) return NextResponse.json({ success: false, error: "Name is required." }, { status: 400 });
+    if (!EMAIL_REGEX.test(email)) return NextResponse.json({ success: false, error: "Enter a valid email address." }, { status: 400 });
+    if (phone && !validPhone(phone)) return NextResponse.json({ success: false, error: "Enter a valid phone number with 10 to 15 digits." }, { status: 400 });
+    if (message.length < 10) return NextResponse.json({ success: false, error: "Message must be at least 10 characters." }, { status: 400 });
 
     if (!captchaToken) {
       return NextResponse.json({ success: false, error: "Captcha token is missing" }, { status: 400 });
@@ -40,17 +59,17 @@ export async function POST(req: Request) {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const requestType = interest || "General Inquiry";
-const { error: insertError } = await supabase
-  .from("contact_requests")
-  .insert({
-    name,
-    email,
-    phone: phone || null,
-    interest: requestType,
-    message,
-    source: "website_contact",
-    status: "new",
-  });
+    const { error: insertError } = await supabase
+      .from("contact_requests")
+      .insert({
+        name,
+        email,
+        phone: phone || null,
+        interest: requestType,
+        message,
+        source: "website_contact",
+        status: "new",
+      });
 
     if (insertError) {
       return NextResponse.json({ success: false, step: "db_insert", error: insertError.message }, { status: 500 });
@@ -73,7 +92,7 @@ const { error: insertError } = await supabase
     const adminEmail = await resend.emails.send({
       from: fromAddress,
       to: adminTo,
-      replyTo: email && email.includes("@") ? `${safeName} <${email.trim()}>` : undefined,
+      replyTo: `${safeName} <${email}>`,
       subject: `New ${requestType} Request: ${name}`,
       html: `
         <h2>New Contact Request</h2>
@@ -87,21 +106,18 @@ const { error: insertError } = await supabase
       `,
     });
 
-    let autoReply: any = null;
-    if (email && email.includes("@")) {
-      autoReply = await resend.emails.send({
-        from: fromAddress,
-        to: email.trim(),
-        subject: "We received your Seattle Desi TV request",
-        html: `
-          <h2>Thank you for contacting Seattle Desi TV</h2>
-          <p>Hi ${safeName},</p>
-          <p>We received your request regarding <b>${safeType}</b>.</p>
-          <p>Our team will review it and get back to you soon.</p>
-          <p>Seattle Desi TV<br/>Community • Culture • Connection</p>
-        `,
-      });
-    }
+    const autoReply = await resend.emails.send({
+      from: fromAddress,
+      to: email,
+      subject: "We received your Seattle Desi TV request",
+      html: `
+        <h2>Thank you for contacting Seattle Desi TV</h2>
+        <p>Hi ${safeName},</p>
+        <p>We received your request regarding <b>${safeType}</b>.</p>
+        <p>Our team will review it and get back to you soon.</p>
+        <p>Seattle Desi TV<br/>Community • Culture • Connection</p>
+      `,
+    });
 
     return NextResponse.json({ success: true, step: "db_saved_email_sent", adminEmail, autoReply });
   } catch (error: any) {
