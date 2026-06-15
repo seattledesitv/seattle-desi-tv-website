@@ -37,6 +37,28 @@ on public.team_members
 for insert
 with check (auth.uid() = user_id);
 
+-- Let Studio admins create, edit, and link public team page rows.
+drop policy if exists "Admins can manage team member profiles" on public.team_members;
+create policy "Admins can manage team member profiles"
+on public.team_members
+for all
+using (
+  exists (
+    select 1
+    from public.admins a
+    where (a.user_id = auth.uid() or lower(a.email) = lower(auth.jwt() ->> 'email'))
+      and lower(a.role) like '%admin%'
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.admins a
+    where (a.user_id = auth.uid() or lower(a.email) = lower(auth.jwt() ->> 'email'))
+      and lower(a.role) like '%admin%'
+  )
+);
+
 -- Helpful updated_at trigger for onboarding submissions.
 create or replace function public.set_updated_at()
 returns trigger
