@@ -23,6 +23,23 @@ function firstImage(row: RadioHost) {
   return row.image || "";
 }
 
+function isProductionMember(row: RadioHost) {
+  const text = `${row.title || ""} ${row.segment_name || ""}`.toLowerCase();
+  return text.includes("production") || text.includes("producer") || text.includes("lead");
+}
+
+function RadioCard({ host }: { host: RadioHost }) {
+  const image = firstImage(host);
+  return (
+    <article className="bg-white border rounded-2xl p-5 text-center shadow-sm hover:shadow-xl transition">
+      {image ? <img src={image} alt={host.name} className="w-28 h-28 rounded-full object-cover mx-auto" /> : <div className="w-28 h-28 rounded-full bg-pink-50 text-pink-600 grid place-items-center mx-auto font-black">SDTV</div>}
+      <h3 className="text-xl font-black mt-4">{host.name}</h3>
+      {host.title && <p className="text-gray-600 text-sm mt-1">{host.title}</p>}
+      {host.segment_name && <p className="text-pink-600 font-bold text-sm mt-2">{host.segment_name}</p>}
+    </article>
+  );
+}
+
 function RadioPlayer() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -88,6 +105,21 @@ function RadioPlayer() {
 export default function RadioPage() {
   const [hosts, setHosts] = useState<RadioHost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [canManageStudio, setCanManageStudio] = useState(false);
+
+  async function checkStudioAccess() {
+    const sessionResult = await supabase.auth.getSession();
+    const currentUser = sessionResult.data?.session?.user;
+    if (!currentUser) return;
+
+    const adminResult = await supabase
+      .from("admins")
+      .select("role")
+      .or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
+      .maybeSingle();
+
+    setCanManageStudio(String(adminResult.data?.role || "").toLowerCase().includes("admin"));
+  }
 
   async function loadHosts() {
     setLoading(true);
@@ -111,7 +143,10 @@ export default function RadioPage() {
     setLoading(false);
   }
 
-  useEffect(() => { loadHosts(); }, []);
+  useEffect(() => { loadHosts(); checkStudioAccess(); }, []);
+
+  const productionTeam = hosts.filter(isProductionMember);
+  const radioHosts = hosts.filter((host) => !isProductionMember(host));
 
   return (
     <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-gradient-to-b from-white to-slate-100 text-slate-950">
@@ -135,8 +170,8 @@ export default function RadioPage() {
       </section>
 
       <section id="hosts" className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 py-8 sm:py-10 md:py-12 overflow-hidden">
-        <div className="flex items-end justify-between gap-4 mb-6"><div><p className="text-pink-600 font-black uppercase tracking-wide text-sm sm:text-base">Radio Team</p><h2 className="text-3xl md:text-4xl font-black">Hosts & Segments</h2><p className="text-gray-600 mt-1">Meet the voices behind Seattle Desi Radio.</p></div><a href="/studio/radio-team" className="hidden md:inline-block text-pink-600 font-black">Studio Radio Team →</a></div>
-        {loading ? <div className="bg-white border rounded-2xl p-8 text-gray-500">Loading radio hosts...</div> : hosts.length === 0 ? <div className="bg-white border rounded-2xl p-8 text-gray-500">Radio host profiles will appear here after they are added in Studio.</div> : <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5">{hosts.map((host) => { const image = firstImage(host); return <article key={host.id} className="bg-white border rounded-2xl p-5 text-center shadow-sm hover:shadow-xl transition">{image ? <img src={image} alt={host.name} className="w-28 h-28 rounded-full object-cover mx-auto" /> : <div className="w-28 h-28 rounded-full bg-pink-50 text-pink-600 grid place-items-center mx-auto font-black">SDTV</div>}<h3 className="text-xl font-black mt-4">{host.name}</h3>{host.title && <p className="text-gray-600 text-sm mt-1">{host.title}</p>}{host.segment_name && <p className="text-pink-600 font-bold text-sm mt-2">{host.segment_name}</p>}</article>; })}</div>}
+        <div className="flex items-end justify-between gap-4 mb-6"><div><p className="text-pink-600 font-black uppercase tracking-wide text-sm sm:text-base">Radio Team</p><h2 className="text-3xl md:text-4xl font-black">Hosts & Segments</h2><p className="text-gray-600 mt-1">Meet the voices behind Seattle Desi Radio.</p></div>{canManageStudio && <a href="/studio/radio-team" className="hidden md:inline-block text-pink-600 font-black">Studio Radio Team →</a>}</div>
+        {loading ? <div className="bg-white border rounded-2xl p-8 text-gray-500">Loading radio hosts...</div> : hosts.length === 0 ? <div className="bg-white border rounded-2xl p-8 text-gray-500">Radio host profiles will appear here after they are added in Studio.</div> : <div className="space-y-10">{productionTeam.length > 0 && <div><h3 className="text-2xl font-black mb-4">Production Team</h3><div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5">{productionTeam.map((host) => <RadioCard key={host.id} host={host} />)}</div></div>}{radioHosts.length > 0 && <div><h3 className="text-2xl font-black mb-4">Hosts</h3><div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5">{radioHosts.map((host) => <RadioCard key={host.id} host={host} />)}</div></div>}</div>}
       </section>
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 py-8 sm:py-10 md:py-12 overflow-hidden"><div className="bg-slate-950 text-white rounded-3xl p-6 sm:p-8 md:p-10 grid md:grid-cols-[1fr_auto] gap-6 items-center overflow-hidden"><div><p className="text-pink-300 font-black uppercase tracking-wide text-sm sm:text-base">Be on SDTV Radio</p><h2 className="text-3xl md:text-4xl font-black">Want to host, sponsor, or be interviewed?</h2><p className="text-slate-300 mt-2">Reach out to SDTV for radio programming, sponsorships, and community stories.</p></div><a href="/portal" className="bg-pink-600 text-white px-6 py-4 rounded-xl font-black text-center">Contact SDTV</a></div></section>
