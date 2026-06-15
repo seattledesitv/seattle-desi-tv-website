@@ -3,6 +3,7 @@
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import StudioHeader from "../../components/StudioHeader";
+import { firstError, requireText, validateImageFile, validateOptionalUrl } from "../../lib/validation";
 
 const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
@@ -289,8 +290,15 @@ export default function StudioRadioTeamPage() {
   async function uploadImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
+    const validation = validateImageFile(file, "Radio team image", 5);
+    if (!validation.ok) {
+      setActionMessage(validation.message || "Please upload a valid image file.");
+      event.target.value = "";
+      return;
+    }
     if (!cloudinaryReady) {
       setActionMessage("Cloudinary is not configured. Image URL still works.");
+      event.target.value = "";
       return;
     }
 
@@ -315,8 +323,12 @@ export default function StudioRadioTeamPage() {
   }
 
   async function saveMember() {
-    if (!form.name.trim()) {
-      setActionMessage("Name is required.");
+    const validationError = firstError(
+      requireText(form.name, "Name", 2),
+      validateOptionalUrl(form.image, "Radio team image URL")
+    );
+    if (validationError) {
+      setActionMessage(validationError);
       return;
     }
 
@@ -448,7 +460,7 @@ export default function StudioRadioTeamPage() {
                 <label className="grid gap-2 text-sm font-bold">Name<input className="border rounded-lg p-3 font-normal" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Name" /></label>
                 <label className="grid gap-2 text-sm font-bold">Title / Role<input className="border rounded-lg p-3 font-normal" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="RJ, Host, Producer..." /></label>
                 <label className="grid gap-2 text-sm font-bold">Segment Name<input className="border rounded-lg p-3 font-normal" value={form.segment_name} onChange={(event) => setForm({ ...form, segment_name: event.target.value })} placeholder="Segment" /></label>
-                <div className="grid gap-2 text-sm font-bold">Image<input type="file" accept="image/*" onChange={uploadImage} disabled={uploadingImage} className="border rounded-lg p-3 font-normal" /><input className="border rounded-lg p-3 font-normal" value={form.image} onChange={(event) => setForm({ ...form, image: event.target.value })} placeholder="Or paste image URL" />{form.image && <img src={form.image} alt="Preview" className="w-24 h-24 object-cover rounded-xl border" />}{!cloudinaryReady && <p className="text-xs text-orange-600">Cloudinary upload is not configured; image URL still works.</p>}</div>
+                <div className="grid gap-2 text-sm font-bold">Image<input type="file" accept="image/*" onChange={uploadImage} disabled={uploadingImage} className="border rounded-lg p-3 font-normal" /><input className="border rounded-lg p-3 font-normal" value={form.image} onChange={(event) => setForm({ ...form, image: event.target.value })} placeholder="Or paste image URL" />{form.image && <img src={form.image} alt="Preview" className="w-24 h-24 object-cover rounded-xl border" />}<p className="text-xs text-gray-500">Image files must be image type and 5MB or smaller. Pasted image URL must be valid.</p>{!cloudinaryReady && <p className="text-xs text-orange-600">Cloudinary upload is not configured; image URL still works.</p>}</div>
               </div>
               <label className="mt-4 flex items-center gap-3 text-sm font-bold"><input type="checkbox" checked={form.show_on_public_radio} onChange={(event) => setForm({ ...form, show_on_public_radio: event.target.checked })} /> Show on public Radio page</label>
               <div className="flex flex-wrap gap-3 mt-5"><button onClick={saveMember} disabled={saving || uploadingImage} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold disabled:opacity-60">{saving ? "Saving..." : editingId ? "Update Member" : "Add Member"}</button>{editingId && <button onClick={resetForm} className="border border-gray-400 text-gray-700 px-5 py-3 rounded-xl font-bold">Cancel Edit</button>}</div>
