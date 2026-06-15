@@ -16,13 +16,11 @@ type RadioHost = {
   title?: string | null;
   segment_name?: string | null;
   image?: string | null;
-  photo?: string | null;
-  picture?: string | null;
   show_on_public_radio?: boolean | null;
 };
 
 function firstImage(row: RadioHost) {
-  return row.image || row.photo || row.picture || "";
+  return row.image || "";
 }
 
 function RadioPlayer() {
@@ -95,7 +93,7 @@ export default function RadioPage() {
     setLoading(true);
     const modernResult = await supabase
       .from("radio_team_members")
-      .select("id,name,title,segment_name,image,photo,picture,show_on_public_radio")
+      .select("id,name,title,segment_name,image,show_on_public_radio")
       .eq("show_on_public_radio", true)
       .order("created_at", { ascending: false });
 
@@ -107,7 +105,7 @@ export default function RadioPage() {
 
     const { data } = await supabase
       .from("radio_team_members")
-      .select("id,name,title,segment_name,image,photo,picture")
+      .select("id,name,title,segment_name,image")
       .order("created_at", { ascending: false });
     setHosts(data || []);
     setLoading(false);
