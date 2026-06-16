@@ -18,6 +18,7 @@ export default function StudioHeader() {
     ["Testimonials", "/studio/testimonials"],
     ["Sponsors", "/studio/sponsors"],
     ["Analytics", "/studio/analytics"],
+    ["Event Ops", "/studio/event-ops"],
     ["Events", "/studio/events"],
     ["Pending Events", "/studio/events/pending"],
     ["Businesses", "/studio/businesses"],
