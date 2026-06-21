@@ -1,16 +1,34 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import MyHubHeader from "../components/MyHubHeader";
 import SiteFooter from "../components/SiteFooter";
+import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { isAdminRole, resolveUserRole } from "../lib/roles";
+
+const supabase = getSupabaseBrowserClient();
 
 export default function PortalPage() {
+  const [role, setRole] = useState("general_public");
+
+  useEffect(() => {
+    async function loadRole() {
+      const { data } = await supabase.auth.getUser();
+      setRole(await resolveUserRole(supabase, data?.user || null));
+    }
+    loadRole();
+  }, []);
+
+  const canSeeStudio = isAdminRole(role);
   const links = [
-    ["My Hub Dashboard", "/my-hub", "Your SDTV workspace home."],
-    ["My Assignments", "/my-assignments", "Confirm and complete event coverage work."],
-    ["My Availability", "/my-availability", "Share when you can support coverage."],
-    ["Notifications", "/notifications", "View SDTV alerts and updates."],
-    ["Events", "/events", "Browse public events."],
-    ["Businesses", "/businesses", "Browse the local business directory."],
-    ["Radio", "/radio", "Listen to Seattle Desi Radio."],
-    ["Studio", "/studio", "Admin workspace."],
+    ["My Assignments", "/my-assignments", "Confirm assignments and submit event coverage content."],
+    ["Coverage Opportunities", "/my-coverage", "Request to join approved SDTV coverage opportunities."],
+    ["My Availability", "/my-availability", "Share when you can support SDTV coverage."],
+    ["Notifications", "/notifications?from=hub", "View SDTV alerts and updates."],
+    ["My Event Submissions", "/my-events", "Track events you submitted to SDTV."],
+    ["My Business Listings", "/my-businesses", "Track business listings you submitted."],
+    ["My Contact Requests", "/my-contact-requests", "Review messages and requests you submitted."],
+    ...(canSeeStudio ? [["Studio", "/studio", "Admin workspace."]] : []),
   ];
 
   return (
@@ -19,7 +37,7 @@ export default function PortalPage() {
       <div className="max-w-7xl mx-auto px-6 py-10">
         <p className="text-pink-300 font-black uppercase tracking-wide">My Hub</p>
         <h1 className="text-4xl md:text-6xl font-black mt-3">Seattle Desi TV Portal</h1>
-        <p className="text-slate-300 mt-3 max-w-3xl mb-8">A simple navigation bridge for public pages, team tools, account access, and Studio operations.</p>
+        <p className="text-slate-300 mt-3 max-w-3xl mb-8">Your SDTV workspace for assignments, coverage opportunities, submissions, account updates, and notifications.</p>
         <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5">
           {links.map(([label, href, note]) => (
             <a key={href} href={href} className="bg-white text-slate-950 rounded-3xl p-6 shadow-xl border hover:scale-[1.01] transition block">
