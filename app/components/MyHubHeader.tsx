@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
-import { isAdminRole, isTeamRole, resolveUserRole } from "../lib/roles";
+import { isAdminRole, isTeamRole, isVideoEditorRole, resolveUserRole } from "../lib/roles";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -29,8 +29,9 @@ export default function MyHubHeader() {
   }, []);
 
   const canSeeTeamTools = isTeamRole(role);
+  const canSeeVideoTools = isVideoEditorRole(role) || isAdminRole(role);
   const canSeeStudio = isAdminRole(role);
-  const shouldShowJourney = Boolean(email) && !canSeeTeamTools && !canSeeStudio;
+  const shouldShowJourney = Boolean(email) && !canSeeTeamTools && !canSeeStudio && !canSeeVideoTools;
 
   const links: HubLink[] = [
     { label: "Hub Home", href: "/my-hub", show: true, tone: "primary" },
@@ -39,6 +40,7 @@ export default function MyHubHeader() {
     { label: "My Business Listings", href: "/my-businesses", show: true },
     { label: "Coverage Opportunities", href: "/my-coverage", show: true, tone: canSeeTeamTools ? "default" : "team" },
     { label: "My Assignments", href: "/my-assignments", show: true, tone: canSeeTeamTools ? "default" : "team" },
+    { label: "My Video Assignments", href: "/my-video-assignments", show: canSeeVideoTools, tone: "default" },
     { label: "My Availability", href: "/my-availability", show: true, tone: canSeeTeamTools ? "default" : "team" },
     { label: "My Contact Requests", href: "/my-contact-requests", show: true },
     { label: "My SDTV Journey", href: "/my-role-requests", show: shouldShowJourney },
