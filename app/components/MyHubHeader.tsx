@@ -30,19 +30,20 @@ export default function MyHubHeader() {
 
   const canSeeTeamTools = isTeamRole(role);
   const canSeeStudio = isAdminRole(role);
+  const shouldShowJourney = Boolean(email) && !canSeeTeamTools && !canSeeStudio;
 
   const links: HubLink[] = [
     { label: "Hub Home", href: "/my-hub", show: true, tone: "primary" },
-    { label: "Portal", href: "/portal", show: true },
-    { label: "Events", href: "/my-events", show: true },
-    { label: "Businesses", href: "/my-businesses", show: true },
+    { label: "Submit / Request", href: "/portal", show: true },
+    { label: "My Event Submissions", href: "/my-events", show: true },
+    { label: "My Business Listings", href: "/my-businesses", show: true },
     { label: "Coverage Opportunities", href: "/my-coverage", show: true, tone: canSeeTeamTools ? "default" : "team" },
-    { label: "Contacts", href: "/my-contact-requests", show: true },
-    { label: "Role Requests", href: "/my-role-requests", show: true },
     { label: "My Assignments", href: "/my-assignments", show: true, tone: canSeeTeamTools ? "default" : "team" },
-    { label: "Availability", href: "/my-availability", show: true, tone: canSeeTeamTools ? "default" : "team" },
+    { label: "My Availability", href: "/my-availability", show: true, tone: canSeeTeamTools ? "default" : "team" },
+    { label: "My Contact Requests", href: "/my-contact-requests", show: true },
+    { label: "My SDTV Journey", href: "/my-role-requests", show: shouldShowJourney },
     { label: "Notifications", href: "/notifications?from=hub", show: Boolean(email) },
-    { label: "Account", href: "/login", show: true },
+    { label: "My Account", href: "/login", show: true },
     { label: "Studio", href: "/studio", show: canSeeStudio, tone: "primary" },
   ];
 
@@ -63,7 +64,7 @@ export default function MyHubHeader() {
               <p className="text-xs text-slate-400 mt-1">{email ? `${email} · ${role}` : "Login to access team tools"}</p>
             </div>
             <div className="flex gap-2 shrink-0">
-              <a href="/login" className="lg:hidden bg-pink-600 hover:bg-pink-700 px-3 py-2 rounded-lg transition text-sm font-bold text-center">Account</a>
+              <a href="/login" className="lg:hidden bg-pink-600 hover:bg-pink-700 px-3 py-2 rounded-lg transition text-sm font-bold text-center">My Account</a>
               <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} className="lg:hidden border border-white/20 px-3 py-2 rounded-lg transition text-sm font-black">{menuOpen ? "Close" : "Menu"}</button>
             </div>
           </div>
