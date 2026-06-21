@@ -34,7 +34,7 @@ export default function MyHubHeader() {
 
   const links: HubLink[] = [
     { label: "Hub Home", href: "/my-hub", show: true, tone: "primary" },
-    { label: "Submit / Request", href: "/portal", show: true },
+    { label: "Portal", href: "/portal", show: true },
     { label: "My Event Submissions", href: "/my-events", show: true },
     { label: "My Business Listings", href: "/my-businesses", show: true },
     { label: "Coverage Opportunities", href: "/my-coverage", show: true, tone: canSeeTeamTools ? "default" : "team" },
