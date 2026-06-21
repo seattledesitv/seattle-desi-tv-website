@@ -5,7 +5,7 @@ import MyHubHeader from "../components/MyHubHeader";
 import SiteFooter from "../components/SiteFooter";
 import InstallPWAButton from "../components/InstallPWAButton";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
-import { isAdminRole, isTeamRole, resolveUserRole } from "../lib/roles";
+import { isAdminRole, isTeamRole, isVideoEditorRole, resolveUserRole } from "../lib/roles";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -18,6 +18,7 @@ type Counts = {
   assignments: number;
   availability: number;
   notifications: number;
+  editing: number;
 };
 
 const emptyCounts: Counts = {
@@ -29,6 +30,7 @@ const emptyCounts: Counts = {
   assignments: 0,
   availability: 0,
   notifications: 0,
+  editing: 0,
 };
 
 export default function MyHubPage() {
@@ -40,6 +42,7 @@ export default function MyHubPage() {
 
   const team = isTeamRole(role);
   const admin = isAdminRole(role);
+  const videoEditor = isVideoEditorRole(role);
 
   async function countQuery(query: any) {
     const result = await query;
@@ -63,7 +66,7 @@ export default function MyHubPage() {
     }
 
     const today = new Date().toISOString().split("T")[0];
-    const [events, businesses, coverage, contacts, roles, assignments, availability, notifications] = await Promise.all([
+    const [events, businesses, coverage, contacts, roles, assignments, availability, notifications, editing] = await Promise.all([
       countQuery(supabase.from("events").select("id", { count: "exact", head: true }).eq("created_by", user.id)),
       countQuery(supabase.from("local_businesses").select("id", { count: "exact", head: true }).eq("created_by", user.id)),
       countQuery(supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).or(`user_id.eq.${user.id},user_email.eq.${nextEmail}`)),
@@ -72,9 +75,10 @@ export default function MyHubPage() {
       countQuery(supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "approved")),
       countQuery(supabase.from("crew_availability").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("available_date", today)),
       countQuery(supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("read", false)),
+      countQuery(supabase.from("event_video_workflows").select("id", { count: "exact", head: true }).or(`assigned_editor_email.ilike.${nextEmail},crew_reviewer_email.ilike.${nextEmail}`)),
     ]);
 
-    setCounts({ events, businesses, coverage, contacts, roles, assignments, availability, notifications });
+    setCounts({ events, businesses, coverage, contacts, roles, assignments, availability, notifications, editing });
     setMessage("Your SDTV workspace overview.");
     setLoading(false);
   }
@@ -82,18 +86,19 @@ export default function MyHubPage() {
   useEffect(() => { loadHub(); }, []);
 
   const cards = [
-    { title: "Portal", note: "General SDTV links and workspace entry point.", href: "/portal", value: "Open" },
-    { title: "Volunteer Recognition", note: "Leaderboard, monthly champions, and SDTV hall of fame.", href: "/recognition", value: "View" },
-    { title: "My Assignments", note: "Confirm, complete, and track event coverage.", href: "/my-assignments", value: team ? counts.assignments : "Team" },
-    { title: "My Availability", note: "Share dates you can support coverage.", href: "/my-availability", value: team ? counts.availability : "Team" },
-    { title: "My Events", note: "Events submitted from your account.", href: "/my-events", value: counts.events },
-    { title: "My Businesses", note: "Business listings submitted from your account.", href: "/my-businesses", value: counts.businesses },
-    { title: "My Coverage", note: "Coverage and crew requests tied to you.", href: "/my-coverage", value: counts.coverage },
-    { title: "My Contact Requests", note: "Contact form submissions using your email.", href: "/my-contact-requests", value: counts.contacts },
-    { title: "My Role Requests", note: "Team, crew, or access requests submitted by you.", href: "/my-role-requests", value: counts.roles },
-    { title: "Notifications", note: "Unread SDTV alerts and updates.", href: "/notifications", value: counts.notifications },
-    { title: "Account", note: "Login, role request, and account access.", href: "/login", value: email ? "Signed in" : "Login" },
-    { title: "Studio", note: "Admin operations and content management.", href: "/studio", value: admin ? "Admin" : "Locked" },
+    { title: "Portal", note: "General SDTV links and workspace entry point.", href: "/portal", value: "Open", show: true },
+    { title: "Volunteer Recognition", note: "Leaderboard, monthly champions, and SDTV hall of fame.", href: "/recognition", value: "View", show: true },
+    { title: "My Editing Queue", note: "Video drafts, revisions, crew review, and publishing tasks assigned to you.", href: "/my-editing", value: videoEditor ? counts.editing : "Editor", show: videoEditor },
+    { title: "My Assignments", note: "Confirm, complete, and track event coverage.", href: "/my-assignments", value: team ? counts.assignments : "Team", show: true },
+    { title: "My Availability", note: "Share dates you can support coverage.", href: "/my-availability", value: team ? counts.availability : "Team", show: true },
+    { title: "My Events", note: "Events submitted from your account.", href: "/my-events", value: counts.events, show: true },
+    { title: "My Businesses", note: "Business listings submitted from your account.", href: "/my-businesses", value: counts.businesses, show: true },
+    { title: "My Coverage", note: "Coverage and crew requests tied to you.", href: "/my-coverage", value: counts.coverage, show: true },
+    { title: "My Contact Requests", note: "Contact form submissions using your email.", href: "/my-contact-requests", value: counts.contacts, show: true },
+    { title: "My Role Requests", note: "Team, crew, or access requests submitted by you.", href: "/my-role-requests", value: counts.roles, show: true },
+    { title: "Notifications", note: "Unread SDTV alerts and updates.", href: "/notifications", value: counts.notifications, show: true },
+    { title: "Account", note: "Login, role request, and account access.", href: "/login", value: email ? "Signed in" : "Login", show: true },
+    { title: "Studio", note: "Admin operations and content management.", href: "/studio", value: admin ? "Admin" : "Locked", show: admin },
   ];
 
   const stats = [
@@ -140,8 +145,19 @@ export default function MyHubPage() {
           </div>
         </section>}
 
+        {!loading && videoEditor && <section className="mb-8 bg-white text-slate-950 rounded-3xl p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <p className="text-pink-600 font-black uppercase tracking-wide">Editor Workspace</p>
+              <h2 className="text-3xl font-black mt-1">My Editing Queue</h2>
+              <p className="text-gray-600 mt-1">Open videos assigned to you, submit drafts, review feedback, and mark publishing complete.</p>
+            </div>
+            <a href="/my-editing" className="bg-slate-950 text-white px-5 py-3 rounded-xl font-black w-fit">Open Editing Queue</a>
+          </div>
+        </section>}
+
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {cards.map((card) => (
+          {cards.filter((card) => card.show).map((card) => (
             <a key={card.href + card.title} href={card.href} className="bg-white text-slate-950 rounded-3xl p-6 shadow-xl border hover:scale-[1.01] transition block">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0"><h2 className="text-2xl font-black">{card.title}</h2><p className="text-gray-600 mt-2">{card.note}</p></div>
