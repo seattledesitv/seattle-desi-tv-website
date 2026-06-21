@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import MyHubHeader from "../components/MyHubHeader";
 import SiteFooter from "../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
-import { isAdminRole, resolveUserRole } from "../lib/roles";
+import { isAdminRole, isVideoEditorRole, resolveUserRole } from "../lib/roles";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -20,9 +20,11 @@ export default function PortalPage() {
   }, []);
 
   const canSeeStudio = isAdminRole(role);
+  const canSeeVideoTools = isVideoEditorRole(role) || canSeeStudio;
   const links = [
     ["My Assignments", "/my-assignments", "Confirm assignments and submit event coverage content."],
     ["Coverage Opportunities", "/my-coverage", "Request to join approved SDTV coverage opportunities."],
+    ...(canSeeVideoTools ? [["My Video Assignments", "/my-video-assignments", "Open assigned video editing work and workflow status."]] : []),
     ["My Availability", "/my-availability", "Share when you can support SDTV coverage."],
     ["Notifications", "/notifications?from=hub", "View SDTV alerts and updates."],
     ["My Event Submissions", "/my-events", "Track events you submitted to SDTV."],
