@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import AccessibilityFixes from "./components/AccessibilityFixes";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seattledesitv.com";
 
@@ -114,6 +115,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         {children}
+        <AccessibilityFixes />
         <Script
           src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
           async
