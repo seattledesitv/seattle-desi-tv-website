@@ -39,6 +39,7 @@ export default function SiteFooter() {
             <a href="/team">Team</a>
             <a href="/contact">Contact</a>
             <a href="/radio">Radio</a>
+            <a href="/mobile-app">Mobile App Instructions</a>
           </div>
         </div>
         <div>
