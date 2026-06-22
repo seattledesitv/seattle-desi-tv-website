@@ -7,12 +7,24 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
+function isMobileInstallTarget() {
+  if (typeof window === "undefined") return false;
+  const ua = window.navigator.userAgent || "";
+  const isAndroid = /Android/i.test(ua);
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone === true;
+  if (isStandalone) return false;
+  return isAndroid && !isIOS;
+}
+
 export default function InstallPWAButton({ compact = false }: { compact?: boolean }) {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
+  const [mobileInstallTarget, setMobileInstallTarget] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    setMobileInstallTarget(isMobileInstallTarget());
 
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone === true;
     if (isStandalone) {
@@ -22,7 +34,7 @@ export default function InstallPWAButton({ compact = false }: { compact?: boolea
 
     function onBeforeInstallPrompt(event: Event) {
       event.preventDefault();
-      setInstallPrompt(event as BeforeInstallPromptEvent);
+      if (isMobileInstallTarget()) setInstallPrompt(event as BeforeInstallPromptEvent);
     }
 
     function onAppInstalled() {
@@ -46,7 +58,7 @@ export default function InstallPWAButton({ compact = false }: { compact?: boolea
     setInstallPrompt(null);
   }
 
-  if (installed || !installPrompt) return null;
+  if (installed || !mobileInstallTarget || !installPrompt) return null;
 
   if (compact) {
     return <button type="button" onClick={installApp} className="bg-pink-600 text-white px-4 py-2 rounded-xl font-black text-sm shadow-lg">Install SDTV App</button>;
