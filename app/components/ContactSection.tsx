@@ -10,12 +10,13 @@ const ctaCards = [["Join as Volunteer", "Support SDTV events, production, commun
 
 declare global { interface Window { turnstile?: any; } }
 
-type FieldProps = { label: string; required?: boolean; help?: string; children: React.ReactNode };
-function Field({ label, required, help, children }: FieldProps) {
-  return <label className="block text-sm font-bold text-slate-900"><span>{label}{required && <span className="text-pink-600"> *</span>}</span>{children}{help && <p className="text-xs text-gray-500 mt-1 font-normal">{help}</p>}</label>;
+type FieldProps = { id: string; label: string; required?: boolean; help?: string; children: React.ReactNode };
+function Field({ id, label, required, help, children }: FieldProps) {
+  return <div className="block text-sm font-bold text-slate-900"><label htmlFor={id}>{label}{required && <span className="text-pink-600"> *</span>}</label>{children}{help && <p className="text-xs text-gray-500 mt-1 font-normal">{help}</p>}</div>;
 }
 
 function normalizedInterest(value: string | null | undefined) { if (!value) return ""; const decoded = decodeURIComponent(value).trim(); if (requestTypes.includes(decoded)) return decoded; return interestAliases[decoded.toLowerCase()] || ""; }
+function isValidEmail(value: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()); }
 
 export default function ContactSection({ compact = false, initialInterest = "" }: { compact?: boolean; initialInterest?: string }) {
   const turnstileRef = useRef<HTMLDivElement | null>(null);
@@ -34,16 +35,22 @@ export default function ContactSection({ compact = false, initialInterest = "" }
 
   useEffect(() => { const timer = window.setInterval(() => { renderTurnstile(); if (widgetIdRef.current) window.clearInterval(timer); }, 300); return () => window.clearInterval(timer); }, []);
 
-  async function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!form.name || !form.email || !form.message) { setStatus("Please enter name, email, and message."); return; }
+    const formEl = e.currentTarget;
+    if (!formEl.checkValidity()) { formEl.reportValidity(); return; }
+    if (!form.name.trim() || !form.email.trim() || !form.interest.trim() || !form.message.trim()) { setStatus("Please enter name, email, request type, and message."); return; }
+    if (!isValidEmail(form.email)) { setStatus("Please enter a valid email address."); return; }
     if (!captchaToken) { setStatus("Please complete the captcha."); return; }
     setSaving(true); setStatus("Submitting...");
-    const response = await fetch("/api/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, captchaToken }) });
-    const result = await response.json();
-    if (!response.ok || !result?.success) setStatus(result?.error || "Could not submit contact request.");
-    else { setStatus("Thank you. Seattle Desi TV received your message."); setForm({ name: "", email: "", phone: "", interest: "General Inquiry", message: "" }); setCaptchaToken(""); if (window.turnstile && widgetIdRef.current) window.turnstile.reset(widgetIdRef.current); }
-    setSaving(false);
+    try {
+      const response = await fetch("/api/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, captchaToken }) });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) setStatus(result?.error || "Could not submit contact request.");
+      else { setStatus("Thank you. Seattle Desi TV received your message."); setForm({ name: "", email: "", phone: "", interest: "General Inquiry", message: "" }); setCaptchaToken(""); if (window.turnstile && widgetIdRef.current) window.turnstile.reset(widgetIdRef.current); }
+    } catch {
+      setStatus("Could not submit contact request. Please try again.");
+    } finally { setSaving(false); }
   }
 
   function chooseInterest(interest: string) { setForm((current) => ({ ...current, interest, message: current.message || `Hi SDTV team, I am interested in ${interest}. Please share next steps.` })); setTimeout(() => document.getElementById("contact-form")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); }
@@ -54,20 +61,20 @@ export default function ContactSection({ compact = false, initialInterest = "" }
       <div className="max-w-7xl mx-auto px-6 md:px-10">
         <div className="grid lg:grid-cols-[0.9fr_1.1fr] gap-8 items-start">
           <div className="bg-slate-950 text-white rounded-3xl p-8 md:p-10">
-            <p className="text-pink-300 font-black uppercase tracking-wide">Contact Seattle Desi TV</p><h2 className="text-4xl md:text-5xl font-black mt-3">Tell us how we can help.</h2><p className="text-slate-300 mt-4">Reach out for event coverage, sponsorships, business listings, volunteering, internships, radio, interviews, or partnerships.</p>
+            <p className="text-pink-300 font-black uppercase tracking-wide">Contact Seattle Desi TV</p><h1 className="text-4xl md:text-5xl font-black mt-3">Tell us how we can help.</h1><p className="text-slate-300 mt-4">Reach out for event coverage, sponsorships, business listings, volunteering, internships, radio, interviews, or partnerships.</p>
             <div className="grid gap-3 mt-8">{ctaCards.map(([title, note, interest]) => <button key={title} type="button" onClick={() => chooseInterest(interest)} className="bg-white/10 rounded-2xl p-4 text-left hover:bg-white/15"><span className="block font-black">{title}</span><span className="block text-sm text-slate-300 mt-1">{note}</span></button>)}</div>
             <div className="grid gap-3 mt-8 text-sm"><a href="mailto:info@seattledesitv.com" className="bg-white/10 rounded-2xl p-4 font-bold hover:bg-white/15">info@seattledesitv.com</a><a href="https://www.youtube.com/@SeattleDesiTV" target="_blank" rel="noreferrer" className="bg-white/10 rounded-2xl p-4 font-bold hover:bg-white/15">YouTube @SeattleDesiTV</a><a href="https://instagram.com/seattledesitv" target="_blank" rel="noreferrer" className="bg-white/10 rounded-2xl p-4 font-bold hover:bg-white/15">Instagram @seattledesitv</a></div>
           </div>
-          <form id="contact-form" onSubmit={submit} className="bg-white text-slate-950 border rounded-3xl p-6 md:p-8 shadow-xl">
+          <form id="contact-form" onSubmit={submit} className="bg-white text-slate-950 border rounded-3xl p-6 md:p-8 shadow-xl" noValidate={false}>
             <div className="grid md:grid-cols-2 gap-4">
-              <Field label="Name" required><input className="border rounded-xl p-3 w-full mt-1 font-normal" placeholder="Your full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
-              <Field label="Email" required><input className="border rounded-xl p-3 w-full mt-1 font-normal" placeholder="you@example.com" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
-              <Field label="Phone" help="Optional. Enter 10 to 15 digits if you want a call back."><input className="border rounded-xl p-3 w-full mt-1 font-normal" placeholder="425-555-1234" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
-              <Field label="Request Type"><select className="border rounded-xl p-3 w-full mt-1 font-normal" value={form.interest} onChange={(e) => setForm({ ...form, interest: e.target.value })}>{requestTypes.map((type) => <option key={type}>{type}</option>)}</select></Field>
+              <Field id="contact-name" label="Name" required><input id="contact-name" name="name" required aria-required="true" autoComplete="name" className="border rounded-xl p-3 w-full mt-1 font-normal" placeholder="Your full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
+              <Field id="contact-email" label="Email" required><input id="contact-email" name="email" required aria-required="true" autoComplete="email" className="border rounded-xl p-3 w-full mt-1 font-normal" placeholder="you@example.com" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
+              <Field id="contact-phone" label="Phone" help="Optional. Enter 10 to 15 digits if you want a call back."><input id="contact-phone" name="phone" autoComplete="tel" className="border rounded-xl p-3 w-full mt-1 font-normal" placeholder="425-555-1234" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
+              <Field id="contact-interest" label="Request Type" required><select id="contact-interest" name="interest" required aria-required="true" aria-label="Request type" className="border rounded-xl p-3 w-full mt-1 font-normal" value={form.interest} onChange={(e) => setForm({ ...form, interest: e.target.value })}>{requestTypes.map((type) => <option key={type}>{type}</option>)}</select></Field>
             </div>
-            <div className="mt-4"><Field label="Message" required help="Tell us what you need and include event/business details if relevant."><textarea className="border rounded-xl p-3 w-full mt-1 min-h-36 font-normal" placeholder="How can SDTV help?" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} /></Field></div>
-            <div className="mt-4 bg-slate-50 rounded-2xl p-4 border min-h-[92px]">{siteKey ? <div ref={turnstileRef} /> : <p className="text-red-600 font-bold text-sm">Turnstile site key is missing. Add NEXT_PUBLIC_TURNSTILE_SITE_KEY in Vercel.</p>}</div>
-            <button disabled={saving || !siteKey} className="w-full bg-pink-600 text-white px-5 py-4 rounded-xl font-black mt-5 disabled:opacity-50">{saving ? "Submitting..." : "Submit Contact Request"}</button>{status && <p className="mt-4 text-sm font-bold text-orange-700">{status}</p>}
+            <div className="mt-4"><Field id="contact-message" label="Message" required help="Tell us what you need and include event/business details if relevant."><textarea id="contact-message" name="message" required aria-required="true" className="border rounded-xl p-3 w-full mt-1 min-h-36 font-normal" placeholder="How can SDTV help?" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} /></Field></div>
+            <div className="mt-4 bg-slate-50 rounded-2xl p-4 border min-h-[92px]" aria-label="Captcha verification">{siteKey ? <div ref={turnstileRef} /> : <p className="text-red-600 font-bold text-sm">Turnstile site key is missing. Add NEXT_PUBLIC_TURNSTILE_SITE_KEY in Vercel.</p>}</div>
+            <button disabled={saving || !siteKey} className="w-full bg-pink-600 text-white px-5 py-4 rounded-xl font-black mt-5 disabled:opacity-50">{saving ? "Submitting..." : "Submit Contact Request"}</button>{status && <p className="mt-4 text-sm font-bold text-orange-700" role="status" aria-live="polite">{status}</p>}
           </form>
         </div>
       </div>
