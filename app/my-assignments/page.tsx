@@ -76,9 +76,15 @@ export default function MyAssignmentsPage() {
 
   async function updateAssignment(id: string, payload: any, success: string) {
     setActionMessage("Updating assignment...");
-    const { error } = await supabase.from("event_crew_assignments").update(payload).eq("id", id);
+    const { data, error } = await supabase
+      .from("event_crew_assignments")
+      .update(payload)
+      .eq("id", id)
+      .select("id,event_id,user_id,user_email,assignment_type,status,created_at,crew_confirmed,coverage_completed,coverage_notes,completed_at,event_title")
+      .maybeSingle();
     if (error) { setActionMessage(`Update failed: ${error.message}`); return false; }
-    setAssignments((current) => current.map((item) => item.id === id ? { ...item, ...payload } : item));
+    if (!data) { setActionMessage("Update did not save. Supabase RLS is likely blocking crew self-updates. Please run the crew assignment SQL policy fix."); if (user?.id) await loadAssignments(user); return false; }
+    setAssignments((current) => current.map((item) => item.id === id ? { ...item, ...data } : item));
     setActionMessage(success);
     if (user?.id) await loadAssignments(user);
     return true;
