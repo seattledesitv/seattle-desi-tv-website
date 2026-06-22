@@ -8,6 +8,9 @@ type SafeImageProps = {
   className?: string;
   fallbackClassName?: string;
   fallbackLabel?: string;
+  loading?: "eager" | "lazy";
+  fetchPriority?: "high" | "low" | "auto";
+  sizes?: string;
 };
 
 export default function SafeImage({
@@ -16,6 +19,9 @@ export default function SafeImage({
   className = "",
   fallbackClassName = "",
   fallbackLabel = "Seattle Desi TV",
+  loading = "lazy",
+  fetchPriority = "auto",
+  sizes,
 }: SafeImageProps) {
   const cleanSrc = typeof src === "string" ? src.trim() : "";
   const [failed, setFailed] = useState(!cleanSrc);
@@ -32,5 +38,16 @@ export default function SafeImage({
     );
   }
 
-  return <img src={cleanSrc} alt={alt} className={className} onError={() => setFailed(true)} />;
+  return (
+    <img
+      src={cleanSrc}
+      alt={alt}
+      className={className}
+      loading={loading}
+      decoding="async"
+      fetchPriority={fetchPriority}
+      sizes={sizes}
+      onError={() => setFailed(true)}
+    />
+  );
 }
