@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import SafeImage from "./SafeImage";
 import TestimonialsSection, { TestimonialItem } from "./TestimonialsSection";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 
@@ -45,7 +46,7 @@ function SocialCard({ item }: { item: FeaturedSocialItem }) {
     <a href={item.content_url} target="_blank" rel="noreferrer" className="group block overflow-hidden rounded-2xl border border-white/10 bg-slate-950/80 shadow-xl shadow-black/30 transition hover:-translate-y-1 hover:border-pink-300/60 hover:bg-slate-900">
       <div className="relative grid aspect-video place-items-center overflow-hidden bg-slate-900">
         {item.thumbnail_url ? (
-          <img src={item.thumbnail_url} alt={item.title} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+          <SafeImage src={item.thumbnail_url} alt={item.title} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" fallbackClassName="flex h-full w-full items-center justify-center bg-slate-900 text-sm font-black text-pink-200" fallbackLabel={platformLabel(item.platform)} widthHint={720} />
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center">
             <div className="mb-4 grid h-14 w-14 place-items-center rounded-full bg-pink-600 text-2xl font-black text-white shadow-lg shadow-pink-600/25">▶</div>
