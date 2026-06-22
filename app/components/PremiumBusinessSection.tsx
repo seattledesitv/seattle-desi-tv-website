@@ -1,3 +1,5 @@
+import SafeImage from "./SafeImage";
+
 type BusinessRow = {
   id: string;
   name: string;
@@ -16,9 +18,9 @@ function firstImage(row: BusinessRow) {
 function BusinessShowcaseCard({ business }: { business: BusinessRow }) {
   const image = firstImage(business);
   return (
-    <a href="/businesses" className="group min-w-[190px] max-w-[190px] rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-lg transition hover:-translate-y-1 hover:shadow-2xl md:min-w-[210px] md:max-w-[210px]">
+    <a href="/businesses" className="group min-w-[180px] max-w-[180px] rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-lg transition hover:-translate-y-1 hover:shadow-2xl sm:min-w-[190px] sm:max-w-[190px] md:min-w-[210px] md:max-w-[210px]">
       <div className="mx-auto grid h-20 w-20 place-items-center overflow-hidden rounded-full border-2 border-pink-100 bg-slate-50 shadow-inner">
-        {image ? <img src={image} alt={business.name} className="h-full w-full object-cover" /> : <span className="text-sm font-black text-pink-600">SDTV</span>}
+        <SafeImage src={image} alt={business.name} className="h-full w-full object-cover" fallbackClassName="h-full w-full rounded-full bg-pink-50 text-pink-600 grid place-items-center font-black text-xs" fallbackLabel="SDTV" />
       </div>
       <h3 className="mt-3 line-clamp-1 text-sm font-black text-slate-950">{business.name}</h3>
       <p className="mt-1 line-clamp-1 text-[11px] font-semibold text-slate-500">{business.category || business.offer || "Local business"}</p>
@@ -45,16 +47,16 @@ export default function PremiumBusinessSection({ businesses }: { businesses: Bus
         <div className="absolute left-[-10%] right-[-10%] top-0 h-20 rotate-[2deg] rounded-full bg-gradient-to-r from-transparent via-[#f5af23]/40 to-transparent blur-sm" />
         <div className="absolute left-[-10%] right-[-10%] bottom-14 h-20 rotate-[-2deg] rounded-full bg-gradient-to-r from-transparent via-[#f5af23]/35 to-transparent blur-sm" />
 
-        <div className="relative z-10 flex items-start justify-between gap-4">
+        <div className="relative z-10 flex flex-col items-start justify-between gap-4 sm:flex-row">
           <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#ffe099]">SDTV Businesses ✦</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#ffe099]">SDTV Businesses ✦</p>
             <h2 className="mt-2 text-3xl font-black tracking-tight md:text-4xl">Discover Local Businesses</h2>
             <p className="mt-2 max-w-2xl text-sm text-white/70">A premium showcase for trusted community businesses, sponsors, and marketplace partners.</p>
           </div>
           <a href="/businesses" className="hidden rounded-full bg-pink-600 px-5 py-3 text-xs font-black text-white shadow-lg shadow-pink-600/30 md:inline-flex">View All Businesses →</a>
         </div>
 
-        <div className="relative z-10 mt-8 flex gap-4 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="relative z-10 mt-8 flex max-w-full gap-4 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {businesses.length === 0 ? <div className="rounded-2xl border border-white/10 bg-white/10 p-8 text-white/60">No approved businesses yet.</div> : businesses.map((business) => <BusinessShowcaseCard key={business.id} business={business} />)}
         </div>
 
