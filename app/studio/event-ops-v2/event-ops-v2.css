@@ -1,3 +1,11 @@
+.event-ops-v2-skin {
+  background: #020617;
+}
+
+.event-ops-v2-skin footer {
+  margin-top: 0 !important;
+}
+
 .event-ops-v2-skin aside {
   background:
     radial-gradient(circle at top left, rgba(236, 72, 153, 0.10), transparent 34%),
@@ -88,26 +96,27 @@
 .event-ops-v2-page-shell {
   position: relative;
   background: #020617;
+  padding-bottom: 2rem;
 }
 
 .event-aging-inline {
   position: absolute;
-  right: calc((100vw - min(1280px, 100vw)) / 2 + 1.5rem);
-  top: 270px;
+  right: calc((100vw - min(1280px, 100vw)) / 2 + 2rem);
+  top: 380px;
   width: min(350px, calc(100vw - 2rem));
   z-index: 10;
 }
 
 .event-aging-inline .event-aging-panel {
-  padding: 1.25rem;
+  padding: 1.15rem;
   box-shadow: 0 18px 50px rgba(15, 23, 42, 0.14);
 }
 
 .event-aging-inline .event-aging-panel h2 {
-  font-size: 1.35rem;
+  font-size: 1.25rem;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 900px) {
   .event-aging-inline {
     position: static;
     width: auto;
