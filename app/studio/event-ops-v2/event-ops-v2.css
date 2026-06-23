@@ -98,24 +98,11 @@
   padding-bottom: 1.5rem;
 }
 
-.event-aging-inline {
-  width: min(350px, calc(100vw - 2rem));
-  margin: -245px calc((100vw - min(1280px, 100vw)) / 2 + 390px) 2rem auto;
+.event-aging-portal-slot .event-aging-panel {
+  height: 100%;
+  box-shadow: none;
 }
 
-.event-aging-inline .event-aging-panel {
-  padding: 1.15rem;
-  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.14);
-}
-
-.event-aging-inline .event-aging-panel h2 {
-  font-size: 1.25rem;
-}
-
-@media (max-width: 1180px) {
-  .event-aging-inline {
-    width: auto;
-    max-width: 720px;
-    margin: 1rem 1rem 1.5rem auto;
-  }
+.event-aging-portal-slot .event-aging-panel h3 {
+  font-size: 1.5rem;
 }
