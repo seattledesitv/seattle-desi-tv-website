@@ -1,74 +1,113 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 
 const supabase = getSupabaseBrowserClient();
 
-function label(value?: string | null) {
-  return String(value || "").replaceAll("_", " ") || "—";
-}
+type EventRow = { id: string; title: string; poc_email?: string | null; date?: string | null; location?: string | null };
+type IntentRow = { id: string; event_id: string; user_email?: string | null; influencer_profile_id?: string | null; status?: string | null; expected_platforms?: string | null };
 
-function statusClass(status?: string | null) {
-  const value = String(status || "").toLowerCase();
-  if (value === "approved") return "bg-green-50 text-green-700";
-  if (value === "completed") return "bg-blue-50 text-blue-700";
-  if (value === "rejected") return "bg-red-50 text-red-700";
-  return "bg-yellow-50 text-yellow-800";
+function label(value?: string | null) { return String(value || "").replaceAll("_", " ") || "—"; }
+function safeSelector(value: string) { return value.replace(/[^a-zA-Z0-9_-]/g, "-"); }
+
+function buildEmailHref(event: EventRow, approvedCount: number, pendingCount: number) {
+  const subject = `SDTV coverage plan for ${event.title}`;
+  const body = [
+    "Hello,",
+    "",
+    "Sharing the current Seattle Desi TV coverage plan for your event.",
+    "",
+    `Event: ${event.title}`,
+    `Date: ${event.date || "TBD"}`,
+    `Location: ${event.location || "TBD"}`,
+    "",
+    `Influencer/Social Collaboration: ${approvedCount} approved, ${pendingCount} pending`,
+    "Crew and media coverage details are being coordinated by Seattle Desi TV.",
+    "",
+    "Thank you,",
+    "Seattle Desi TV",
+  ].join("\n");
+  return `mailto:${event.poc_email || ""}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 export default function EventOpsInfluencerNotice() {
-  const [visible, setVisible] = useState(false);
-  const [rows, setRows] = useState<any[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, any>>({});
-  const [events, setEvents] = useState<Record<string, any>>({});
+  const [active, setActive] = useState(false);
+  const [events, setEvents] = useState<EventRow[]>([]);
+  const [intents, setIntents] = useState<IntentRow[]>([]);
 
   async function load() {
     if (typeof window === "undefined" || window.location.pathname !== "/studio/event-ops") return;
-    setVisible(true);
-    const { data } = await supabase.from("event_influencer_intents").select("id,event_id,user_email,influencer_profile_id,status,expected_platforms,created_at").order("created_at", { ascending: false }).limit(20);
-    const nextRows = data || [];
-    setRows(nextRows);
-    const profileIds = Array.from(new Set(nextRows.map((row: any) => row.influencer_profile_id).filter(Boolean)));
-    const eventIds = Array.from(new Set(nextRows.map((row: any) => row.event_id).filter(Boolean)));
-    if (profileIds.length) {
-      const profileResult = await supabase.from("influencer_profiles").select("id,full_name,email,niche,follower_count,status").in("id", profileIds);
-      const map: Record<string, any> = {};
-      (profileResult.data || []).forEach((profile: any) => { map[profile.id] = profile; });
-      setProfiles(map);
-    }
-    if (eventIds.length) {
-      const eventResult = await supabase.from("events").select("id,title").in("id", eventIds);
-      const map: Record<string, any> = {};
-      (eventResult.data || []).forEach((event: any) => { map[event.id] = event; });
-      setEvents(map);
-    }
+    setActive(true);
+    const [eventResult, intentResult] = await Promise.all([
+      supabase.from("events").select("id,title,poc_email,date,location").order("date", { ascending: false }).limit(300),
+      supabase.from("event_influencer_intents").select("id,event_id,user_email,influencer_profile_id,status,expected_platforms").order("created_at", { ascending: false }).limit(1000),
+    ]);
+    setEvents(eventResult.data || []);
+    setIntents(intentResult.data || []);
   }
+
+  const statsByEvent = useMemo(() => {
+    const map: Record<string, { total: number; approved: number; pending: number; completed: number; rejected: number }> = {};
+    for (const row of intents) {
+      const key = row.event_id;
+      if (!map[key]) map[key] = { total: 0, approved: 0, pending: 0, completed: 0, rejected: 0 };
+      map[key].total += 1;
+      const status = String(row.status || "pending").toLowerCase();
+      if (status === "approved") map[key].approved += 1;
+      else if (status === "completed") map[key].completed += 1;
+      else if (status === "rejected") map[key].rejected += 1;
+      else map[key].pending += 1;
+    }
+    return map;
+  }, [intents]);
 
   useEffect(() => { load(); }, []);
 
-  if (!visible) return null;
+  useEffect(() => {
+    if (!active || typeof window === "undefined") return;
 
-  return (
-    <div className="mx-auto max-w-7xl px-6 pt-5">
-      <div className="rounded-3xl border border-yellow-200 bg-yellow-50 p-5 text-slate-950 shadow-sm">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div>
-            <p className="text-xs font-black uppercase tracking-wide text-yellow-700">Influencer Coverage</p>
-            <h2 className="mt-1 text-2xl font-black">Influencer requests are active for Event Ops</h2>
-            <p className="mt-1 text-sm text-slate-600">Use this summary with the event cards below. For full crew + influencer operational view and organizer email drafts, open Coverage Briefs.</p>
-          </div>
-          <a href="/studio/event-coverage-briefs" className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-black text-white">Open Coverage Briefs</a>
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          {rows.length === 0 && <div className="rounded-2xl bg-white p-4 text-sm text-slate-500 md:col-span-3">No influencer event requests yet.</div>}
-          {rows.slice(0, 6).map((row) => {
-            const profile = profiles[row.influencer_profile_id] || {};
-            const event = events[row.event_id] || {};
-            return <div key={row.id} className="rounded-2xl bg-white p-4 text-sm"><span className={`rounded-full px-2 py-1 text-[11px] font-black ${statusClass(row.status)}`}>{label(row.status)}</span><p className="mt-2 font-black">{event.title || "Event"}</p><p className="mt-1 text-slate-600">{profile.full_name || row.user_email || "Influencer"}</p><p className="mt-1 text-xs text-slate-500">{row.expected_platforms || "Social collab"}</p></div>;
-          })}
-        </div>
-      </div>
-    </div>
-  );
+    function applyBadges() {
+      const eventCards = Array.from(document.querySelectorAll("button h3")).map((h3) => h3.closest("button")).filter(Boolean) as HTMLButtonElement[];
+      for (const card of eventCards) {
+        const title = card.querySelector("h3")?.textContent?.trim() || "";
+        const event = events.find((item) => item.title === title);
+        if (!event) continue;
+        const stats = statsByEvent[event.id] || { total: 0, approved: 0, pending: 0, completed: 0, rejected: 0 };
+        const grid = card.querySelector(".grid.grid-cols-2");
+        if (grid && !card.querySelector(`[data-sdtv-influencer-card="${safeSelector(event.id)}"]`)) {
+          const box = document.createElement("div");
+          box.setAttribute("data-sdtv-influencer-card", safeSelector(event.id));
+          box.className = `rounded-xl border p-2 ${stats.total > 0 ? "bg-yellow-50 text-yellow-800 border-yellow-100" : "bg-slate-50 text-slate-500 border-slate-100"}`;
+          box.innerHTML = `<p class="text-xs font-black">Influencer Collab</p><p class="text-[11px] mt-1">${stats.total ? `${stats.approved + stats.completed} approved · ${stats.pending} pending` : "None"}</p>`;
+          grid.appendChild(box);
+        }
+        const meta = card.querySelector(".flex.flex-wrap.gap-2.mt-3");
+        if (meta && stats.total > 0 && !card.querySelector(`[data-sdtv-influencer-pill="${safeSelector(event.id)}"]`)) {
+          const pill = document.createElement("span");
+          pill.setAttribute("data-sdtv-influencer-pill", safeSelector(event.id));
+          pill.className = "text-[11px] rounded-full bg-yellow-50 px-2 py-1 font-bold text-yellow-800";
+          pill.textContent = `${stats.total} influencer request${stats.total === 1 ? "" : "s"}`;
+          meta.appendChild(pill);
+        }
+        if (event.poc_email && !card.querySelector(`[data-sdtv-email-poc="${safeSelector(event.id)}"]`)) {
+          const meta = card.querySelector(".flex.flex-wrap.gap-2.mt-3");
+          const link = document.createElement("a");
+          link.setAttribute("data-sdtv-email-poc", safeSelector(event.id));
+          link.className = "text-[11px] rounded-full bg-pink-50 px-2 py-1 font-bold text-pink-700";
+          link.textContent = "Email POC";
+          link.href = buildEmailHref(event, stats.approved + stats.completed, stats.pending);
+          link.addEventListener("click", (event) => event.stopPropagation());
+          meta?.appendChild(link);
+        }
+      }
+    }
+
+    applyBadges();
+    const observer = new MutationObserver(applyBadges);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [active, events, statsByEvent]);
+
+  return null;
 }
