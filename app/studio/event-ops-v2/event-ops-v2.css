@@ -1,0 +1,86 @@
+.event-ops-v2-skin aside {
+  background:
+    radial-gradient(circle at top left, rgba(236, 72, 153, 0.10), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(245, 158, 11, 0.12), transparent 32%),
+    #ffffff;
+}
+
+.event-ops-v2-skin aside button:has(h3),
+.event-ops-v2-skin aside button:has(p.font-black) {
+  position: relative;
+  overflow: hidden;
+  border-left-width: 6px;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+}
+
+.event-ops-v2-skin aside button:has(h3)::before,
+.event-ops-v2-skin aside button:has(p.font-black)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.event-ops-v2-skin aside button:has(h3):nth-of-type(4n + 1),
+.event-ops-v2-skin aside button:has(p.font-black):nth-of-type(4n + 1) {
+  border-left-color: #db2777;
+  background: linear-gradient(135deg, #fff7fb 0%, #ffffff 58%, #fdf2f8 100%) !important;
+}
+
+.event-ops-v2-skin aside button:has(h3):nth-of-type(4n + 2),
+.event-ops-v2-skin aside button:has(p.font-black):nth-of-type(4n + 2) {
+  border-left-color: #d97706;
+  background: linear-gradient(135deg, #fffbeb 0%, #ffffff 58%, #fef3c7 100%) !important;
+}
+
+.event-ops-v2-skin aside button:has(h3):nth-of-type(4n + 3),
+.event-ops-v2-skin aside button:has(p.font-black):nth-of-type(4n + 3) {
+  border-left-color: #2563eb;
+  background: linear-gradient(135deg, #eff6ff 0%, #ffffff 58%, #dbeafe 100%) !important;
+}
+
+.event-ops-v2-skin aside button:has(h3):nth-of-type(4n + 4),
+.event-ops-v2-skin aside button:has(p.font-black):nth-of-type(4n + 4) {
+  border-left-color: #16a34a;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 58%, #dcfce7 100%) !important;
+}
+
+.event-ops-v2-skin aside button:has(h3):hover,
+.event-ops-v2-skin aside button:has(p.font-black):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.11);
+}
+
+.event-ops-v2-skin aside button:has(h3) [class*="bg-slate-50"],
+.event-ops-v2-skin aside button:has(p.font-black) [class*="bg-slate-50"] {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.event-ops-v2-skin aside button:has(h3) [class*="rounded-full"][class*="bg-slate-100"],
+.event-ops-v2-skin aside button:has(p.font-black) [class*="rounded-full"][class*="bg-slate-100"] {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.event-ops-v2-skin aside h3[class*="bg-slate-100"] {
+  background: linear-gradient(90deg, #0f172a 0%, #312e81 60%, #831843 100%) !important;
+  color: #ffffff !important;
+  letter-spacing: 0.01em;
+}
+
+.event-ops-v2-skin aside .grid-cols-7 > div {
+  border-color: rgba(148, 163, 184, 0.24);
+}
+
+.event-ops-v2-skin aside .grid-cols-7 button {
+  border-left: 3px solid #db2777;
+  background: #ffffff !important;
+  box-shadow: 0 5px 12px rgba(15, 23, 42, 0.08);
+}
+
+.event-ops-v2-skin aside .grid-cols-7 > div:nth-child(7n + 1),
+.event-ops-v2-skin aside .grid-cols-7 > div:nth-child(7n + 7) {
+  background: #f8fafc !important;
+}
