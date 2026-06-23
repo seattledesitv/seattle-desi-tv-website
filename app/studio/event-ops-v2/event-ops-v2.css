@@ -94,17 +94,13 @@
 }
 
 .event-ops-v2-page-shell {
-  position: relative;
   background: #020617;
-  padding-bottom: 2rem;
+  padding-bottom: 1.5rem;
 }
 
 .event-aging-inline {
-  position: absolute;
-  right: calc((100vw - min(1280px, 100vw)) / 2 + 2rem);
-  top: 380px;
   width: min(350px, calc(100vw - 2rem));
-  z-index: 10;
+  margin: -245px calc((100vw - min(1280px, 100vw)) / 2 + 2rem) 2rem auto;
 }
 
 .event-aging-inline .event-aging-panel {
@@ -116,11 +112,10 @@
   font-size: 1.25rem;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1180px) {
   .event-aging-inline {
-    position: static;
     width: auto;
     max-width: 720px;
-    margin: -1rem 1rem 1.5rem auto;
+    margin: 1rem 1rem 1.5rem auto;
   }
 }
