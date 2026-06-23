@@ -41,7 +41,7 @@ export default function SiteHeader() {
     { label: "Advertise", href: "/marketing-packages", show: true },
     { label: "Team", href: "/team", show: true },
     { label: "Contact", href: "/contact", show: true },
-    { label: "My Hub", href: "/my-hub", show: true },
+    { label: "My Hub", href: "/my-hub", show: isLoggedIn },
     { label: "Studio", href: "/studio", show: canSeeStudio },
   ];
 
