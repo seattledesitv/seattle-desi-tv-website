@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import AccountMenu from "./AccountMenu";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../lib/roles";
 
@@ -8,14 +9,13 @@ const supabase = getSupabaseBrowserClient();
 const HEADER_CACHE_KEY = "sdtv-header-state-v1";
 
 function readCachedHeaderState() {
-  if (typeof window === "undefined") return { email: "", role: "general_public", unreadCount: 0 };
-  try { const raw = window.localStorage.getItem(HEADER_CACHE_KEY); return raw ? JSON.parse(raw) : { email: "", role: "general_public", unreadCount: 0 }; } catch { return { email: "", role: "general_public", unreadCount: 0 }; }
+  if (typeof window === "undefined") return { email: "", role: "general_public" };
+  try { const raw = window.localStorage.getItem(HEADER_CACHE_KEY); return raw ? JSON.parse(raw) : { email: "", role: "general_public" }; } catch { return { email: "", role: "general_public" }; }
 }
 function writeCachedHeaderState(state: any) { if (typeof window === "undefined") return; try { window.localStorage.setItem(HEADER_CACHE_KEY, JSON.stringify(state)); } catch {} }
 
 export default function SiteHeader() {
   const cached = readCachedHeaderState();
-  const [unreadCount, setUnreadCount] = useState(Number(cached.unreadCount || 0));
   const [isLoggedIn, setIsLoggedIn] = useState(Boolean(cached.email));
   const [role, setRole] = useState(cached.role || "general_public");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -25,13 +25,9 @@ export default function SiteHeader() {
       const { data } = await supabase.auth.getUser();
       const currentUser = data?.user || null;
       const nextRole = await resolveUserRole(supabase, currentUser);
-      let nextUnreadCount = 0;
-      if (currentUser?.id) {
-        const { count } = await supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", currentUser.id).eq("read", false);
-        nextUnreadCount = count || 0;
-      }
-      setIsLoggedIn(Boolean(currentUser?.email)); setRole(nextRole); setUnreadCount(nextUnreadCount);
-      writeCachedHeaderState({ email: currentUser?.email || "", role: nextRole, unreadCount: nextUnreadCount });
+      setIsLoggedIn(Boolean(currentUser?.email));
+      setRole(nextRole);
+      writeCachedHeaderState({ email: currentUser?.email || "", role: nextRole });
     }
     loadState();
   }, []);
@@ -45,7 +41,7 @@ export default function SiteHeader() {
     { label: "Advertise", href: "/marketing-packages", show: true },
     { label: "Team", href: "/team", show: true },
     { label: "Contact", href: "/contact", show: true },
-    { label: unreadCount > 0 ? `My Hub (${unreadCount})` : "My Hub", href: "/my-hub", show: true },
+    { label: "My Hub", href: "/my-hub", show: true },
     { label: "Studio", href: "/studio", show: canSeeStudio },
   ];
 
@@ -60,10 +56,10 @@ export default function SiteHeader() {
           <a href="/" className="flex items-center gap-3 font-black text-lg md:text-xl"><img src="/sdtv-logo.png" alt="Seattle Desi TV" className="h-11 md:h-14 w-auto" /><span>Seattle Desi TV</span></a>
           <nav className="hidden lg:flex items-center gap-3 font-bold text-sm">
             {links.filter((link) => link.show).map((link) => <a key={link.href + link.label} href={link.href} className="hover:text-pink-600">{link.label}</a>)}
-            <a href="/login" className="bg-pink-600 text-white px-4 py-2 rounded-xl">{isLoggedIn ? "Account" : "Login"}</a>
+            <AccountMenu tone="light" from="site" />
           </nav>
           <div className="lg:hidden flex items-center gap-2">
-            <a href="/login" className="bg-pink-600 text-white px-3 py-2 rounded-xl font-bold text-sm">{isLoggedIn ? "Account" : "Login"}</a>
+            <AccountMenu tone="light" from="site" />
             <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} className="border border-slate-300 px-3 py-2 rounded-xl font-black text-sm">{menuOpen ? "Close" : "Menu"}</button>
           </div>
         </div>
