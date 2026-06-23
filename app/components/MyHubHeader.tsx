@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import AccountMenu from "./AccountMenu";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, isTeamRole, isVideoEditorRole, resolveUserRole } from "../lib/roles";
 
@@ -44,8 +45,6 @@ export default function MyHubHeader() {
     { label: "My Availability", href: "/my-availability", show: true, tone: canSeeTeamTools ? "default" : "team" },
     { label: "My Contact Requests", href: "/my-contact-requests", show: true },
     { label: "My SDTV Journey", href: "/my-role-requests", show: shouldShowJourney },
-    { label: "Notifications", href: "/notifications?from=hub", show: Boolean(email) },
-    { label: "My Account", href: "/login", show: true },
     { label: "Studio", href: "/studio", show: canSeeStudio, tone: "primary" },
   ];
 
@@ -63,10 +62,9 @@ export default function MyHubHeader() {
             <div>
               <a href="/" className="text-pink-300 font-bold text-sm">← Public Site</a>
               <h1 className="text-2xl font-black">My Hub</h1>
-              <p className="text-xs text-slate-400 mt-1">{email ? `${email} · ${role}` : "Login to access team tools"}</p>
             </div>
-            <div className="flex gap-2 shrink-0">
-              <a href="/login" className="lg:hidden bg-pink-600 hover:bg-pink-700 px-3 py-2 rounded-lg transition text-sm font-bold text-center">My Account</a>
+            <div className="flex gap-2 shrink-0 items-center">
+              <AccountMenu tone="dark" from="hub" />
               <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} className="lg:hidden border border-white/20 px-3 py-2 rounded-lg transition text-sm font-black">{menuOpen ? "Close" : "Menu"}</button>
             </div>
           </div>
