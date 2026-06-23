@@ -10,44 +10,40 @@ const EVENT_STATUSES = ["pending", "approved", "on_hold", "rejected"];
 const VIDEO_STATUSES = ["ready_for_editing", "in_editing", "awaiting_crew_review", "changes_requested", "awaiting_admin_approval", "approved_for_publishing"];
 const CREW_ROLES = ["General Crew", "Host", "Reporter", "Camera", "Photography", "Production", "Editor", "Social Media"];
 const PRIORITIES = ["Normal", "High", "Urgent", "Low"];
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 type TabKey = "overview" | "approval" | "crew" | "influencers" | "video" | "email";
+type BrowserMode = "cards" | "calendar" | "list";
 
 function dateText(value?: string | null) {
   if (!value) return "—";
   const d = new Date(`${String(value).split("T")[0]}T00:00:00`);
   return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString();
 }
-
-function label(value?: string | null) {
-  return String(value || "").replaceAll("_", " ") || "—";
+function monthKey(value?: string | null) {
+  const d = eventDate(value);
+  return d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` : "No date";
 }
-
-function canBeAssigned(role?: string | null) {
-  const value = String(role || "").toLowerCase();
-  return value.includes("admin") || value.includes("team") || value.includes("crew") || value.includes("editor") || value.includes("volunteer");
+function monthLabel(key: string) {
+  if (key === "No date") return key;
+  const [year, month] = key.split("-").map(Number);
+  return new Date(year, month - 1, 1).toLocaleString(undefined, { month: "long", year: "numeric" });
 }
-
-function canEditVideo(role?: string | null) {
-  const value = String(role || "").toLowerCase();
-  return value.includes("admin") || value.includes("editor") || value.includes("production") || value.includes("radio");
+function eventDate(value?: string | null) {
+  const d = value ? new Date(`${String(value).split("T")[0]}T00:00:00`) : null;
+  return d && !Number.isNaN(d.getTime()) ? d : null;
 }
-
-function normalizedRoleKey(role: string) {
-  return `manual_${role.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "crew"}`;
-}
-
-function isNoContent(notes?: string | null) {
-  return String(notes || "").toLowerCase().includes("no media content");
-}
-
+function label(value?: string | null) { return String(value || "").replaceAll("_", " ") || "—"; }
+function canBeAssigned(role?: string | null) { const value = String(role || "").toLowerCase(); return value.includes("admin") || value.includes("team") || value.includes("crew") || value.includes("editor") || value.includes("volunteer"); }
+function canEditVideo(role?: string | null) { const value = String(role || "").toLowerCase(); return value.includes("admin") || value.includes("editor") || value.includes("production") || value.includes("radio"); }
+function normalizedRoleKey(role: string) { return `manual_${role.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "crew"}`; }
+function isNoContent(notes?: string | null) { return String(notes || "").toLowerCase().includes("no media content"); }
 function socialPostFromNotes(notes?: string | null) {
   const text = String(notes || "");
   const marker = "Social Post Message:";
   const index = text.indexOf(marker);
   return index >= 0 ? text.slice(index + marker.length).trim() : "";
 }
-
 function statusClass(status?: string | null) {
   const v = String(status || "").toLowerCase();
   if (v === "approved" || v === "completed") return "bg-green-50 text-green-700 border-green-100";
@@ -71,6 +67,8 @@ export default function EventOpsV2Page() {
   const [influencerProfiles, setInfluencerProfiles] = useState<Record<string, any>>({});
   const [selectedEventId, setSelectedEventId] = useState("");
   const [eventSearch, setEventSearch] = useState("");
+  const [browserMode, setBrowserMode] = useState<BrowserMode>("cards");
+  const [calendarMonth, setCalendarMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [selectedCrewUserIds, setSelectedCrewUserIds] = useState<string[]>([]);
   const [selectedCrewRole, setSelectedCrewRole] = useState("General Crew");
@@ -120,6 +118,50 @@ export default function EventOpsV2Page() {
     if (!q) return events;
     return events.filter((event) => `${event.title || ""} ${event.location || ""} ${event.poc_email || ""} ${event.poc_phone || ""} ${event.status || ""}`.toLowerCase().includes(q));
   }, [events, eventSearch]);
+
+  const groupedEvents = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    filteredEvents.forEach((event) => {
+      const key = monthKey(event.date);
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(event);
+    });
+    return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a)).map(([key, rows]) => [key, rows.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))] as [string, any[]]);
+  }, [filteredEvents]);
+
+  const calendarCells = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const first = new Date(year, month, 1);
+    const days = new Date(year, month + 1, 0).getDate();
+    const cells: Array<{ day: number | null; events: any[] }> = [];
+    for (let i = 0; i < first.getDay(); i++) cells.push({ day: null, events: [] });
+    for (let day = 1; day <= days; day++) {
+      const dayEvents = filteredEvents.filter((event) => {
+        const d = eventDate(event.date);
+        return d && d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
+      });
+      cells.push({ day, events: dayEvents });
+    }
+    while (cells.length % 7 !== 0) cells.push({ day: null, events: [] });
+    return cells;
+  }, [filteredEvents, calendarMonth]);
+
+  const allUpStats = useMemo(() => {
+    const stats = events.map((event) => statsForEvent(event.id));
+    const totalPendingActions = stats.reduce((sum, item) => sum + item.pendingCrew + item.pendingInfluencers + item.pendingSubmission, 0);
+    return {
+      totalEvents: events.length,
+      approvedEvents: events.filter((event) => String(event.status || "").toLowerCase() === "approved").length,
+      pendingEvents: events.filter((event) => String(event.status || "pending").toLowerCase() === "pending").length,
+      fullyCovered: stats.filter((item) => item.coverageReady === "Fully Covered").length,
+      needCoverage: stats.filter((item) => item.coverageReady !== "Fully Covered").length,
+      pendingInfluencers: stats.reduce((sum, item) => sum + item.pendingInfluencers, 0),
+      pendingCrew: stats.reduce((sum, item) => sum + item.pendingCrew, 0),
+      contentSubmitted: stats.reduce((sum, item) => sum + item.submittedContent, 0),
+      totalPendingActions,
+    };
+  }, [events, assignments, influencerIntents, workflows]);
 
   async function loadTeamUsers() {
     const adminResult = await supabase.from("admins").select("user_id,email,role,name,created_at").order("created_at", { ascending: false });
@@ -297,10 +339,15 @@ export default function EventOpsV2Page() {
 
   useEffect(() => { init(); }, []);
 
+  function openEvent(id: string) {
+    setSelectedEventId(id);
+    setActiveTab("overview");
+  }
+
   function EventCard({ event }: { event: any }) {
     const active = selectedEventId === event.id;
     const stats = statsForEvent(event.id);
-    return <button type="button" onClick={() => { setSelectedEventId(event.id); setActiveTab("overview"); }} className={`w-full rounded-2xl border p-4 text-left shadow-sm transition hover:shadow-md ${active ? "border-pink-500 bg-pink-50 ring-2 ring-pink-100" : "border-slate-200 bg-white hover:bg-slate-50"}`}>
+    return <button type="button" onClick={() => openEvent(event.id)} className={`w-full rounded-2xl border p-4 text-left shadow-sm transition hover:shadow-md ${active ? "border-pink-500 bg-pink-50 ring-2 ring-pink-100" : "border-slate-200 bg-white hover:bg-slate-50"}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="truncate text-lg font-black text-slate-950">{event.title}</h3>
@@ -321,6 +368,79 @@ export default function EventOpsV2Page() {
     </button>;
   }
 
+  function EventBrowser() {
+    return <aside className="rounded-3xl bg-white p-4 text-slate-950 lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-hidden">
+      <div className="mb-4">
+        <h2 className="text-2xl font-black">Events</h2>
+        <p className="text-sm text-slate-500">Search title, POC, location, or status.</p>
+        <input value={eventSearch} onChange={(event) => setEventSearch(event.target.value)} placeholder="Search event title, POC, location, status..." className="mt-3 w-full rounded-xl border p-3" />
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {(["cards", "calendar", "list"] as BrowserMode[]).map((mode) => <button key={mode} onClick={() => setBrowserMode(mode)} className={`rounded-xl px-3 py-2 text-sm font-black capitalize ${browserMode === mode ? "bg-pink-600 text-white" : "bg-slate-100 text-slate-700"}`}>{mode}</button>)}
+        </div>
+      </div>
+      <div className="lg:max-h-[calc(100vh-220px)] lg:overflow-y-auto lg:pr-1">
+        {browserMode === "cards" && <div className="grid gap-3">{filteredEvents.map((event) => <EventCard key={event.id} event={event} />)}</div>}
+        {browserMode === "list" && <div className="grid gap-5">
+          {groupedEvents.map(([key, rows]) => <div key={key}>
+            <h3 className="mb-2 rounded-xl bg-slate-100 px-3 py-2 text-sm font-black text-slate-700">{monthLabel(key)}</h3>
+            <div className="grid gap-2">
+              {rows.map((event) => <button key={event.id} onClick={() => openEvent(event.id)} className={`rounded-xl border p-3 text-left transition ${selectedEventId === event.id ? "border-pink-500 bg-pink-50" : "border-slate-200 bg-white hover:bg-slate-50"}`}>
+                <p className="font-black">{event.title}</p>
+                <p className="text-xs text-slate-500">{dateText(event.date)} · {label(event.status)}</p>
+              </button>)}
+            </div>
+          </div>)}
+        </div>}
+        {browserMode === "calendar" && <div>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <button onClick={() => setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))} className="rounded-lg border px-3 py-2 text-sm font-black">←</button>
+            <h3 className="text-center text-base font-black">{calendarMonth.toLocaleString(undefined, { month: "long", year: "numeric" })}</h3>
+            <button onClick={() => setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))} className="rounded-lg border px-3 py-2 text-sm font-black">→</button>
+          </div>
+          <div className="mb-2 grid grid-cols-7 gap-1 text-center text-[10px] font-black text-slate-500">{WEEKDAYS.map((day) => <div key={day}>{day}</div>)}</div>
+          <div className="grid grid-cols-7 gap-1">
+            {calendarCells.map((cell, index) => <div key={index} className="min-h-20 rounded-xl border bg-slate-50 p-1">
+              {cell.day && <p className="mb-1 text-xs font-black">{cell.day}</p>}
+              {cell.events.slice(0, 2).map((event) => <button key={event.id} onClick={() => openEvent(event.id)} className={`mb-1 block w-full truncate rounded-md px-1 py-1 text-left text-[10px] font-bold ${selectedEventId === event.id ? "bg-pink-600 text-white" : "bg-white text-slate-900"}`}>{event.title}</button>)}
+              {cell.events.length > 2 && <p className="text-[10px] font-bold text-slate-500">+{cell.events.length - 2}</p>}
+            </div>)}
+          </div>
+        </div>}
+      </div>
+    </aside>;
+  }
+
+  function AllUpAnalytics() {
+    return <div className="space-y-5">
+      <div className="rounded-3xl bg-white p-6 text-slate-950">
+        <h2 className="text-3xl font-black">All Event Analytics</h2>
+        <p className="mt-2 text-slate-600">Select an event on the left to open the detailed operations workflow.</p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl bg-slate-50 p-4"><p className="text-3xl font-black">{allUpStats.totalEvents}</p><p className="text-xs font-bold text-slate-500">Total events</p></div>
+          <div className="rounded-2xl bg-green-50 p-4"><p className="text-3xl font-black">{allUpStats.approvedEvents}</p><p className="text-xs font-bold text-slate-500">Approved events</p></div>
+          <div className="rounded-2xl bg-yellow-50 p-4"><p className="text-3xl font-black">{allUpStats.totalPendingActions}</p><p className="text-xs font-bold text-slate-500">Pending actions</p></div>
+          <div className="rounded-2xl bg-slate-50 p-4"><p className="text-3xl font-black">{allUpStats.fullyCovered}</p><p className="text-xs font-bold text-slate-500">Fully covered</p></div>
+        </div>
+      </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <section className="rounded-3xl bg-white p-6 text-slate-950">
+          <h3 className="text-2xl font-black">Coverage Health</h3>
+          <div className="mt-4 grid gap-3">
+            <p><b>Need coverage:</b> {allUpStats.needCoverage}</p>
+            <p><b>Pending crew requests:</b> {allUpStats.pendingCrew}</p>
+            <p><b>Pending influencer requests:</b> {allUpStats.pendingInfluencers}</p>
+            <p><b>Media submitted:</b> {allUpStats.contentSubmitted}</p>
+          </div>
+        </section>
+        <section className="rounded-3xl bg-white p-6 text-slate-950">
+          <h3 className="text-2xl font-black">Quick Filters To Use</h3>
+          <p className="mt-4 text-slate-600">Use the search box with words like <b>pending</b>, <b>approved</b>, a venue name, organizer email, or event title.</p>
+          <button onClick={() => setBrowserMode("list")} className="mt-5 rounded-xl bg-slate-900 px-5 py-3 font-black text-white">View Events by Month</button>
+        </section>
+      </div>
+    </div>;
+  }
+
   const tabs: Array<[TabKey, string]> = [["overview", "Overview"], ["approval", "Approval"], ["crew", "Crew"], ["influencers", "Influencers"], ["video", "Video"], ["email", "Email POC"]];
 
   return <main className="min-h-screen bg-slate-950 text-white">
@@ -330,11 +450,12 @@ export default function EventOpsV2Page() {
         <div>
           <p className="font-black uppercase tracking-wide text-pink-300">Test page</p>
           <h1 className="text-4xl font-black md:text-5xl">Event Ops v2</h1>
-          <p className="mt-2 text-slate-300">Cleaner event operations view with approval, crew, influencer, video, and organizer email actions preserved.</p>
+          <p className="mt-2 text-slate-300">Cleaner event operations view with cards, calendar, monthly list, analytics, and all admin actions preserved.</p>
           {user?.email && <p className="mt-1 text-sm text-slate-400">Logged in as {user.email} · Role: {role}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           <a href="/studio/event-ops" className="rounded-xl border border-white/20 px-4 py-3 font-bold text-white">Old Event Ops</a>
+          {selectedEvent && <button onClick={() => setSelectedEventId("")} className="rounded-xl border border-white/20 px-4 py-3 font-bold text-white">All Analytics</button>}
           <button onClick={init} className="rounded-xl bg-white px-5 py-3 font-bold text-slate-950">Refresh</button>
         </div>
       </div>
@@ -342,21 +463,12 @@ export default function EventOpsV2Page() {
       {loading && <div className="rounded-2xl border border-white/10 bg-white/10 p-6">{message}</div>}
       {!loading && !canAccess && <div className="max-w-xl rounded-2xl bg-white p-8 text-slate-950">{message}</div>}
 
-      {!loading && canAccess && <div className="grid gap-5 lg:grid-cols-[390px_1fr]">
-        <aside className="rounded-3xl bg-white p-4 text-slate-950 lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-hidden">
-          <div className="mb-4">
-            <h2 className="text-2xl font-black">Events</h2>
-            <p className="text-sm text-slate-500">Select one event to manage.</p>
-            <input value={eventSearch} onChange={(event) => setEventSearch(event.target.value)} placeholder="Search event, POC, location, status..." className="mt-3 w-full rounded-xl border p-3" />
-          </div>
-          <div className="grid gap-3 lg:max-h-[calc(100vh-170px)] lg:overflow-y-auto lg:pr-1">
-            {filteredEvents.map((event) => <EventCard key={event.id} event={event} />)}
-          </div>
-        </aside>
+      {!loading && canAccess && <div className="grid gap-5 lg:grid-cols-[420px_1fr]">
+        <EventBrowser />
 
         <section className="space-y-5">
           {actionMessage && <div className="rounded-2xl bg-yellow-100 p-4 font-bold text-yellow-900">{actionMessage}</div>}
-          {!selectedEvent && <div className="rounded-3xl bg-white p-8 text-slate-950"><h2 className="text-2xl font-black">Select an event</h2><p className="mt-2 text-slate-600">The selected event details and actions will appear here.</p></div>}
+          {!selectedEvent && <AllUpAnalytics />}
 
           {selectedEvent && selectedStats && <>
             <div className="rounded-3xl bg-white p-5 text-slate-950">
