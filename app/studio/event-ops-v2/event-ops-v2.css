@@ -84,3 +84,34 @@
 .event-ops-v2-skin aside .grid-cols-7 > div:nth-child(7n + 7) {
   background: #f8fafc !important;
 }
+
+.event-ops-v2-page-shell {
+  position: relative;
+  background: #020617;
+}
+
+.event-aging-inline {
+  position: absolute;
+  right: calc((100vw - min(1280px, 100vw)) / 2 + 1.5rem);
+  top: 270px;
+  width: min(350px, calc(100vw - 2rem));
+  z-index: 10;
+}
+
+.event-aging-inline .event-aging-panel {
+  padding: 1.25rem;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.14);
+}
+
+.event-aging-inline .event-aging-panel h2 {
+  font-size: 1.35rem;
+}
+
+@media (max-width: 1180px) {
+  .event-aging-inline {
+    position: static;
+    width: auto;
+    max-width: 720px;
+    margin: -1rem 1rem 1.5rem auto;
+  }
+}
