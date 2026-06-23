@@ -35,8 +35,9 @@ export default function SiteHeader() {
   const canSeeStudio = Boolean(isLoggedIn && isAdminRole(role));
   const links = [
     { label: "Home", href: "/", show: true },
-    { label: "Events", href: "/events", show: true },
+    { label: "TV", href: "/tv", show: true },
     { label: "Radio", href: "/radio", show: true },
+    { label: "Events", href: "/events", show: true },
     { label: "Businesses", href: "/businesses", show: true },
     { label: "Advertise", href: "/marketing-packages", show: true },
     { label: "Team", href: "/team", show: true },
