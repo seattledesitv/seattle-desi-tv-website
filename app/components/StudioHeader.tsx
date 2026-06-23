@@ -17,6 +17,7 @@ export default function StudioHeader() {
     ["Analytics", "/studio/analytics"],
     ["Event Ops", "/studio/event-ops"],
     ["Influencer Ops", "/studio/influencer-ops"],
+    ["Manage Influencers", "/studio/influencers"],
     ["Events", "/studio/events"],
     ["Pending Events", "/studio/events/pending"],
     ["Businesses", "/studio/businesses"],
