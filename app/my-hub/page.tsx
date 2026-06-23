@@ -19,6 +19,7 @@ type Counts = {
   availability: number;
   notifications: number;
   editing: number;
+  influencer: number;
 };
 
 const emptyCounts: Counts = {
@@ -31,6 +32,7 @@ const emptyCounts: Counts = {
   availability: 0,
   notifications: 0,
   editing: 0,
+  influencer: 0,
 };
 
 export default function MyHubPage() {
@@ -66,7 +68,7 @@ export default function MyHubPage() {
     }
 
     const today = new Date().toISOString().split("T")[0];
-    const [events, businesses, coverage, contacts, roles, assignments, availability, notifications, editing] = await Promise.all([
+    const [events, businesses, coverage, contacts, roles, assignments, availability, notifications, editing, influencer] = await Promise.all([
       countQuery(supabase.from("events").select("id", { count: "exact", head: true }).eq("created_by", user.id)),
       countQuery(supabase.from("local_businesses").select("id", { count: "exact", head: true }).eq("created_by", user.id)),
       countQuery(supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).or(`user_id.eq.${user.id},user_email.eq.${nextEmail}`)),
@@ -76,9 +78,10 @@ export default function MyHubPage() {
       countQuery(supabase.from("crew_availability").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("available_date", today)),
       countQuery(supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("read", false)),
       countQuery(supabase.from("event_video_workflows").select("id", { count: "exact", head: true }).or(`assigned_editor_email.ilike.${nextEmail},crew_reviewer_email.ilike.${nextEmail}`)),
+      countQuery(supabase.from("influencer_profiles").select("id", { count: "exact", head: true }).ilike("email", nextEmail)),
     ]);
 
-    setCounts({ events, businesses, coverage, contacts, roles, assignments, availability, notifications, editing });
+    setCounts({ events, businesses, coverage, contacts, roles, assignments, availability, notifications, editing, influencer });
     setMessage("Your SDTV workspace overview.");
     setLoading(false);
   }
@@ -87,6 +90,7 @@ export default function MyHubPage() {
 
   const cards = [
     { title: "Portal", note: "General SDTV links and workspace entry point.", href: "/portal", value: "Open", show: true },
+    { title: "Influencer Profile", note: "Join the SDTV Influencer Network and choose whether to appear publicly.", href: "/my-influencer-profile", value: counts.influencer ? "Created" : "Become", show: true },
     { title: "Volunteer Recognition", note: "Leaderboard, monthly champions, and SDTV hall of fame.", href: "/recognition", value: "View", show: true },
     { title: "My Editing Queue", note: "Video drafts, revisions, crew review, and publishing tasks assigned to you.", href: "/my-editing", value: videoEditor ? counts.editing : "Editor", show: videoEditor },
     { title: "My Assignments", note: "Confirm, complete, and track event coverage.", href: "/my-assignments", value: team ? counts.assignments : "Team", show: true },
@@ -115,7 +119,7 @@ export default function MyHubPage() {
         <div className="bg-white/10 border border-white/10 rounded-3xl p-8 md:p-10 mb-8">
           <p className="text-pink-300 font-black uppercase tracking-wide">Seattle Desi TV Workspace</p>
           <h1 className="text-4xl md:text-6xl font-black mt-3">My Hub</h1>
-          <p className="text-slate-300 max-w-3xl mt-3">One place for your SDTV portal, assignments, availability, notifications, submissions, and account tools.</p>
+          <p className="text-slate-300 max-w-3xl mt-3">One place for your SDTV portal, assignments, availability, notifications, submissions, influencer profile, and account tools.</p>
           <div className="flex flex-wrap gap-3 items-center mt-4">
             <p className="text-slate-400 text-sm">{loading ? "Loading..." : email ? `${email} · ${role}` : message}</p>
             <button onClick={loadHub} className="bg-white text-slate-950 px-4 py-2 rounded-xl font-bold text-sm">Refresh</button>
@@ -167,7 +171,7 @@ export default function MyHubPage() {
           ))}
         </div>
 
-        {!loading && !email && <div className="bg-white text-slate-950 rounded-3xl p-8 mt-8"><h2 className="text-2xl font-black">Login required</h2><p className="text-gray-600 mt-2">Login to see your submissions, requests, assignments, and notifications.</p><a href="/login" className="inline-block bg-pink-600 text-white px-5 py-3 rounded-xl font-bold mt-5">Go to Login</a></div>}
+        {!loading && !email && <div className="bg-white text-slate-950 rounded-3xl p-8 mt-8"><h2 className="text-2xl font-black">Login required</h2><p className="text-gray-600 mt-2">Login to see your submissions, requests, assignments, influencer profile, and notifications.</p><a href="/login" className="inline-block bg-pink-600 text-white px-5 py-3 rounded-xl font-bold mt-5">Go to Login</a></div>}
       </div>
       <SiteFooter />
     </main>
