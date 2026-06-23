@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 
 const supabase = getSupabaseBrowserClient();
@@ -11,9 +12,25 @@ function ageDays(value?: string | null) { const d = value ? new Date(value) : nu
 function old(value?: string | null) { const d = value ? new Date(value) : null; return Boolean(d && !Number.isNaN(d.getTime()) && Date.now() - d.getTime() >= TWO_WEEKS_MS); }
 function target(item: any) { if (item.kind === "Crew request") return "/studio/crew/pending"; if (item.kind === "Influencer request") return "/studio/influencer-ops"; if (item.kind === "Video workflow") return item.workflowId ? `/studio/video-production/${item.workflowId}` : "/studio/video-production"; return "/studio/event-ops-v2"; }
 
+function findPortalTarget() {
+  const headings = Array.from(document.querySelectorAll("h3"));
+  const quickHeading = headings.find((heading) => heading.textContent?.trim().includes("Quick Filters"));
+  const quickSection = quickHeading?.closest("section");
+  const grid = quickSection?.parentElement;
+  if (!grid || !quickSection) return null;
+  let slot = grid.querySelector(".event-aging-portal-slot") as HTMLElement | null;
+  if (!slot) {
+    slot = document.createElement("div");
+    slot.className = "event-aging-portal-slot";
+    grid.insertBefore(slot, quickSection);
+  }
+  return slot;
+}
+
 export default function EventOpsAgingPanel() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
   async function loadAgingItems() {
     setLoading(true);
@@ -33,11 +50,25 @@ export default function EventOpsAgingPanel() {
   }
 
   useEffect(() => { loadAgingItems(); }, []);
-  const topItems = useMemo(() => items.slice(0, 5), [items]);
+  useEffect(() => {
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      const target = findPortalTarget();
+      if (target || attempts > 20) {
+        setPortalTarget(target);
+        window.clearInterval(timer);
+      }
+      attempts += 1;
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, []);
 
-  return <aside className="event-aging-panel rounded-3xl bg-white p-6 text-slate-950">
-    <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wide text-red-600">Action needed</p><h2 className="text-2xl font-black">Pending over 2 weeks</h2><p className="text-sm text-slate-500">Click an item to open where it can be fixed.</p></div><button onClick={loadAgingItems} className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white">Refresh</button></div>
+  const topItems = useMemo(() => items.slice(0, 5), [items]);
+  const card = <section className="event-aging-panel rounded-3xl bg-white p-6 text-slate-950">
+    <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wide text-red-600">Action needed</p><h3 className="text-2xl font-black">Overdue Actions</h3><p className="text-sm text-slate-500">Click an item to open where it can be fixed.</p></div><button onClick={loadAgingItems} className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white">Refresh</button></div>
     <div className="mt-4 rounded-2xl bg-red-50 p-4"><p className="text-3xl font-black text-red-700">{loading ? "…" : items.length}</p><p className="text-xs font-bold text-red-700">items older than 14 days</p></div>
     <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">{!loading && topItems.length === 0 && <p className="rounded-2xl bg-green-50 p-3 text-sm font-bold text-green-700">Nothing urgent right now.</p>}{topItems.map((item, index) => <a href={target(item)} key={`${item.kind}-${item.since}-${index}`} className="block rounded-2xl border border-slate-200 bg-slate-50 p-3 transition hover:border-red-300 hover:bg-red-50"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-black">{item.title}</p><p className="text-xs text-slate-500">{item.kind} · {label(item.status)}</p></div><span className="shrink-0 rounded-full bg-red-100 px-2 py-1 text-[11px] font-black text-red-700">{ageDays(item.since)}d</span></div><p className="mt-2 line-clamp-2 text-xs text-slate-600">{item.note}</p></a>)}</div>
-  </aside>;
+  </section>;
+
+  return portalTarget ? createPortal(card, portalTarget) : null;
 }
