@@ -34,18 +34,19 @@ export default function SiteFooter() {
         <div>
           <h3 className="font-black mb-3">Explore</h3>
           <div className="grid gap-2 text-sm text-slate-300">
+            <a href="/tv">TV</a>
+            <a href="/radio">Radio</a>
             <a href="/events">Events</a>
             <a href="/businesses">Businesses</a>
             <a href="/team">Team</a>
             <a href="/contact">Contact</a>
-            <a href="/radio">Radio</a>
             <a href="/mobile-app">Mobile App Instructions</a>
           </div>
         </div>
         <div>
           <h3 className="font-black mb-3">My SDTV</h3>
           <div className="grid gap-2 text-sm text-slate-300">
-            <a href="/my-hub">My Hub</a>
+            {loggedIn && <a href="/my-hub">My Hub</a>}
             {team && <a href="/my-coverage">Coverage Opportunities</a>}
             {team && <a href="/my-assignments">My Assignments</a>}
             {team && <a href="/my-availability">My Availability</a>}
