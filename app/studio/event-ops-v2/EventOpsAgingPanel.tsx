@@ -17,12 +17,13 @@ function findPortalTarget() {
   const quickHeading = headings.find((heading) => heading.textContent?.trim().includes("Quick Filters"));
   const quickSection = quickHeading?.closest("section");
   const grid = quickSection?.parentElement;
-  if (!grid || !quickSection) return null;
-  let slot = grid.querySelector(".event-aging-portal-slot") as HTMLElement | null;
+  const analyticsRoot = grid?.parentElement;
+  if (!grid || !analyticsRoot) return null;
+  let slot = analyticsRoot.querySelector(".event-aging-portal-slot") as HTMLElement | null;
   if (!slot) {
     slot = document.createElement("div");
     slot.className = "event-aging-portal-slot";
-    grid.insertBefore(slot, quickSection);
+    analyticsRoot.insertBefore(slot, grid);
   }
   return slot;
 }
@@ -45,7 +46,7 @@ export default function EventOpsAgingPanel() {
     (crew.data || []).forEach((row: any) => { const since = row.updated_at || row.created_at; if (old(since)) next.push({ kind: "Crew request", title: row.event_title || row.event_id || "Event", status: row.status, since, note: `${row.user_email || "Crew"} · ${label(row.assignment_type)}` }); });
     (influencers.data || []).forEach((row: any) => { const since = row.updated_at || row.created_at; if (old(since)) next.push({ kind: "Influencer request", title: row.user_email || "Influencer request", status: row.status, since, note: row.collab_note || "Collab request waiting" }); });
     (videos.data || []).forEach((row: any) => { const since = row.updated_at || row.created_at; if (old(since)) next.push({ kind: "Video workflow", title: row.assigned_editor_email || row.event_id || "Video workflow", status: row.status, since, workflowId: row.id, note: "Video workflow waiting" }); });
-    setItems(next.sort((a, b) => ageDays(b.since) - ageDays(a.since)).slice(0, 12));
+    setItems(next.sort((a, b) => ageDays(b.since) - ageDays(a.since)).slice(0, 20));
     setLoading(false);
   }
 
@@ -63,11 +64,30 @@ export default function EventOpsAgingPanel() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const topItems = useMemo(() => items.slice(0, 5), [items]);
+  const oldest = useMemo(() => items.reduce((max, item) => Math.max(max, ageDays(item.since)), 0), [items]);
   const card = <section className="event-aging-panel rounded-3xl bg-white p-6 text-slate-950">
-    <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wide text-red-600">Action needed</p><h3 className="text-2xl font-black">Overdue Actions</h3><p className="text-sm text-slate-500">Click an item to open where it can be fixed.</p></div><button onClick={loadAgingItems} className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white">Refresh</button></div>
-    <div className="mt-4 rounded-2xl bg-red-50 p-4"><p className="text-3xl font-black text-red-700">{loading ? "…" : items.length}</p><p className="text-xs font-bold text-red-700">items older than 14 days</p></div>
-    <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">{!loading && topItems.length === 0 && <p className="rounded-2xl bg-green-50 p-3 text-sm font-bold text-green-700">Nothing urgent right now.</p>}{topItems.map((item, index) => <a href={target(item)} key={`${item.kind}-${item.since}-${index}`} className="block rounded-2xl border border-slate-200 bg-slate-50 p-3 transition hover:border-red-300 hover:bg-red-50"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-black">{item.title}</p><p className="text-xs text-slate-500">{item.kind} · {label(item.status)}</p></div><span className="shrink-0 rounded-full bg-red-100 px-2 py-1 text-[11px] font-black text-red-700">{ageDays(item.since)}d</span></div><p className="mt-2 line-clamp-2 text-xs text-slate-600">{item.note}</p></a>)}</div>
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <p className="text-xs font-black uppercase tracking-wide text-red-600">Action needed</p>
+        <h3 className="text-2xl font-black">Overdue Actions</h3>
+        <p className="text-sm text-slate-500">Items older than 14 days. Scroll horizontally and click any item to fix it.</p>
+      </div>
+      <button onClick={loadAgingItems} className="w-fit rounded-xl bg-slate-900 px-4 py-3 text-xs font-black text-white">Refresh</button>
+    </div>
+    <div className="mt-5 flex gap-3 overflow-x-auto pb-2">
+      <div className="min-w-[180px] rounded-2xl bg-red-50 p-4">
+        <p className="text-3xl font-black text-red-700">{loading ? "…" : items.length}</p>
+        <p className="text-xs font-bold text-red-700">overdue items</p>
+      </div>
+      <div className="min-w-[180px] rounded-2xl bg-orange-50 p-4">
+        <p className="text-3xl font-black text-orange-700">{loading ? "…" : oldest}</p>
+        <p className="text-xs font-bold text-orange-700">oldest days</p>
+      </div>
+      {!loading && items.length === 0 && <div className="min-w-[260px] rounded-2xl bg-green-50 p-4 text-sm font-bold text-green-700">Nothing urgent right now.</div>}
+      {items.map((item, index) => <a href={target(item)} key={`${item.kind}-${item.since}-${index}`} className="min-w-[260px] rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-red-300 hover:bg-red-50">
+        <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-black">{item.title}</p><p className="text-xs text-slate-500">{item.kind} · {label(item.status)}</p></div><span className="shrink-0 rounded-full bg-red-100 px-2 py-1 text-[11px] font-black text-red-700">{ageDays(item.since)}d</span></div><p className="mt-2 line-clamp-2 text-xs text-slate-600">{item.note}</p>
+      </a>)}
+    </div>
   </section>;
 
   return portalTarget ? createPortal(card, portalTarget) : null;
