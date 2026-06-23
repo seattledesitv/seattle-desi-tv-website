@@ -16,6 +16,7 @@ export default function StudioHeader() {
     ["Sponsors", "/studio/sponsors"],
     ["Analytics", "/studio/analytics"],
     ["Event Ops", "/studio/event-ops"],
+    ["Event Ops v2", "/studio/event-ops-v2"],
     ["Coverage Briefs", "/studio/event-coverage-briefs"],
     ["Influencer Ops", "/studio/influencer-ops"],
     ["Manage Influencers", "/studio/influencers"],
