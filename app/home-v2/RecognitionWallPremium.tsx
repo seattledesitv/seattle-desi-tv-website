@@ -1,20 +1,37 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import SafeImage from "../components/SafeImage";
+import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 
 type PersonRow = { id: string; name: string; photo?: string | null; image?: string | null; picture?: string | null; count?: number };
+type TeamLookupRow = { id: string; name?: string | null; email?: string | null; user_id?: string | null; image?: string | null; photo?: string | null; picture?: string | null };
 type RecognitionStats = { volunteers?: number; events?: number; hours?: number };
 
-function firstImage(row: PersonRow) {
+const supabase = getSupabaseBrowserClient();
+
+function firstImage(row: PersonRow | TeamLookupRow) {
   return row.photo || row.image || row.picture || "";
 }
 
+function isEmail(value?: string | null) {
+  return Boolean(value && String(value).includes("@"));
+}
+
+function fallbackName(value?: string) {
+  if (!value) return "SDTV Volunteer";
+  if (!isEmail(value)) return value;
+  return String(value).split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function displayName(name?: string) {
-  if (!name) return "SDTV Volunteer";
-  const parts = name.split(" ").filter(Boolean);
-  return parts.length > 2 ? `${parts[0]} ${parts[1]}` : name;
+  const cleanName = fallbackName(name);
+  const parts = cleanName.split(" ").filter(Boolean);
+  return parts.length > 2 ? `${parts[0]} ${parts[1]}` : cleanName;
 }
 
 function initials(name?: string) {
-  return (name || "SDTV").split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "SD";
+  return (fallbackName(name) || "SDTV").split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "SD";
 }
 
 function compactNumber(value?: number) {
@@ -24,7 +41,28 @@ function compactNumber(value?: number) {
 }
 
 export default function RecognitionWallPremium({ people, stats }: { people: PersonRow[]; stats?: RecognitionStats }) {
-  const realPeople = [...people]
+  const [teamLookup, setTeamLookup] = useState<Record<string, TeamLookupRow>>({});
+
+  useEffect(() => {
+    async function loadTeamLookup() {
+      const { data } = await supabase.from("team_members").select("id,name,email,user_id,image,photo,picture");
+      const next: Record<string, TeamLookupRow> = {};
+      (data || []).forEach((row: TeamLookupRow) => {
+        if (row.email) next[String(row.email).toLowerCase()] = row;
+        if (row.user_id) next[String(row.user_id)] = row;
+        if (row.id) next[String(row.id)] = row;
+      });
+      setTeamLookup(next);
+    }
+    loadTeamLookup();
+  }, []);
+
+  const resolvedPeople = useMemo(() => people.map((person) => {
+    const match = teamLookup[String(person.id || "").toLowerCase()] || teamLookup[String(person.id || "")] || teamLookup[String(person.name || "").toLowerCase()];
+    return match ? { ...person, name: match.name || person.name, photo: firstImage(match) || firstImage(person) } : { ...person, name: fallbackName(person.name) };
+  }), [people, teamLookup]);
+
+  const realPeople = [...resolvedPeople]
     .filter((person) => person && person.name && !String(person.id || "").startsWith("fallback-"))
     .sort((a, b) => Number(b.count || 0) - Number(a.count || 0));
   const fallback = [
