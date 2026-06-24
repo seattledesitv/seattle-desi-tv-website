@@ -154,7 +154,7 @@ export default function EventOpsMediaRecovery() {
       <textarea className="min-h-36 rounded-xl border p-3 text-sm" value={emailBody} onChange={(event) => setEmailBody(event.target.value)} />
     </div>
     <div className="mt-3 flex flex-wrap gap-2">
-      <button onClick={sendRequest} disabled={sending || !eventId} className="rounded-xl bg-pink-600 px-4 py-2 text-sm font-black text-white disabled:opacity-60">{sending ? "Sending..." : lastRequestedAt ? "Send Reminder" : "Send Request"}</button>
+      <button onClick={sendRequest} disabled={sending || !eventId} className="rounded-xl bg-pink-600 px-4 py-2 text-sm font-black text-white disabled:opacity-60">{sending ? "Sending..." : "Send Request / Reminder"}</button>
       {formLink && <a href={formLink} target="_blank" rel="noreferrer" className="rounded-xl bg-white px-4 py-2 text-sm font-black text-slate-950">Open Form</a>}
     </div>
     {message && <p className="mt-3 rounded-xl bg-white p-3 text-sm font-bold text-red-800">{message}</p>}
