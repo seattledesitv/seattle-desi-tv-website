@@ -6,14 +6,40 @@ import SiteFooter from "../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 
 const supabase = getSupabaseBrowserClient();
+const cloudinaryCloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+const cloudinaryUploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
 export default function SubmitContentPage() {
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
   const [form, setForm] = useState({ name: "", email: "", phone: "", title: "", content: "", imageUrl: "", videoUrl: "", sourceUrl: "" });
 
   function updateField(field: string, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function uploadImage(file?: File) {
+    setMessage("");
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setMessage("Please choose an image file."); return; }
+    if (!cloudinaryCloudName || !cloudinaryUploadPreset) { setMessage("Image upload is not configured yet. Paste an image URL instead."); return; }
+    setUploading(true);
+    const body = new FormData();
+    body.append("file", file);
+    body.append("upload_preset", cloudinaryUploadPreset);
+    body.append("folder", "sdtv/public-submissions");
+    try {
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/image/upload`, { method: "POST", body });
+      const result = await response.json();
+      if (!response.ok || !result.secure_url) throw new Error(result.error?.message || "Upload failed.");
+      updateField("imageUrl", result.secure_url);
+      setMessage("Image uploaded. Submit the request when ready.");
+    } catch (error: any) {
+      setMessage(error?.message || "Image upload failed. Paste an image URL instead.");
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function submitRequest() {
@@ -23,7 +49,7 @@ export default function SubmitContentPage() {
       return;
     }
     if (!form.content.trim() && !form.imageUrl.trim() && !form.videoUrl.trim() && !form.sourceUrl.trim()) {
-      setMessage("Please provide text, an image URL, a video URL, or a source URL.");
+      setMessage("Please provide text, an image, a video URL, or a source URL.");
       return;
     }
     setSaving(true);
@@ -68,12 +94,13 @@ export default function SubmitContentPage() {
           <label className="font-bold">Title *<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={form.title} onChange={(e) => updateField("title", e.target.value)} /></label>
         </div>
         <label className="mt-4 block font-bold">Text / Caption<textarea className="mt-1 min-h-36 w-full rounded-xl border p-3 font-normal" value={form.content} onChange={(e) => updateField("content", e.target.value)} /></label>
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <label className="font-bold">Upload Image<input type="file" accept="image/*" className="mt-1 w-full rounded-xl border p-3 font-normal" onChange={(e) => uploadImage(e.target.files?.[0])} /></label>
           <label className="font-bold">Image URL<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={form.imageUrl} onChange={(e) => updateField("imageUrl", e.target.value)} /></label>
           <label className="font-bold">Video URL<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={form.videoUrl} onChange={(e) => updateField("videoUrl", e.target.value)} /></label>
           <label className="font-bold">More Info URL<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={form.sourceUrl} onChange={(e) => updateField("sourceUrl", e.target.value)} /></label>
         </div>
-        <button onClick={submitRequest} disabled={saving} className="mt-6 rounded-xl bg-pink-600 px-6 py-4 font-black text-white disabled:opacity-60">{saving ? "Submitting..." : "Submit to SDTV"}</button>
+        <button onClick={submitRequest} disabled={saving || uploading} className="mt-6 rounded-xl bg-pink-600 px-6 py-4 font-black text-white disabled:opacity-60">{uploading ? "Uploading..." : saving ? "Submitting..." : "Submit to SDTV"}</button>
       </div>
     </section>
     <SiteFooter />
