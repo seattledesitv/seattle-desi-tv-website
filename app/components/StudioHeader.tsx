@@ -3,36 +3,70 @@
 import { useState } from "react";
 import AccountMenu from "./AccountMenu";
 
+const primaryLinks = [
+  ["Dashboard", "/studio"],
+  ["Event Ops", "/studio/event-ops-v2"],
+  ["Influencer Management", "/studio/influencer-management"],
+];
+
+const groups = [
+  {
+    title: "Website",
+    links: [
+      ["Homepage", "/studio/homepage"],
+      ["Hero", "/studio/hero"],
+      ["Featured Events", "/studio/featured-events"],
+      ["Featured Social", "/studio/featured-social"],
+      ["Testimonials", "/studio/testimonials"],
+      ["Sponsors", "/studio/sponsors"],
+    ],
+  },
+  {
+    title: "Operations",
+    links: [
+      ["Event Ops", "/studio/event-ops-v2"],
+      ["Legacy Event Ops", "/studio/event-ops"],
+      ["Events", "/studio/events"],
+      ["Pending Events", "/studio/events/pending"],
+      ["Coverage Briefs", "/studio/event-coverage-briefs"],
+      ["Calendar", "/studio/assignments-calendar"],
+    ],
+  },
+  {
+    title: "People",
+    links: [
+      ["Crew", "/studio/crew/pending"],
+      ["Volunteers", "/studio/volunteers"],
+      ["Team", "/studio/team"],
+      ["Roles", "/studio/roles"],
+      ["Influencer Management", "/studio/influencer-management"],
+      ["Influencer Applications", "/studio/influencer-ops"],
+      ["Influencer Directory", "/studio/influencers"],
+    ],
+  },
+  {
+    title: "Media",
+    links: [
+      ["Video Production", "/studio/video-production"],
+      ["Radio", "/studio/radio-team"],
+      ["Coverage", "/studio/coverage"],
+    ],
+  },
+  {
+    title: "Community",
+    links: [
+      ["Businesses", "/studio/businesses"],
+      ["Contact Requests", "/studio/contact-requests"],
+    ],
+  },
+  {
+    title: "Insights",
+    links: [["Analytics", "/studio/analytics"]],
+  },
+];
+
 export default function StudioHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
-
-  const links = [
-    ["Dashboard", "/studio"],
-    ["Homepage", "/studio/homepage"],
-    ["Hero", "/studio/hero"],
-    ["Featured Events", "/studio/featured-events"],
-    ["Featured Social", "/studio/featured-social"],
-    ["Testimonials", "/studio/testimonials"],
-    ["Sponsors", "/studio/sponsors"],
-    ["Analytics", "/studio/analytics"],
-    ["Event Ops", "/studio/event-ops"],
-    ["Event Ops v2", "/studio/event-ops-v2"],
-    ["Coverage Briefs", "/studio/event-coverage-briefs"],
-    ["Influencer Ops", "/studio/influencer-ops"],
-    ["Manage Influencers", "/studio/influencers"],
-    ["Events", "/studio/events"],
-    ["Pending Events", "/studio/events/pending"],
-    ["Businesses", "/studio/businesses"],
-    ["Contact Requests", "/studio/contact-requests"],
-    ["Coverage", "/studio/coverage"],
-    ["Crew", "/studio/crew/pending"],
-    ["Volunteers", "/studio/volunteers"],
-    ["Video Production", "/studio/video-production"],
-    ["Calendar", "/studio/assignments-calendar"],
-    ["Roles", "/studio/roles"],
-    ["Team", "/studio/team"],
-    ["Radio", "/studio/radio-team"],
-  ];
 
   return (
     <div className="bg-slate-950 text-white border-b border-white/10">
@@ -49,12 +83,26 @@ export default function StudioHeader() {
             </div>
           </div>
 
-          <nav className="hidden lg:flex flex-wrap gap-2 text-sm font-bold">
-            {links.map(([label, href]) => <a key={href} href={href} className="bg-white/10 hover:bg-pink-600 px-3 py-2 rounded-lg transition">{label}</a>)}
+          <nav className="hidden lg:flex flex-wrap items-center gap-2 text-sm font-bold">
+            {primaryLinks.map(([label, href]) => <a key={href} href={href} className="bg-pink-600 hover:bg-pink-500 px-3 py-2 rounded-lg transition">{label}</a>)}
+            {groups.map((group) => <div key={group.title} className="group relative">
+              <button className="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg transition">{group.title} ▾</button>
+              <div className="invisible absolute left-0 top-full z-50 mt-2 min-w-56 rounded-2xl border border-white/10 bg-slate-900 p-2 opacity-0 shadow-2xl transition group-hover:visible group-hover:opacity-100">
+                {group.links.map(([label, href]) => <a key={href} href={href} className="block rounded-xl px-3 py-2 text-sm text-white hover:bg-pink-600">{label}</a>)}
+              </div>
+            </div>)}
           </nav>
 
-          {menuOpen && <nav className="lg:hidden grid grid-cols-2 gap-2 text-sm font-bold">
-            {links.map(([label, href]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="bg-white/10 hover:bg-pink-600 px-3 py-3 rounded-lg transition text-center">{label}</a>)}
+          {menuOpen && <nav className="lg:hidden grid gap-3 text-sm font-bold">
+            <div className="grid grid-cols-1 gap-2">
+              {primaryLinks.map(([label, href]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="bg-pink-600 px-3 py-3 rounded-lg transition text-center">{label}</a>)}
+            </div>
+            {groups.map((group) => <div key={group.title} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+              <p className="mb-2 text-xs font-black uppercase tracking-wide text-pink-200">{group.title}</p>
+              <div className="grid grid-cols-2 gap-2">
+                {group.links.map(([label, href]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="bg-white/10 hover:bg-pink-600 px-3 py-3 rounded-lg transition text-center">{label}</a>)}
+              </div>
+            </div>)}
           </nav>}
         </div>
       </div>
