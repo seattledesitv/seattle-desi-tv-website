@@ -202,97 +202,70 @@ export default function EventOpsV2Page() {
       supabase.from("event_video_workflows").select("id,event_id,status,assigned_editor_email,crew_reviewer_email,raw_media_url,external_media_url,crew_notes,updated_at,published_at").order("updated_at", { ascending: false }).limit(300),
       supabase.from("event_influencer_intents").select("*").order("created_at", { ascending: false }).limit(1000),
     ]);
-    if (eventResult.error) setActionMessage(`Could not load events: ${eventResult.error.message}`); else setEvents(eventResult.data || []);
-    if (assignmentResult.error) setAssignments([]); else setAssignments(assignmentResult.data || []);
-    if (workflowResult.error) setWorkflows([]); else setWorkflows(workflowResult.data || []);
-    if (influencerResult.error) setInfluencerIntents([]); else {
-      const rows = influencerResult.data || [];
-      setInfluencerIntents(rows);
-      const profileIds = Array.from(new Set(rows.map((row: any) => row.influencer_profile_id).filter(Boolean)));
-      if (profileIds.length) {
-        const profileResult = await supabase.from("influencer_profiles").select("id,full_name,email,city,niche,follower_count,instagram_url,tiktok_url,youtube_url,status,public_listing").in("id", profileIds);
-        const map: Record<string, any> = {};
-        (profileResult.data || []).forEach((profile: any) => { map[profile.id] = profile; });
-        setInfluencerProfiles(map);
-      } else setInfluencerProfiles({});
-    }
-    await loadTeamUsers();
+    setEvents(eventResult.data || []);
+    setAssignments(assignmentResult.data || []);
+    setWorkflows(workflowResult.data || []);
+    setInfluencerIntents(influencerResult.data || []);
+    const profileIds = Array.from(new Set((influencerResult.data || []).map((item: any) => item.influencer_profile_id).filter(Boolean)));
+    if (profileIds.length) {
+      const { data } = await supabase.from("influencer_profiles").select("*").in("id", profileIds);
+      const next: Record<string, any> = {};
+      (data || []).forEach((item: any) => { next[item.id] = item; });
+      setInfluencerProfiles(next);
+    } else setInfluencerProfiles({});
   }
 
   async function init() {
     setLoading(true);
-    const sessionResult = await supabase.auth.getSession();
-    const currentUser = sessionResult.data?.session?.user || null;
+    const { data } = await supabase.auth.getUser();
+    const currentUser = data?.user || null;
     setUser(currentUser);
-    if (!currentUser) { setMessage("Please login to access Event Ops."); setLoading(false); return; }
-    const nextRole = await resolveUserRole(supabase, currentUser);
+    const nextRole = currentUser ? await resolveUserRole(supabase, currentUser) : "";
     setRole(nextRole);
-    if (!isAdminRole(nextRole)) { setMessage("This Event Ops page is for admins only."); setLoading(false); return; }
-    await loadData();
+    if (!currentUser || !isAdminRole(nextRole)) { setMessage("Admin access required."); setLoading(false); return; }
+    await Promise.all([loadData(), loadTeamUsers()]);
     setMessage("");
     setLoading(false);
   }
 
-  async function updateEventStatus(status: string) {
-    if (!selectedEventId) return;
-    setActionMessage("Updating event status...");
-    const payload: any = { status, approved: status === "approved" };
-    if (status === "approved") { payload.approved_by = user?.email || user?.id || null; payload.approved_at = new Date().toISOString(); }
-    const { error } = await supabase.from("events").update(payload).eq("id", selectedEventId);
-    if (error) { setActionMessage(`Event status update failed: ${error.message}`); return; }
-    setActionMessage(`Event marked ${label(status)}.`);
-    await loadData();
+  function toggleCrewUser(userId: string) {
+    setSelectedCrewUserIds((current) => current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId]);
   }
 
-  async function updateAssignment(item: any, status: string, completed = false) {
-    setActionMessage("Updating crew/coverage request...");
+  async function updateEventStatus(status: string) {
+    if (!selectedEventId) return;
+    const { error } = await supabase.from("events").update({ status }).eq("id", selectedEventId);
+    if (error) setActionMessage(`Event update failed: ${error.message}`);
+    else { setActionMessage(`Event moved to ${label(status)}.`); await loadData(); }
+  }
+
+  async function updateAssignment(item: any, status: string) {
     const payload: any = { status };
-    if (status === "approved") { payload.approved_by = user?.email || user?.id || null; payload.approved_at = new Date().toISOString(); }
-    if (completed) { payload.coverage_completed = true; payload.completed_at = new Date().toISOString(); }
+    if (status === "approved") { payload.approved_by = user?.email || null; payload.approved_at = new Date().toISOString(); }
     const { error } = await supabase.from("event_crew_assignments").update(payload).eq("id", item.id);
-    if (error) { setActionMessage(`Request update failed: ${error.message}`); return; }
-    setActionMessage("Crew/coverage request updated.");
-    await loadData();
+    if (error) setActionMessage(`Crew request update failed: ${error.message}`);
+    else { setActionMessage(`Crew request ${label(status)}.`); await loadData(); }
   }
 
   async function updateInfluencerIntent(id: string, status: string) {
-    setActionMessage("Updating influencer request...");
-    const payload: any = { status, updated_at: new Date().toISOString() };
-    if (status === "approved") { payload.approved_by = user?.email || user?.id || null; payload.approved_at = new Date().toISOString(); }
-    const { error } = await supabase.from("event_influencer_intents").update(payload).eq("id", id);
-    if (error) { setActionMessage(`Influencer request update failed: ${error.message}`); return; }
-    setActionMessage(`Influencer request marked ${label(status)}.`);
-    await loadData();
-  }
-
-  function toggleCrewUser(userId: string) {
-    setSelectedCrewUserIds((current) => current.includes(userId) ? current.filter((item) => item !== userId) : [...current, userId]);
+    const { error } = await supabase.from("event_influencer_intents").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
+    if (error) setActionMessage(`Influencer update failed: ${error.message}`);
+    else { setActionMessage(`Influencer request ${label(status)}.`); await loadData(); }
   }
 
   async function assignCrew() {
-    if (!selectedEventId || selectedCrewUsers.length === 0) { setActionMessage("Select an event and choose one or more approved team members."); return; }
-    const rows = selectedCrewUsers.map((member) => ({
-      event_id: selectedEventId,
-      user_id: member.user_id?.includes("@") ? null : member.user_id,
-      user_email: member.email,
-      assignment_type: normalizedRoleKey(selectedCrewRole),
-      status: "approved",
-      event_title: selectedEvent?.title || null,
-      approved_by: user?.email || user?.id || null,
-      approved_at: new Date().toISOString(),
-    }));
+    if (!selectedEvent || selectedCrewUsers.length === 0) return;
+    const roleKey = normalizedRoleKey(selectedCrewRole);
+    const rows = selectedCrewUsers.map((member) => ({ event_id: selectedEvent.id, event_title: selectedEvent.title, user_id: member.user_id, user_email: member.email, assignment_type: roleKey, status: "approved", approved_by: user?.email || null, approved_at: new Date().toISOString(), crew_confirmed: false }));
     const { error } = await supabase.from("event_crew_assignments").insert(rows);
-    if (error) { setActionMessage(`Crew assignment failed: ${error.message}`); return; }
-    setSelectedCrewUserIds([]);
-    setSelectedCrewRole("General Crew");
-    setActionMessage(`${rows.length} crew member(s) assigned as ${selectedCrewRole}.`);
-    await loadData();
+    if (error) setActionMessage(`Assign crew failed: ${error.message}`);
+    else { setSelectedCrewUserIds([]); setActionMessage("Crew assigned."); await loadData(); }
   }
 
   function buildWorkflowNotes() {
-    const existing = String(eventWorkflow?.crew_notes || "").replace(/Priority:.*(\n\n)?/i, "").replace(/Social Post Message:[\s\S]*/i, "").trim();
-    const post = socialPostMessage.trim() || socialPostFromNotes(eventWorkflow?.crew_notes);
-    return [`Priority: ${videoPriority}`, existing, post ? `Social Post Message:\n${post}` : ""].filter(Boolean).join("\n\n");
+    const submitted = eventAssignments.filter((item) => item.coverage_completed).map((item) => `${item.user_email || "Crew"}: ${item.coverage_notes || "Coverage completed"}`).join("\n\n");
+    const post = socialPostMessage.trim() || socialPostFromNotes(eventWorkflow?.crew_notes) || suggestedSocialPost.trim();
+    return [submitted || eventWorkflow?.crew_notes || "Started from Event Ops v2.", post ? `\n\nSocial Post Message:\n${post}` : ""].join("");
   }
 
   async function ensureVideoWorkflow() {
@@ -464,7 +437,7 @@ export default function EventOpsV2Page() {
       {!loading && !canAccess && <div className="max-w-xl rounded-2xl bg-white p-8 text-slate-950">{message}</div>}
 
       {!loading && canAccess && <div className="grid gap-5 lg:grid-cols-[420px_1fr]">
-        <EventBrowser />
+        {EventBrowser()}
 
         <section className="space-y-5">
           {actionMessage && <div className="rounded-2xl bg-yellow-100 p-4 font-bold text-yellow-900">{actionMessage}</div>}
@@ -508,9 +481,9 @@ export default function EventOpsV2Page() {
 
             {activeTab === "influencers" && <section className="rounded-3xl bg-white p-6 text-slate-950"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h3 className="text-2xl font-black">Influencer Coverage</h3><p className="text-sm text-slate-500">Approve, reject, or mark influencer event collabs completed.</p></div><a href="/studio/influencer-ops" className="rounded-xl bg-slate-900 px-4 py-3 text-center font-black text-white">Open Influencer Ops</a></div><div className="mt-5 grid gap-3">{eventInfluencers.length === 0 && <p className="rounded-2xl bg-slate-50 p-5 text-slate-500">No influencer requests for this event yet.</p>}{eventInfluencers.map((item) => { const profile = influencerProfiles[item.influencer_profile_id] || {}; return <article key={item.id} className="rounded-2xl border p-4"><div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><p className="font-black">{profile.full_name || item.user_email || "Influencer"}</p><p className="text-sm text-slate-600">{profile.email || item.user_email || "No email"} · {profile.city || "Washington"} · {profile.niche || "Influencer"}</p><p className="mt-1 text-sm text-slate-500">Platforms: {item.expected_platforms || "Not specified"}</p></div><span className={`rounded-full border px-3 py-1 text-xs font-black ${statusClass(item.status || "pending")}`}>{label(item.status || "pending")}</span></div>{item.collab_note && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">{item.collab_note}</p>}<div className="mt-3 flex flex-wrap gap-2"><button onClick={() => updateInfluencerIntent(item.id, "approved")} className="rounded-xl bg-green-600 px-4 py-2 font-black text-white">Approve</button><button onClick={() => updateInfluencerIntent(item.id, "completed")} className="rounded-xl bg-slate-900 px-4 py-2 font-black text-white">Completed</button><button onClick={() => updateInfluencerIntent(item.id, "rejected")} className="rounded-xl bg-red-600 px-4 py-2 font-black text-white">Reject</button></div></article>; })}</div></section>}
 
-            {activeTab === "video" && <section className="rounded-3xl bg-white p-6 text-slate-950"><h3 className="text-2xl font-black">Video Production</h3><p className="mt-1 text-sm text-slate-500">Start workflow, assign editor, request review, request changes, and approve for publishing.</p><div className="mt-5 grid gap-3 sm:grid-cols-4"><div className="rounded-2xl bg-slate-50 p-3"><p className="text-2xl font-black">{selectedStats.approvedCrew}</p><p className="text-xs font-bold text-slate-500">Assigned</p></div><div className="rounded-2xl bg-green-50 p-3"><p className="text-2xl font-black">{selectedStats.submittedContent}</p><p className="text-xs font-bold text-slate-500">Submitted</p></div><div className="rounded-2xl bg-slate-50 p-3"><p className="text-2xl font-black">{selectedStats.noContent}</p><p className="text-xs font-bold text-slate-500">No Content</p></div><div className="rounded-2xl bg-yellow-50 p-3"><p className="text-2xl font-black">{selectedStats.pendingSubmission}</p><p className="text-xs font-bold text-slate-500">Pending</p></div></div><div className="mt-5 grid gap-3 md:grid-cols-2"><select value={selectedEditorEmail || eventWorkflow?.assigned_editor_email || ""} onChange={(event) => setSelectedEditorEmail(event.target.value)} className="rounded-xl border p-3"><option value="">Select editor / production lead...</option>{editorUsers.map((item) => <option key={`${item.email}-editor`} value={item.email}>{item.name} · {item.email} · {label(item.role)}</option>)}</select><select value={videoPriority} onChange={(event) => setVideoPriority(event.target.value)} className="rounded-xl border p-3">{PRIORITIES.map((priority) => <option key={priority} value={priority}>{priority} Priority</option>)}</select></div><div className="mt-4"><label className="mb-2 block text-sm font-black">Social post message required before approving for publishing</label><textarea className="min-h-28 w-full rounded-xl border p-3" placeholder={suggestedSocialPost || "Write the caption/message the editor should use when publishing."} value={socialPostMessage || socialPostFromNotes(eventWorkflow?.crew_notes)} onChange={(event) => setSocialPostMessage(event.target.value)} /></div>{!eventWorkflow ? <button onClick={ensureVideoWorkflow} className="mt-4 rounded-xl bg-pink-600 px-5 py-3 font-black text-white">Start Video Workflow / Ready For Editing</button> : <div className="mt-4 space-y-4"><div className="rounded-2xl bg-slate-50 p-4"><p><b>Status:</b> {label(eventWorkflow.status)}</p>{eventWorkflow.assigned_editor_email && <p><b>Editor:</b> {eventWorkflow.assigned_editor_email}</p>}<p className="mt-1 text-xs text-slate-500">Updated {dateText(eventWorkflow.updated_at)}</p></div>{eventWorkflow.status === "awaiting_admin_approval" && <button onClick={() => updateWorkflowStatus("approved_for_publishing")} className="rounded-xl bg-green-700 px-5 py-3 font-black text-white">Approve For Publishing</button>}<div className="flex flex-wrap gap-2">{VIDEO_STATUSES.map((status) => <button key={status} onClick={() => updateWorkflowStatus(status)} className={`rounded-xl px-4 py-2 font-black ${eventWorkflow.status === status ? "bg-pink-600 text-white" : "bg-slate-100 text-slate-950"}`}>{label(status)}</button>)}<span className="rounded-xl bg-slate-100 px-4 py-2 font-black text-slate-500">Editor confirms published</span><a href={`/studio/video-production/${eventWorkflow.id}`} className="rounded-xl bg-slate-900 px-4 py-2 font-black text-white">Open Full Workflow</a></div></div>}</section>}
+            {activeTab === "video" && <section className="rounded-3xl bg-white p-6 text-slate-950"><h3 className="text-2xl font-black">Video Production</h3><p className="mt-1 text-sm text-slate-500">Start workflow, assign editor, request review, request changes, and approve for publishing.</p><div className="mt-5 grid gap-3 sm:grid-cols-4"><div className="rounded-2xl bg-slate-50 p-3"><p className="text-2xl font-black">{selectedStats.approvedCrew}</p><p className="text-xs font-bold text-slate-500">Assigned</p></div><div className="rounded-2xl bg-green-50 p-3"><p className="text-2xl font-black">{selectedStats.submittedContent}</p><p className="text-xs font-bold text-slate-500">Submitted</p></div><div className="rounded-2xl bg-slate-50 p-3"><p className="text-2xl font-black">{selectedStats.noContent}</p><p className="text-xs font-bold text-slate-500">No Content</p></div><div className="rounded-2xl bg-yellow-50 p-3"><p className="text-2xl font-black">{selectedStats.pendingSubmission}</p><p className="text-xs font-bold text-slate-500">Pending</p></div></div><div className="mt-5 grid gap-3 md:grid-cols-2"><select value={selectedEditorEmail || eventWorkflow?.assigned_editor_email || ""} onChange={(event) => setSelectedEditorEmail(event.target.value)} className="rounded-xl border p-3"><option value="">Select editor / production lead...</option>{editorUsers.map((item) => <option key={`${item.email}-editor`} value={item.email}>{item.name} · {item.email} · {label(item.role)}</option>)}</select><select value={videoPriority} onChange={(event) => setVideoPriority(event.target.value)} className="rounded-xl border p-3">{PRIORITIES.map((priority) => <option key={priority} value={priority}>{priority} Priority</option>)}</select></div><textarea value={socialPostMessage || socialPostFromNotes(eventWorkflow?.crew_notes) || suggestedSocialPost} onChange={(event) => setSocialPostMessage(event.target.value)} placeholder="Social post message required before approving for publishing" className="mt-4 min-h-28 w-full rounded-xl border p-3" /><div className="mt-4 flex flex-wrap gap-2"><button onClick={ensureVideoWorkflow} className="rounded-xl bg-slate-900 px-4 py-3 font-black text-white">Start / Sync Workflow</button>{VIDEO_STATUSES.map((status) => <button key={status} onClick={() => updateWorkflowStatus(status)} className={`rounded-xl px-4 py-3 font-black ${eventWorkflow?.status === status ? "bg-pink-600 text-white" : "bg-slate-100 text-slate-950"}`}>{label(status)}</button>)}</div>{eventWorkflow && <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600"><b>Status:</b> {label(eventWorkflow.status)}<br /><b>Editor:</b> {eventWorkflow.assigned_editor_email || "Not assigned"}<br /><b>Updated:</b> {eventWorkflow.updated_at ? new Date(eventWorkflow.updated_at).toLocaleString() : "—"}</p>}</section>}
 
-            {activeTab === "email" && <section className="rounded-3xl bg-white p-6 text-slate-950"><h3 className="text-2xl font-black">Email Event POC</h3><p className="mt-1 text-sm text-slate-500">Review the coverage summary and open your email client to send it to the organizer.</p><textarea readOnly value={coverageEmailBody()} className="mt-4 min-h-80 w-full rounded-xl border bg-slate-50 p-4 text-sm" /><div className="mt-4 flex flex-wrap gap-2"><a href={`mailto:${selectedEvent.poc_email || ""}?subject=${encodeURIComponent(`SDTV coverage plan - ${selectedEvent.title || "Event"}`)}&body=${encodeURIComponent(coverageEmailBody())}`} className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white">Open Email To POC</a><a href="/studio/event-coverage-briefs" className="rounded-xl bg-slate-900 px-5 py-3 font-black text-white">Coverage Briefs</a></div></section>}
+            {activeTab === "email" && <section className="rounded-3xl bg-white p-6 text-slate-950"><h3 className="text-2xl font-black">Email Event POC</h3><p className="mt-2 text-slate-600">Send this coverage summary to the event organizer using your email client.</p><textarea readOnly value={coverageEmailBody()} className="mt-4 min-h-72 w-full rounded-xl border bg-slate-50 p-3" /><a href={`mailto:${selectedEvent.poc_email || ""}?subject=${encodeURIComponent(`SDTV coverage plan - ${selectedEvent.title}`)}&body=${encodeURIComponent(coverageEmailBody())}`} className="mt-4 inline-block rounded-xl bg-pink-600 px-5 py-3 font-black text-white">Open Email Draft</a></section>}
           </>}
         </section>
       </div>}
