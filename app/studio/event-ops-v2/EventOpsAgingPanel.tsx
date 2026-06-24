@@ -13,17 +13,16 @@ function old(value?: string | null) { const d = value ? new Date(value) : null; 
 function target(item: any) { if (item.kind === "Crew request") return "/studio/crew/pending"; if (item.kind === "Influencer request") return "/studio/influencer-ops"; if (item.kind === "Video workflow") return item.workflowId ? `/studio/video-production/${item.workflowId}` : "/studio/video-production"; return "/studio/event-ops-v2"; }
 
 function findPortalTarget() {
-  const headings = Array.from(document.querySelectorAll("h3"));
-  const quickHeading = headings.find((heading) => heading.textContent?.trim().includes("Quick Filters"));
-  const quickSection = quickHeading?.closest("section");
-  const grid = quickSection?.parentElement;
-  const analyticsRoot = grid?.parentElement;
-  if (!grid || !analyticsRoot) return null;
+  const headings = Array.from(document.querySelectorAll("h2, h3"));
+  const analyticsHeading = headings.find((heading) => heading.textContent?.trim().includes("All Event Analytics"));
+  const analyticsCard = analyticsHeading?.closest("div.rounded-3xl");
+  const analyticsRoot = analyticsCard?.parentElement;
+  if (!analyticsCard || !analyticsRoot) return null;
   let slot = analyticsRoot.querySelector(".event-aging-portal-slot") as HTMLElement | null;
   if (!slot) {
     slot = document.createElement("div");
-    slot.className = "event-aging-portal-slot";
-    analyticsRoot.insertBefore(slot, grid);
+    slot.className = "event-aging-portal-slot w-full";
+    analyticsCard.insertAdjacentElement("afterend", slot);
   }
   return slot;
 }
@@ -52,20 +51,14 @@ export default function EventOpsAgingPanel() {
 
   useEffect(() => { loadAgingItems(); }, []);
   useEffect(() => {
-    let attempts = 0;
-    const timer = window.setInterval(() => {
-      const target = findPortalTarget();
-      if (target || attempts > 20) {
-        setPortalTarget(target);
-        window.clearInterval(timer);
-      }
-      attempts += 1;
-    }, 100);
+    const refresh = () => setPortalTarget(findPortalTarget());
+    refresh();
+    const timer = window.setInterval(refresh, 500);
     return () => window.clearInterval(timer);
   }, []);
 
   const oldest = useMemo(() => items.reduce((max, item) => Math.max(max, ageDays(item.since)), 0), [items]);
-  const card = <section className="event-aging-panel rounded-3xl bg-white p-6 text-slate-950">
+  const card = <section className="event-aging-panel w-full rounded-3xl bg-white p-6 text-slate-950">
     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div>
         <p className="text-xs font-black uppercase tracking-wide text-red-600">Action needed</p>
