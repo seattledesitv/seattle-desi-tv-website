@@ -37,6 +37,10 @@ function isTeamRole(role: string) {
   return value.includes("team") || value.includes("admin") || value.includes("crew");
 }
 
+function firstImage(row: any) {
+  return row?.photo || row?.image || row?.picture || "";
+}
+
 export default function AccountProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -46,6 +50,7 @@ export default function AccountProfilePage() {
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState("");
   const [profileId, setProfileId] = useState("");
+  const [isNewProfile, setIsNewProfile] = useState(false);
   const [form, setForm] = useState<ProfileForm>(emptyForm);
 
   function updateField(field: keyof ProfileForm, value: string) {
@@ -88,11 +93,28 @@ export default function AccountProfilePage() {
     }
 
     if (!data) {
-      setMessage("No onboarding profile found yet. Please complete onboarding first or ask an admin to create your profile.");
+      const { data: teamMember } = await supabase
+        .from("team_members")
+        .select("name,title,image,photo,picture,email,user_id")
+        .or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      setProfileId("");
+      setIsNewProfile(true);
+      setForm({
+        ...emptyForm,
+        full_name: teamMember?.name || currentUser.user_metadata?.full_name || currentUser.email?.split("@")[0] || "",
+        interests: teamMember?.title || "Team Member",
+        photo_url: firstImage(teamMember),
+      });
+      setMessage("Profile setup required. You are already approved as a team member, so you can create your SDTV profile here without waiting for an admin.");
       setLoading(false);
       return;
     }
 
+    setIsNewProfile(false);
     setProfileId(data.id);
     setForm({
       full_name: data.full_name || "",
@@ -140,6 +162,18 @@ export default function AccountProfilePage() {
     }
   }
 
+  async function syncUserProfile() {
+    if (!user?.email) return;
+    await supabase.from("user_profiles").upsert({
+      user_id: user.id,
+      email: user.email,
+      full_name: form.full_name.trim(),
+      profile_photo_url: form.photo_url.trim(),
+      role,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
+  }
+
   async function syncTeamPageProfile() {
     if (!user?.email) return;
     const { data: assignment } = await supabase
@@ -150,30 +184,27 @@ export default function AccountProfilePage() {
       .limit(1)
       .maybeSingle();
 
-    const teamArea = assignment?.team_area || "General Team";
+    const teamArea = assignment?.team_area || form.interests.trim() || "General Team";
     const payload: any = {
       user_id: user.id,
       email: user.email,
       name: form.full_name.trim() || user.email,
       title: teamArea,
       image: form.photo_url.trim(),
+      photo: form.photo_url.trim(),
+      picture: form.photo_url.trim(),
       show_on_public_team: true,
       updated_at: new Date().toISOString(),
     };
 
     const result = await supabase.from("team_members").upsert(payload, { onConflict: "user_id" });
     if (result.error) {
-      // Older database fallback: do not block saving the private profile if linked columns are not installed yet.
-      await supabase.from("team_members").update({ name: payload.name, title: payload.title, image: payload.image }).eq("name", payload.name);
+      await supabase.from("team_members").update({ name: payload.name, title: payload.title, image: payload.image, photo: payload.photo, picture: payload.picture }).or(`user_id.eq.${user.id},email.eq.${user.email}`);
     }
   }
 
   async function saveProfile() {
     setMessage("");
-    if (!profileId) {
-      setMessage("No profile record found to update.");
-      return;
-    }
     if (!form.full_name.trim() || !form.phone.trim()) {
       setMessage("Please enter your name and phone number.");
       return;
@@ -182,9 +213,15 @@ export default function AccountProfilePage() {
       setMessage("Please wait for the photo upload to finish.");
       return;
     }
+    if (!user?.email) {
+      setMessage("Please login again before saving your profile.");
+      return;
+    }
 
     setSaving(true);
-    const { error } = await supabase.from("volunteer_onboarding_submissions").update({
+    const payload = {
+      user_id: user.id,
+      email: user.email,
       full_name: form.full_name.trim(),
       phone: form.phone.trim(),
       city: form.city.trim(),
@@ -194,17 +231,36 @@ export default function AccountProfilePage() {
       photo_url: form.photo_url.trim(),
       emergency_contact: form.emergency_contact.trim(),
       emergency_phone: form.emergency_phone.trim(),
-    }).eq("id", profileId);
+      agreement_acknowledged: true,
+      agreement_acknowledged_at: new Date().toISOString(),
+      status: "submitted",
+      updated_at: new Date().toISOString(),
+    };
 
-    if (error) {
-      setSaving(false);
-      setMessage(`Could not save profile: ${error.message}. If this is an RLS issue, run supabase/team-profile-enhancements.sql in Supabase.`);
-      return;
+    let savedId = profileId;
+    if (profileId) {
+      const { error } = await supabase.from("volunteer_onboarding_submissions").update(payload).eq("id", profileId);
+      if (error) {
+        setSaving(false);
+        setMessage(`Could not save profile: ${error.message}. If this is an RLS issue, run supabase/team-profile-enhancements.sql in Supabase.`);
+        return;
+      }
+    } else {
+      const { data, error } = await supabase.from("volunteer_onboarding_submissions").insert(payload).select("id").single();
+      if (error) {
+        setSaving(false);
+        setMessage(`Could not create profile: ${error.message}. If this is an RLS issue, confirm users can insert their own onboarding profile.`);
+        return;
+      }
+      savedId = data?.id || "";
+      setProfileId(savedId);
+      setIsNewProfile(false);
     }
 
+    await syncUserProfile();
     await syncTeamPageProfile();
     setSaving(false);
-    setMessage("Profile saved. Your Team page photo/details were also refreshed.");
+    setMessage(isNewProfile ? "Profile created. Your Team page and recognition profile can now use your name/photo." : "Profile saved. Your Team page photo/details were also refreshed.");
   }
 
   useEffect(() => { loadProfile(); }, []);
@@ -218,19 +274,20 @@ export default function AccountProfilePage() {
 
       <section className="bg-white text-slate-950 rounded-3xl p-6 md:p-8 shadow-2xl">
         <p className="text-pink-600 font-black uppercase tracking-wide">Seattle Desi TV</p>
-        <h1 className="text-3xl md:text-4xl font-black mt-2">My Team Profile</h1>
-        <p className="text-gray-600 mt-2">Approved team members can update their profile details and ID/profile image here. This image is used for the Team page and SDTV profile display.</p>
+        <h1 className="text-3xl md:text-4xl font-black mt-2">{isNewProfile ? "Complete My SDTV Profile" : "My Team Profile"}</h1>
+        <p className="text-gray-600 mt-2">Approved team members can create or update their profile details and ID/profile image here. This image is used for the Team page, Recognition, and SDTV profile display.</p>
 
         {loading && <div className="bg-slate-100 rounded-2xl p-5 mt-6 font-bold">{message}</div>}
-        {!loading && message && <div className="bg-yellow-50 border border-yellow-200 text-yellow-900 rounded-2xl p-5 mt-6 font-bold whitespace-pre-line">{message}</div>}
+        {!loading && message && <div className={`${isNewProfile ? "bg-green-50 border-green-200 text-green-900" : "bg-yellow-50 border-yellow-200 text-yellow-900"} border rounded-2xl p-5 mt-6 font-bold whitespace-pre-line`}>{message}</div>}
 
-        {!loading && profileId && <div className="grid gap-5 mt-6">
+        {!loading && isTeamRole(role) && <div className="grid gap-5 mt-6">
           <div className="flex gap-4 items-center bg-slate-50 rounded-2xl p-4">
             {form.photo_url ? <img src={form.photo_url} alt={form.full_name || "SDTV profile"} className="w-24 h-24 rounded-2xl object-cover border" /> : <div className="w-24 h-24 rounded-2xl bg-white grid place-items-center text-pink-600 font-black border">SDTV</div>}
             <div>
               <h2 className="text-2xl font-black">{form.full_name || user?.email}</h2>
               <p className="text-gray-600">Role: {role.replaceAll("_", " ")}</p>
               <p className="text-gray-600">{user?.email}</p>
+              <p className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-black ${profileId ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-800"}`}>{profileId ? "Profile Complete" : "Setup Required"}</p>
             </div>
           </div>
 
@@ -252,7 +309,7 @@ export default function AccountProfilePage() {
             <label className="font-bold">Emergency Phone<input className="w-full border rounded-xl p-3 mt-1 font-normal" value={form.emergency_phone} onChange={(e) => updateField("emergency_phone", e.target.value)} /></label>
           </div>
 
-          <button onClick={saveProfile} disabled={saving || uploading} className="bg-pink-600 text-white px-6 py-4 rounded-xl font-black disabled:opacity-60">{uploading ? "Uploading..." : saving ? "Saving..." : "Save Profile"}</button>
+          <button onClick={saveProfile} disabled={saving || uploading} className="bg-pink-600 text-white px-6 py-4 rounded-xl font-black disabled:opacity-60">{uploading ? "Uploading..." : saving ? "Saving..." : isNewProfile ? "Create My Profile" : "Save Profile"}</button>
         </div>}
       </section>
     </div>
