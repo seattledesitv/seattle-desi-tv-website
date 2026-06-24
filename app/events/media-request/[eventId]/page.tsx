@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import SiteHeader from "../../../components/SiteHeader";
 import SiteFooter from "../../../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
 
 const supabase = getSupabaseBrowserClient();
 
-export default function EventMediaRequestPage({ params }: { params: { eventId: string } }) {
-  const eventId = params.eventId;
+export default function EventMediaRequestPage() {
+  const params = useParams();
+  const eventId = String(params?.eventId || "");
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -27,6 +29,12 @@ export default function EventMediaRequestPage({ params }: { params: { eventId: s
 
   async function loadEvent() {
     setLoading(true);
+    if (!eventId || eventId === "undefined") {
+      setEvent(null);
+      setMessage("This media request link is missing the event id. Please ask SDTV to resend the correct link.");
+      setLoading(false);
+      return;
+    }
     const { data, error } = await supabase
       .from("events")
       .select("id,title,date,location,poc_email")
@@ -45,6 +53,10 @@ export default function EventMediaRequestPage({ params }: { params: { eventId: s
 
   async function submitMedia() {
     setMessage("");
+    if (!eventId || eventId === "undefined") {
+      setMessage("This media request link is missing the event id. Please ask SDTV to resend the correct link.");
+      return;
+    }
     if (!form.source_url.trim()) {
       setMessage("Please provide a Google Drive, Dropbox, OneDrive, WeTransfer, or other folder link.");
       return;
