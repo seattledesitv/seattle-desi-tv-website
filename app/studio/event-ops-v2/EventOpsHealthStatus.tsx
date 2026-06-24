@@ -20,23 +20,18 @@ function parseNumber(text: string, label: string) {
 function computeHealth(text: string): Health | null {
   if (!text.includes("Crew approved") || !text.includes("Influencers") || !text.includes("Media submitted")) return null;
   const lower = text.toLowerCase();
-  const pending = parseNumber(text, "Pending actions");
+  const crew = parseNumber(text, "Crew approved");
+  const influencers = parseNumber(text, "Influencers");
   const media = parseNumber(text, "Media submitted");
-  const uncovered = lower.includes("uncovered");
-  const needsCrew = lower.includes("need crew");
-  const needsInfluencer = lower.includes("need influencer");
-  const fullyCovered = lower.includes("fully covered");
+  const pending = parseNumber(text, "Pending actions");
+  const organizerMedia = lower.includes("organizer media received") || lower.includes("media available");
 
-  if (uncovered || needsCrew) {
-    return { label: "Red", tone: "red", detail: uncovered ? "No confirmed coverage yet." : "Crew coverage is still needed." };
-  }
-  if (needsInfluencer || pending > 0 || media === 0) {
-    return { label: "Yellow", tone: "yellow", detail: needsInfluencer ? "Crew exists, but influencer coverage is missing." : pending > 0 ? "There are pending actions to close." : "Coverage exists, but media has not been submitted yet." };
-  }
-  if (fullyCovered) {
-    return { label: "Green", tone: "green", detail: "Crew and influencer coverage are ready." };
-  }
-  return { label: "Yellow", tone: "yellow", detail: "Review coverage before marking this event complete." };
+  if (crew > 0) return { label: "Green", tone: "green", detail: "SDTV crew coverage is confirmed." };
+  if (influencers > 0) return { label: "Green", tone: "green", detail: "Influencer coverage is confirmed." };
+  if (organizerMedia || media > 0) return { label: "Green", tone: "green", detail: "Usable media is available for editing/publishing." };
+  if (pending > 0) return { label: "Yellow", tone: "yellow", detail: "Coverage is requested, but no confirmed source is available yet." };
+  if (lower.includes("uncovered")) return { label: "Red", tone: "red", detail: "No crew, influencer, or organizer media is confirmed." };
+  return { label: "Yellow", tone: "yellow", detail: "Coverage planning is needed." };
 }
 
 function findSlot() {
@@ -87,7 +82,7 @@ export default function EventOpsHealthStatus() {
       <div className="flex items-center gap-3">
         <span className={`h-4 w-4 rounded-full ${dot}`} />
         <div>
-          <p className="text-xs font-black uppercase tracking-wide">Overall Event Status</p>
+          <p className="text-xs font-black uppercase tracking-wide">Overall Coverage Status</p>
           <h3 className="text-2xl font-black">{health.label}</h3>
         </div>
       </div>
