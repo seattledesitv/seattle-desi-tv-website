@@ -86,12 +86,19 @@ export default function InfluencersPage() {
           <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-300">Discover creators who support community events, local businesses, culture, food, fashion, arts, and South Asian stories across Washington.</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a href="/my-hub" className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white">Join as Influencer</a>
+            <a href="/influencer-coverage-request" className="rounded-xl bg-white px-5 py-3 font-black text-slate-950">Request Business Coverage</a>
             <a href="/events" className="rounded-xl border border-white/40 px-5 py-3 font-black text-white">Find Events</a>
           </div>
         </div>
       </section>
 
       <section className="mx-auto max-w-7xl px-6 py-10 md:px-10">
+        <div className="mb-8 rounded-3xl bg-white p-6 shadow-sm md:p-8">
+          <p className="text-sm font-black uppercase tracking-wide text-pink-600">For Businesses</p>
+          <h2 className="mt-2 text-3xl font-black">Need influencer coverage for your business?</h2>
+          <p className="mt-2 max-w-3xl text-slate-600">Submit a request and SDTV will review your campaign, promotion, or launch and respond with the right next step. Requests are tracked in Studio Contact Requests for the SDTV team.</p>
+          <a href="/influencer-coverage-request" className="mt-5 inline-flex rounded-xl bg-slate-950 px-5 py-3 font-black text-white">Request Influencer Coverage</a>
+        </div>
         <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <h2 className="text-3xl font-black">Approved Influencer Directory</h2>
