@@ -55,7 +55,17 @@ export default function MyEventsPage() {
             <h1 className="text-4xl md:text-5xl font-black mt-2">My Events</h1>
             <p className="text-slate-300 mt-2">{loading ? "Loading..." : message}</p>
           </div>
-          <a href="/events/new" className="bg-pink-600 text-white px-5 py-3 rounded-xl font-black text-center">Submit Event</a>
+          <div className="flex flex-wrap gap-2">
+            <a href="/my-events-v2" className="border border-white/20 text-white px-5 py-3 rounded-xl font-black text-center">Try New Event Portal</a>
+            <a href="/events/new" className="bg-pink-600 text-white px-5 py-3 rounded-xl font-black text-center">Submit Event</a>
+          </div>
+        </div>
+
+        <div className="mb-6 rounded-3xl bg-white/10 border border-white/10 p-5">
+          <p className="text-sm font-black uppercase tracking-wide text-pink-200">Beta available</p>
+          <h2 className="mt-1 text-2xl font-black">New My Event Portal</h2>
+          <p className="mt-2 text-slate-300">View coverage health, media requests, video status, and event journey details for your submitted events.</p>
+          <a href="/my-events-v2" className="mt-4 inline-flex rounded-xl bg-white px-4 py-3 text-sm font-black text-slate-950">Open New Portal</a>
         </div>
 
         {rows.length === 0 ? (
