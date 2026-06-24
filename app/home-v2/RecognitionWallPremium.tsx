@@ -59,7 +59,10 @@ export default function RecognitionWallPremium({ people, stats }: { people: Pers
 
   const resolvedPeople = useMemo(() => people.map((person) => {
     const match = teamLookup[String(person.id || "").toLowerCase()] || teamLookup[String(person.id || "")] || teamLookup[String(person.name || "").toLowerCase()];
-    return match ? { ...person, name: match.name || person.name, photo: firstImage(match) || firstImage(person) } : { ...person, name: fallbackName(person.name) };
+    const currentPhoto = firstImage(person);
+    const teamPhoto = match ? firstImage(match) : "";
+    const needsTeamName = !person.name || isEmail(person.name);
+    return match ? { ...person, name: needsTeamName ? (match.name || fallbackName(person.name)) : fallbackName(person.name), photo: currentPhoto || teamPhoto } : { ...person, name: fallbackName(person.name), photo: currentPhoto };
   }), [people, teamLookup]);
 
   const realPeople = [...resolvedPeople]
