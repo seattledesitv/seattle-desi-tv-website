@@ -57,6 +57,8 @@ export default function MyEventsV2Page() {
   const [mediaSources, setMediaSources] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState("");
   const [activeTab, setActiveTab] = useState<PortalTab>("overview");
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   async function loadRows() {
     setLoading(true);
@@ -98,8 +100,6 @@ export default function MyEventsV2Page() {
 
   useEffect(() => { loadRows(); }, []);
 
-  const selectedEvent = useMemo(() => events.find((event) => event.id === selectedEventId) || null, [events, selectedEventId]);
-
   function stats(eventId: string) {
     const crewRows = assignments.filter((item) => item.event_id === eventId);
     const influencerRows = influencers.filter((item) => item.event_id === eventId);
@@ -119,7 +119,26 @@ export default function MyEventsV2Page() {
     return { crewRows, influencerRows, workflow, media, latestMedia, approvedCrew, pendingCrew, approvedInfluencers, pendingInfluencers, mediaReceived, mediaRequested, submittedCrewMedia, coverageGreen, coverageYellow, coverageLabel };
   }
 
+  const visibleEvents = useMemo(() => {
+    const needle = searchText.trim().toLowerCase();
+    return events.filter((event) => {
+      const status = String(event.status || "pending").toLowerCase();
+      const statusMatches = statusFilter === "all" || status === statusFilter;
+      if (!statusMatches) return false;
+      if (!needle) return true;
+      return [event.title, event.location, event.status, event.poc_email, event.description].some((value) => String(value || "").toLowerCase().includes(needle));
+    });
+  }, [events, searchText, statusFilter]);
+
+  const selectedEvent = useMemo(() => events.find((event) => event.id === selectedEventId) || visibleEvents[0] || null, [events, selectedEventId, visibleEvents]);
   const selectedStats = selectedEvent ? stats(selectedEvent.id) : null;
+  const allStats = useMemo(() => events.map((event) => stats(event.id)), [events, assignments, influencers, workflows, mediaSources]);
+  const summary = {
+    total: events.length,
+    approved: events.filter((event) => String(event.status || "").toLowerCase() === "approved").length,
+    coverageOnTrack: allStats.filter((item) => item.coverageGreen).length,
+    waitingOnMedia: allStats.filter((item) => item.mediaRequested && !item.mediaReceived).length,
+  };
 
   function selectEvent(id: string) {
     setSelectedEventId(id);
@@ -128,7 +147,7 @@ export default function MyEventsV2Page() {
 
   function EventPortalCard({ event }: { event: any }) {
     const s = stats(event.id);
-    const active = selectedEventId === event.id;
+    const active = selectedEvent?.id === event.id;
     const healthClass = s.coverageGreen ? "bg-green-50 text-green-700" : s.coverageYellow ? "bg-yellow-50 text-yellow-800" : "bg-slate-100 text-slate-700";
     return <button onClick={() => selectEvent(event.id)} className={`rounded-3xl border p-5 text-left text-slate-950 shadow-xl transition hover:-translate-y-1 ${active ? "border-pink-500 bg-pink-50 ring-2 ring-pink-100" : "border-white bg-white"}`}>
       <div className="flex items-start justify-between gap-4"><h2 className="text-xl font-black leading-tight">{event.title}</h2><span className={`rounded-full px-3 py-1 text-xs font-black ${statusClass(event.status)}`}>{statusText(event.status)}</span></div>
@@ -157,8 +176,27 @@ export default function MyEventsV2Page() {
         <div className="flex flex-wrap gap-2"><a href="/my-events" className="rounded-xl border border-white/20 px-5 py-3 font-black text-white">Old My Events</a><a href="/events/new" className="rounded-xl bg-pink-600 px-5 py-3 text-center font-black text-white">Submit Event</a></div>
       </div>
 
+      {events.length > 0 && <section className="mb-6 rounded-3xl bg-white/10 p-4 text-white">
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-2xl bg-white/10 p-4"><p className="text-3xl font-black">{summary.total}</p><p className="text-xs font-bold text-slate-300">Total events</p></div>
+          <div className="rounded-2xl bg-white/10 p-4"><p className="text-3xl font-black">{summary.approved}</p><p className="text-xs font-bold text-slate-300">Approved</p></div>
+          <div className="rounded-2xl bg-white/10 p-4"><p className="text-3xl font-black">{summary.coverageOnTrack}</p><p className="text-xs font-bold text-slate-300">Coverage on track</p></div>
+          <div className="rounded-2xl bg-white/10 p-4"><p className="text-3xl font-black">{summary.waitingOnMedia}</p><p className="text-xs font-bold text-slate-300">Waiting on media</p></div>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-[1fr_220px]">
+          <input value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="Search your events..." className="rounded-xl border border-white/10 bg-white px-4 py-3 font-bold text-slate-950" />
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="rounded-xl border border-white/10 bg-white px-4 py-3 font-bold text-slate-950">
+            <option value="all">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="on_hold">On hold</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+      </section>}
+
       {events.length === 0 ? <div className="rounded-3xl border bg-white p-8 text-slate-950"><h2 className="text-2xl font-black">No events found</h2><p className="mt-2 text-gray-600">Your submitted events will appear here.</p></div> : <div className="grid gap-6 lg:grid-cols-[1fr_440px]">
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-2">{events.map((event) => <EventPortalCard key={event.id} event={event} />)}</div>
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-2">{visibleEvents.map((event) => <EventPortalCard key={event.id} event={event} />)}{visibleEvents.length === 0 && <div className="rounded-3xl bg-white p-8 text-slate-950 md:col-span-2">No events match this search/filter.</div>}</div>
 
         <aside className="h-fit rounded-3xl bg-white p-6 text-slate-950 shadow-2xl lg:sticky lg:top-6">
           {!selectedEvent || !selectedStats ? <p className="text-slate-500">Select an event to open the organizer portal.</p> : <div>
