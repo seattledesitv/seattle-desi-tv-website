@@ -17,10 +17,13 @@ create table if not exists public.volunteer_onboarding_submissions (
   emergency_phone text,
   agreement_acknowledged boolean not null default false,
   agreement_acknowledged_at timestamptz,
+  agreement_text text,
   status text not null default 'submitted',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.volunteer_onboarding_submissions add column if not exists agreement_text text;
 
 alter table public.volunteer_onboarding_submissions enable row level security;
 
