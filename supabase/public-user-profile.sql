@@ -27,6 +27,14 @@ alter table public.user_profiles add column if not exists show_name_publicly boo
 alter table public.user_profiles add column if not exists allow_social_credit boolean default true;
 alter table public.user_profiles add column if not exists allow_sdtv_contact boolean default true;
 alter table public.user_profiles add column if not exists keep_profile_private boolean default true;
+alter table public.user_profiles add column if not exists public_visibility_disabled boolean default false;
+alter table public.user_profiles add column if not exists visibility_disabled_reason text;
+alter table public.user_profiles add column if not exists visibility_disabled_at timestamptz;
+alter table public.user_profiles add column if not exists visibility_disabled_by text;
+
+create index if not exists user_profiles_email_idx on public.user_profiles(email);
+create index if not exists user_profiles_role_idx on public.user_profiles(role);
+create index if not exists user_profiles_visibility_idx on public.user_profiles(public_visibility_disabled);
 
 alter table public.user_profiles enable row level security;
 
@@ -58,6 +66,26 @@ on public.user_profiles
 for select
 to authenticated
 using (
+  exists (
+    select 1 from public.admins a
+    where a.user_id = auth.uid()
+      and lower(a.role) like '%admin%'
+  )
+);
+
+drop policy if exists "Admins can update user visibility controls" on public.user_profiles;
+create policy "Admins can update user visibility controls"
+on public.user_profiles
+for update
+to authenticated
+using (
+  exists (
+    select 1 from public.admins a
+    where a.user_id = auth.uid()
+      and lower(a.role) like '%admin%'
+  )
+)
+with check (
   exists (
     select 1 from public.admins a
     where a.user_id = auth.uid()
