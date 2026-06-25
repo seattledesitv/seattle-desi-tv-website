@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import SiteHeader from "../components/SiteHeader";
 import SiteFooter from "../components/SiteFooter";
 import SafeImage from "../components/SafeImage";
+import { isPubliclyHidden, loadHiddenUsers } from "../lib/publicVisibility";
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "");
 
@@ -25,24 +26,25 @@ export default function PublicTeamPage() {
 
   useEffect(() => {
     async function loadTeam() {
-      const [teamResult, assignmentsResult, profilesResult] = await Promise.all([
+      const [teamResult, assignmentsResult, profilesResult, hidden] = await Promise.all([
         supabase.from("team_members").select("id,name,title,image,email,user_id,show_on_public_team").eq("show_on_public_team", true).order("created_at", { ascending: true }),
         supabase.from("event_crew_assignments").select("id,user_id,user_email,event_title,coverage_completed,completed_at,status").eq("coverage_completed", true).order("completed_at", { ascending: false }).limit(500),
         supabase.from("volunteer_onboarding_submissions").select("user_id,email,full_name,photo_url"),
+        loadHiddenUsers(supabase),
       ]);
 
       if (teamResult.error) {
-        const legacyResult = await supabase.from("team_members").select("id,name,title,image").order("created_at", { ascending: true });
-        if (legacyResult.error) setError(legacyResult.error.message); else setMembers(legacyResult.data || []);
+        const legacyResult = await supabase.from("team_members").select("id,name,title,image,email,user_id").order("created_at", { ascending: true });
+        if (legacyResult.error) setError(legacyResult.error.message); else setMembers((legacyResult.data || []).filter((member: any) => !isPubliclyHidden(member, hidden)));
       } else {
         const profilesByEmail: Record<string, any> = {}; const profilesByUserId: Record<string, any> = {};
         (profilesResult.data || []).forEach((profile: any) => { if (profile.email) profilesByEmail[String(profile.email).toLowerCase()] = profile; if (profile.user_id) profilesByUserId[profile.user_id] = profile; });
-        setMembers((teamResult.data || []).map((member: any) => { const profile = profilesByUserId[member.user_id || ""] || profilesByEmail[String(member.email || "").toLowerCase()] || {}; return { ...member, profile_photo_url: profile.photo_url || null }; }));
+        setMembers((teamResult.data || []).filter((member: any) => !isPubliclyHidden(member, hidden)).map((member: any) => { const profile = profilesByUserId[member.user_id || ""] || profilesByEmail[String(member.email || "").toLowerCase()] || {}; return { ...member, profile_photo_url: profile.photo_url || null }; }));
       }
 
       const profilesByEmail: Record<string, any> = {};
       (profilesResult.data || []).forEach((profile: any) => { if (profile.email) profilesByEmail[profile.email] = profile; });
-      const completedRows = assignmentsResult.error ? [] : (assignmentsResult.data || []);
+      const completedRows = assignmentsResult.error ? [] : (assignmentsResult.data || []).filter((row: any) => !isPubliclyHidden(row, hidden));
       const topMap: Record<string, Spotlight> = {};
       completedRows.forEach((row: any) => { const key = row.user_email || row.user_id || row.id; const profile = profilesByEmail[row.user_email || ""] || {}; if (!topMap[key]) topMap[key] = { key, name: displayName(row, profilesByEmail), email: row.user_email || "", count: 0, photo: profile.photo_url }; topMap[key].count += 1; });
       setTopVolunteers(Object.values(topMap).sort((a, b) => b.count - a.count).slice(0, 3));
