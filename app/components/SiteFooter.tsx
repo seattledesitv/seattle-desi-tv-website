@@ -30,6 +30,7 @@ export default function SiteFooter() {
         <div>
           <h2 className="text-2xl font-black">Seattle Desi TV</h2>
           <p className="text-slate-300 mt-3 text-sm">Community media, culture, events, radio, interviews, and stories across the Pacific Northwest.</p>
+          <a href="/submit-content" className="mt-4 inline-flex rounded-xl bg-pink-600 px-4 py-3 text-sm font-black text-white">Submit Content</a>
         </div>
         <div>
           <h3 className="font-black mb-3">Explore</h3>
@@ -39,6 +40,8 @@ export default function SiteFooter() {
             <a href="/events">Events</a>
             <a href="/businesses">Businesses</a>
             <a href="/influencers">Influencers</a>
+            <a href="/submit-content">Submit Content</a>
+            <a href="/share-with-sdtv">Share With SDTV</a>
             <a href="/team">Team</a>
             <a href="/contact">Contact</a>
             <a href="/mobile-app">Mobile App Instructions</a>
