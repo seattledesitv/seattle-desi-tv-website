@@ -17,6 +17,7 @@ alter table public.user_profiles add column if not exists city text;
 alter table public.user_profiles add column if not exists state text;
 alter table public.user_profiles add column if not exists country text;
 alter table public.user_profiles add column if not exists short_bio text;
+alter table public.user_profiles add column if not exists id_badge_url text;
 alter table public.user_profiles add column if not exists instagram_url text;
 alter table public.user_profiles add column if not exists facebook_url text;
 alter table public.user_profiles add column if not exists linkedin_url text;
