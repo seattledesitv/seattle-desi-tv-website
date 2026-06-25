@@ -17,6 +17,8 @@ const STATUSES = [
   { key: "published_complete", label: "Published Complete", note: "Publishing cycle is complete." },
 ];
 
+const CONTENT_STATUSES = ["new", "reviewing", "assigned_to_editor", "approved_for_publishing", "published", "rejected", "closed"];
+
 function dateText(value?: string | null) {
   if (!value) return "";
   const d = new Date(value);
@@ -33,6 +35,19 @@ function statusLabel(status?: string | null) {
   return STATUSES.find((item) => item.key === status)?.label || String(status || "Ready For Editing").replaceAll("_", " ");
 }
 
+function label(value?: string | null) {
+  return String(value || "").replaceAll("_", " ") || "—";
+}
+
+function contentStatusClass(status?: string | null) {
+  const value = String(status || "new").toLowerCase();
+  if (value === "new") return "bg-pink-50 text-pink-700";
+  if (value.includes("review") || value.includes("assigned")) return "bg-yellow-50 text-yellow-800";
+  if (value.includes("approved") || value.includes("published")) return "bg-green-50 text-green-700";
+  if (value.includes("reject")) return "bg-red-50 text-red-700";
+  return "bg-slate-100 text-slate-700";
+}
+
 function emailMatches(a?: string | null, b?: string | null) {
   return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
 }
@@ -45,13 +60,31 @@ export default function VideoProductionPage() {
   const [role, setRole] = useState("");
   const [workflows, setWorkflows] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
+  const [editors, setEditors] = useState<any[]>([]);
+  const [contentRequests, setContentRequests] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState("");
   const [filter, setFilter] = useState("all");
+  const [contentFilter, setContentFilter] = useState("open");
   const [form, setForm] = useState({ raw_media_url: "", external_media_url: "", crew_notes: "", assigned_editor_email: "", crew_reviewer_email: "" });
   const canAccess = Boolean(user && canAccessVideoProduction(role));
   const admin = isAdminRole(role);
   const crew = isTeamRole(role);
   const editor = isVideoEditorRole(role);
+
+  async function loadContentRequests(activeUser?: any, activeRole?: string) {
+    const currentUser = activeUser || user;
+    const currentRole = activeRole || role;
+    const activeEmail = currentUser?.email || "";
+    const { data, error } = await supabase.from("public_content_requests").select("*").order("created_at", { ascending: false }).limit(300);
+    if (error) {
+      setContentRequests([]);
+      setActionMessage((current) => current || `Could not load public content requests: ${error.message}. Run supabase/public-content-requests.sql.`);
+      return;
+    }
+    const rows = data || [];
+    const visibleRows = isAdminRole(currentRole) ? rows : rows.filter((row: any) => emailMatches(row.assigned_editor_email, activeEmail));
+    setContentRequests(visibleRows);
+  }
 
   async function loadData(currentUser?: any, currentRole?: string) {
     const activeUser = currentUser || user;
@@ -83,6 +116,16 @@ export default function VideoProductionPage() {
         .limit(100);
       if (!eventResult.error) setEvents(eventResult.data || []);
     }
+
+    const adminResult = await supabase.from("admins").select("email,name,role").order("created_at", { ascending: false });
+    if (!adminResult.error) {
+      setEditors((adminResult.data || []).filter((item: any) => {
+        const value = String(item.role || "").toLowerCase();
+        return value.includes("admin") || value.includes("editor") || value.includes("production");
+      }));
+    }
+
+    await loadContentRequests(activeUser, activeRole);
   }
 
   async function init() {
@@ -148,6 +191,28 @@ export default function VideoProductionPage() {
     await loadData();
   }
 
+  async function updateContentRequest(row: any, payload: any, success = "Content request updated.") {
+    setActionMessage("Updating content request...");
+    const { error } = await supabase
+      .from("public_content_requests")
+      .update({ ...payload, updated_at: new Date().toISOString() })
+      .eq("id", row.id);
+    if (error) {
+      setActionMessage(`Content request update failed: ${error.message}`);
+      return;
+    }
+    setActionMessage(success);
+    await loadContentRequests();
+  }
+
+  async function assignContentRequest(row: any, email: string) {
+    await updateContentRequest(row, {
+      assigned_editor_email: email || null,
+      assigned_at: email ? new Date().toISOString() : null,
+      status: email ? "assigned_to_editor" : row.status,
+    }, email ? "Submission assigned to editor." : "Editor assignment cleared.");
+  }
+
   async function sendAdminEmail(workflow: any) {
     const event = workflow.events || {};
     await fetch("/api/notify-admin", {
@@ -189,6 +254,11 @@ export default function VideoProductionPage() {
   const grouped = useMemo(() => Object.fromEntries(STATUSES.map((status) => [status.key, filteredWorkflows.filter((workflow) => workflow.status === status.key)])), [filteredWorkflows]);
   const existingEventIds = useMemo(() => new Set(workflows.map((workflow) => workflow.event_id)), [workflows]);
   const availableEvents = events.filter((event) => !existingEventIds.has(event.id));
+  const visibleContentRequests = useMemo(() => {
+    if (contentFilter === "open") return contentRequests.filter((row) => !["published", "rejected", "closed"].includes(String(row.status || "new")));
+    if (contentFilter === "mine") return contentRequests.filter((row) => emailMatches(row.assigned_editor_email, user?.email));
+    return contentRequests.filter((row) => String(row.status || "new") === contentFilter);
+  }, [contentRequests, contentFilter, user?.email]);
 
   function WorkflowCard({ workflow }: { workflow: any }) {
     const event = workflow.events || {};
@@ -228,6 +298,32 @@ export default function VideoProductionPage() {
     );
   }
 
+  function ContentRequestCard({ row }: { row: any }) {
+    const ownerCanUpdate = admin || emailMatches(row.assigned_editor_email, user?.email);
+    return <article className="bg-white text-slate-950 rounded-2xl p-5 shadow-sm border space-y-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-wide text-pink-600">Community Submission</p>
+          <h3 className="text-xl font-black mt-1">{row.title}</h3>
+          <p className="text-sm text-gray-600 mt-1">{row.submitter_name} · {row.submitter_email}</p>
+        </div>
+        <span className={`rounded-full px-3 py-1 text-xs font-black uppercase ${contentStatusClass(row.status)}`}>{label(row.status || "new")}</span>
+      </div>
+      {row.content_text && <p className="whitespace-pre-line rounded-xl bg-slate-50 p-3 text-sm text-gray-700">{row.content_text}</p>}
+      <div className="flex flex-wrap gap-2 text-sm">
+        {row.image_url && <a href={row.image_url} target="_blank" rel="noreferrer" className="rounded-lg bg-slate-100 px-3 py-2 font-bold text-pink-600">Open image</a>}
+        {row.video_url && <a href={row.video_url} target="_blank" rel="noreferrer" className="rounded-lg bg-slate-100 px-3 py-2 font-bold text-pink-600">Open video</a>}
+        {row.source_url && <a href={row.source_url} target="_blank" rel="noreferrer" className="rounded-lg bg-slate-100 px-3 py-2 font-bold text-pink-600">Open source</a>}
+      </div>
+      {row.assigned_editor_email && <p className="text-sm text-gray-600"><b>Assigned:</b> {row.assigned_editor_email}</p>}
+      {ownerCanUpdate && <div className="flex flex-wrap gap-2">
+        {admin && <select value={row.assigned_editor_email || ""} onChange={(event) => assignContentRequest(row, event.target.value)} className="rounded-lg border px-3 py-2 text-sm font-bold"><option value="">Assign editor...</option>{editors.map((item) => <option key={item.email} value={item.email}>{item.name || item.email}</option>)}</select>}
+        <select value={row.status || "new"} onChange={(event) => updateContentRequest(row, { status: event.target.value, published_at: event.target.value === "published" ? new Date().toISOString() : row.published_at }, "Content request status updated.")} className="rounded-lg border px-3 py-2 text-sm font-bold">{CONTENT_STATUSES.map((status) => <option key={status} value={status}>{label(status)}</option>)}</select>
+      </div>}
+      <p className="text-xs text-gray-400">Submitted {dateText(row.created_at)}</p>
+    </article>;
+  }
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const requestedStatus = new URLSearchParams(window.location.search).get("status") || "";
@@ -254,6 +350,14 @@ export default function VideoProductionPage() {
 
         {!loading && canAccess && <div className="space-y-8">
           {actionMessage && <div className="bg-yellow-100 text-yellow-900 rounded-2xl p-4 font-bold">{actionMessage}</div>}
+
+          <section className="bg-white/10 border border-white/10 rounded-3xl p-5">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div><p className="text-pink-300 font-black uppercase tracking-wide text-sm">Public submissions</p><h2 className="text-2xl font-black mt-1">Content Submission Queue</h2><p className="text-slate-300 text-sm mt-1">Public content requests from /submit-content can be reviewed and assigned here.</p></div>
+              <div className="flex flex-wrap gap-2"><button onClick={() => setContentFilter("open")} className={`px-4 py-2 rounded-xl font-bold ${contentFilter === "open" ? "bg-pink-600" : "bg-white/10"}`}>Open ({contentRequests.filter((row) => !["published", "rejected", "closed"].includes(String(row.status || "new"))).length})</button><button onClick={() => setContentFilter("mine")} className={`px-4 py-2 rounded-xl font-bold ${contentFilter === "mine" ? "bg-pink-600" : "bg-white/10"}`}>Mine</button><button onClick={() => setContentFilter("all")} className={`px-4 py-2 rounded-xl font-bold ${contentFilter === "all" ? "bg-pink-600" : "bg-white/10"}`}>All ({contentRequests.length})</button></div>
+            </div>
+            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 mt-5">{visibleContentRequests.map((row) => <ContentRequestCard key={row.id} row={row} />)}{visibleContentRequests.length === 0 && <div className="border border-dashed border-white/20 rounded-2xl p-5 text-slate-400 text-sm">No public content submissions in this view.</div>}</div>
+          </section>
 
           {(admin || crew) && <section className="bg-white text-slate-950 rounded-3xl p-6">
             <h2 className="text-2xl font-black">Create Video Workflow</h2>
