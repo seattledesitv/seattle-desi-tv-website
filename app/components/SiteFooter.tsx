@@ -41,7 +41,6 @@ export default function SiteFooter() {
             <a href="/businesses">Businesses</a>
             <a href="/influencers">Influencers</a>
             <a href="/submit-content">Submit Content</a>
-            <a href="/share-with-sdtv">Share With SDTV</a>
             <a href="/team">Team</a>
             <a href="/contact">Contact</a>
             <a href="/mobile-app">Mobile App Instructions</a>
