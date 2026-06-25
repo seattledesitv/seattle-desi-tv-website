@@ -93,7 +93,7 @@ export default function OnboardingPage() {
       updateField("photo_url", result.secure_url);
       setPhotoMessage("Profile photo uploaded.");
     } catch (error: any) {
-      setPhotoMessage(error?.message || "Profile photo upload failed. Please try again or paste an image URL.");
+      setPhotoMessage(error?.message || "Profile photo upload failed. Please try again or paste a public image URL.");
     } finally {
       setPhotoUploading(false);
     }
@@ -121,6 +121,7 @@ export default function OnboardingPage() {
       emergency_phone: form.emergency_phone.trim(),
       agreement_acknowledged: true,
       agreement_acknowledged_at: new Date().toISOString(),
+      agreement_text: agreementText,
       status: "submitted",
     };
     const { error: insertError } = await supabase.from("volunteer_onboarding_submissions").insert(payload);
