@@ -4,14 +4,17 @@ export type HiddenUserSet = {
 };
 
 export async function loadHiddenUsers(supabase: any): Promise<HiddenUserSet> {
-  const { data, error } = await supabase
-    .from("user_profiles")
-    .select("user_id,email,public_visibility_disabled")
-    .eq("public_visibility_disabled", true);
-  if (error) return { emails: new Set(), userIds: new Set() };
+  const [profileResult, visibilityResult] = await Promise.all([
+    supabase.from("user_profiles").select("user_id,email,public_visibility_disabled").eq("public_visibility_disabled", true),
+    supabase.from("public_visibility_controls").select("user_id,email,public_visibility_disabled").eq("public_visibility_disabled", true),
+  ]);
+  const rows = [
+    ...(profileResult.error ? [] : (profileResult.data || [])),
+    ...(visibilityResult.error ? [] : (visibilityResult.data || [])),
+  ];
   return {
-    emails: new Set((data || []).map((row: any) => String(row.email || "").toLowerCase()).filter(Boolean)),
-    userIds: new Set((data || []).map((row: any) => String(row.user_id || "")).filter(Boolean)),
+    emails: new Set(rows.map((row: any) => String(row.email || "").toLowerCase()).filter(Boolean)),
+    userIds: new Set(rows.map((row: any) => String(row.user_id || "")).filter(Boolean)),
   };
 }
 
