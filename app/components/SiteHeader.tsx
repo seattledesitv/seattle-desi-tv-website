@@ -41,6 +41,7 @@ export default function SiteHeader() {
     { label: "Businesses", href: "/businesses", show: true },
     { label: "Influencers", href: "/influencers", show: true },
     { label: "Advertise", href: "/marketing-packages", show: true },
+    { label: "Submit Content", href: "/submit-content", show: true },
     { label: "Team", href: "/team", show: true },
     { label: "Contact", href: "/contact", show: true },
     { label: "My Hub", href: "/my-hub", show: isLoggedIn },
@@ -57,7 +58,7 @@ export default function SiteHeader() {
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <a href="/" className="flex items-center gap-3 font-black text-lg md:text-xl"><img src="/sdtv-logo.png" alt="Seattle Desi TV" className="h-11 md:h-14 w-auto" /><span>Seattle Desi TV</span></a>
           <nav className="hidden lg:flex items-center gap-3 font-bold text-sm">
-            {links.filter((link) => link.show).map((link) => <a key={link.href + link.label} href={link.href} className="hover:text-pink-600">{link.label}</a>)}
+            {links.filter((link) => link.show).map((link) => <a key={link.href + link.label} href={link.href} className={link.href === "/submit-content" ? "rounded-lg bg-pink-600 px-3 py-2 text-white hover:bg-pink-700" : "hover:text-pink-600"}>{link.label}</a>)}
             <AccountMenu tone="light" from="site" />
           </nav>
           <div className="lg:hidden flex items-center gap-2">
@@ -66,7 +67,7 @@ export default function SiteHeader() {
           </div>
         </div>
         {menuOpen && <nav className="lg:hidden max-w-7xl mx-auto mt-3 grid grid-cols-2 gap-2 text-sm font-bold">
-          {links.filter((link) => link.show).map((link) => <a key={link.href + link.label} href={link.href} onClick={() => setMenuOpen(false)} className="bg-slate-100 px-3 py-3 rounded-xl text-center">{link.label}</a>)}
+          {links.filter((link) => link.show).map((link) => <a key={link.href + link.label} href={link.href} onClick={() => setMenuOpen(false)} className={link.href === "/submit-content" ? "bg-pink-600 text-white px-3 py-3 rounded-xl text-center" : "bg-slate-100 px-3 py-3 rounded-xl text-center"}>{link.label}</a>)}
         </nav>}
       </header>
     </>
