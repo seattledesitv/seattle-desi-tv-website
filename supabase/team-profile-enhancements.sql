@@ -70,6 +70,14 @@ with check (
 -- Radio team RLS.
 alter table public.radio_team_members enable row level security;
 
+drop policy if exists "Users can update own radio profile" on public.radio_team_members;
+create policy "Users can update own radio profile"
+on public.radio_team_members
+for update
+to authenticated
+using (auth.uid() = user_id or lower(email) = lower(auth.jwt() ->> 'email'))
+with check (auth.uid() = user_id or lower(email) = lower(auth.jwt() ->> 'email'));
+
 drop policy if exists "Admins can manage radio team profiles" on public.radio_team_members;
 create policy "Admins can manage radio team profiles"
 on public.radio_team_members
