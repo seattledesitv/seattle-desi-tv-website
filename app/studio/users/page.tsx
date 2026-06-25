@@ -30,7 +30,6 @@ type PersonRow = {
 };
 
 function cleanEmail(value?: string | null) { return String(value || "").trim().toLowerCase(); }
-function keyFor(row: any) { const email = cleanEmail(row.email || row.user_email); return email || String(row.user_id || row.id || Math.random()); }
 function avatarText(row: any) { return String(row.full_name || row.preferred_name || row.name || row.email || "U").slice(0, 1).toUpperCase(); }
 function label(value?: string | null) { return String(value || "general_public").replaceAll("_", " "); }
 function addUnique(list: string[], value?: string | null) { const clean = String(value || "").trim(); if (clean && !list.includes(clean)) list.push(clean); }
@@ -52,7 +51,7 @@ export default function StudioUsersPage() {
     const email = cleanEmail(incoming.email || incoming.user_email);
     const userId = incoming.user_id || incoming.linked_user || null;
     const key = email || String(userId || incoming.id || `${source}-${map.size}`);
-    const existing = map.get(key) || { key, email, user_id: userId, roles: [], sources: [] };
+    const existing: PersonRow = map.get(key) || { key, email, user_id: userId, roles: [], sources: [] };
     existing.email = existing.email || email;
     existing.user_id = existing.user_id || userId;
     existing.full_name = existing.full_name || incoming.full_name || incoming.name || incoming.user_name || null;
@@ -101,7 +100,7 @@ export default function StudioUsersPage() {
 
     (visibility.data || []).forEach((vis: any) => {
       const key = cleanEmail(vis.email) || String(vis.user_id || "");
-      const existing = map.get(key) || { key, email: cleanEmail(vis.email), user_id: vis.user_id, roles: ["general_public"], sources: ["Visibility"] };
+      const existing: PersonRow = map.get(key) || { key, email: cleanEmail(vis.email), user_id: vis.user_id, roles: ["general_public"], sources: ["Visibility"] };
       existing.public_visibility_disabled = Boolean(vis.public_visibility_disabled);
       existing.visibility_disabled_reason = vis.reason || existing.visibility_disabled_reason;
       existing.updated_at = vis.updated_at || existing.updated_at;
