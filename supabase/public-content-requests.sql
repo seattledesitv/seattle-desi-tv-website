@@ -3,9 +3,12 @@
 
 create table if not exists public.public_content_requests (
   id uuid primary key default gen_random_uuid(),
+  submitter_user_id uuid,
   submitter_name text not null,
   submitter_email text not null,
   submitter_phone text,
+  submitter_city text,
+  submitter_profile_notes text,
   title text not null,
   content_text text,
   image_url text,
@@ -29,6 +32,9 @@ create table if not exists public.public_content_requests (
   published_at timestamptz
 );
 
+alter table public.public_content_requests add column if not exists submitter_user_id uuid;
+alter table public.public_content_requests add column if not exists submitter_city text;
+alter table public.public_content_requests add column if not exists submitter_profile_notes text;
 alter table public.public_content_requests add column if not exists final_youtube_url text;
 alter table public.public_content_requests add column if not exists final_instagram_url text;
 alter table public.public_content_requests add column if not exists final_facebook_url text;
@@ -44,15 +50,18 @@ check (status in ('new','reviewing','assigned_to_editor','in_editing','review_re
 create index if not exists public_content_requests_status_idx on public.public_content_requests(status);
 create index if not exists public_content_requests_created_at_idx on public.public_content_requests(created_at desc);
 create index if not exists public_content_requests_editor_idx on public.public_content_requests(assigned_editor_email);
+create index if not exists public_content_requests_submitter_idx on public.public_content_requests(submitter_user_id);
 
 alter table public.public_content_requests enable row level security;
 
-drop policy if exists "Anyone can submit public content requests" on public.public_content_requests;
-create policy "Anyone can submit public content requests"
+drop policy if exists "Authenticated users can submit public content requests" on public.public_content_requests;
+create policy "Authenticated users can submit public content requests"
 on public.public_content_requests
 for insert
-to public
-with check (true);
+to authenticated
+with check (auth.uid() = submitter_user_id);
+
+drop policy if exists "Anyone can submit public content requests" on public.public_content_requests;
 
 drop policy if exists "Admins can manage public content requests" on public.public_content_requests;
 create policy "Admins can manage public content requests"
@@ -73,6 +82,13 @@ with check (
       and lower(a.role) like '%admin%'
   )
 );
+
+drop policy if exists "Submitters can read their own public content requests" on public.public_content_requests;
+create policy "Submitters can read their own public content requests"
+on public.public_content_requests
+for select
+to authenticated
+using (auth.uid() = submitter_user_id);
 
 drop policy if exists "Assigned editors can read public content requests" on public.public_content_requests;
 create policy "Assigned editors can read public content requests"
