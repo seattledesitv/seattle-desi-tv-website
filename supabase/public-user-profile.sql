@@ -36,7 +36,23 @@ create index if not exists user_profiles_email_idx on public.user_profiles(email
 create index if not exists user_profiles_role_idx on public.user_profiles(role);
 create index if not exists user_profiles_visibility_idx on public.user_profiles(public_visibility_disabled);
 
+-- Email-based visibility control covers people who exist in team/radio/influencer/admin records
+-- before they have created a base user_profiles row.
+create table if not exists public.public_visibility_controls (
+  email text primary key,
+  user_id uuid,
+  public_visibility_disabled boolean not null default false,
+  reason text,
+  disabled_at timestamptz,
+  disabled_by text,
+  updated_at timestamptz default now()
+);
+
+create index if not exists public_visibility_controls_user_id_idx on public.public_visibility_controls(user_id);
+create index if not exists public_visibility_controls_disabled_idx on public.public_visibility_controls(public_visibility_disabled);
+
 alter table public.user_profiles enable row level security;
+alter table public.public_visibility_controls enable row level security;
 
 drop policy if exists "Users can read own profile" on public.user_profiles;
 create policy "Users can read own profile"
@@ -92,3 +108,30 @@ with check (
       and lower(a.role) like '%admin%'
   )
 );
+
+drop policy if exists "Admins can manage public visibility controls" on public.public_visibility_controls;
+create policy "Admins can manage public visibility controls"
+on public.public_visibility_controls
+for all
+to authenticated
+using (
+  exists (
+    select 1 from public.admins a
+    where a.user_id = auth.uid()
+      and lower(a.role) like '%admin%'
+  )
+)
+with check (
+  exists (
+    select 1 from public.admins a
+    where a.user_id = auth.uid()
+      and lower(a.role) like '%admin%'
+  )
+);
+
+drop policy if exists "Public can read disabled visibility controls" on public.public_visibility_controls;
+create policy "Public can read disabled visibility controls"
+on public.public_visibility_controls
+for select
+to anon, authenticated
+using (public_visibility_disabled = true);
