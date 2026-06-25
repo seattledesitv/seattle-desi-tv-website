@@ -37,8 +37,6 @@ create index if not exists user_profiles_email_idx on public.user_profiles(email
 create index if not exists user_profiles_role_idx on public.user_profiles(role);
 create index if not exists user_profiles_visibility_idx on public.user_profiles(public_visibility_disabled);
 
--- Email-based visibility control covers people who exist in team/radio/influencer/admin records
--- before they have created a base user_profiles row.
 create table if not exists public.public_visibility_controls (
   email text primary key,
   user_id uuid,
@@ -91,7 +89,21 @@ using (
 );
 
 drop policy if exists "Admins can update user visibility controls" on public.user_profiles;
-create policy "Admins can update user visibility controls"
+drop policy if exists "Admins can insert user profiles" on public.user_profiles;
+create policy "Admins can insert user profiles"
+on public.user_profiles
+for insert
+to authenticated
+with check (
+  exists (
+    select 1 from public.admins a
+    where a.user_id = auth.uid()
+      and lower(a.role) like '%admin%'
+  )
+);
+
+drop policy if exists "Admins can update user profiles" on public.user_profiles;
+create policy "Admins can update user profiles"
 on public.user_profiles
 for update
 to authenticated
