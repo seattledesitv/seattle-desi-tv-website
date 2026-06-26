@@ -90,7 +90,7 @@ export default function MyRoleRequestsPage() {
       .order("created_at", { ascending: false });
 
     setRows(data || []);
-    setMessage(error ? error.message : "Role requests submitted from your SDTV account.");
+    setMessage(error ? error.message : "Role requests submitted from your SDTV profile.");
     setLoading(false);
   }
 
@@ -102,11 +102,11 @@ export default function MyRoleRequestsPage() {
       <section className="max-w-7xl mx-auto px-6 py-10">
         <div className="mb-8">
           <p className="text-pink-300 font-black uppercase tracking-wide">My Hub</p>
-          <h1 className="text-4xl md:text-5xl font-black mt-2">My Role Requests</h1>
+          <h1 className="text-4xl md:text-5xl font-black mt-2">SDTV Journey</h1>
           <p className="text-slate-300 mt-2">{message}</p>
           <div className="flex flex-wrap gap-3 mt-5">
             <a href="/my-hub" className="bg-white text-slate-950 px-5 py-3 rounded-xl font-black">Back to My Hub</a>
-            <a href="/login" className="bg-pink-600 text-white px-5 py-3 rounded-xl font-black">Account / Request Access</a>
+            <a href="/portal" className="bg-pink-600 text-white px-5 py-3 rounded-xl font-black">Open Settings</a>
             <button type="button" onClick={loadRows} className="border border-white/30 text-white px-5 py-3 rounded-xl font-black">Refresh</button>
           </div>
         </div>
@@ -116,8 +116,8 @@ export default function MyRoleRequestsPage() {
         ) : rows.length === 0 ? (
           <div className="bg-white text-slate-950 rounded-3xl p-8">
             <h2 className="text-2xl font-black">No role requests found</h2>
-            <p className="text-gray-600 mt-2">Use the account page to request volunteer or team access.</p>
-            <a href="/login" className="inline-block bg-pink-600 text-white px-5 py-3 rounded-xl font-black mt-5">Request Access</a>
+            <p className="text-gray-600 mt-2">Use Settings to request volunteer or team access.</p>
+            <a href="/portal" className="inline-block bg-pink-600 text-white px-5 py-3 rounded-xl font-black mt-5">Open Settings</a>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
