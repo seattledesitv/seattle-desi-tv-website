@@ -68,6 +68,11 @@ const groups = [
 
 export default function StudioHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState("");
+
+  function toggleGroup(title: string) {
+    setOpenGroup((current) => (current === title ? "" : title));
+  }
 
   return (
     <div className="bg-slate-950 text-white border-b border-white/10">
@@ -84,14 +89,17 @@ export default function StudioHeader() {
             </div>
           </div>
 
-          <nav className="hidden lg:flex flex-wrap items-center gap-2 text-sm font-bold">
+          <nav className="hidden lg:flex flex-wrap items-center gap-2 text-sm font-bold" onMouseLeave={() => setOpenGroup("")}>
             {primaryLinks.map(([label, href]) => <a key={href} href={href} className="bg-pink-600 hover:bg-pink-500 px-3 py-2 rounded-lg transition">{label}</a>)}
-            {groups.map((group) => <div key={group.title} className="group relative">
-              <button className="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg transition">{group.title} ▾</button>
-              <div className="invisible absolute left-0 top-full z-50 mt-2 min-w-56 rounded-2xl border border-white/10 bg-slate-900 p-2 opacity-0 shadow-2xl transition group-hover:visible group-hover:opacity-100">
-                {group.links.map(([label, href]) => <a key={href} href={href} className="block rounded-xl px-3 py-2 text-sm text-white hover:bg-pink-600">{label}</a>)}
-              </div>
-            </div>)}
+            {groups.map((group) => {
+              const isOpen = openGroup === group.title;
+              return <div key={group.title} className="relative" onMouseEnter={() => setOpenGroup(group.title)}>
+                <button type="button" onClick={() => toggleGroup(group.title)} aria-expanded={isOpen} className="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg transition">{group.title} ▾</button>
+                {isOpen && <div className="absolute left-0 top-full z-50 min-w-64 rounded-2xl border border-white/10 bg-slate-900 p-2 shadow-2xl">
+                  {group.links.map(([label, href]) => <a key={href} href={href} onClick={() => setOpenGroup("")} className="block rounded-xl px-3 py-2 text-sm text-white hover:bg-pink-600">{label}</a>)}
+                </div>}
+              </div>;
+            })}
           </nav>
 
           {menuOpen && <nav className="lg:hidden grid gap-3 text-sm font-bold">
