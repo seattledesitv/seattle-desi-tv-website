@@ -88,6 +88,36 @@ section:has(a[href="/studio/coverage"]) a > div p:first-child { color: #64748b !
 section:has(a[href="/studio/coverage"]) a > div p:nth-child(2) { color: #db2777 !important; }
 section:has(a[href="/studio/coverage"]) a > div p:nth-child(3) { color: #475569 !important; }
 
+/* Social reach cards live on a white section, so expose platform, followers, views, and videos clearly */
+section#social a > div {
+  background: #fff !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.10) !important;
+}
+section#social a > div p:first-child {
+  color: #475569 !important;
+  font-size: 0.78rem !important;
+  letter-spacing: 0.08em !important;
+}
+section#social a > div p:nth-child(2) {
+  color: #ec4899 !important;
+}
+section#social a > div p:nth-child(2)::after {
+  content: " followers";
+  color: #475569;
+  font-size: 0.85rem;
+  font-weight: 800;
+  margin-left: 0.25rem;
+}
+section#social a > div p:nth-child(3) {
+  color: #475569 !important;
+  font-weight: 700;
+}
+section#social > div > div.grid > div:last-child p:first-child { color: #475569 !important; }
+section#social > div > div.grid > div:last-child p:nth-child(2) { color: #ec4899 !important; }
+section#social > div > div.grid > div:last-child p:nth-child(2)::after { content: ""; }
+section#social > div > div.grid > div:last-child p:nth-child(3) { color: #475569 !important; }
+
 /* Keep the compact get-involved strip on a white page background */
 section:has(a[href="/contact?interest=volunteer"]) {
   max-width: none !important;
