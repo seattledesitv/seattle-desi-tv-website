@@ -17,6 +17,7 @@ const groups = [
       ["Hero", "/studio/hero"],
       ["Featured Events", "/studio/featured-events"],
       ["Featured Social", "/studio/featured-social"],
+      ["Social Media Stats", "/studio/social-stats"],
       ["Testimonials", "/studio/testimonials"],
       ["Sponsors", "/studio/sponsors"],
     ],
