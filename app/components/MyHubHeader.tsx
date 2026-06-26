@@ -37,7 +37,7 @@ export default function MyHubHeader() {
   const links: HubLink[] = [
     { label: "Dashboard", href: "/my-hub", show: true, tone: "primary" },
     { label: "Profile", href: "/my-profile", show: Boolean(email) },
-    { label: "Settings", href: "/portal", show: true },
+    { label: "Notifications", href: "/notifications", show: Boolean(email) },
     { label: "Influencer Profile", href: "/my-influencer-profile", show: Boolean(email) },
     { label: "Event Listings", href: "/my-events", show: true },
     { label: "Event Listing Status", href: "/my-events-v2", show: true },
