@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import MyHubHeader from "../components/MyHubHeader";
 import SiteFooter from "../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
@@ -8,150 +8,20 @@ import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 const supabase = getSupabaseBrowserClient();
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
 const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
-
-function statusText(value?: string | null) {
-  const text = String(value || "pending").replaceAll("_", " ");
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-function businessImages(row: any) {
-  const urls = Array.isArray(row?.image_urls) ? row.image_urls.filter(Boolean) : [];
-  if (row?.image && !urls.includes(row.image)) urls.unshift(row.image);
-  return urls;
-}
-async function uploadBusinessImage(file: File) {
-  if (!file.type.startsWith("image/")) throw new Error("Please upload image files only.");
-  if (file.size > 5 * 1024 * 1024) throw new Error("Each image must be 5MB or smaller.");
-  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) throw new Error("Cloudinary is not configured. Paste image URLs instead.");
-  const body = new FormData();
-  body.append("file", file);
-  body.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-  body.append("folder", "seattle-desi-tv/businesses");
-  const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, { method: "POST", body });
-  const result = await response.json();
-  if (!response.ok || !result.secure_url) throw new Error(result?.error?.message || "Image upload failed.");
-  return result.secure_url as string;
-}
+function statusText(value?: string | null) { const text = String(value || "pending").replaceAll("_", " "); return text.charAt(0).toUpperCase() + text.slice(1); }
+function businessImages(row: any) { const urls = Array.isArray(row?.image_urls) ? row.image_urls.filter(Boolean) : []; if (row?.image && !urls.includes(row.image)) urls.unshift(row.image); return urls; }
+async function uploadBusinessImage(file: File) { if (!file.type.startsWith("image/")) throw new Error("Please upload image files only."); if (file.size > 5 * 1024 * 1024) throw new Error("Each image must be 5MB or smaller."); if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) throw new Error("Cloudinary is not configured. Paste image URLs instead."); const body = new FormData(); body.append("file", file); body.append("upload_preset", CLOUDINARY_UPLOAD_PRESET); body.append("folder", "seattle-desi-tv/businesses"); const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, { method: "POST", body }); const result = await response.json(); if (!response.ok || !result.secure_url) throw new Error(result?.error?.message || "Image upload failed."); return result.secure_url as string; }
+function Field({ label, children }: { label: string; children: any }) { return <label className="grid gap-1 text-sm font-black text-slate-800"><span>{label}</span>{children}</label>; }
 
 export default function MyBusinessesPage() {
-  const [rows, setRows] = useState<any[]>([]);
-  const [message, setMessage] = useState("Loading...");
-  const [saving, setSaving] = useState(false);
-  const [viewingId, setViewingId] = useState("");
-  const [editingId, setEditingId] = useState("");
-  const [editForm, setEditForm] = useState<any>({});
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-
-  async function loadRows() {
-    const { data: auth } = await supabase.auth.getUser();
-    const user = auth?.user || null;
-    if (!user?.id) { setMessage("Please login to view your submitted listings."); return; }
-    const { data, error } = await supabase
-      .from("local_businesses")
-      .select("id,name,address,website,category,discount,offer,poc_name,poc_email,poc_phone,image,image_urls,status,created_at,created_by")
-      .eq("created_by", user.id)
-      .order("created_at", { ascending: false });
-    setRows(data || []);
-    setMessage(error ? error.message : "Listings submitted from your profile.");
-  }
-
-  function startEdit(row: any) {
-    setViewingId(row.id);
-    setEditingId(row.id);
-    setImageFiles([]);
-    setEditForm({
-      name: row.name || "",
-      address: row.address || "",
-      website: row.website || "",
-      category: row.category || "",
-      discount: row.discount || "",
-      offer: row.offer || "",
-      poc_name: row.poc_name || "",
-      poc_email: row.poc_email || "",
-      poc_phone: row.poc_phone || "",
-      image_urls: businessImages(row),
-      image_url_input: "",
-    });
-  }
-
-  function addImageUrl() {
-    const url = String(editForm.image_url_input || "").trim();
-    if (!url) return;
-    setEditForm({ ...editForm, image_urls: [...(editForm.image_urls || []), url], image_url_input: "" });
-  }
-
-  function removeImage(index: number) {
-    setEditForm({ ...editForm, image_urls: (editForm.image_urls || []).filter((_url: string, i: number) => i !== index) });
-  }
-
-  async function saveBusiness(row: any) {
-    setMessage("");
-    if (!editForm.name?.trim() || !editForm.address?.trim()) {
-      setMessage("Please enter business name and address.");
-      return;
-    }
-    setSaving(true);
-    const { data: auth } = await supabase.auth.getUser();
-    const user = auth?.user || null;
-    if (!user?.id || row.created_by !== user.id) {
-      setSaving(false);
-      setMessage("You can only edit business listings submitted from your own profile.");
-      return;
-    }
-    try {
-      const uploadedUrls = imageFiles.length ? await Promise.all(imageFiles.map(uploadBusinessImage)) : [];
-      const imageUrls = [...(editForm.image_urls || []), ...uploadedUrls].filter(Boolean);
-      const payload = {
-        name: editForm.name.trim(),
-        address: editForm.address.trim(),
-        website: editForm.website?.trim() || null,
-        category: editForm.category?.trim() || null,
-        discount: editForm.discount?.trim() || null,
-        offer: editForm.offer?.trim() || null,
-        poc_name: editForm.poc_name?.trim() || null,
-        poc_email: editForm.poc_email?.trim() || null,
-        poc_phone: editForm.poc_phone?.trim() || null,
-        image: imageUrls[0] || null,
-        image_urls: imageUrls.length ? imageUrls : null,
-        updated_at: new Date().toISOString(),
-      };
-      const { error } = await supabase.from("local_businesses").update(payload).eq("id", row.id).eq("created_by", user.id);
-      if (error) throw error;
-      setEditingId("");
-      setEditForm({});
-      setImageFiles([]);
-      setMessage("Business listing updated. If it is already approved, SDTV admins may review changes if needed.");
-      await loadRows();
-    } catch (error: any) {
-      setMessage(`Could not update listing: ${error.message || error}`);
-    } finally {
-      setSaving(false);
-    }
-  }
-
+  const [rows, setRows] = useState<any[]>([]); const [message, setMessage] = useState("Loading..."); const [saving, setSaving] = useState(false); const [selectedId, setSelectedId] = useState(""); const [editingId, setEditingId] = useState(""); const [editForm, setEditForm] = useState<any>({}); const [imageFiles, setImageFiles] = useState<File[]>([]); const [searchText, setSearchText] = useState(""); const [statusFilter, setStatusFilter] = useState("all");
+  async function loadRows() { const { data: auth } = await supabase.auth.getUser(); const user = auth?.user || null; if (!user?.id) { setMessage("Please login to view your submitted listings."); return; } const { data, error } = await supabase.from("local_businesses").select("id,name,address,website,category,discount,offer,poc_name,poc_email,poc_phone,image,image_urls,status,created_at,created_by").eq("created_by", user.id).order("created_at", { ascending: false }); const nextRows = data || []; setRows(nextRows); setSelectedId((current) => current || nextRows[0]?.id || ""); setMessage(error ? error.message : "Listings submitted from your profile."); }
   useEffect(() => { loadRows(); }, []);
-
-  return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <MyHubHeader />
-      <section className="max-w-7xl mx-auto px-6 py-10">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
-          <div>
-            <p className="text-pink-300 font-black uppercase tracking-wide">My Hub</p>
-            <h1 className="text-4xl md:text-5xl font-black mt-2">Business Listings</h1>
-            <p className="text-slate-300 mt-2">{message}</p>
-          </div>
-          <a href="/businesses" className="bg-pink-600 text-white px-5 py-3 rounded-xl font-black text-center">Add Business</a>
-        </div>
-        {rows.length === 0 ? <div className="bg-white text-slate-950 rounded-3xl p-8">No listings found.</div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">{rows.map((row) => {
-          const images = businessImages(row);
-          return <article key={row.id} className="bg-white text-slate-950 rounded-3xl p-6 block shadow-xl border"><div className="flex items-start justify-between gap-3"><h2 className="text-2xl font-black">{row.name}</h2><span className="shrink-0 rounded-full bg-pink-50 px-3 py-1 text-xs font-black text-pink-600">{statusText(row.status)}</span></div>{row.category && <p className="text-gray-600 mt-2">{row.category}</p>}
-            {viewingId === row.id && editingId !== row.id && <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">{images.length > 0 && <div className="mb-4 grid grid-cols-2 gap-2">{images.map((url, index) => <img key={`${url}-${index}`} src={url} alt={`${row.name} ${index + 1}`} className="h-28 w-full rounded-xl object-cover border bg-white" />)}</div>}<p><b>Address:</b> {row.address || "—"}</p><p className="mt-2"><b>Website:</b> {row.website || "—"}</p><p className="mt-2"><b>Offer:</b> {row.offer || "—"}</p><p className="mt-2"><b>Contact:</b> {[row.poc_name, row.poc_email, row.poc_phone].filter(Boolean).join(" · ") || "—"}</p></div>}
-            {editingId === row.id ? <div className="mt-5 grid gap-3"><input className="rounded-xl border p-3" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Business name" /><input className="rounded-xl border p-3" value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} placeholder="Address" /><input className="rounded-xl border p-3" value={editForm.website} onChange={(e) => setEditForm({ ...editForm, website: e.target.value })} placeholder="Website" /><input className="rounded-xl border p-3" value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })} placeholder="Category" /><input className="rounded-xl border p-3" value={editForm.discount} onChange={(e) => setEditForm({ ...editForm, discount: e.target.value })} placeholder="Discount / special offer" /><textarea className="min-h-24 rounded-xl border p-3" value={editForm.offer} onChange={(e) => setEditForm({ ...editForm, offer: e.target.value })} placeholder="Offer / description" /><input className="rounded-xl border p-3" value={editForm.poc_name} onChange={(e) => setEditForm({ ...editForm, poc_name: e.target.value })} placeholder="Contact name" /><input className="rounded-xl border p-3" value={editForm.poc_email} onChange={(e) => setEditForm({ ...editForm, poc_email: e.target.value })} placeholder="Contact email" /><input className="rounded-xl border p-3" value={editForm.poc_phone} onChange={(e) => setEditForm({ ...editForm, poc_phone: e.target.value })} placeholder="Contact phone" />
-              <div className="rounded-2xl bg-slate-50 p-4"><p className="font-black">Business Images</p>{(editForm.image_urls || []).length > 0 && <div className="mt-3 grid grid-cols-2 gap-2">{editForm.image_urls.map((url: string, index: number) => <div key={`${url}-${index}`} className="relative"><img src={url} alt={`Business image ${index + 1}`} className="h-28 w-full rounded-xl border bg-white object-cover" /><button type="button" onClick={() => removeImage(index)} className="absolute right-2 top-2 rounded-full bg-red-600 px-2 py-1 text-xs font-black text-white">Remove</button></div>)}</div>}<label className="mt-3 block text-sm font-bold">Upload more images<input type="file" accept="image/*" multiple onChange={(e) => setImageFiles(Array.from(e.target.files || []))} className="mt-1 w-full rounded-xl border bg-white p-3 font-normal" /></label>{imageFiles.length > 0 && <p className="mt-2 text-xs font-bold text-slate-500">{imageFiles.length} new image(s) selected. They upload when you click Save.</p>}<div className="mt-3 flex gap-2"><input className="flex-1 rounded-xl border bg-white p-3" value={editForm.image_url_input || ""} onChange={(e) => setEditForm({ ...editForm, image_url_input: e.target.value })} placeholder="Paste image URL" /><button type="button" onClick={addImageUrl} className="rounded-xl bg-slate-900 px-4 py-3 font-black text-white">Add URL</button></div></div>
-              <div className="flex gap-2"><button onClick={() => saveBusiness(row)} disabled={saving} className="flex-1 rounded-xl bg-pink-600 px-4 py-3 font-black text-white disabled:opacity-60">{saving ? "Saving..." : "Save"}</button><button onClick={() => { setEditingId(""); setEditForm({}); setImageFiles([]); }} className="rounded-xl bg-slate-100 px-4 py-3 font-black text-slate-700">Cancel</button></div></div> : <div className="mt-5 flex flex-wrap gap-2"><button onClick={() => setViewingId(viewingId === row.id ? "" : row.id)} className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700">{viewingId === row.id ? "Hide" : "View"}</button><button onClick={() => startEdit(row)} className="rounded-xl bg-pink-600 px-4 py-3 text-sm font-black text-white">Edit</button></div>}</article>;
-        })}</div>}
-      </section>
-      <SiteFooter />
-    </main>
-  );
+  const filteredRows = useMemo(() => { const q = searchText.trim().toLowerCase(); return rows.filter((row) => { if (statusFilter !== "all" && String(row.status || "pending").toLowerCase() !== statusFilter) return false; if (!q) return true; return [row.name, row.address, row.website, row.category, row.offer, row.poc_name, row.poc_email, row.poc_phone, row.status].some((value) => String(value || "").toLowerCase().includes(q)); }); }, [rows, searchText, statusFilter]);
+  const selectedRow = rows.find((row) => row.id === selectedId) || filteredRows[0] || null;
+  function startEdit(row: any) { setSelectedId(row.id); setEditingId(row.id); setImageFiles([]); setEditForm({ name: row.name || "", address: row.address || "", website: row.website || "", category: row.category || "", discount: row.discount || "", offer: row.offer || "", poc_name: row.poc_name || "", poc_email: row.poc_email || "", poc_phone: row.poc_phone || "", image_urls: businessImages(row), image_url_input: "" }); }
+  function addImageUrl() { const url = String(editForm.image_url_input || "").trim(); if (!url) return; setEditForm({ ...editForm, image_urls: [...(editForm.image_urls || []), url], image_url_input: "" }); }
+  function removeImage(index: number) { setEditForm({ ...editForm, image_urls: (editForm.image_urls || []).filter((_url: string, i: number) => i !== index) }); }
+  async function saveBusiness(row: any) { setMessage(""); if (!editForm.name?.trim() || !editForm.address?.trim()) { setMessage("Please enter business name and address."); return; } setSaving(true); const { data: auth } = await supabase.auth.getUser(); const user = auth?.user || null; if (!user?.id || row.created_by !== user.id) { setSaving(false); setMessage("You can only edit business listings submitted from your own profile."); return; } try { const uploadedUrls = imageFiles.length ? await Promise.all(imageFiles.map(uploadBusinessImage)) : []; const imageUrls = [...(editForm.image_urls || []), ...uploadedUrls].filter(Boolean); const payload = { name: editForm.name.trim(), address: editForm.address.trim(), website: editForm.website?.trim() || null, category: editForm.category?.trim() || null, discount: editForm.discount?.trim() || null, offer: editForm.offer?.trim() || null, poc_name: editForm.poc_name?.trim() || null, poc_email: editForm.poc_email?.trim() || null, poc_phone: editForm.poc_phone?.trim() || null, image: imageUrls[0] || null, image_urls: imageUrls.length ? imageUrls : null, updated_at: new Date().toISOString() }; const { error } = await supabase.from("local_businesses").update(payload).eq("id", row.id).eq("created_by", user.id); if (error) throw error; setEditingId(""); setEditForm({}); setImageFiles([]); setMessage("Business listing updated. If it is already approved, SDTV admins may review changes if needed."); await loadRows(); } catch (error: any) { setMessage(`Could not update listing: ${error.message || error}`); } finally { setSaving(false); } }
+  return <main className="min-h-screen bg-slate-950 text-white"><MyHubHeader /><section className="max-w-7xl mx-auto px-6 py-10"><div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8"><div><p className="text-pink-300 font-black uppercase tracking-wide">My Hub</p><h1 className="text-4xl md:text-5xl font-black mt-2">Business Listings</h1><p className="text-slate-300 mt-2">{message}</p></div><a href="/businesses" className="bg-pink-600 text-white px-5 py-3 rounded-xl font-black text-center">Add Business</a></div><section className="mb-6 rounded-3xl bg-white/10 p-4"><div className="grid gap-3 md:grid-cols-[1fr_180px]"><input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Search by business name, category, contact..." className="rounded-xl border border-white/10 bg-white px-4 py-3 font-bold text-slate-950" /><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-xl border border-white/10 bg-white px-4 py-3 font-bold text-slate-950"><option value="all">All statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="on_hold">On hold</option><option value="rejected">Rejected</option></select></div><div className="mt-3 flex items-center justify-between text-sm text-slate-300"><span>{filteredRows.length} of {rows.length} business listing(s)</span><button type="button" onClick={() => { setSearchText(""); setStatusFilter("all"); }} className="font-black text-pink-200">Clear filters</button></div></section>{rows.length === 0 ? <div className="bg-white text-slate-950 rounded-3xl p-8">No listings found.</div> : <div className="grid gap-6 xl:grid-cols-[430px_1fr]"><aside className="xl:sticky xl:top-6 h-fit"><div className="grid gap-4 max-h-[78vh] overflow-y-auto pr-1">{filteredRows.map((row) => <button key={row.id} onClick={() => { setSelectedId(row.id); setEditingId(""); }} className={`rounded-3xl border p-4 text-left text-slate-950 shadow-xl ${selectedRow?.id === row.id ? "border-pink-500 bg-pink-50 ring-2 ring-pink-100" : "border-white bg-white"}`}><div className="flex items-start justify-between gap-3"><h2 className="text-lg font-black leading-tight">{row.name}</h2><span className="rounded-full bg-pink-50 px-2 py-1 text-[11px] font-black text-pink-600">{statusText(row.status)}</span></div><p className="mt-2 text-sm text-slate-600">{row.category || "Business"}{row.address ? ` · ${row.address}` : ""}</p></button>)}{filteredRows.length === 0 && <div className="rounded-3xl bg-white p-8 text-slate-950">No matching business listings.</div>}</div></aside><section className="rounded-[2rem] bg-white p-6 text-slate-950 shadow-2xl min-h-[620px]">{!selectedRow ? <p className="text-slate-500">Select a business listing to view or edit it.</p> : <div>{editingId === selectedRow.id ? <div className="grid gap-4"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wide text-pink-600">Editing Business Listing</p><h2 className="text-3xl font-black">{selectedRow.name}</h2></div><button onClick={() => { setEditingId(""); setEditForm({}); setImageFiles([]); }} className="rounded-xl bg-slate-100 px-4 py-3 font-black text-slate-700">Cancel</button></div><div className="grid gap-4 md:grid-cols-2"><Field label="Business name"><input className="rounded-xl border p-3 font-normal" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></Field><Field label="Category"><input className="rounded-xl border p-3 font-normal" value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })} /></Field><Field label="Address"><input className="rounded-xl border p-3 font-normal" value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} /></Field><Field label="Website"><input className="rounded-xl border p-3 font-normal" value={editForm.website} onChange={(e) => setEditForm({ ...editForm, website: e.target.value })} /></Field><Field label="Discount / special offer"><input className="rounded-xl border p-3 font-normal" value={editForm.discount} onChange={(e) => setEditForm({ ...editForm, discount: e.target.value })} /></Field><Field label="Contact name"><input className="rounded-xl border p-3 font-normal" value={editForm.poc_name} onChange={(e) => setEditForm({ ...editForm, poc_name: e.target.value })} /></Field><Field label="Contact email"><input className="rounded-xl border p-3 font-normal" value={editForm.poc_email} onChange={(e) => setEditForm({ ...editForm, poc_email: e.target.value })} /></Field><Field label="Contact phone"><input className="rounded-xl border p-3 font-normal" value={editForm.poc_phone} onChange={(e) => setEditForm({ ...editForm, poc_phone: e.target.value })} /></Field><Field label="Offer / description"><textarea className="min-h-28 rounded-xl border p-3 font-normal" value={editForm.offer} onChange={(e) => setEditForm({ ...editForm, offer: e.target.value })} /></Field></div><div className="rounded-2xl bg-slate-50 p-4"><p className="font-black">Business Images</p>{(editForm.image_urls || []).length > 0 && <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3">{editForm.image_urls.map((url: string, index: number) => <div key={`${url}-${index}`} className="relative"><img src={url} alt={`Business image ${index + 1}`} className="h-32 w-full rounded-xl border bg-white object-cover" /><button type="button" onClick={() => removeImage(index)} className="absolute right-2 top-2 rounded-full bg-red-600 px-2 py-1 text-xs font-black text-white">Remove</button></div>)}</div>}<Field label="Upload more images"><input type="file" accept="image/*" multiple onChange={(e) => setImageFiles(Array.from(e.target.files || []))} className="rounded-xl border bg-white p-3 font-normal" /></Field>{imageFiles.length > 0 && <p className="mt-2 text-xs font-bold text-slate-500">{imageFiles.length} new image(s) selected. They upload when you click Save.</p>}<div className="mt-3 flex gap-2"><input className="flex-1 rounded-xl border bg-white p-3" value={editForm.image_url_input || ""} onChange={(e) => setEditForm({ ...editForm, image_url_input: e.target.value })} placeholder="Paste image URL" /><button type="button" onClick={addImageUrl} className="rounded-xl bg-slate-900 px-4 py-3 font-black text-white">Add URL</button></div></div><button onClick={() => saveBusiness(selectedRow)} disabled={saving} className="rounded-xl bg-pink-600 px-5 py-4 font-black text-white disabled:opacity-60">{saving ? "Saving..." : "Save Business Listing"}</button></div> : <div><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div><p className="text-xs font-black uppercase tracking-wide text-pink-600">Selected Business Listing</p><h2 className="text-3xl font-black">{selectedRow.name}</h2><p className="mt-1 text-sm text-slate-600">{selectedRow.category || "Business"} · {selectedRow.address || "No address"}</p></div><button onClick={() => startEdit(selectedRow)} className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white">Edit</button></div>{businessImages(selectedRow).length > 0 && <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3">{businessImages(selectedRow).map((url, index) => <img key={`${url}-${index}`} src={url} alt={`${selectedRow.name} ${index + 1}`} className="h-36 w-full rounded-xl border bg-white object-cover" />)}</div>}<section className="mt-5 rounded-2xl border bg-slate-50 p-5"><div className="grid gap-4 md:grid-cols-2 text-sm"><p><b>Status:</b><br />{statusText(selectedRow.status)}</p><p><b>Website:</b><br />{selectedRow.website || "—"}</p><p><b>Discount:</b><br />{selectedRow.discount || "—"}</p><p><b>Contact:</b><br />{[selectedRow.poc_name, selectedRow.poc_email, selectedRow.poc_phone].filter(Boolean).join(" · ") || "—"}</p><p className="md:col-span-2"><b>Offer / description:</b><br />{selectedRow.offer || "—"}</p></div></section></div>}</div>}</section></div>}</section><SiteFooter /></main>;
 }
