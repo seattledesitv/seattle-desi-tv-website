@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AccountMenu from "./AccountMenu";
 
 const primaryLinks = [
   ["Dashboard", "/studio"],
-  ["Event Ops", "/studio/event-ops-v2"],
-  ["Influencer Management", "/studio/influencer-management"],
+  ["Event Operations", "/studio/event-ops-v2"],
+  ["User Control", "/studio/users"],
 ];
 
 const groups = [
@@ -24,20 +24,12 @@ const groups = [
   },
   {
     title: "Operations",
-    links: [
-      ["Event Ops", "/studio/event-ops-v2"],
-      ["Legacy Event Ops", "/studio/event-ops"],
-      ["Events", "/studio/events"],
-      ["Pending Events", "/studio/events/pending"],
-      ["Coverage Briefs", "/studio/event-coverage-briefs"],
-      ["Calendar", "/studio/assignments-calendar"],
-    ],
+    links: [["Event Operations", "/studio/event-ops-v2"]],
   },
   {
     title: "People",
     links: [
       ["User Control", "/studio/users"],
-      ["Crew", "/studio/crew/pending"],
       ["Volunteers", "/studio/volunteers"],
       ["Team", "/studio/team"],
       ["Roles", "/studio/roles"],
@@ -51,7 +43,6 @@ const groups = [
     links: [
       ["Video Production", "/studio/video-production"],
       ["Radio", "/studio/radio-team"],
-      ["Coverage", "/studio/coverage"],
     ],
   },
   {
@@ -70,9 +61,15 @@ const groups = [
 export default function StudioHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState("");
+  const [pathname, setPathname] = useState("");
 
-  function toggleGroup(title: string) {
-    setOpenGroup((current) => (current === title ? "" : title));
+  useEffect(() => { setPathname(window.location.pathname || ""); }, []);
+
+  function toggleGroup(title: string) { setOpenGroup((current) => (current === title ? "" : title)); }
+  function isActive(href: string) { return pathname === href || pathname.startsWith(`${href}/`); }
+  function navClass(href: string, primary = false) {
+    if (isActive(href)) return "bg-pink-600 text-white ring-1 ring-pink-200/40 shadow-lg shadow-pink-900/30";
+    return primary ? "bg-white/10 hover:bg-pink-600 text-white" : "bg-white/10 hover:bg-white/20 text-white";
   }
 
   return (
@@ -90,14 +87,15 @@ export default function StudioHeader() {
             </div>
           </div>
 
-          <nav className="hidden lg:flex flex-wrap items-center gap-2 text-sm font-bold" onMouseLeave={() => setOpenGroup("")}>
-            {primaryLinks.map(([label, href]) => <a key={href} href={href} className="bg-pink-600 hover:bg-pink-500 px-3 py-2 rounded-lg transition">{label}</a>)}
+          <nav className="hidden lg:flex flex-wrap items-center gap-2 text-sm font-bold" onMouseLeave={() => setOpenGroup("")}> 
+            {primaryLinks.map(([label, href]) => <a key={href} href={href} aria-current={isActive(href) ? "page" : undefined} className={`${navClass(href, true)} px-3 py-2 rounded-lg transition`}>{label}</a>)}
             {groups.map((group) => {
               const isOpen = openGroup === group.title;
+              const groupActive = group.links.some(([, href]) => isActive(href));
               return <div key={group.title} className="relative" onMouseEnter={() => setOpenGroup(group.title)}>
-                <button type="button" onClick={() => toggleGroup(group.title)} aria-expanded={isOpen} className="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg transition">{group.title} ▾</button>
+                <button type="button" onClick={() => toggleGroup(group.title)} aria-expanded={isOpen} className={`${groupActive ? "bg-pink-600 text-white" : "bg-white/10 hover:bg-white/20 text-white"} px-3 py-2 rounded-lg transition`}>{group.title} ▾</button>
                 {isOpen && <div className="absolute left-0 top-full z-50 min-w-64 rounded-2xl border border-white/10 bg-slate-900 p-2 shadow-2xl">
-                  {group.links.map(([label, href]) => <a key={href} href={href} onClick={() => setOpenGroup("")} className="block rounded-xl px-3 py-2 text-sm text-white hover:bg-pink-600">{label}</a>)}
+                  {group.links.map(([label, href]) => <a key={href} href={href} aria-current={isActive(href) ? "page" : undefined} onClick={() => setOpenGroup("")} className={`${isActive(href) ? "bg-pink-600" : "hover:bg-pink-600"} block rounded-xl px-3 py-2 text-sm text-white`}>{label}</a>)}
                 </div>}
               </div>;
             })}
@@ -105,12 +103,12 @@ export default function StudioHeader() {
 
           {menuOpen && <nav className="lg:hidden grid gap-3 text-sm font-bold">
             <div className="grid grid-cols-1 gap-2">
-              {primaryLinks.map(([label, href]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="bg-pink-600 px-3 py-3 rounded-lg transition text-center">{label}</a>)}
+              {primaryLinks.map(([label, href]) => <a key={href} href={href} aria-current={isActive(href) ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`${navClass(href, true)} px-3 py-3 rounded-lg transition text-center`}>{label}</a>)}
             </div>
             {groups.map((group) => <div key={group.title} className="rounded-2xl border border-white/10 bg-white/5 p-3">
               <p className="mb-2 text-xs font-black uppercase tracking-wide text-pink-200">{group.title}</p>
               <div className="grid grid-cols-2 gap-2">
-                {group.links.map(([label, href]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="bg-white/10 hover:bg-pink-600 px-3 py-3 rounded-lg transition text-center">{label}</a>)}
+                {group.links.map(([label, href]) => <a key={href} href={href} aria-current={isActive(href) ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`${isActive(href) ? "bg-pink-600" : "bg-white/10 hover:bg-pink-600"} px-3 py-3 rounded-lg transition text-center`}>{label}</a>)}
               </div>
             </div>)}
           </nav>}
