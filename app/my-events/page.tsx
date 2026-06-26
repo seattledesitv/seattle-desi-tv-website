@@ -43,7 +43,7 @@ async function uploadEventImage(file: File) {
 export default function MyEventsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("Loading your events...");
+  const [message, setMessage] = useState("Loading your event listings...");
   const [rows, setRows] = useState<any[]>([]);
   const [viewingId, setViewingId] = useState("");
   const [editingId, setEditingId] = useState("");
@@ -56,7 +56,7 @@ export default function MyEventsPage() {
     const user = auth?.user || null;
     if (!user?.id) {
       setRows([]);
-      setMessage("Please login to view events submitted from your profile.");
+      setMessage("Please login to view event listings submitted from your profile.");
       setLoading(false);
       return;
     }
@@ -66,7 +66,7 @@ export default function MyEventsPage() {
       .eq("created_by", user.id)
       .order("created_at", { ascending: false });
     setRows(data || []);
-    setMessage(error ? error.message : "Events submitted from your profile.");
+    setMessage(error ? error.message : "Event listings submitted from your profile.");
     setLoading(false);
   }
 
@@ -108,7 +108,7 @@ export default function MyEventsPage() {
     const user = auth?.user || null;
     if (!user?.id || row.created_by !== user.id) {
       setSaving(false);
-      setMessage("You can only edit events submitted from your own profile.");
+      setMessage("You can only edit event listings submitted from your own profile.");
       return;
     }
     try {
@@ -131,10 +131,10 @@ export default function MyEventsPage() {
       setEditingId("");
       setEditForm({});
       setImageFiles([]);
-      setMessage("Event updated. If the event is already approved, SDTV admins may review changes if needed.");
+      setMessage("Event listing updated. If it is already approved, SDTV admins may review changes if needed.");
       await loadRows();
     } catch (error: any) {
-      setMessage(`Could not update event: ${error.message || error}`);
+      setMessage(`Could not update event listing: ${error.message || error}`);
     } finally {
       setSaving(false);
     }
@@ -149,17 +149,17 @@ export default function MyEventsPage() {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
           <div>
             <p className="text-pink-300 font-black uppercase tracking-wide">My Hub</p>
-            <h1 className="text-4xl md:text-5xl font-black mt-2">My Events</h1>
+            <h1 className="text-4xl md:text-5xl font-black mt-2">Event Listings</h1>
             <p className="text-slate-300 mt-2">{loading ? "Loading..." : message}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <a href="/my-events-v2" className="border border-white/20 text-white px-5 py-3 rounded-xl font-black text-center">Open Event Portal</a>
+            <a href="/my-events-v2" className="border border-white/20 text-white px-5 py-3 rounded-xl font-black text-center">Open Event Listing Status</a>
             <a href="/events/new" className="bg-pink-600 text-white px-5 py-3 rounded-xl font-black text-center">Submit Event</a>
           </div>
         </div>
 
         {rows.length === 0 ? (
-          <div className="bg-white text-slate-950 rounded-3xl p-8 border"><h2 className="text-2xl font-black">No events found</h2><p className="text-gray-600 mt-2">Your submitted events will appear here.</p></div>
+          <div className="bg-white text-slate-950 rounded-3xl p-8 border"><h2 className="text-2xl font-black">No event listings found</h2><p className="text-gray-600 mt-2">Your submitted event listings will appear here.</p></div>
         ) : (
           <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
             {rows.map((row) => {
@@ -167,32 +167,8 @@ export default function MyEventsPage() {
               return <article key={row.id} className="bg-white text-slate-950 rounded-3xl p-6 border shadow-xl">
                 <div className="flex items-start justify-between gap-4"><h2 className="text-2xl font-black">{row.title}</h2><span className="bg-pink-50 text-pink-600 px-3 py-1 rounded-full text-xs font-black whitespace-nowrap">{statusText(row.status)}</span></div>
                 <p className="text-gray-600 mt-3">{formatDate(row.date)}{row.location ? ` · ${row.location}` : ""}</p>
-
-                {viewingId === row.id && editingId !== row.id && <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
-                  {images.length > 0 && <div className="mb-4 grid grid-cols-2 gap-2">{images.map((url, index) => <img key={`${url}-${index}`} src={url} alt={`${row.title} ${index + 1}`} className="h-28 w-full rounded-xl object-cover border bg-white" />)}</div>}
-                  <p><b>Description:</b> {row.description || "—"}</p>
-                  <p className="mt-2"><b>Ticket URL:</b> {row.ticket_url || "—"}</p>
-                  <p className="mt-2"><b>Organizer email:</b> {row.poc_email || "—"}</p>
-                  <p className="mt-2"><b>Organizer phone:</b> {row.poc_phone || "—"}</p>
-                </div>}
-
-                {editingId === row.id ? <div className="mt-5 grid gap-3">
-                  <input className="rounded-xl border p-3" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="Event title" />
-                  <input className="rounded-xl border p-3" type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} />
-                  <input className="rounded-xl border p-3" value={editForm.location} onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} placeholder="Location" />
-                  <textarea className="min-h-24 rounded-xl border p-3" value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description" />
-                  <input className="rounded-xl border p-3" value={editForm.ticket_url} onChange={(e) => setEditForm({ ...editForm, ticket_url: e.target.value })} placeholder="Ticket / registration URL" />
-                  <input className="rounded-xl border p-3" value={editForm.poc_email} onChange={(e) => setEditForm({ ...editForm, poc_email: e.target.value })} placeholder="Organizer email" />
-                  <input className="rounded-xl border p-3" value={editForm.poc_phone} onChange={(e) => setEditForm({ ...editForm, poc_phone: e.target.value })} placeholder="Organizer phone" />
-                  <div className="rounded-2xl bg-slate-50 p-4">
-                    <p className="font-black">Event Images</p>
-                    {(editForm.image_urls || []).length > 0 && <div className="mt-3 grid grid-cols-2 gap-2">{editForm.image_urls.map((url: string, index: number) => <div key={`${url}-${index}`} className="relative"><img src={url} alt={`Event image ${index + 1}`} className="h-28 w-full rounded-xl border bg-white object-cover" /><button type="button" onClick={() => removeImage(index)} className="absolute right-2 top-2 rounded-full bg-red-600 px-2 py-1 text-xs font-black text-white">Remove</button></div>)}</div>}
-                    <label className="mt-3 block text-sm font-bold">Upload more images<input type="file" accept="image/*" multiple onChange={(e) => setImageFiles(Array.from(e.target.files || []))} className="mt-1 w-full rounded-xl border bg-white p-3 font-normal" /></label>
-                    {imageFiles.length > 0 && <p className="mt-2 text-xs font-bold text-slate-500">{imageFiles.length} new image(s) selected. They upload when you click Save.</p>}
-                    <div className="mt-3 flex gap-2"><input className="flex-1 rounded-xl border bg-white p-3" value={editForm.image_url_input || ""} onChange={(e) => setEditForm({ ...editForm, image_url_input: e.target.value })} placeholder="Paste image URL" /><button type="button" onClick={addImageUrl} className="rounded-xl bg-slate-900 px-4 py-3 font-black text-white">Add URL</button></div>
-                  </div>
-                  <div className="flex gap-2"><button onClick={() => saveEvent(row)} disabled={saving} className="flex-1 rounded-xl bg-pink-600 px-4 py-3 font-black text-white disabled:opacity-60">{saving ? "Saving..." : "Save"}</button><button onClick={() => { setEditingId(""); setEditForm({}); setImageFiles([]); }} className="rounded-xl bg-slate-100 px-4 py-3 font-black text-slate-700">Cancel</button></div>
-                </div> : <div className="mt-5 flex flex-wrap gap-2"><button onClick={() => setViewingId(viewingId === row.id ? "" : row.id)} className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700">{viewingId === row.id ? "Hide" : "View"}</button><button onClick={() => startEdit(row)} className="rounded-xl bg-pink-600 px-4 py-3 text-sm font-black text-white">Edit</button></div>}
+                {viewingId === row.id && editingId !== row.id && <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">{images.length > 0 && <div className="mb-4 grid grid-cols-2 gap-2">{images.map((url, index) => <img key={`${url}-${index}`} src={url} alt={`${row.title} ${index + 1}`} className="h-28 w-full rounded-xl object-cover border bg-white" />)}</div>}<p><b>Description:</b> {row.description || "—"}</p><p className="mt-2"><b>Ticket URL:</b> {row.ticket_url || "—"}</p><p className="mt-2"><b>Organizer email:</b> {row.poc_email || "—"}</p><p className="mt-2"><b>Organizer phone:</b> {row.poc_phone || "—"}</p></div>}
+                {editingId === row.id ? <div className="mt-5 grid gap-3"><input className="rounded-xl border p-3" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="Event title" /><input className="rounded-xl border p-3" type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} /><input className="rounded-xl border p-3" value={editForm.location} onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} placeholder="Location" /><textarea className="min-h-24 rounded-xl border p-3" value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description" /><input className="rounded-xl border p-3" value={editForm.ticket_url} onChange={(e) => setEditForm({ ...editForm, ticket_url: e.target.value })} placeholder="Ticket / registration URL" /><input className="rounded-xl border p-3" value={editForm.poc_email} onChange={(e) => setEditForm({ ...editForm, poc_email: e.target.value })} placeholder="Organizer email" /><input className="rounded-xl border p-3" value={editForm.poc_phone} onChange={(e) => setEditForm({ ...editForm, poc_phone: e.target.value })} placeholder="Organizer phone" /><div className="rounded-2xl bg-slate-50 p-4"><p className="font-black">Event Images</p>{(editForm.image_urls || []).length > 0 && <div className="mt-3 grid grid-cols-2 gap-2">{editForm.image_urls.map((url: string, index: number) => <div key={`${url}-${index}`} className="relative"><img src={url} alt={`Event image ${index + 1}`} className="h-28 w-full rounded-xl border bg-white object-cover" /><button type="button" onClick={() => removeImage(index)} className="absolute right-2 top-2 rounded-full bg-red-600 px-2 py-1 text-xs font-black text-white">Remove</button></div>)}</div>}<label className="mt-3 block text-sm font-bold">Upload more images<input type="file" accept="image/*" multiple onChange={(e) => setImageFiles(Array.from(e.target.files || []))} className="mt-1 w-full rounded-xl border bg-white p-3 font-normal" /></label>{imageFiles.length > 0 && <p className="mt-2 text-xs font-bold text-slate-500">{imageFiles.length} new image(s) selected. They upload when you click Save.</p>}<div className="mt-3 flex gap-2"><input className="flex-1 rounded-xl border bg-white p-3" value={editForm.image_url_input || ""} onChange={(e) => setEditForm({ ...editForm, image_url_input: e.target.value })} placeholder="Paste image URL" /><button type="button" onClick={addImageUrl} className="rounded-xl bg-slate-900 px-4 py-3 font-black text-white">Add URL</button></div></div><div className="flex gap-2"><button onClick={() => saveEvent(row)} disabled={saving} className="flex-1 rounded-xl bg-pink-600 px-4 py-3 font-black text-white disabled:opacity-60">{saving ? "Saving..." : "Save"}</button><button onClick={() => { setEditingId(""); setEditForm({}); setImageFiles([]); }} className="rounded-xl bg-slate-100 px-4 py-3 font-black text-slate-700">Cancel</button></div></div> : <div className="mt-5 flex flex-wrap gap-2"><button onClick={() => setViewingId(viewingId === row.id ? "" : row.id)} className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700">{viewingId === row.id ? "Hide" : "View"}</button><button onClick={() => startEdit(row)} className="rounded-xl bg-pink-600 px-4 py-3 text-sm font-black text-white">Edit</button></div>}
               </article>;
             })}
           </div>
