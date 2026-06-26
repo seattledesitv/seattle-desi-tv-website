@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
+import { isAdminRole, resolveUserRole } from "../../../lib/roles";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -11,10 +12,6 @@ const fromEmail = process.env.RESEND_FROM_EMAIL || "Seattle Desi TV <updates@sea
 type Recipient = { email?: string; user_id?: string | null; name?: string | null };
 
 function cleanEmail(value?: string | null) { return String(value || "").trim().toLowerCase(); }
-function adminAllowed(role?: string | null) {
-  const value = String(role || "").toLowerCase();
-  return value.includes("admin") || value === "super_admin";
-}
 function uniqueRecipients(recipients: Recipient[]) {
   const seen = new Set<string>();
   return recipients.map((item) => ({ ...item, email: cleanEmail(item.email) })).filter((item) => {
@@ -33,17 +30,10 @@ export async function POST(request: Request) {
     const user = userData?.user || null;
     if (userError || !user) return NextResponse.json({ error: "Login required." }, { status: 401 });
 
-    const service = createClient(supabaseUrl, serviceKey || anonKey);
-    const userEmail = cleanEmail(user.email);
-    const { data: adminRows, error: adminError } = await service
-      .from("admins")
-      .select("role,email,user_id")
-      .or(`user_id.eq.${user.id},email.eq.${userEmail}`)
-      .limit(5);
-    if (adminError) return NextResponse.json({ error: `Admin check failed: ${adminError.message}` }, { status: 500 });
-    const admin = (adminRows || []).find((row: any) => row.user_id === user.id || cleanEmail(row.email) === userEmail);
-    if (!adminAllowed(admin?.role)) {
-      return NextResponse.json({ error: `Studio admin access required. Logged in as ${userEmail || user.id}.` }, { status: 403 });
+    const db = createClient(supabaseUrl, serviceKey || anonKey);
+    const resolvedRole = await resolveUserRole(db, user);
+    if (!isAdminRole(resolvedRole)) {
+      return NextResponse.json({ error: `Studio admin access required. Logged in as ${cleanEmail(user.email) || user.id}. Resolved role: ${resolvedRole}.` }, { status: 403 });
     }
 
     const body = await request.json();
@@ -66,10 +56,10 @@ export async function POST(request: Request) {
     const notificationRows = recipients.filter((item) => item.user_id).map((item) => ({ user_id: item.user_id, title: notificationTitle, message, link: notificationLink, read: false }));
     let notificationStatus: any = { inserted: 0 };
     if (notificationRows.length) {
-      const { error } = await service.from("notifications").insert(notificationRows);
+      const { error } = await db.from("notifications").insert(notificationRows);
       notificationStatus = error ? { inserted: 0, error: error.message } : { inserted: notificationRows.length };
     }
-    return NextResponse.json({ ok: true, recipients: recipients.length, emailStatus, notificationStatus });
+    return NextResponse.json({ ok: true, recipients: recipients.length, emailStatus, notificationStatus, resolvedRole });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || "Communication send failed." }, { status: 500 });
   }
