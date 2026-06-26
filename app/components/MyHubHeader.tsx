@@ -35,19 +35,19 @@ export default function MyHubHeader() {
   const shouldShowJourney = Boolean(email) && !canSeeTeamTools && !canSeeStudio && !canSeeVideoTools;
 
   const links: HubLink[] = [
-    { label: "Hub Home", href: "/my-hub", show: true, tone: "primary" },
-    { label: "My Profile", href: "/my-profile", show: Boolean(email) },
-    { label: "Portal", href: "/portal", show: true },
+    { label: "Dashboard", href: "/my-hub", show: true, tone: "primary" },
+    { label: "Profile", href: "/my-profile", show: Boolean(email) },
+    { label: "Settings", href: "/portal", show: true },
     { label: "Influencer Profile", href: "/my-influencer-profile", show: Boolean(email) },
-    { label: "My Event Submissions", href: "/my-events", show: true },
-    { label: "My Events v2 Beta", href: "/my-events-v2", show: true },
-    { label: "My Business Listings", href: "/my-businesses", show: true },
+    { label: "Event Submissions", href: "/my-events", show: true },
+    { label: "My Events", href: "/my-events-v2", show: true },
+    { label: "Business Listings", href: "/my-businesses", show: true },
     { label: "Coverage Opportunities", href: "/my-coverage", show: true, tone: canSeeTeamTools ? "default" : "team" },
-    { label: "My Assignments", href: "/my-assignments", show: true, tone: canSeeTeamTools ? "default" : "team" },
-    { label: "My Video Assignments", href: "/my-video-assignments", show: canSeeVideoTools, tone: "default" },
-    { label: "My Availability", href: "/my-availability", show: true, tone: canSeeTeamTools ? "default" : "team" },
-    { label: "My Contact Requests", href: "/my-contact-requests", show: true },
-    { label: "My SDTV Journey", href: "/my-role-requests", show: shouldShowJourney },
+    { label: "Assignments", href: "/my-assignments", show: true, tone: canSeeTeamTools ? "default" : "team" },
+    { label: "Video Assignments", href: "/my-video-assignments", show: canSeeVideoTools, tone: "default" },
+    { label: "Availability", href: "/my-availability", show: true, tone: canSeeTeamTools ? "default" : "team" },
+    { label: "Contact Requests", href: "/my-contact-requests", show: true },
+    { label: "SDTV Journey", href: "/my-role-requests", show: shouldShowJourney },
     { label: "Studio", href: "/studio", show: canSeeStudio, tone: "primary" },
   ];
 
