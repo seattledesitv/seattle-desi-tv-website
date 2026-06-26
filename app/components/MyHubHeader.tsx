@@ -18,8 +18,10 @@ export default function MyHubHeader() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("general_public");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pathname, setPathname] = useState("");
 
   useEffect(() => {
+    setPathname(window.location.pathname || "");
     async function load() {
       const { data } = await supabase.auth.getUser();
       const user = data?.user || null;
@@ -51,8 +53,17 @@ export default function MyHubHeader() {
     { label: "Studio", href: "/studio", show: canSeeStudio, tone: "primary" },
   ];
 
-  function linkClass(tone?: HubLink["tone"]) {
-    if (tone === "primary") return "bg-pink-600 hover:bg-pink-700 text-white";
+  function isActive(href: string) {
+    if (!pathname) return false;
+    if (href === "/my-events") return pathname === "/my-events";
+    if (href === "/my-events-v2") return pathname === "/my-events-v2";
+    if (href === "/my-hub") return pathname === "/my-hub";
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
+
+  function linkClass(tone?: HubLink["tone"], active?: boolean) {
+    if (active) return "relative bg-pink-600 text-white shadow-lg shadow-pink-900/30 ring-1 ring-pink-300/40 after:absolute after:left-3 after:right-3 after:-bottom-1 after:h-0.5 after:rounded-full after:bg-pink-200";
+    if (tone === "primary") return "bg-white/10 hover:bg-pink-600 text-white";
     if (tone === "team") return "bg-white/5 hover:bg-white/10 text-slate-400 border border-white/10";
     return "bg-white/10 hover:bg-pink-600 text-white";
   }
@@ -73,19 +84,21 @@ export default function MyHubHeader() {
           </div>
 
           <nav className="hidden lg:flex flex-wrap gap-2 text-sm font-bold">
-            {links.filter((link) => link.show).map((link) => (
-              <a key={link.href + link.label} href={link.href} className={`${linkClass(link.tone)} px-3 py-2 rounded-lg transition`}>
+            {links.filter((link) => link.show).map((link) => {
+              const active = isActive(link.href);
+              return <a key={link.href + link.label} href={link.href} aria-current={active ? "page" : undefined} className={`${linkClass(link.tone, active)} px-3 py-2 rounded-lg transition`}>
                 {link.label}{link.tone === "team" ? " · Team" : ""}
-              </a>
-            ))}
+              </a>;
+            })}
           </nav>
 
           {menuOpen && <nav className="lg:hidden grid grid-cols-2 gap-2 text-sm font-bold">
-            {links.filter((link) => link.show).map((link) => (
-              <a key={link.href + link.label} href={link.href} onClick={() => setMenuOpen(false)} className={`${linkClass(link.tone)} px-3 py-3 rounded-lg transition text-center`}>
+            {links.filter((link) => link.show).map((link) => {
+              const active = isActive(link.href);
+              return <a key={link.href + link.label} href={link.href} aria-current={active ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`${linkClass(link.tone, active)} px-3 py-3 rounded-lg transition text-center`}>
                 {link.label}{link.tone === "team" ? " · Team" : ""}
-              </a>
-            ))}
+              </a>;
+            })}
           </nav>}
         </div>
       </div>
