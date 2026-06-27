@@ -39,6 +39,8 @@ export default function SiteHeader() {
     { label: "Radio", href: "/radio", show: true },
     { label: "Events", href: "/events", show: true },
     { label: "Businesses", href: "/businesses", show: true },
+    { label: "Groups", href: "/community-groups", show: true },
+    { label: "Orgs", href: "/community-organizations", show: true },
     { label: "Influencers", href: "/influencers", show: true },
     { label: "Advertise", href: "/marketing-packages", show: true },
     { label: "Team", href: "/team", show: true },
