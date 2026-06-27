@@ -30,6 +30,7 @@ const groups = [
     title: "People",
     links: [
       ["User Control", "/studio/users"],
+      ["ID Badges", "/studio/id-badges"],
       ["Volunteers", "/studio/volunteers"],
       ["Team", "/studio/team"],
       ["Roles", "/studio/roles"],
