@@ -32,6 +32,13 @@ export default function SiteHeader() {
     loadState();
   }, []);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, [menuOpen]);
+
   const canSeeStudio = Boolean(isLoggedIn && isAdminRole(role));
   const links = [
     { label: "Home", href: "/", show: true },
@@ -40,13 +47,18 @@ export default function SiteHeader() {
     { label: "Events", href: "/events", show: true },
     { label: "Businesses", href: "/businesses", show: true },
     { label: "Groups", href: "/community-groups", show: true },
-    { label: "Orgs", href: "/community-organizations", show: true },
+    { label: "Organizations", href: "/community-organizations", show: true },
     { label: "Influencers", href: "/influencers", show: true },
     { label: "Advertise", href: "/marketing-packages", show: true },
     { label: "Team", href: "/team", show: true },
     { label: "Contact", href: "/contact", show: true },
     { label: "My Hub", href: "/my-hub", show: isLoggedIn },
     { label: "Studio", href: "/studio", show: canSeeStudio },
+  ];
+  const mobileLinks = [
+    { label: "Share with SDTV", href: "/submit-content", show: true, primary: true },
+    ...links,
+    { label: isLoggedIn ? "Account" : "Login", href: isLoggedIn ? "/my-hub" : "/login", show: true },
   ];
 
   return (
@@ -55,26 +67,31 @@ export default function SiteHeader() {
         <div className="hidden sm:flex gap-4 flex-wrap"><a href="https://www.youtube.com/@SeattleDesiTV" target="_blank" rel="noreferrer" className="hover:text-pink-300">YouTube</a><a href="https://instagram.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-300">Instagram</a><a href="https://facebook.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-300">Facebook</a><a href="mailto:info@seattledesitv.com" className="hover:text-pink-300">info@seattledesitv.com</a></div>
         <span className="font-bold text-yellow-300">Seattle Desi TV + Radio</span>
       </div>
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b px-4 md:px-10 py-3 text-slate-950">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 md:gap-4">
-            <a href="/" className="flex items-center gap-3 font-black text-lg md:text-xl"><img src="/sdtv-logo.png" alt="Seattle Desi TV" className="h-11 md:h-14 w-auto" /><span>Seattle Desi TV</span></a>
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b px-3 md:px-10 py-3 text-slate-950">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3 md:gap-4">
+            <a href="/" className="flex min-w-0 items-center gap-2 font-black text-base md:text-xl"><img src="/sdtv-logo.png" alt="Seattle Desi TV" className="h-10 md:h-14 w-auto shrink-0" /><span className="truncate">Seattle Desi TV</span></a>
             <a href="/submit-content" className="hidden sm:inline-flex rounded-xl bg-pink-600 px-4 py-2 text-sm font-black text-white shadow-sm hover:bg-pink-700">Share with SDTV</a>
           </div>
           <nav className="hidden lg:flex items-center gap-3 font-bold text-sm">
-            {links.filter((link) => link.show).map((link) => <a key={link.href + link.label} href={link.href} className="hover:text-pink-600">{link.label}</a>)}
+            {links.filter((link) => link.show).map((link) => <a key={link.href + link.label} href={link.href} className="hover:text-pink-600 whitespace-nowrap">{link.label}</a>)}
             <AccountMenu tone="light" from="site" />
           </nav>
-          <div className="lg:hidden flex items-center gap-2">
-            <a href="/submit-content" className="sm:hidden rounded-xl bg-pink-600 px-3 py-2 text-xs font-black text-white">Share</a>
-            <AccountMenu tone="light" from="site" />
-            <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} className="border border-slate-300 px-3 py-2 rounded-xl font-black text-sm">{menuOpen ? "Close" : "Menu"}</button>
+          <div className="lg:hidden flex items-center gap-2 shrink-0">
+            <button type="button" onClick={() => setMenuOpen(true)} aria-expanded={menuOpen} className="border border-slate-300 px-3 py-2 rounded-xl font-black text-sm">☰ Menu</button>
           </div>
         </div>
-        {menuOpen && <nav className="lg:hidden max-w-7xl mx-auto mt-3 grid grid-cols-2 gap-2 text-sm font-bold">
-          <a href="/submit-content" onClick={() => setMenuOpen(false)} className="bg-pink-600 text-white px-3 py-3 rounded-xl text-center sm:hidden">Share with SDTV</a>
-          {links.filter((link) => link.show).map((link) => <a key={link.href + link.label} href={link.href} onClick={() => setMenuOpen(false)} className="bg-slate-100 px-3 py-3 rounded-xl text-center">{link.label}</a>)}
-        </nav>}
+        {menuOpen && <div className="lg:hidden fixed inset-0 z-50 bg-slate-950/95 text-white backdrop-blur-md">
+          <div className="flex min-h-screen flex-col px-5 py-5">
+            <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-4">
+              <a href="/" onClick={() => setMenuOpen(false)} className="flex min-w-0 items-center gap-3 font-black text-xl"><img src="/sdtv-logo.png" alt="Seattle Desi TV" className="h-11 w-auto shrink-0 rounded" /><span className="truncate">Seattle Desi TV</span></a>
+              <button type="button" onClick={() => setMenuOpen(false)} className="rounded-xl bg-white px-4 py-2 font-black text-slate-950">Close</button>
+            </div>
+            <nav className="mt-5 grid flex-1 content-start gap-2 overflow-y-auto pb-8 text-base font-black">
+              {mobileLinks.filter((link) => link.show).map((link) => <a key={link.href + link.label} href={link.href} onClick={() => setMenuOpen(false)} className={`${link.primary ? "bg-pink-600 text-white" : "bg-white/10 text-white"} rounded-2xl px-4 py-4`}>{link.label}</a>)}
+            </nav>
+          </div>
+        </div>}
       </header>
     </>
   );
