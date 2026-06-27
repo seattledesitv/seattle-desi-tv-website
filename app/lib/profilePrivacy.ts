@@ -51,7 +51,7 @@ export function getProfilePrivacyDescription(profile: ProfilePrivacyInput): stri
   return "Mixed privacy permissions are enabled.";
 }
 
-export type ProfileVisibilityMode = "private" | "public" | "custom";
+export type ProfileVisibilityMode = "private" | "public" | "custom" | "limited";
 
 export function visibilityModeFromProfile(profile: ProfilePrivacyInput): ProfileVisibilityMode {
   const status = getProfilePrivacyStatus(profile);
