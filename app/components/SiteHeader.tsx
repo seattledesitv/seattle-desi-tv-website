@@ -8,6 +8,8 @@ import { isAdminRole, resolveUserRole } from "../lib/roles";
 const supabase = getSupabaseBrowserClient();
 const HEADER_CACHE_KEY = "sdtv-header-state-v1";
 
+type HeaderLink = { label: string; href: string; show: boolean; primary?: boolean };
+
 function readCachedHeaderState() {
   if (typeof window === "undefined") return { email: "", role: "general_public" };
   try { const raw = window.localStorage.getItem(HEADER_CACHE_KEY); return raw ? JSON.parse(raw) : { email: "", role: "general_public" }; } catch { return { email: "", role: "general_public" }; }
@@ -40,7 +42,7 @@ export default function SiteHeader() {
   }, [menuOpen]);
 
   const canSeeStudio = Boolean(isLoggedIn && isAdminRole(role));
-  const links = [
+  const links: HeaderLink[] = [
     { label: "Home", href: "/", show: true },
     { label: "TV", href: "/tv", show: true },
     { label: "Radio", href: "/radio", show: true },
@@ -55,7 +57,7 @@ export default function SiteHeader() {
     { label: "My Hub", href: "/my-hub", show: isLoggedIn },
     { label: "Studio", href: "/studio", show: canSeeStudio },
   ];
-  const mobileLinks = [
+  const mobileLinks: HeaderLink[] = [
     { label: "Share with SDTV", href: "/submit-content", show: true, primary: true },
     ...links,
     { label: isLoggedIn ? "Account" : "Login", href: isLoggedIn ? "/my-hub" : "/login", show: true },
