@@ -50,6 +50,8 @@ const groups = [
     title: "Community",
     links: [
       ["Businesses", "/studio/businesses"],
+      ["Community Groups", "/studio/community-groups"],
+      ["Community Orgs", "/studio/community-orgs"],
       ["Contact Requests", "/studio/contact-requests"],
     ],
   },
