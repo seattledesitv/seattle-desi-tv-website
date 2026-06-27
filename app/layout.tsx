@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./mobile-hero-polish.css";
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import AccessibilityFixes from "./components/AccessibilityFixes";
@@ -73,56 +74,39 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Seattle Desi TV | South Asian Community, Events & Media",
     description:
-      "Seattle Desi TV shares South Asian community events, interviews, radio, businesses, and stories across the Pacific Northwest.",
+      "Seattle Desi TV shares South Asian community events, interviews, radio, businesses, and stories across Seattle and the Pacific Northwest.",
     images: ["/sdtv-logo.png"],
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#db2777",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  themeColor: "#050b18",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const organizationSchema = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "Seattle Desi TV",
-    url: siteUrl,
-    logo: `${siteUrl}/sdtv-logo.png`,
-    sameAs: [
-      "https://www.youtube.com/@SeattleDesiTV",
-      "https://instagram.com/seattledesitv",
-      "https://facebook.com/seattledesitv",
-    ],
-    description:
-      "Seattle Desi TV is a South Asian community media platform covering events, interviews, radio, businesses, and cultural stories across Seattle and the Pacific Northwest.",
-  };
-
   return (
     <html lang="en">
-      <head>
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-title" content="Seattle Desi TV" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="apple-touch-icon" href="/sdtv-logo.png" />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
-        />
-      </head>
       <body>
+        <Script id="ld-org" type="application/ld+json" strategy="afterInteractive">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: "Seattle Desi TV",
+            url: siteUrl,
+            logo: `${siteUrl}/sdtv-logo.png`,
+            sameAs: [
+              "https://www.youtube.com/@SeattleDesiTV",
+              "https://instagram.com/seattledesitv",
+              "https://facebook.com/seattledesitv",
+            ],
+          })}
+        </Script>
+        <AccessibilityFixes />
         <EventOpsInfluencerNotice />
         {children}
-        <AccessibilityFixes />
-        <Script
-          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-          async
-          defer
-        />
       </body>
     </html>
   );
