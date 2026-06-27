@@ -54,6 +54,7 @@ export default function MyHubPage() {
   const cards = [
     { title: "Portal", note: "General SDTV links and workspace entry point.", href: "/portal", value: "Open", show: true },
     { title: "My ID Badge", note: "Generate, download, and print your official SDTV ID badge.", href: "/my-id-badge", value: "Badge", show: true },
+    { title: "My Community Submissions", note: "Track or update community groups and organizations you submitted.", href: "/my-community-submissions", value: "Manage", show: true },
     { title: "Influencer Profile", note: "Join the SDTV Influencer Network and choose whether to appear publicly.", href: "/my-influencer-profile", value: counts.influencer ? "Created" : "Become", show: true },
     { title: "Volunteer Recognition", note: "Leaderboard, monthly champions, and SDTV hall of fame.", href: "/recognition", value: "View", show: true },
     { title: "My Editing Queue", note: "Video drafts, revisions, crew review, and publishing tasks assigned to you.", href: "/my-editing", value: videoEditor ? counts.editing : "Editor", show: videoEditor },
