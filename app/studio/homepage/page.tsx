@@ -19,6 +19,8 @@ const defaultSections = [
   { section_key: "team", display_order: 9, enabled: true, title: "Team Spotlight", subtitle: "Meet some of the community members supporting SDTV." },
   { section_key: "sponsors", display_order: 10, enabled: false, title: "Sponsor Showcase", subtitle: "Sponsor management section." },
   { section_key: "contact", display_order: 11, enabled: true, title: "Get Involved", subtitle: "Volunteer, sponsor, host shows, or request coverage." },
+  { section_key: "community_submit", display_order: 12, enabled: true, title: "Share Your Community Story", subtitle: "Community news, birthday wishes, announcements, celebrations, memories, photos, videos, and stories — send it to Seattle Desi TV." },
+  { section_key: "community_directory", display_order: 13, enabled: true, title: "Connect With Indian Community Groups & Organizations", subtitle: "Help the community discover WhatsApp groups, Facebook groups, cultural organizations, nonprofits, temples, associations, and local networks." },
 ];
 
 const defaultSocial = [
@@ -47,8 +49,11 @@ export default function StudioHomepagePage() {
       supabase.from("homepage_settings").select("section_key,display_order,enabled,title,subtitle").order("display_order", { ascending: true }),
       supabase.from("social_media_stats").select("platform,followers,views,videos,href,updated_at").order("platform", { ascending: true }),
     ]);
-    if (!sectionResult.error && Array.isArray(sectionResult.data) && sectionResult.data.length > 0) setSections(sectionResult.data);
-    else setSections(defaultSections);
+    if (!sectionResult.error && Array.isArray(sectionResult.data) && sectionResult.data.length > 0) {
+      const existing = sectionResult.data;
+      const missing = defaultSections.filter((item) => !existing.some((row: any) => row.section_key === item.section_key));
+      setSections([...existing, ...missing].sort((a: any, b: any) => Number(a.display_order || 999) - Number(b.display_order || 999)));
+    } else setSections(defaultSections);
     if (!socialResult.error && Array.isArray(socialResult.data) && socialResult.data.length > 0) setSocialRows(socialResult.data);
     else setSocialRows(defaultSocial);
   }
