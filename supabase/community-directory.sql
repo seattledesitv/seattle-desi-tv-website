@@ -64,12 +64,19 @@ create policy "Logged in users submit community groups" on public.community_grou
 drop policy if exists "Logged in users submit community orgs" on public.community_organizations;
 create policy "Logged in users submit community orgs" on public.community_organizations for insert to authenticated with check (auth.uid() = submitted_by and status = 'pending' and approved = false);
 
--- Submitters can view their own pending/rejected records.
+-- Submitters can view their own pending/rejected/approved records.
 drop policy if exists "Submitters read own community groups" on public.community_groups;
 create policy "Submitters read own community groups" on public.community_groups for select to authenticated using (auth.uid() = submitted_by);
 
 drop policy if exists "Submitters read own community orgs" on public.community_organizations;
 create policy "Submitters read own community orgs" on public.community_organizations for select to authenticated using (auth.uid() = submitted_by);
+
+-- Submitters can update their own records, but updates move back to pending review.
+drop policy if exists "Submitters update own community groups" on public.community_groups;
+create policy "Submitters update own community groups" on public.community_groups for update to authenticated using (auth.uid() = submitted_by) with check (auth.uid() = submitted_by and status = 'pending' and approved = false);
+
+drop policy if exists "Submitters update own community orgs" on public.community_organizations;
+create policy "Submitters update own community orgs" on public.community_organizations for update to authenticated using (auth.uid() = submitted_by) with check (auth.uid() = submitted_by and status = 'pending' and approved = false);
 
 -- Admins can manage all records. This matches existing SDTV admin role table.
 drop policy if exists "Admins manage community groups" on public.community_groups;
