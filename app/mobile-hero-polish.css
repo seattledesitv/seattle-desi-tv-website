@@ -1,0 +1,139 @@
+@media (max-width: 767px) {
+  /* Focused mobile-only homepage hero refinement. UI-only; no behavior changes. */
+  section.h-\[430px\] {
+    min-height: 360px !important;
+    height: 360px !important;
+  }
+
+  section.h-\[430px\] > .relative {
+    align-items: start !important;
+    padding-top: 1.35rem !important;
+    padding-bottom: 1rem !important;
+  }
+
+  section.h-\[430px\] .max-w-4xl {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 0.1rem !important;
+  }
+
+  section.h-\[430px\] p.text-pink-300 {
+    font-size: 0.72rem !important;
+    letter-spacing: 0.12em !important;
+    margin-bottom: 0.25rem !important;
+  }
+
+  section.h-\[430px\] h1 {
+    font-size: 2.1rem !important;
+    line-height: 1.05 !important;
+    margin-top: 0.2rem !important;
+  }
+
+  section.h-\[430px\] p.text-base,
+  section.h-\[430px\] p.md\:text-lg {
+    font-size: 1.05rem !important;
+    line-height: 1.35 !important;
+    margin-top: 0.55rem !important;
+  }
+
+  section.h-\[430px\] .flex.flex-wrap.gap-3.mt-6 {
+    display: flex !important;
+    width: min(100%, 20rem) !important;
+    max-width: 20rem !important;
+    margin-top: 1.1rem !important;
+    gap: 0.65rem !important;
+  }
+
+  section.h-\[430px\] a[href^="/events"],
+  section.h-\[430px\] a[href="/radio"],
+  section.h-\[430px\] a[href="/businesses"] {
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 46px !important;
+    padding: 0.72rem 1rem !important;
+    border-radius: 1rem !important;
+    font-size: 0.9rem !important;
+    white-space: normal !important;
+  }
+
+  /* Featured-event slide: keep poster and CTA side-by-side instead of overlapping. */
+  section.h-\[430px\]:has(.max-h-\[390px\]) {
+    min-height: 360px !important;
+    height: 360px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  section.h-\[430px\]:has(.max-h-\[390px\]) > .relative {
+    padding-top: 1.45rem !important;
+  }
+
+  section.h-\[430px\]:has(.max-h-\[390px\]) .max-w-4xl {
+    width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  section.h-\[430px\]:has(.max-h-\[390px\]) h1 {
+    font-size: 1.85rem !important;
+    line-height: 1.05 !important;
+    max-width: calc(100vw - 9.5rem) !important;
+  }
+
+  section.h-\[430px\]:has(.max-h-\[390px\]) p.text-base {
+    max-width: calc(100vw - 9.5rem) !important;
+    font-size: 0.98rem !important;
+    line-height: 1.35 !important;
+  }
+
+  section.h-\[430px\]:has(.max-h-\[390px\]) .flex.flex-wrap.gap-3.mt-6 {
+    width: min(12.8rem, calc(100vw - 10.8rem)) !important;
+    max-width: min(12.8rem, calc(100vw - 10.8rem)) !important;
+    margin-top: 1.2rem !important;
+  }
+
+  section.h-\[430px\]:has(.max-h-\[390px\]) a[href^="/events"] {
+    width: 100% !important;
+    min-height: 48px !important;
+    border-radius: 1rem !important;
+    padding-left: 0.9rem !important;
+    padding-right: 0.9rem !important;
+  }
+
+  section.h-\[430px\]:has(.max-h-\[390px\]) .hidden.md\:flex {
+    display: flex !important;
+    position: absolute !important;
+    right: 1rem !important;
+    bottom: 4.15rem !important;
+    width: 7.35rem !important;
+    max-height: none !important;
+    justify-content: center !important;
+    z-index: 4 !important;
+  }
+
+  section.h-\[430px\]:has(.max-h-\[390px\]) .hidden.md\:flex > div {
+    max-width: 7.35rem !important;
+    border-radius: 1.05rem !important;
+    padding: 0.32rem !important;
+    background: rgba(255,255,255,0.18) !important;
+    box-shadow: 0 18px 42px rgba(0,0,0,0.50) !important;
+  }
+
+  section.h-\[430px\]:has(.max-h-\[390px\]) .hidden.md\:flex > div > div {
+    border-radius: 0.78rem !important;
+  }
+
+  section.h-\[430px\] button[aria-label="Previous hero"],
+  section.h-\[430px\] button[aria-label="Next hero"] {
+    top: auto !important;
+    bottom: 1rem !important;
+    transform: none !important;
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+    background: rgba(255,255,255,0.14) !important;
+    backdrop-filter: blur(10px);
+  }
+
+  section.h-\[430px\] button[aria-label="Previous hero"] { left: 1.15rem !important; }
+  section.h-\[430px\] button[aria-label="Next hero"] { right: 1.15rem !important; }
+}
