@@ -1,6 +1,5 @@
 import "./globals.css";
 import "./mobile-hero-polish.css";
-import "./desktop-hero-polish.css";
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import AccessibilityFixes from "./components/AccessibilityFixes";
