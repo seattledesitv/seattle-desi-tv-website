@@ -47,6 +47,12 @@ const groups = [
     ],
   },
   {
+    title: "Communications",
+    links: [
+      ["Newsletter", "/studio/newsletter"],
+    ],
+  },
+  {
     title: "Community",
     links: [
       ["Businesses", "/studio/businesses"],
