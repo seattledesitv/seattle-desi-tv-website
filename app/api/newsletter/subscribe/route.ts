@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-function getAdminClient() {
+function getSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || "";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
   if (!url || !key) return null;
   return createClient(url, key, { auth: { persistSession: false } });
 }
@@ -22,12 +22,12 @@ function makeToken() {
 
 export async function POST(request: Request) {
   try {
-    const supabase = getAdminClient();
-    if (!supabase) return NextResponse.json({ ok: false, error: "Newsletter service is not configured." }, { status: 200 });
+    const supabase = getSupabaseClient();
+    if (!supabase) return NextResponse.json({ ok: false, error: "Newsletter database is not configured." }, { status: 200 });
 
     const body = await request.json().catch(() => ({}));
     const email = normalizeEmail(body.email);
-    const name = String(body.name || "").trim();
+    const name = String(body.name || "").trim().slice(0, 160);
     const source = String(body.source || "footer").trim().slice(0, 120);
 
     if (!isValidEmail(email)) return NextResponse.json({ ok: false, error: "Please enter a valid email address." }, { status: 200 });
