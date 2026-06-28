@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
+import NewsletterPreview from "../../components/NewsletterPreview";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { generateNewsletterDraft } from "../../lib/newsletterGenerator";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
 
 const supabase = getSupabaseBrowserClient();
@@ -11,14 +13,11 @@ const defaultSections = [
   { section_key: "intro", display_order: 1, enabled: true, title: "Opening Note", max_items: 1 },
   { section_key: "events", display_order: 2, enabled: true, title: "Upcoming Events", max_items: 5 },
   { section_key: "tv", display_order: 3, enabled: true, title: "Latest TV", max_items: 4 },
-  { section_key: "playlists", display_order: 4, enabled: true, title: "Featured Series", max_items: 2 },
-  { section_key: "instagram", display_order: 5, enabled: true, title: "Latest Instagram", max_items: 4 },
-  { section_key: "radio", display_order: 6, enabled: true, title: "Radio Highlights", max_items: 3 },
-  { section_key: "businesses", display_order: 7, enabled: true, title: "Local Business Spotlight", max_items: 3 },
-  { section_key: "community", display_order: 8, enabled: true, title: "Community Updates", max_items: 5 },
-  { section_key: "groups", display_order: 9, enabled: true, title: "Community Groups", max_items: 4 },
-  { section_key: "organizations", display_order: 10, enabled: true, title: "Community Organizations", max_items: 4 },
-  { section_key: "closing", display_order: 11, enabled: true, title: "Stay Connected", max_items: 1 },
+  { section_key: "instagram", display_order: 4, enabled: true, title: "Latest Instagram", max_items: 4 },
+  { section_key: "businesses", display_order: 5, enabled: true, title: "Local Business Spotlight", max_items: 3 },
+  { section_key: "groups", display_order: 6, enabled: true, title: "Community Groups", max_items: 4 },
+  { section_key: "organizations", display_order: 7, enabled: true, title: "Community Organizations", max_items: 4 },
+  { section_key: "closing", display_order: 8, enabled: true, title: "Stay Connected", max_items: 1 },
 ];
 
 function numberValue(value: any, fallback = 0) {
@@ -108,15 +107,24 @@ export default function StudioNewsletterPage() {
     setSections(next.map((item, itemIndex) => ({ ...item, display_order: itemIndex + 1 })));
   }
 
-  function generateDraft() {
-    const enabled = sections.filter((section) => section.enabled !== false).sort((a, b) => numberValue(a.display_order, 999) - numberValue(b.display_order, 999));
-    const now = new Date();
-    setDraft({
-      subject: `Seattle Desi TV Community Update - ${now.toLocaleDateString()}`,
-      intro: "Here are the latest stories, events, interviews, and community updates from Seattle Desi TV.",
-      sections: enabled.map((section) => ({ ...section, body: `Add ${section.title || section.section_key} content here.` })),
-    });
-    setActionMessage("Draft created. This is editable and not sent.");
+  async function generateDraft() {
+    setActionMessage("Generating newsletter from latest SDTV content...");
+    const nextDraft = await generateNewsletterDraft(sections);
+    setDraft(nextDraft);
+    setActionMessage("Newsletter generated from latest content. Review and edit the generated sections.");
+  }
+
+  function updateDraftSection(index: number, field: string, value: any) {
+    setDraft((current: any) => ({ ...current, sections: current.sections.map((item: any, i: number) => i === index ? { ...item, [field]: value } : item) }));
+  }
+
+  function removeDraftSection(index: number) {
+    setDraft((current: any) => ({ ...current, sections: current.sections.filter((_: any, i: number) => i !== index) }));
+  }
+
+  function addCustomSection() {
+    const custom = { id: `custom-${Date.now()}`, title: "New Section", body: "Add your message here.", items: [] };
+    setDraft((current: any) => current ? { ...current, sections: [...current.sections, custom] } : { subject: "Seattle Desi TV Community Update", preheader: "", sections: [custom] });
   }
 
   useEffect(() => { init(); }, []);
@@ -128,12 +136,13 @@ export default function StudioNewsletterPage() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
             <h1 className="text-4xl md:text-5xl font-black">Newsletter Studio</h1>
-            <p className="text-slate-300 mt-2">Admin-only subscriber list, newsletter control, and editable draft builder.</p>
+            <p className="text-slate-300 mt-2">Generate a styled SDTV newsletter from latest content, then edit before export.</p>
             {user?.email && <p className="text-slate-400 text-sm mt-2">Logged in as {user.email} · Role: {role}</p>}
           </div>
           <div className="flex flex-wrap gap-3">
             <button onClick={init} className="bg-white text-slate-950 px-5 py-3 rounded-xl font-bold">Refresh</button>
-            <button onClick={generateDraft} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold">Generate Draft</button>
+            <button onClick={generateDraft} className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold">Generate Newsletter</button>
+            <button onClick={addCustomSection} className="bg-yellow-300 text-slate-950 px-5 py-3 rounded-xl font-bold">Add Section</button>
           </div>
         </div>
 
@@ -149,18 +158,21 @@ export default function StudioNewsletterPage() {
 
           <section className="bg-white text-slate-950 rounded-2xl p-6 shadow-xl">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
-              <div><h2 className="text-2xl font-black">Newsletter Control</h2><p className="text-gray-600 text-sm mt-1">Independent from homepage order. Enable, reorder, rename, and set item limits for newsletter drafts.</p></div>
+              <div><h2 className="text-2xl font-black">Newsletter Control</h2><p className="text-gray-600 text-sm mt-1">Independent from homepage order. Enable, reorder, rename, and set item limits for generated newsletters.</p></div>
               <div className="flex gap-3"><button onClick={seedDefaults} className="border px-4 py-2 rounded-xl font-bold">Seed Defaults</button><button onClick={saveSettings} className="bg-pink-600 text-white px-4 py-2 rounded-xl font-bold">Save Control</button></div>
             </div>
             <div className="grid gap-4">{sections.map((section, index) => <article key={section.section_key} className="border rounded-2xl p-4 grid lg:grid-cols-[160px_120px_1fr_120px_auto] gap-3 items-center"><div><p className="font-black">{section.section_key}</p><p className="text-xs text-gray-500">Order {section.display_order}</p></div><label className="flex items-center gap-2 font-bold text-sm"><input type="checkbox" checked={section.enabled !== false} onChange={(event) => updateSection(index, "enabled", event.target.checked)} /> Enabled</label><input className="border rounded-lg p-3" placeholder="Title" value={section.title || ""} onChange={(event) => updateSection(index, "title", event.target.value)} /><input className="border rounded-lg p-3" type="number" min="1" max="20" value={section.max_items || 1} onChange={(event) => updateSection(index, "max_items", event.target.value)} /><div className="flex gap-2 justify-end"><button onClick={() => moveSection(index, -1)} className="border px-3 py-2 rounded-lg font-bold">Up</button><button onClick={() => moveSection(index, 1)} className="border px-3 py-2 rounded-lg font-bold">Down</button></div></article>)}</div>
           </section>
 
-          {draft && <section className="bg-white text-slate-950 rounded-2xl p-6 shadow-xl">
-            <h2 className="text-2xl font-black">Draft Preview</h2>
-            <p className="text-gray-600 text-sm mt-1">Editable starter draft. No email is sent from this page yet.</p>
-            <input className="mt-5 w-full border rounded-xl p-3 font-bold" value={draft.subject} onChange={(event) => setDraft({ ...draft, subject: event.target.value })} />
-            <textarea className="mt-3 w-full border rounded-xl p-3" rows={3} value={draft.intro} onChange={(event) => setDraft({ ...draft, intro: event.target.value })} />
-            <div className="mt-5 grid gap-3">{draft.sections.map((section: any, index: number) => <div key={section.section_key} className="rounded-2xl border p-4"><h3 className="font-black">{section.title}</h3><textarea className="mt-2 w-full border rounded-xl p-3" rows={3} value={section.body} onChange={(event) => setDraft({ ...draft, sections: draft.sections.map((item: any, itemIndex: number) => itemIndex === index ? { ...item, body: event.target.value } : item) })} /></div>)}</div>
+          {draft && <section className="grid gap-6 xl:grid-cols-[420px_1fr]">
+            <div className="bg-white text-slate-950 rounded-2xl p-6 shadow-xl h-fit">
+              <h2 className="text-2xl font-black">Edit Newsletter</h2>
+              <p className="text-gray-600 text-sm mt-1">Generated content is editable. Remove sections or add custom sections.</p>
+              <input className="mt-5 w-full border rounded-xl p-3 font-bold" value={draft.subject} onChange={(event) => setDraft({ ...draft, subject: event.target.value })} />
+              <input className="mt-3 w-full border rounded-xl p-3" value={draft.preheader} onChange={(event) => setDraft({ ...draft, preheader: event.target.value })} />
+              <div className="mt-5 grid gap-4">{draft.sections.map((section: any, index: number) => <div key={section.id} className="rounded-2xl border p-4"><div className="flex items-center gap-2"><input className="w-full font-black border rounded-xl p-2" value={section.title} onChange={(event) => updateDraftSection(index, "title", event.target.value)} /><button onClick={() => removeDraftSection(index)} className="text-red-600 font-black text-sm">Remove</button></div><textarea className="mt-2 w-full border rounded-xl p-3" rows={3} value={section.body} onChange={(event) => updateDraftSection(index, "body", event.target.value)} /><p className="mt-2 text-xs font-bold text-gray-500">{section.items.length} generated item(s)</p></div>)}</div>
+            </div>
+            <NewsletterPreview draft={draft} />
           </section>}
 
           <section className="bg-white text-slate-950 rounded-2xl p-6 shadow-xl">
