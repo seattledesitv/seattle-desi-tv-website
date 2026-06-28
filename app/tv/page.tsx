@@ -5,6 +5,7 @@ import SiteHeader from "../components/SiteHeader";
 import SiteFooter from "../components/SiteFooter";
 import FeaturedSocialSection, { FeaturedSocialItem } from "../components/FeaturedSocialSection";
 import InstagramLatestSection from "../components/InstagramLatestSection";
+import YouTubePlaylistsSection from "../components/YouTubePlaylistsSection";
 import SafeImage from "../components/SafeImage";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 
@@ -93,6 +94,7 @@ export default function TVPage() {
             <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-300">Interviews, event coverage, community stories, and cultural highlights from Seattle Desi TV.</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <a href="#youtube" className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white hover:bg-pink-500">Latest YouTube</a>
+              <a href="#playlists" className="rounded-xl border border-white/40 px-5 py-3 font-black text-white hover:bg-white/10">Series Playlists</a>
               <a href="#instagram" className="rounded-xl border border-white/40 px-5 py-3 font-black text-white hover:bg-white/10">Latest Instagram</a>
               <a href="#social" className="rounded-xl border border-white/40 px-5 py-3 font-black text-white hover:bg-white/10">Social Highlights</a>
             </div>
@@ -101,7 +103,7 @@ export default function TVPage() {
             <div className="aspect-video overflow-hidden rounded-3xl bg-slate-950">
               <SafeImage src="/hero-sdtv.png" alt="Seattle Desi TV" className="h-full w-full object-cover" fallbackClassName="grid h-full w-full place-items-center text-pink-200 font-black" fallbackLabel="SDTV" widthHint={1200} />
             </div>
-            <p className="mt-4 rounded-2xl bg-pink-600/15 p-4 text-sm font-bold text-pink-100">Watch SDTV videos, Instagram posts, and curated social highlights in one place.</p>
+            <p className="mt-4 rounded-2xl bg-pink-600/15 p-4 text-sm font-bold text-pink-100">Watch SDTV videos, series playlists, Instagram posts, and curated social highlights in one place.</p>
           </div>
         </div>
       </section>
@@ -122,6 +124,7 @@ export default function TVPage() {
         </div>
       </section>
 
+      <YouTubePlaylistsSection />
       <InstagramLatestSection />
 
       <div id="social">
