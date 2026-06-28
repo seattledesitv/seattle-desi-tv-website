@@ -44,6 +44,7 @@ const groups = [
     links: [
       ["Video Production", "/studio/video-production"],
       ["Radio", "/studio/radio-team"],
+      ["Social Diagnostics", "/studio/social-diagnostics"],
     ],
   },
   {
@@ -87,7 +88,7 @@ export default function StudioHeader() {
         <div className="flex flex-col gap-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <a href="/" className="text-pink-300 font-bold text-sm">← Public Site</a>
+              <a href="/" className="text-pink-300 font-bold text-sm">Public Site</a>
               <h1 className="text-2xl font-black">SDTV Studio</h1>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -102,9 +103,9 @@ export default function StudioHeader() {
               const isOpen = openGroup === group.title;
               const groupActive = group.links.some(([, href]) => isActive(href));
               return <div key={group.title} className="relative" onMouseEnter={() => setOpenGroup(group.title)}>
-                <button type="button" onClick={() => toggleGroup(group.title)} aria-expanded={isOpen} className={`${groupActive ? "bg-pink-600 text-white" : "bg-white/10 hover:bg-white/20 text-white"} px-3 py-2 rounded-lg transition`}>{group.title} ▾</button>
+                <button type="button" onClick={() => toggleGroup(group.title)} aria-expanded={isOpen} className={`${groupActive ? "bg-pink-600 text-white ring-1 ring-pink-200/40" : "bg-white/10 hover:bg-white/20 text-white"} px-3 py-2 rounded-lg transition`}>{group.title} ▾</button>
                 {isOpen && <div className="absolute left-0 top-full z-50 min-w-64 rounded-2xl border border-white/10 bg-slate-900 p-2 shadow-2xl">
-                  {group.links.map(([label, href]) => <a key={href} href={href} aria-current={isActive(href) ? "page" : undefined} onClick={() => setOpenGroup("")} className={`${isActive(href) ? "bg-pink-600" : "hover:bg-pink-600"} block rounded-xl px-3 py-2 text-sm text-white`}>{label}</a>)}
+                  {group.links.map(([label, href]) => <a key={href} href={href} aria-current={isActive(href) ? "page" : undefined} onClick={() => setOpenGroup("")} className={`${isActive(href) ? "bg-pink-600 ring-1 ring-pink-200/40" : "hover:bg-pink-600"} block rounded-xl px-3 py-2 text-sm text-white`}>{label}</a>)}
                 </div>}
               </div>;
             })}
@@ -117,7 +118,7 @@ export default function StudioHeader() {
             {groups.map((group) => <div key={group.title} className="rounded-2xl border border-white/10 bg-white/5 p-3">
               <p className="mb-2 text-xs font-black uppercase tracking-wide text-pink-200">{group.title}</p>
               <div className="grid grid-cols-2 gap-2">
-                {group.links.map(([label, href]) => <a key={href} href={href} aria-current={isActive(href) ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`${isActive(href) ? "bg-pink-600" : "bg-white/10 hover:bg-pink-600"} px-3 py-3 rounded-lg transition text-center`}>{label}</a>)}
+                {group.links.map(([label, href]) => <a key={href} href={href} aria-current={isActive(href) ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`${isActive(href) ? "bg-pink-600 ring-1 ring-pink-200/40" : "bg-white/10 hover:bg-pink-600"} px-3 py-3 rounded-lg transition text-center`}>{label}</a>)}
               </div>
             </div>)}
           </nav>}
