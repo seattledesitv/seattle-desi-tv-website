@@ -21,8 +21,10 @@ export default function SiteHeader() {
   const [isLoggedIn, setIsLoggedIn] = useState(Boolean(cached.email));
   const [role, setRole] = useState(cached.role || "general_public");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pathname, setPathname] = useState("");
 
   useEffect(() => {
+    setPathname(window.location.pathname || "/");
     async function loadState() {
       const { data } = await supabase.auth.getUser();
       const currentUser = data?.user || null;
@@ -55,6 +57,21 @@ export default function SiteHeader() {
     ...links,
   ];
 
+  function isActive(href: string) {
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
+
+  function desktopLinkClass(link: HeaderLink) {
+    if (isActive(link.href)) return "rounded-xl bg-pink-600 px-3 py-2 text-white shadow-sm shadow-pink-200/60 whitespace-nowrap";
+    return "rounded-xl px-2 py-2 hover:bg-pink-50 hover:text-pink-600 whitespace-nowrap";
+  }
+
+  function mobileLinkClass(link: HeaderLink) {
+    if (isActive(link.href)) return "bg-pink-600 text-white ring-2 ring-pink-200";
+    return link.primary ? "bg-pink-600 text-white" : "bg-slate-100 text-slate-950";
+  }
+
   return (
     <>
       <div className="bg-[#050b18] text-white text-sm px-4 md:px-10 py-2 flex flex-wrap items-center justify-between gap-3">
@@ -67,8 +84,8 @@ export default function SiteHeader() {
             <a href="/" className="flex min-w-0 items-center gap-2 font-black text-base md:text-xl"><img src="/sdtv-logo.png" alt="Seattle Desi TV" className="h-10 md:h-14 w-auto shrink-0" /><span className="truncate">Seattle Desi TV</span></a>
             <a href="/submit-content" className="hidden sm:inline-flex rounded-xl bg-pink-600 px-4 py-2 text-sm font-black text-white shadow-sm hover:bg-pink-700">Share with SDTV</a>
           </div>
-          <nav className="hidden lg:flex items-center gap-3 font-bold text-sm">
-            {links.filter((link) => link.show).map((link) => <a key={link.href + link.label} href={link.href} className="hover:text-pink-600 whitespace-nowrap">{link.label}</a>)}
+          <nav className="hidden lg:flex items-center gap-1 font-bold text-sm">
+            {links.filter((link) => link.show).map((link) => <a key={link.href + link.label} href={link.href} aria-current={isActive(link.href) ? "page" : undefined} className={desktopLinkClass(link)}>{link.label}</a>)}
             <AccountMenu tone="light" from="site" />
           </nav>
           <div className="lg:hidden flex items-center gap-2 shrink-0">
@@ -77,7 +94,7 @@ export default function SiteHeader() {
           </div>
         </div>
         {menuOpen && <nav className="lg:hidden max-w-7xl mx-auto mt-3 grid grid-cols-2 gap-2 text-sm font-bold">
-          {mobileLinks.filter((link) => link.show).map((link) => <a key={link.href + link.label} href={link.href} onClick={() => setMenuOpen(false)} className={`${link.primary ? "bg-pink-600 text-white" : "bg-slate-100 text-slate-950"} px-3 py-3 rounded-xl text-center`}>{link.label}</a>)}
+          {mobileLinks.filter((link) => link.show).map((link) => <a key={link.href + link.label} href={link.href} aria-current={isActive(link.href) ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`${mobileLinkClass(link)} px-3 py-3 rounded-xl text-center`}>{link.label}</a>)}
         </nav>}
       </header>
     </>
