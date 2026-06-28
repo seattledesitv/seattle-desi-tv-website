@@ -29,8 +29,13 @@ export async function POST(request: Request) {
     const email = normalizeEmail(body.email);
     const name = String(body.name || "").trim().slice(0, 160);
     const source = String(body.source || "footer").trim().slice(0, 120);
+    const captchaAnswer = Number(body.captchaAnswer);
+    const captchaExpected = Number(body.captchaExpected);
 
     if (!isValidEmail(email)) return NextResponse.json({ ok: false, error: "Please enter a valid email address." }, { status: 200 });
+    if (!Number.isFinite(captchaAnswer) || !Number.isFinite(captchaExpected) || captchaAnswer !== captchaExpected) {
+      return NextResponse.json({ ok: false, error: "Please complete the quick check correctly." }, { status: 200 });
+    }
 
     const payload = {
       email,
