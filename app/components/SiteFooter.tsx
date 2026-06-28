@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import NewsletterSubscribeForm from "./NewsletterSubscribeForm";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, isTeamRole, resolveUserRole } from "../lib/roles";
 
@@ -26,6 +27,16 @@ export default function SiteFooter() {
 
   return (
     <footer className="bg-[#050b18] text-white px-6 md:px-10 py-10 mt-12">
+      <div className="max-w-7xl mx-auto mb-8 rounded-[2rem] border border-white/10 bg-white/[0.06] p-6 md:p-8 shadow-2xl">
+        <div className="grid gap-5 lg:grid-cols-[1fr_1.1fr] lg:items-center">
+          <div>
+            <p className="text-sm font-black uppercase tracking-wide text-pink-300">Subscribe to SDTV</p>
+            <h2 className="mt-2 text-2xl md:text-3xl font-black">Hear from us</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-300">Get Seattle Desi TV community updates, events, interviews, TV, radio, local business highlights, and special announcements.</p>
+          </div>
+          <NewsletterSubscribeForm source="footer" compact />
+        </div>
+      </div>
       <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-8">
         <div>
           <h2 className="text-2xl font-black">Seattle Desi TV</h2>
