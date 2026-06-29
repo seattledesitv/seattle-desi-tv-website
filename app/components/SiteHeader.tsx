@@ -21,6 +21,7 @@ export default function SiteHeader() {
   const [isLoggedIn, setIsLoggedIn] = useState(Boolean(cached.email));
   const [role, setRole] = useState(cached.role || "general_public");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [communityOpen, setCommunityOpen] = useState(false);
   const [pathname, setPathname] = useState("");
 
   useEffect(() => {
@@ -37,14 +38,16 @@ export default function SiteHeader() {
   }, []);
 
   const canSeeStudio = Boolean(isLoggedIn && isAdminRole(role));
+  const communityLinks: HeaderLink[] = [
+    { label: "Groups", href: "/community-groups", show: true },
+    { label: "Organizations", href: "/community-organizations", show: true },
+  ];
   const links: HeaderLink[] = [
     { label: "Home", href: "/", show: true },
     { label: "TV", href: "/tv", show: true },
     { label: "Radio", href: "/radio", show: true },
     { label: "Events", href: "/events", show: true },
     { label: "Businesses", href: "/businesses", show: true },
-    { label: "Groups", href: "/community-groups", show: true },
-    { label: "Organizations", href: "/community-organizations", show: true },
     { label: "Influencers", href: "/influencers", show: true },
     { label: "Advertise", href: "/marketing-packages", show: true },
     { label: "Team", href: "/team", show: true },
@@ -61,6 +64,8 @@ export default function SiteHeader() {
     if (href === "/") return pathname === "/";
     return pathname === href || pathname.startsWith(`${href}/`);
   }
+
+  const communityActive = communityLinks.some((link) => isActive(link.href));
 
   function desktopLinkClass(link: HeaderLink) {
     if (isActive(link.href)) return "rounded-xl bg-pink-600 px-3 py-2 text-white shadow-sm shadow-pink-200/60 whitespace-nowrap";
@@ -85,7 +90,14 @@ export default function SiteHeader() {
             <a href="/submit-content" className="hidden sm:inline-flex rounded-xl bg-pink-600 px-4 py-2 text-sm font-black text-white shadow-sm hover:bg-pink-700">Share with SDTV</a>
           </div>
           <nav className="hidden lg:flex items-center gap-1 font-bold text-sm">
-            {links.filter((link) => link.show).map((link) => <a key={link.href + link.label} href={link.href} aria-current={isActive(link.href) ? "page" : undefined} className={desktopLinkClass(link)}>{link.label}</a>)}
+            {links.filter((link) => link.show).slice(0, 5).map((link) => <a key={link.href + link.label} href={link.href} aria-current={isActive(link.href) ? "page" : undefined} className={desktopLinkClass(link)}>{link.label}</a>)}
+            <div className="relative" onMouseEnter={() => setCommunityOpen(true)} onMouseLeave={() => setCommunityOpen(false)}>
+              <button type="button" onClick={() => setCommunityOpen((open) => !open)} aria-expanded={communityOpen} className={communityActive ? "rounded-xl bg-pink-600 px-3 py-2 text-white shadow-sm shadow-pink-200/60 whitespace-nowrap" : "rounded-xl px-2 py-2 hover:bg-pink-50 hover:text-pink-600 whitespace-nowrap"}>Community ▾</button>
+              {communityOpen && <div className="absolute left-0 top-full z-50 mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-2 text-slate-950 shadow-2xl">
+                {communityLinks.map((link) => <a key={link.href} href={link.href} className="block rounded-xl px-4 py-3 hover:bg-pink-50 hover:text-pink-600">{link.label}</a>)}
+              </div>}
+            </div>
+            {links.filter((link) => link.show).slice(5).map((link) => <a key={link.href + link.label} href={link.href} aria-current={isActive(link.href) ? "page" : undefined} className={desktopLinkClass(link)}>{link.label}</a>)}
             <AccountMenu tone="light" from="site" />
           </nav>
           <div className="lg:hidden flex items-center gap-2 shrink-0">
@@ -95,6 +107,8 @@ export default function SiteHeader() {
         </div>
         {menuOpen && <nav className="lg:hidden max-w-7xl mx-auto mt-3 grid grid-cols-2 gap-2 text-sm font-bold">
           {mobileLinks.filter((link) => link.show).map((link) => <a key={link.href + link.label} href={link.href} aria-current={isActive(link.href) ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`${mobileLinkClass(link)} px-3 py-3 rounded-xl text-center`}>{link.label}</a>)}
+          <div className="col-span-2 mt-1 rounded-xl bg-slate-950 px-3 py-2 text-center text-xs font-black uppercase tracking-wide text-pink-200">Community</div>
+          {communityLinks.map((link) => <a key={link.href} href={link.href} aria-current={isActive(link.href) ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`${mobileLinkClass(link)} px-3 py-3 rounded-xl text-center`}>{link.label}</a>)}
         </nav>}
       </header>
     </>
