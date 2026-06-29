@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import NewsletterSubscribeForm from "./NewsletterSubscribeForm";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, isTeamRole, resolveUserRole } from "../lib/roles";
+import { SDTV_PHONE_DISPLAY, SdtvContactButtons } from "./SdtvContactLinks";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -36,6 +37,14 @@ export default function SiteFooter() {
           </div>
           <NewsletterSubscribeForm source="footer" compact />
         </div>
+      </div>
+      <div className="max-w-7xl mx-auto mb-8 rounded-[2rem] border border-white/10 bg-white/[0.06] p-5 md:p-6">
+        <div className="mb-4">
+          <p className="text-sm font-black uppercase tracking-wide text-pink-300">Connect with SDTV</p>
+          <h3 className="mt-1 text-2xl font-black">Call, WhatsApp, or join the fan club</h3>
+          <p className="mt-2 text-sm text-slate-300">Phone: {SDTV_PHONE_DISPLAY}</p>
+        </div>
+        <SdtvContactButtons />
       </div>
       <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-8">
         <div>
