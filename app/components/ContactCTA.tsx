@@ -1,3 +1,5 @@
+import { SdtvContactButtons } from "./SdtvContactLinks";
+
 const ctas = [
   ["Volunteer", "Help with SDTV events, production, community outreach, and operations.", "/contact?interest=Volunteer"],
   ["Become an RJ", "Host or support Seattle Desi Radio shows and community segments.", "/contact?interest=RJ%20%2F%20Radio%20Host"],
@@ -15,9 +17,12 @@ export default function ContactCTA() {
           <div>
             <p className="text-pink-300 font-black uppercase tracking-wide">Get Involved</p>
             <h2 className="text-3xl md:text-5xl font-black mt-2">Have an event, business, story, or idea?</h2>
-            <p className="text-slate-300 mt-3 max-w-3xl">Seattle Desi TV would love to hear from you. Choose the right path and we will take you to the contact page.</p>
+            <p className="text-slate-300 mt-3 max-w-3xl">Seattle Desi TV would love to hear from you. Choose the right path, call us, message us on WhatsApp, or join the SDTV Fan Club.</p>
           </div>
           <a href="/contact" className="bg-pink-600 text-white px-6 py-4 rounded-xl font-black text-center">Contact Us</a>
+        </div>
+        <div className="mb-6">
+          <SdtvContactButtons />
         </div>
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
           {ctas.map(([title, note, href]) => (
