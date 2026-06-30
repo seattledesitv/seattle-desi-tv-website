@@ -1,0 +1,597 @@
+[
+  {
+    "constraint_name": "admins_user_id_fkey",
+    "schema_name": "public",
+    "table_name": "admins",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id)"
+  },
+  {
+    "constraint_name": "admins_pkey",
+    "schema_name": "public",
+    "table_name": "admins",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (user_id)"
+  },
+  {
+    "constraint_name": "admins_email_key",
+    "schema_name": "public",
+    "table_name": "admins",
+    "constraint_type": "u",
+    "constraint_definition": "UNIQUE (email)"
+  },
+  {
+    "constraint_name": "community_groups_status_check",
+    "schema_name": "public",
+    "table_name": "community_groups",
+    "constraint_type": "c",
+    "constraint_definition": "CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'on_hold'::text, 'rejected'::text]))"
+  },
+  {
+    "constraint_name": "community_groups_submitted_by_fkey",
+    "schema_name": "public",
+    "table_name": "community_groups",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (submitted_by) REFERENCES auth.users(id)"
+  },
+  {
+    "constraint_name": "community_groups_pkey",
+    "schema_name": "public",
+    "table_name": "community_groups",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "community_organizations_status_check",
+    "schema_name": "public",
+    "table_name": "community_organizations",
+    "constraint_type": "c",
+    "constraint_definition": "CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'on_hold'::text, 'rejected'::text]))"
+  },
+  {
+    "constraint_name": "community_organizations_submitted_by_fkey",
+    "schema_name": "public",
+    "table_name": "community_organizations",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (submitted_by) REFERENCES auth.users(id)"
+  },
+  {
+    "constraint_name": "community_organizations_pkey",
+    "schema_name": "public",
+    "table_name": "community_organizations",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "contact_requests_pkey",
+    "schema_name": "public",
+    "table_name": "contact_requests",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "crew_availability_pkey",
+    "schema_name": "public",
+    "table_name": "crew_availability",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "crew_availability_user_id_available_date_key",
+    "schema_name": "public",
+    "table_name": "crew_availability",
+    "constraint_type": "u",
+    "constraint_definition": "UNIQUE (user_id, available_date)"
+  },
+  {
+    "constraint_name": "event_coverage_sources_source_type_check",
+    "schema_name": "public",
+    "table_name": "event_coverage_sources",
+    "constraint_type": "c",
+    "constraint_definition": "CHECK (source_type = ANY (ARRAY['crew'::text, 'influencer'::text, 'organizer_media'::text]))"
+  },
+  {
+    "constraint_name": "event_coverage_sources_status_check",
+    "schema_name": "public",
+    "table_name": "event_coverage_sources",
+    "constraint_type": "c",
+    "constraint_definition": "CHECK (status = ANY (ARRAY['pending'::text, 'requested'::text, 'available'::text, 'assigned_to_editor'::text, 'editing'::text, 'published'::text, 'not_available'::text]))"
+  },
+  {
+    "constraint_name": "event_coverage_sources_event_id_fkey",
+    "schema_name": "public",
+    "table_name": "event_coverage_sources",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE"
+  },
+  {
+    "constraint_name": "event_coverage_sources_pkey",
+    "schema_name": "public",
+    "table_name": "event_coverage_sources",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "event_crew_assignments_event_id_fkey",
+    "schema_name": "public",
+    "table_name": "event_crew_assignments",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE"
+  },
+  {
+    "constraint_name": "event_crew_assignments_user_id_fkey",
+    "schema_name": "public",
+    "table_name": "event_crew_assignments",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+  },
+  {
+    "constraint_name": "event_crew_assignments_pkey",
+    "schema_name": "public",
+    "table_name": "event_crew_assignments",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "event_crew_assignments_event_id_user_id_key",
+    "schema_name": "public",
+    "table_name": "event_crew_assignments",
+    "constraint_type": "u",
+    "constraint_definition": "UNIQUE (event_id, user_id)"
+  },
+  {
+    "constraint_name": "event_crew_media_submissions_assignment_id_fkey",
+    "schema_name": "public",
+    "table_name": "event_crew_media_submissions",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (assignment_id) REFERENCES event_crew_assignments(id) ON DELETE CASCADE"
+  },
+  {
+    "constraint_name": "event_crew_media_submissions_event_id_fkey",
+    "schema_name": "public",
+    "table_name": "event_crew_media_submissions",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE"
+  },
+  {
+    "constraint_name": "event_crew_media_submissions_pkey",
+    "schema_name": "public",
+    "table_name": "event_crew_media_submissions",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "event_deliverables_completed_by_fkey",
+    "schema_name": "public",
+    "table_name": "event_deliverables",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (completed_by) REFERENCES auth.users(id)"
+  },
+  {
+    "constraint_name": "event_deliverables_event_id_fkey",
+    "schema_name": "public",
+    "table_name": "event_deliverables",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE"
+  },
+  {
+    "constraint_name": "event_deliverables_pkey",
+    "schema_name": "public",
+    "table_name": "event_deliverables",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "event_deliverables_event_type_unique",
+    "schema_name": "public",
+    "table_name": "event_deliverables",
+    "constraint_type": "u",
+    "constraint_definition": "UNIQUE (event_id, deliverable_type)"
+  },
+  {
+    "constraint_name": "event_influencer_intents_status_check",
+    "schema_name": "public",
+    "table_name": "event_influencer_intents",
+    "constraint_type": "c",
+    "constraint_definition": "CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text, 'completed'::text]))"
+  },
+  {
+    "constraint_name": "event_influencer_intents_event_id_fkey",
+    "schema_name": "public",
+    "table_name": "event_influencer_intents",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE"
+  },
+  {
+    "constraint_name": "event_influencer_intents_influencer_profile_id_fkey",
+    "schema_name": "public",
+    "table_name": "event_influencer_intents",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (influencer_profile_id) REFERENCES influencer_profiles(id) ON DELETE SET NULL"
+  },
+  {
+    "constraint_name": "event_influencer_intents_pkey",
+    "schema_name": "public",
+    "table_name": "event_influencer_intents",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "event_influencer_intents_event_id_user_email_key",
+    "schema_name": "public",
+    "table_name": "event_influencer_intents",
+    "constraint_type": "u",
+    "constraint_definition": "UNIQUE (event_id, user_email)"
+  },
+  {
+    "constraint_name": "event_video_notifications_recipient_user_id_fkey",
+    "schema_name": "public",
+    "table_name": "event_video_notifications",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (recipient_user_id) REFERENCES auth.users(id)"
+  },
+  {
+    "constraint_name": "event_video_notifications_workflow_id_fkey",
+    "schema_name": "public",
+    "table_name": "event_video_notifications",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (workflow_id) REFERENCES event_video_workflows(id) ON DELETE CASCADE"
+  },
+  {
+    "constraint_name": "event_video_notifications_pkey",
+    "schema_name": "public",
+    "table_name": "event_video_notifications",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "event_video_revisions_submitted_by_fkey",
+    "schema_name": "public",
+    "table_name": "event_video_revisions",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (submitted_by) REFERENCES auth.users(id)"
+  },
+  {
+    "constraint_name": "event_video_revisions_workflow_id_fkey",
+    "schema_name": "public",
+    "table_name": "event_video_revisions",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (workflow_id) REFERENCES event_video_workflows(id) ON DELETE CASCADE"
+  },
+  {
+    "constraint_name": "event_video_revisions_pkey",
+    "schema_name": "public",
+    "table_name": "event_video_revisions",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "event_video_workflows_status_check",
+    "schema_name": "public",
+    "table_name": "event_video_workflows",
+    "constraint_type": "c",
+    "constraint_definition": "CHECK (status = ANY (ARRAY['ready_for_editing'::text, 'in_editing'::text, 'awaiting_crew_review'::text, 'changes_requested'::text, 'crew_approved'::text, 'awaiting_admin_approval'::text, 'approved_for_publishing'::text, 'published_complete'::text]))"
+  },
+  {
+    "constraint_name": "event_video_workflows_created_by_fkey",
+    "schema_name": "public",
+    "table_name": "event_video_workflows",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id)"
+  },
+  {
+    "constraint_name": "event_video_workflows_event_id_fkey",
+    "schema_name": "public",
+    "table_name": "event_video_workflows",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE"
+  },
+  {
+    "constraint_name": "event_video_workflows_updated_by_fkey",
+    "schema_name": "public",
+    "table_name": "event_video_workflows",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (updated_by) REFERENCES auth.users(id)"
+  },
+  {
+    "constraint_name": "event_video_workflows_pkey",
+    "schema_name": "public",
+    "table_name": "event_video_workflows",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "event_video_workflows_event_unique",
+    "schema_name": "public",
+    "table_name": "event_video_workflows",
+    "constraint_type": "u",
+    "constraint_definition": "UNIQUE (event_id)"
+  },
+  {
+    "constraint_name": "events_created_by_fkey",
+    "schema_name": "public",
+    "table_name": "events",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id)"
+  },
+  {
+    "constraint_name": "events_pkey",
+    "schema_name": "public",
+    "table_name": "events",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "featured_social_content_pkey",
+    "schema_name": "public",
+    "table_name": "featured_social_content",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "festival_hero_assets_pkey",
+    "schema_name": "public",
+    "table_name": "festival_hero_assets",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "hero_analytics_pkey",
+    "schema_name": "public",
+    "table_name": "hero_analytics",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "homepage_hero_banners_pkey",
+    "schema_name": "public",
+    "table_name": "homepage_hero_banners",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "homepage_settings_section_key_check",
+    "schema_name": "public",
+    "table_name": "homepage_settings",
+    "constraint_type": "c",
+    "constraint_definition": "CHECK (section_key = ANY (ARRAY['home'::text, 'stats'::text, 'events'::text, 'businesses'::text, 'radio'::text, 'videos'::text, 'featured_social'::text, 'testimonials'::text, 'social'::text, 'team'::text, 'sponsors'::text, 'contact'::text]))"
+  },
+  {
+    "constraint_name": "homepage_settings_pkey",
+    "schema_name": "public",
+    "table_name": "homepage_settings",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (section_key)"
+  },
+  {
+    "constraint_name": "homepage_sponsors_pkey",
+    "schema_name": "public",
+    "table_name": "homepage_sponsors",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "homepage_testimonials_pkey",
+    "schema_name": "public",
+    "table_name": "homepage_testimonials",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "influencer_profiles_status_check",
+    "schema_name": "public",
+    "table_name": "influencer_profiles",
+    "constraint_type": "c",
+    "constraint_definition": "CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text, 'hidden'::text]))"
+  },
+  {
+    "constraint_name": "influencer_profiles_pkey",
+    "schema_name": "public",
+    "table_name": "influencer_profiles",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "influencer_profiles_email_key",
+    "schema_name": "public",
+    "table_name": "influencer_profiles",
+    "constraint_type": "u",
+    "constraint_definition": "UNIQUE (email)"
+  },
+  {
+    "constraint_name": "local_businesses_created_by_fkey",
+    "schema_name": "public",
+    "table_name": "local_businesses",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id)"
+  },
+  {
+    "constraint_name": "local_businesses_pkey",
+    "schema_name": "public",
+    "table_name": "local_businesses",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "newsletter_campaigns_status_check",
+    "schema_name": "public",
+    "table_name": "newsletter_campaigns",
+    "constraint_type": "c",
+    "constraint_definition": "CHECK (status = ANY (ARRAY['draft'::text, 'test_sent'::text, 'sent'::text, 'archived'::text]))"
+  },
+  {
+    "constraint_name": "newsletter_campaigns_pkey",
+    "schema_name": "public",
+    "table_name": "newsletter_campaigns",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "newsletter_settings_pkey",
+    "schema_name": "public",
+    "table_name": "newsletter_settings",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (section_key)"
+  },
+  {
+    "constraint_name": "newsletter_subscribers_status_check",
+    "schema_name": "public",
+    "table_name": "newsletter_subscribers",
+    "constraint_type": "c",
+    "constraint_definition": "CHECK (status = ANY (ARRAY['pending'::text, 'active'::text, 'unsubscribed'::text, 'bounced'::text]))"
+  },
+  {
+    "constraint_name": "newsletter_subscribers_pkey",
+    "schema_name": "public",
+    "table_name": "newsletter_subscribers",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "newsletter_subscribers_email_key",
+    "schema_name": "public",
+    "table_name": "newsletter_subscribers",
+    "constraint_type": "u",
+    "constraint_definition": "UNIQUE (email)"
+  },
+  {
+    "constraint_name": "notifications_pkey",
+    "schema_name": "public",
+    "table_name": "notifications",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "public_content_requests_status_check",
+    "schema_name": "public",
+    "table_name": "public_content_requests",
+    "constraint_type": "c",
+    "constraint_definition": "CHECK (status = ANY (ARRAY['new'::text, 'reviewing'::text, 'assigned_to_editor'::text, 'in_editing'::text, 'review_requested'::text, 'changes_requested'::text, 'approved_for_publishing'::text, 'published'::text, 'rejected'::text, 'closed'::text]))"
+  },
+  {
+    "constraint_name": "public_content_requests_pkey",
+    "schema_name": "public",
+    "table_name": "public_content_requests",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "public_visibility_controls_pkey",
+    "schema_name": "public",
+    "table_name": "public_visibility_controls",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (email)"
+  },
+  {
+    "constraint_name": "radio_team_members_created_by_fkey",
+    "schema_name": "public",
+    "table_name": "radio_team_members",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id)"
+  },
+  {
+    "constraint_name": "radio_team_members_pkey",
+    "schema_name": "public",
+    "table_name": "radio_team_members",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "social_media_stats_pkey",
+    "schema_name": "public",
+    "table_name": "social_media_stats",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "sponsors_pkey",
+    "schema_name": "public",
+    "table_name": "sponsors",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "team_members_created_by_fkey",
+    "schema_name": "public",
+    "table_name": "team_members",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id)"
+  },
+  {
+    "constraint_name": "team_members_pkey",
+    "schema_name": "public",
+    "table_name": "team_members",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "team_members_user_id_unique",
+    "schema_name": "public",
+    "table_name": "team_members",
+    "constraint_type": "u",
+    "constraint_definition": "UNIQUE (user_id)"
+  },
+  {
+    "constraint_name": "user_profiles_pkey",
+    "schema_name": "public",
+    "table_name": "user_profiles",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (user_id)"
+  },
+  {
+    "constraint_name": "user_role_requests_requested_role_check",
+    "schema_name": "public",
+    "table_name": "user_role_requests",
+    "constraint_type": "c",
+    "constraint_definition": "CHECK (requested_role = ANY (ARRAY['general_public'::text, 'volunteer'::text, 'team_member'::text, 'video_editor'::text, 'influencer'::text]))"
+  },
+  {
+    "constraint_name": "user_role_requests_status_check",
+    "schema_name": "public",
+    "table_name": "user_role_requests",
+    "constraint_type": "c",
+    "constraint_definition": "CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text, 'awaiting_orientation'::text, 'orientation_complete'::text, 'awaiting_onboarding'::text, 'awaiting_team_role_access'::text]))"
+  },
+  {
+    "constraint_name": "user_role_requests_user_id_fkey",
+    "schema_name": "public",
+    "table_name": "user_role_requests",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+  },
+  {
+    "constraint_name": "user_role_requests_pkey",
+    "schema_name": "public",
+    "table_name": "user_role_requests",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "volunteer_onboarding_submissions_user_id_fkey",
+    "schema_name": "public",
+    "table_name": "volunteer_onboarding_submissions",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+  },
+  {
+    "constraint_name": "volunteer_onboarding_submissions_volunteer_request_id_fkey",
+    "schema_name": "public",
+    "table_name": "volunteer_onboarding_submissions",
+    "constraint_type": "f",
+    "constraint_definition": "FOREIGN KEY (volunteer_request_id) REFERENCES user_role_requests(id) ON DELETE SET NULL"
+  },
+  {
+    "constraint_name": "volunteer_onboarding_submissions_pkey",
+    "schema_name": "public",
+    "table_name": "volunteer_onboarding_submissions",
+    "constraint_type": "p",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "constraint_name": "volunteer_onboarding_submissions_user_id_key",
+    "schema_name": "public",
+    "table_name": "volunteer_onboarding_submissions",
+    "constraint_type": "u",
+    "constraint_definition": "UNIQUE (user_id)"
+  }
+]
