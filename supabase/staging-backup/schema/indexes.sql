@@ -1,8 +1,0 @@
--- Indexes captured from production.
--- STATUS: Captured, but not yet fully converted into final restore-safe SQL.
---
--- The production indexes export contains indexes for all 36 public tables.
--- This file will be converted into CREATE INDEX IF NOT EXISTS statements
--- after tables.sql contains all 36 production table definitions.
---
--- Do not run this file yet.
