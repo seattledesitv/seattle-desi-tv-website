@@ -64,8 +64,11 @@ const groups = [
     ],
   },
   {
-    title: "Insights",
-    links: [["Analytics", "/studio/analytics"]],
+    title: "System",
+    links: [
+      ["Analytics", "/studio/analytics"],
+      ["Database Backup", "/studio/database-backup"],
+    ],
   },
 ];
 
