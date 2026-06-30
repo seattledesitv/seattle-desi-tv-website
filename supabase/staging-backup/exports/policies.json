@@ -1,0 +1,1002 @@
+[
+  {
+    "schemaname": "public",
+    "tablename": "admins",
+    "policyname": "admins_manage_by_admin",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "is_sdtv_admin()",
+    "with_check": "is_sdtv_admin()"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "admins",
+    "policyname": "admins_select_own",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((user_id = auth.uid()) OR (lower(email) = lower((auth.jwt() ->> 'email'::text))) OR is_sdtv_admin())",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "community_groups",
+    "policyname": "Admins manage community groups",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "community_groups",
+    "policyname": "Community groups approved public read",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "((status = 'approved'::text) AND (approved = true))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "community_groups",
+    "policyname": "Logged in users submit community groups",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((auth.uid() = submitted_by) AND (status = 'pending'::text) AND (approved = false))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "community_groups",
+    "policyname": "Submitters read own community groups",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(auth.uid() = submitted_by)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "community_organizations",
+    "policyname": "Admins manage community orgs",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "community_organizations",
+    "policyname": "Community orgs approved public read",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "((status = 'approved'::text) AND (approved = true))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "community_organizations",
+    "policyname": "Logged in users submit community orgs",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((auth.uid() = submitted_by) AND (status = 'pending'::text) AND (approved = false))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "community_organizations",
+    "policyname": "Submitters read own community orgs",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(auth.uid() = submitted_by)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contact_requests",
+    "policyname": "Admins can read contact requests",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contact_requests",
+    "policyname": "Admins can update contact requests",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contact_requests",
+    "policyname": "Anyone can submit contact requests",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "crew_availability",
+    "policyname": "Users can manage own availability",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(user_id = auth.uid())",
+    "with_check": "(user_id = auth.uid())"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "crew_availability",
+    "policyname": "Users can view own availability",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(user_id = auth.uid())",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_coverage_sources",
+    "policyname": "Admins can manage coverage sources",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (a.role = ANY (ARRAY['super_admin'::text, 'pm_admin'::text, 'admin'::text])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (a.role = ANY (ARRAY['super_admin'::text, 'pm_admin'::text, 'admin'::text])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_coverage_sources",
+    "policyname": "Organizers can submit event media sources",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((source_type = 'organizer_media'::text) AND (status = ANY (ARRAY['available'::text, 'requested'::text])))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_crew_assignments",
+    "policyname": "Admins and team can create crew assignments",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(auth.uid() IS NOT NULL)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_crew_assignments",
+    "policyname": "Admins can update event crew assignments",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE ((admins.user_id = auth.uid()) AND (lower(admins.role) ~~ '%admin%'::text))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE ((admins.user_id = auth.uid()) AND (lower(admins.role) ~~ '%admin%'::text))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_crew_assignments",
+    "policyname": "Anyone can view event crew",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_crew_assignments",
+    "policyname": "Crew can join events",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(user_id = auth.uid())"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_crew_assignments",
+    "policyname": "Crew can update own approved assignments",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((status = 'approved'::text) AND ((user_id = auth.uid()) OR (lower(COALESCE(user_email, ''::text)) = lower(COALESCE((auth.jwt() ->> 'email'::text), ''::text)))))",
+    "with_check": "((status = 'approved'::text) AND ((user_id = auth.uid()) OR (lower(COALESCE(user_email, ''::text)) = lower(COALESCE((auth.jwt() ->> 'email'::text), ''::text)))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_crew_assignments",
+    "policyname": "Crew users can join event crew",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((user_id = auth.uid()) AND (EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%crew%'::text)))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_crew_assignments",
+    "policyname": "Users can view event crew assignments",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_crew_media_submissions",
+    "policyname": "crew media submissions insert own",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((auth.uid() = user_id) OR (user_id IS NULL))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_crew_media_submissions",
+    "policyname": "crew media submissions read",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_crew_media_submissions",
+    "policyname": "crew media submissions update own",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "UPDATE",
+    "qual": "((auth.uid() = user_id) OR (user_id IS NULL))",
+    "with_check": "((auth.uid() = user_id) OR (user_id IS NULL))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_deliverables",
+    "policyname": "Event deliverables insertable by authenticated users",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(auth.uid() IS NOT NULL)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_deliverables",
+    "policyname": "Event deliverables readable by authenticated users",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_deliverables",
+    "policyname": "Event deliverables updatable by authenticated users",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "(auth.uid() IS NOT NULL)",
+    "with_check": "(auth.uid() IS NOT NULL)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_influencer_intents",
+    "policyname": "Admins can manage influencer intents",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) OR (lower(a.email) = lower((auth.jwt() ->> 'email'::text))))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) OR (lower(a.email) = lower((auth.jwt() ->> 'email'::text))))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_influencer_intents",
+    "policyname": "Users can create own influencer intents",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((auth.uid() = user_id) OR (lower(user_email) = lower((auth.jwt() ->> 'email'::text))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_influencer_intents",
+    "policyname": "Users can view own influencer intents",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((auth.uid() = user_id) OR (lower(user_email) = lower((auth.jwt() ->> 'email'::text))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_video_notifications",
+    "policyname": "Video notifications insertable by authenticated users",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(auth.uid() IS NOT NULL)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_video_notifications",
+    "policyname": "Video notifications readable by recipient",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((recipient_user_id = auth.uid()) OR (recipient_user_id IS NULL))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_video_notifications",
+    "policyname": "Video notifications updatable by recipient",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((recipient_user_id = auth.uid()) OR (recipient_user_id IS NULL))",
+    "with_check": "((recipient_user_id = auth.uid()) OR (recipient_user_id IS NULL))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_video_revisions",
+    "policyname": "Video revisions insertable by authenticated users",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(auth.uid() IS NOT NULL)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_video_revisions",
+    "policyname": "Video revisions readable by authenticated users",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_video_workflows",
+    "policyname": "Video workflows insertable by authenticated users",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(auth.uid() IS NOT NULL)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_video_workflows",
+    "policyname": "Video workflows readable by authenticated users",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "event_video_workflows",
+    "policyname": "Video workflows updatable by authenticated users",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "(auth.uid() IS NOT NULL)",
+    "with_check": "(auth.uid() IS NOT NULL)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "events",
+    "policyname": "Admins can delete events",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE ((admins.user_id = auth.uid()) AND (lower(admins.role) ~~ '%admin%'::text))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "events",
+    "policyname": "Admins can update events",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((auth.uid() = created_by) OR (EXISTS ( SELECT 1\n   FROM admins\n  WHERE ((admins.user_id = auth.uid()) AND (lower(admins.role) ~~ '%admin%'::text)))))",
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "events",
+    "policyname": "Anyone can view events",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "events",
+    "policyname": "Logged in users can create events",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(auth.uid() = created_by)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "featured_social_content",
+    "policyname": "featured_social_admin_all",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE (lower(admins.email) = lower((auth.jwt() ->> 'email'::text)))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE (lower(admins.email) = lower((auth.jwt() ->> 'email'::text)))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "featured_social_content",
+    "policyname": "featured_social_public_read",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(active = true)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "festival_hero_assets",
+    "policyname": "festival_hero_assets_admin_manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE ((admins.user_id = auth.uid()) AND (admins.role = ANY (ARRAY['super_admin'::text, 'pm_admin'::text])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE ((admins.user_id = auth.uid()) AND (admins.role = ANY (ARRAY['super_admin'::text, 'pm_admin'::text])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "festival_hero_assets",
+    "policyname": "festival_hero_assets_public_read",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "homepage_hero_banners",
+    "policyname": "homepage_hero_banners_admin_manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE ((admins.user_id = auth.uid()) AND (admins.role = ANY (ARRAY['super_admin'::text, 'pm_admin'::text])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE ((admins.user_id = auth.uid()) AND (admins.role = ANY (ARRAY['super_admin'::text, 'pm_admin'::text])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "homepage_hero_banners",
+    "policyname": "homepage_hero_banners_public_read",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "homepage_settings",
+    "policyname": "homepage_settings_admin_manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE ((admins.user_id = auth.uid()) AND (admins.role = ANY (ARRAY['super_admin'::text, 'pm_admin'::text])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE ((admins.user_id = auth.uid()) AND (admins.role = ANY (ARRAY['super_admin'::text, 'pm_admin'::text])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "homepage_settings",
+    "policyname": "homepage_settings_public_read",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "homepage_sponsors",
+    "policyname": "homepage_sponsors_admin_manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE ((admins.user_id = auth.uid()) AND (admins.role = ANY (ARRAY['super_admin'::text, 'pm_admin'::text])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE ((admins.user_id = auth.uid()) AND (admins.role = ANY (ARRAY['super_admin'::text, 'pm_admin'::text])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "homepage_sponsors",
+    "policyname": "homepage_sponsors_public_read",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "homepage_testimonials",
+    "policyname": "homepage_testimonials_admin_all",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE (lower(admins.email) = lower((auth.jwt() ->> 'email'::text)))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE (lower(admins.email) = lower((auth.jwt() ->> 'email'::text)))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "homepage_testimonials",
+    "policyname": "homepage_testimonials_public_read",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(active = true)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "influencer_profiles",
+    "policyname": "Admins can manage influencer profiles",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) OR (lower(a.email) = lower((auth.jwt() ->> 'email'::text))))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) OR (lower(a.email) = lower((auth.jwt() ->> 'email'::text))))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "influencer_profiles",
+    "policyname": "Public can view approved public influencers",
+    "permissive": "PERMISSIVE",
+    "roles": "{anon,authenticated}",
+    "cmd": "SELECT",
+    "qual": "((status = 'approved'::text) AND (public_listing = true))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "influencer_profiles",
+    "policyname": "Users can upsert own influencer profile",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "((auth.uid() = user_id) OR (lower(email) = lower((auth.jwt() ->> 'email'::text))))",
+    "with_check": "((auth.uid() = user_id) OR (lower(email) = lower((auth.jwt() ->> 'email'::text))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "influencer_profiles",
+    "policyname": "Users can view own influencer profile",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((auth.uid() = user_id) OR (lower(email) = lower((auth.jwt() ->> 'email'::text))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "local_businesses",
+    "policyname": "Admins can delete businesses",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE ((admins.user_id = auth.uid()) AND (lower(admins.role) ~~ '%admin%'::text))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "local_businesses",
+    "policyname": "Admins can update businesses",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((auth.uid() = created_by) OR (EXISTS ( SELECT 1\n   FROM admins\n  WHERE ((admins.user_id = auth.uid()) AND (lower(admins.role) ~~ '%admin%'::text)))))",
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "local_businesses",
+    "policyname": "Anyone can view local businesses",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "local_businesses",
+    "policyname": "Logged in users can create local businesses",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(auth.uid() = created_by)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "newsletter_campaigns",
+    "policyname": "newsletter_campaigns_admin_delete",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE (admins.user_id = auth.uid())))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "newsletter_campaigns",
+    "policyname": "newsletter_campaigns_admin_insert",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE (admins.user_id = auth.uid())))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "newsletter_campaigns",
+    "policyname": "newsletter_campaigns_admin_select",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE (admins.user_id = auth.uid())))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "newsletter_campaigns",
+    "policyname": "newsletter_campaigns_admin_update",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE (admins.user_id = auth.uid())))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE (admins.user_id = auth.uid())))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "newsletter_subscribers",
+    "policyname": "newsletter_subscribers_public_insert",
+    "permissive": "PERMISSIVE",
+    "roles": "{anon,authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "newsletter_subscribers",
+    "policyname": "newsletter_subscribers_public_select",
+    "permissive": "PERMISSIVE",
+    "roles": "{anon,authenticated}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "newsletter_subscribers",
+    "policyname": "newsletter_subscribers_public_update",
+    "permissive": "PERMISSIVE",
+    "roles": "{anon,authenticated}",
+    "cmd": "UPDATE",
+    "qual": "true",
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "public_content_requests",
+    "policyname": "Admins can manage public content requests",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "public_content_requests",
+    "policyname": "Assigned editors can read public content requests",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(lower(assigned_editor_email) = lower((auth.jwt() ->> 'email'::text)))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "public_content_requests",
+    "policyname": "Assigned editors can update public content requests",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "(lower(assigned_editor_email) = lower((auth.jwt() ->> 'email'::text)))",
+    "with_check": "(lower(assigned_editor_email) = lower((auth.jwt() ->> 'email'::text)))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "public_content_requests",
+    "policyname": "Authenticated users can submit public content requests",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(auth.uid() = submitter_user_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "public_content_requests",
+    "policyname": "Submitters can read their own public content requests",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(auth.uid() = submitter_user_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "public_visibility_controls",
+    "policyname": "Admins can manage public visibility controls",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "public_visibility_controls",
+    "policyname": "Public can read disabled visibility controls",
+    "permissive": "PERMISSIVE",
+    "roles": "{anon,authenticated}",
+    "cmd": "SELECT",
+    "qual": "(public_visibility_disabled = true)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "radio_team_members",
+    "policyname": "Admins can add radio team members",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "radio_team_members",
+    "policyname": "Admins can manage radio team profiles",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE (((a.user_id = auth.uid()) OR (lower(a.email) = lower((auth.jwt() ->> 'email'::text)))) AND (lower(a.role) ~~ '%admin%'::text))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE (((a.user_id = auth.uid()) OR (lower(a.email) = lower((auth.jwt() ->> 'email'::text)))) AND (lower(a.role) ~~ '%admin%'::text))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "radio_team_members",
+    "policyname": "Anyone can view radio team members",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "radio_team_members",
+    "policyname": "Public can read visible radio team profiles",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(show_on_public_radio = true)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "radio_team_members",
+    "policyname": "Users can update own radio profile",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((auth.uid() = user_id) OR (lower(email) = lower((auth.jwt() ->> 'email'::text))))",
+    "with_check": "((auth.uid() = user_id) OR (lower(email) = lower((auth.jwt() ->> 'email'::text))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "social_media_stats",
+    "policyname": "social_media_stats_admin_manage",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE ((admins.user_id = auth.uid()) AND (admins.role = ANY (ARRAY['super_admin'::text, 'pm_admin'::text])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE ((admins.user_id = auth.uid()) AND (admins.role = ANY (ARRAY['super_admin'::text, 'pm_admin'::text])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "social_media_stats",
+    "policyname": "social_media_stats_public_read",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "team_members",
+    "policyname": "Admins can add team members",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((auth.jwt() ->> 'email'::text) = ANY (ARRAY['abharathkumar@gmail.com'::text, 'admin@seattledesitv.com'::text]))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "team_members",
+    "policyname": "Admins can insert team members",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins\n  WHERE ((admins.user_id = auth.uid()) AND (lower(admins.role) ~~ '%admin%'::text))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "team_members",
+    "policyname": "Admins can manage team member profiles",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE (((a.user_id = auth.uid()) OR (lower(a.email) = lower((auth.jwt() ->> 'email'::text)))) AND (lower(a.role) ~~ '%admin%'::text))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE (((a.user_id = auth.uid()) OR (lower(a.email) = lower((auth.jwt() ->> 'email'::text)))) AND (lower(a.role) ~~ '%admin%'::text))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "team_members",
+    "policyname": "Anyone can view team members",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "team_members",
+    "policyname": "Users can insert own team member profile",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(auth.uid() = user_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "team_members",
+    "policyname": "Users can update own team member profile",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "UPDATE",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": "(auth.uid() = user_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "user_profiles",
+    "policyname": "Admins can insert user profiles",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "user_profiles",
+    "policyname": "Admins can read all profiles",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "user_profiles",
+    "policyname": "Admins can update user profiles",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "user_profiles",
+    "policyname": "Users can insert own profile",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(auth.uid() = user_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "user_profiles",
+    "policyname": "Users can read own profile",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "user_profiles",
+    "policyname": "Users can update own profile",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": "(auth.uid() = user_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "user_role_requests",
+    "policyname": "Admins can update role requests",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "user_role_requests",
+    "policyname": "Admins can view all role requests",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM admins a\n  WHERE ((a.user_id = auth.uid()) AND (lower(a.role) ~~ '%admin%'::text))))",
+    "with_check": null
+  }
+]
