@@ -47,6 +47,8 @@ const BACKUP_TABLES = [
 
 const CLOUDINARY_REGEX = /https?:\/\/(?:res\.cloudinary\.com|[^\s"']*cloudinary[^\s"']*)[^\s"'<>)]*/gi;
 
+type LooseSupabaseClient = any;
+
 function nowStamp() {
   return new Date().toISOString().replace(/[:.]/g, "-");
 }
@@ -74,12 +76,12 @@ async function assertAdmin(request: Request) {
   const { data, error } = await sessionClient.auth.getUser();
   const user = data?.user || null;
   if (error || !user) return { ok: false as const, status: 401, error: "Login required." };
-  const role = await resolveUserRole(sessionClient, user);
+  const role = await resolveUserRole(sessionClient as LooseSupabaseClient, user);
   if (!isAdminRole(role)) return { ok: false as const, status: 403, error: `Studio admin access required. Current role: ${role}.` };
   return { ok: true as const, user, role };
 }
 
-async function exportTable(supabase: ReturnType<typeof createClient>, table: string) {
+async function exportTable(supabase: LooseSupabaseClient, table: string) {
   const rows: any[] = [];
   let count: number | null = null;
   let from = 0;
@@ -110,7 +112,7 @@ export async function GET(request: Request) {
     const tables = requested.filter((table) => BACKUP_TABLES.includes(table));
     if (!tables.length) return NextResponse.json({ success: false, error: "No valid backup tables were requested." }, { status: 400 });
 
-    const serviceClient = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
+    const serviceClient = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } }) as LooseSupabaseClient;
     const tableResults = await Promise.all(tables.map((table) => exportTable(serviceClient, table)));
 
     const cloudinaryUrls = new Set<string>();
