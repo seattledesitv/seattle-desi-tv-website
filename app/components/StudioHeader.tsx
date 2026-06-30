@@ -43,6 +43,7 @@ const groups = [
     title: "Media",
     links: [
       ["Video Production", "/studio/video-production"],
+      ["Instagram Publisher", "/studio/instagram-publisher"],
       ["Radio", "/studio/radio-team"],
       ["Social Diagnostics", "/studio/social-diagnostics"],
     ],
