@@ -1,0 +1,9 @@
+-- Public schema RLS policies captured from production.
+-- STATUS: Captured, but not yet fully converted into final restore-safe SQL.
+--
+-- The uploaded policy export includes many public table policies, including
+-- admin, volunteer, crew, influencer, newsletter, homepage, and public content flows.
+-- This file will be converted into CREATE POLICY statements after all tables are
+-- present in tables.sql.
+--
+-- Do not run this file yet.
