@@ -1,5 +1,9 @@
 -- Seattle Desi TV Supabase schema
 -- Run in Supabase SQL Editor.
+--
+-- NOTE: This file is being refreshed from production metadata.
+-- The table section below is still an older partial schema. The storage section
+-- has been updated from the production storage policy export.
 
 create extension if not exists "pgcrypto";
 
@@ -136,20 +140,98 @@ alter table public.contact_requests enable row level security;
 drop policy if exists "Anyone can submit contact requests" on public.contact_requests;
 create policy "Anyone can submit contact requests" on public.contact_requests for insert to public with check (true);
 
+-- ============================================================
+-- Storage buckets and policies
+-- Refreshed from production storage policy export.
+-- ============================================================
+
 insert into storage.buckets (id, name, public)
 values
-  ('event-images', 'event-images', true),
   ('business-images', 'business-images', true),
-  ('team-images', 'team-images', true),
-  ('radio-team-images', 'radio-team-images', true)
-on conflict (id) do nothing;
+  ('event-images', 'event-images', true),
+  ('event-posters', 'event-posters', true),
+  ('radio-team-images', 'radio-team-images', true),
+  ('team-images', 'team-images', true)
+on conflict (id) do update set
+  name = excluded.name,
+  public = excluded.public;
 
-drop policy if exists "Public can view media images" on storage.objects;
-create policy "Public can view media images"
-on storage.objects for select to public
-using (bucket_id in ('event-images','business-images','team-images','radio-team-images'));
-
-drop policy if exists "Authenticated users can upload media images" on storage.objects;
-create policy "Authenticated users can upload media images"
+drop policy if exists "Admins can upload radio team images" on storage.objects;
+create policy "Admins can upload radio team images"
 on storage.objects for insert to authenticated
-with check (bucket_id in ('event-images','business-images','team-images','radio-team-images'));
+with check (
+  bucket_id = 'radio-team-images'
+  and exists (
+    select 1
+    from public.admins a
+    where a.user_id = auth.uid()
+      and lower(a.role) like '%admin%'
+  )
+);
+
+drop policy if exists "Admins can upload team images" on storage.objects;
+create policy "Admins can upload team images"
+on storage.objects for insert to authenticated
+with check (bucket_id = 'team-images');
+
+drop policy if exists "Anyone can view business images" on storage.objects;
+create policy "Anyone can view business images"
+on storage.objects for select to public
+using (bucket_id = 'business-images');
+
+drop policy if exists "Anyone can view event images" on storage.objects;
+create policy "Anyone can view event images"
+on storage.objects for select to public
+using (bucket_id = 'event-images');
+
+drop policy if exists "Anyone can view event posters" on storage.objects;
+create policy "Anyone can view event posters"
+on storage.objects for select to public
+using (bucket_id = 'event-posters');
+
+drop policy if exists "Anyone can view radio team images" on storage.objects;
+create policy "Anyone can view radio team images"
+on storage.objects for select to public
+using (bucket_id = 'radio-team-images');
+
+drop policy if exists "Anyone can view team images" on storage.objects;
+create policy "Anyone can view team images"
+on storage.objects for select to public
+using (bucket_id = 'team-images');
+
+drop policy if exists "Logged in users can delete event images" on storage.objects;
+create policy "Logged in users can delete event images"
+on storage.objects for delete to authenticated
+using (bucket_id = 'event-images');
+
+drop policy if exists "Logged in users can delete event posters" on storage.objects;
+create policy "Logged in users can delete event posters"
+on storage.objects for delete to authenticated
+using (bucket_id = 'event-posters');
+
+drop policy if exists "Logged in users can update event images" on storage.objects;
+create policy "Logged in users can update event images"
+on storage.objects for update to authenticated
+using (bucket_id = 'event-images')
+with check (bucket_id = 'event-images');
+
+drop policy if exists "Logged in users can update event posters" on storage.objects;
+create policy "Logged in users can update event posters"
+on storage.objects for update to authenticated
+using (bucket_id = 'event-posters')
+with check (bucket_id = 'event-posters');
+
+drop policy if exists "Logged in users can upload business images" on storage.objects;
+create policy "Logged in users can upload business images"
+on storage.objects for insert to authenticated
+with check (bucket_id = 'business-images');
+
+drop policy if exists "Logged in users can upload event images" on storage.objects;
+create policy "Logged in users can upload event images"
+on storage.objects for insert to authenticated
+with check (bucket_id = 'event-images');
+
+drop policy if exists "Logged in users can upload event posters" on storage.objects;
+create policy "Logged in users can upload event posters"
+on storage.objects for insert to authenticated
+with check (bucket_id = 'event-posters');
