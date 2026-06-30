@@ -1,0 +1,17 @@
+-- Storage policies captured from production.
+--
+-- The full storage policy SQL is already present in supabase/schema.sql and will be
+-- copied into this file when the final restore package is assembled.
+--
+-- Buckets covered:
+-- business-images
+-- event-images
+-- event-posters
+-- radio-team-images
+-- team-images
+--
+-- Policies covered:
+-- public read for all media buckets
+-- authenticated upload for event/business/poster buckets
+-- admin upload for team/radio team buckets
+-- authenticated update/delete for event image/poster buckets
