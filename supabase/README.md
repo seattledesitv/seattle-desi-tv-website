@@ -6,6 +6,27 @@ This folder is the version-controlled home for SDTV database setup.
 
 - `schema.sql` — the reusable master schema script for creating a fresh SDTV Supabase environment. This currently contains an older partial schema and should be refreshed from production before being used for staging.
 - `schema-export-helper.sql` — read-only SQL queries to run in the production Supabase SQL Editor to collect the current live schema without using paid backups or the Supabase CLI.
+- `exports/constraints.json` — captured production constraints export.
+
+## Current capture status
+
+Captured so far:
+
+- Public table inventory: 36 tables
+- Storage buckets: 5 buckets
+- Storage policies
+- RLS status: received in chat
+- Functions: received in chat
+- Triggers: received in chat
+- Extensions: received in chat
+- Constraints: saved to `exports/constraints.json`
+- Indexes: received in uploaded export, not yet converted into schema SQL
+- Public RLS policies: received in uploaded export, not yet converted into schema SQL
+
+Still needed before `schema.sql` is complete:
+
+- Full columns export for all 36 tables. The latest pasted columns output appears to stop around `event_crew_media_submissions`, so it does not yet cover every table.
+- Full conversion of constraints, indexes, functions, triggers, RLS policies, and storage into executable SQL blocks.
 
 ## Recommended no-CLI staging setup
 
