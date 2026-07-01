@@ -1,0 +1,29 @@
+{
+  "project": "Seattle Desi TV",
+  "package": "supabase-backup",
+  "version": "2026-06-30-v2",
+  "status": "canonical",
+  "created_from": "staging restore validation",
+  "recommended_restore_entrypoint": "supabase/backup/restore-order.md",
+  "deprecated_restore_files": [
+    "supabase/staging-backup/restore-all.sql"
+  ],
+  "expected": {
+    "public_base_tables": 36,
+    "primary_keys": 36,
+    "public_policies": "about 100"
+  },
+  "special_primary_keys": {
+    "admins": "user_id",
+    "user_profiles": "user_id",
+    "homepage_settings": "section_key",
+    "newsletter_settings": "section_key",
+    "public_visibility_controls": "email",
+    "social_media_stats": "platform"
+  },
+  "notes": [
+    "Use numbered restore order from restore-order.md.",
+    "Do not use the original restore-all.sql until it is regenerated from v2 ordering.",
+    "Cloudinary stores most SDTV images; database backups contain Cloudinary references, not image binaries."
+  ]
+}
