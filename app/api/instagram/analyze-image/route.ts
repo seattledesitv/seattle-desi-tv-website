@@ -7,12 +7,44 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
 const openAiKey = process.env.OPENAI_API_KEY || "";
 
+function stripCodeFence(value: string) {
+  return value.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+}
+
 function safeJsonParse(value: string) {
-  try { return JSON.parse(value); } catch {
-    const match = value.match(/\{[\s\S]*\}/);
+  const cleaned = stripCodeFence(value || "");
+  try { return JSON.parse(cleaned); } catch {
+    const match = cleaned.match(/\{[\s\S]*\}/);
     if (!match) return null;
     try { return JSON.parse(match[0]); } catch { return null; }
   }
+}
+
+function normalizeAiJson(parsed: any, raw: string, provider: string) {
+  if (parsed && typeof parsed === "object") {
+    return {
+      extractedText: parsed.extractedText || parsed.text || parsed.flyerText || "",
+      detectedPeople: parsed.detectedPeople || parsed.people || [],
+      detectedOrganizations: parsed.detectedOrganizations || parsed.organizations || [],
+      eventDetails: parsed.eventDetails || parsed.event || {},
+      sdtvLogoDetected: Boolean(parsed.sdtvLogoDetected || parsed.seattleDesiTvLogoDetected),
+      suggestedCaption: parsed.suggestedCaption || parsed.caption || raw,
+      suggestedHashtags: Array.isArray(parsed.suggestedHashtags) ? parsed.suggestedHashtags : [],
+      suggestedAltText: parsed.suggestedAltText || parsed.altText || "",
+    };
+  }
+  return {
+    extractedText: raw,
+    detectedPeople: [],
+    detectedOrganizations: [],
+    eventDetails: {},
+    sdtvLogoDetected: false,
+    suggestedCaption: raw || "Seattle Desi TV is proud to share this community moment. Follow @seattledesitv for more local stories and event highlights.",
+    suggestedHashtags: ["#SeattleDesiTV", "#SeattleEvents", "#DesiCommunity", "#PNWDesi"],
+    suggestedAltText: "Uploaded event flyer shared by Seattle Desi TV.",
+    parseFallback: true,
+    provider,
+  };
 }
 
 async function imageUrlToInlineData(imageUrl: string) {
@@ -31,15 +63,11 @@ async function analyzeWithGemini(prompt: string, imageUrl: string) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      generationConfig: {
-        temperature: 0.4,
-        maxOutputTokens: 1200,
-        responseMimeType: "application/json",
-      },
+      generationConfig: { temperature: 0.4, maxOutputTokens: 1600 },
       contents: [{
         role: "user",
         parts: [
-          { text: `${prompt}\n\nReturn valid JSON only. Do not wrap it in markdown.` },
+          { text: `${prompt}\n\nReturn one valid JSON object only. No markdown. No explanation before or after JSON.` },
           { inline_data: inlineData },
         ],
       }],
@@ -98,9 +126,9 @@ export async function POST(request: Request) {
 
     const aiResult = geminiKey ? await analyzeWithGemini(prompt, imageUrl) : await analyzeWithOpenAI(prompt, imageUrl);
     const parsed = safeJsonParse(aiResult.raw);
-    if (!parsed) return NextResponse.json({ error: "Could not parse AI response.", raw: aiResult.raw, provider: aiResult.provider }, { status: 500 });
+    const normalized = normalizeAiJson(parsed, aiResult.raw, aiResult.provider);
 
-    return NextResponse.json({ ok: true, provider: aiResult.provider, ...parsed });
+    return NextResponse.json({ ok: true, provider: aiResult.provider, raw: aiResult.raw, ...normalized });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || "Image analysis failed." }, { status: 500 });
   }
