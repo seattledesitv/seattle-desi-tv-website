@@ -10,151 +10,46 @@ const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
 const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
 const appEnv = (process.env.NEXT_PUBLIC_APP_ENV || "production").toLowerCase();
 
-function normalizeHandle(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  return trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
-}
+function normalizeHandle(value: string) { const v = value.trim(); return v ? v.startsWith("@") ? v : `@${v}` : ""; }
 function parseHandles(value: string) { return value.split(/[\n,]/).map(normalizeHandle).filter(Boolean); }
 function humanizeFileName(name: string) { return name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim(); }
-function loadImage(src: string) {
-  return new Promise<HTMLImageElement>((resolve, reject) => {
-    const img = new Image(); img.crossOrigin = "anonymous"; img.onload = () => resolve(img); img.onerror = () => reject(new Error("Could not load image.")); img.src = src;
-  });
+function loadImage(src: string) { return new Promise<HTMLImageElement>((resolve, reject) => { const img = new Image(); img.crossOrigin = "anonymous"; img.onload = () => resolve(img); img.onerror = () => reject(new Error("Could not load image.")); img.src = src; }); }
+function parseMaybeJsonText(value: any) { try { return JSON.parse(String(value || "").replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim()); } catch { const m = String(value || "").match(/\{[\s\S]*\}/); if (!m) return null; try { return JSON.parse(m[0]); } catch { return null; } } }
+function buildPostCaption(data: any, handles: string[]) {
+  const details = data?.eventDetails || data?.event || {};
+  const orgs = (Array.isArray(data?.detectedOrganizations) ? data.detectedOrganizations : data?.detectedOrganizations ? [data.detectedOrganizations] : []).filter((x: string) => !/seattle desi tv/i.test(String(x)));
+  const title = details.title || details.eventName || data?.title || "Community Event";
+  const date = details.date ? `📅 ${details.date}` : "";
+  const time = details.time ? `⏰ ${details.time}` : "";
+  const place = details.venue || details.location ? `📍 ${[details.venue, details.location].filter(Boolean).join(", ")}` : "";
+  const admission = details.admission || details.cost ? `🎟️ ${details.admission || details.cost}` : "";
+  const website = details.website ? `Learn more: ${details.website}` : "";
+  return [`✨ ${title}`, "", `Seattle Desi TV is proud to support ${orgs.length ? orgs.join(", ") : "this community moment"}. Come encourage young entrepreneurs as they launch their ideas, build brands, and share their creativity with the community.`, "", date, time, place, admission, website, handles.length ? `With: ${handles.join(" ")}` : "", "", "Follow @seattledesitv for more community stories, events, and local highlights."].filter(Boolean).join("\n");
+}
+function captionFromResponse(data: any, handles: string[]) {
+  let caption = String(data?.suggestedCaption || data?.caption || "").trim();
+  if (caption.startsWith("{") || caption.includes('"suggestedCaption"')) { const parsed = parseMaybeJsonText(caption); if (parsed) caption = String(parsed.suggestedCaption || parsed.caption || "").trim(); }
+  if (!caption || caption.length < 80 || caption.startsWith("{") || caption.includes('"extractedText"') || /proud to be a\s*$/i.test(caption)) caption = buildPostCaption(data, handles);
+  const tags = Array.isArray(data?.suggestedHashtags) ? data.suggestedHashtags.join(" ") : "";
+  return `${caption}${tags ? `\n\n${tags}` : ""}`.trim();
 }
 
 export default function InstagramPublisherPage() {
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [publishing, setPublishing] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [role, setRole] = useState("general_public");
-  const [imageUrl, setImageUrl] = useState("");
-  const [imageFileName, setImageFileName] = useState("");
-  const [postContext, setPostContext] = useState("");
-  const [collaborators, setCollaborators] = useState("");
-  const [caption, setCaption] = useState("Seattle Desi TV test post. #SeattleDesiTV #SeattleDesiCommunity");
-  const [confirmed, setConfirmed] = useState(false);
-  const [message, setMessage] = useState("Loading...");
-  const [result, setResult] = useState<any>(null);
-  const [analysis, setAnalysis] = useState<any>(null);
+  const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [uploading, setUploading] = useState(false), [publishing, setPublishing] = useState(false);
+  const [user, setUser] = useState<any>(null), [role, setRole] = useState("general_public"), [imageUrl, setImageUrl] = useState(""), [imageFileName, setImageFileName] = useState(""), [postContext, setPostContext] = useState(""), [collaborators, setCollaborators] = useState(""), [caption, setCaption] = useState("Seattle Desi TV test post. #SeattleDesiTV #SeattleDesiCommunity"), [message, setMessage] = useState("Loading...");
+  const [confirmed, setConfirmed] = useState(false), [result, setResult] = useState<any>(null), [analysis, setAnalysis] = useState<any>(null);
   const handles = useMemo(() => parseHandles(collaborators), [collaborators]);
   const canAccess = Boolean(user && isAdminRole(role));
   const canUpload = Boolean(cloudName && uploadPreset);
 
-  async function init() {
-    setLoading(true);
-    const { data } = await supabase.auth.getUser();
-    const currentUser = data?.user || null;
-    setUser(currentUser);
-    if (!currentUser) { setMessage("Please login as a Studio admin."); setLoading(false); return; }
-    const nextRole = await resolveUserRole(supabase, currentUser);
-    setRole(nextRole);
-    if (!isAdminRole(nextRole)) { setMessage(`Instagram publishing requires admin access. Current role: ${nextRole}`); setLoading(false); return; }
-    setMessage(""); setLoading(false);
-  }
-
-  async function uploadToCloudinary(file: File | Blob, name: string) {
-    if (!canUpload) throw new Error("Cloudinary upload is not configured in Vercel.");
-    const fd = new FormData();
-    fd.append("file", file, name);
-    fd.append("upload_preset", uploadPreset);
-    fd.append("folder", appEnv === "staging" ? "sdtv/staging/instagram" : "sdtv/instagram");
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: "POST", body: fd });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok || !json.secure_url) throw new Error(json?.error?.message || "Cloudinary upload failed.");
-    return json.secure_url as string;
-  }
-
-  async function uploadImage(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]; if (!file) return;
-    setResult(null); setAnalysis(null); setMessage(""); setImageFileName(file.name);
-    if (!file.type.startsWith("image/")) { setMessage("Please choose an image file."); return; }
-    setUploading(true);
-    try { setImageUrl(await uploadToCloudinary(file, file.name)); setMessage("Image uploaded. Click AI Parse Flyer + Caption."); }
-    catch (e: any) { setMessage(e?.message || "Image upload failed."); }
-    finally { setUploading(false); }
-  }
-
-  async function analyzeFlyer() {
-    if (!imageUrl.trim()) { setMessage("Upload an image or paste an image URL first."); return; }
-    setBusy(true); setMessage(""); setResult(null);
-    try {
-      const { data } = await supabase.auth.getSession();
-      const token = data?.session?.access_token || "";
-      const res = await fetch("/api/instagram/analyze-image", { method: "POST", headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" }, body: JSON.stringify({ imageUrl: imageUrl.trim(), postContext: postContext.trim(), collaborators: handles }) });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || json.error) throw new Error(json.error || "AI flyer analysis failed.");
-      setAnalysis(json);
-      const tags = Array.isArray(json.suggestedHashtags) ? json.suggestedHashtags.join(" ") : "";
-      setCaption(`${json.suggestedCaption || ""}${tags ? `\n\n${tags}` : ""}`.trim());
-      setMessage(json.sdtvLogoDetected ? "AI parsed the flyer and generated a caption. SDTV logo appears present." : "AI parsed the flyer. SDTV logo may be missing, so you can add the media partner logo.");
-    } catch (e: any) { setMessage(e?.message || "AI flyer analysis failed."); }
-    finally { setBusy(false); }
-  }
-
-  function basicDraft() {
-    const subject = postContext.trim() || humanizeFileName(imageFileName) || "this community moment";
-    setCaption([`✨ ${subject}`, "", "Seattle Desi TV is proud to spotlight the people, stories, and moments that bring our community together.", handles.length ? `With: ${handles.join(" ")}` : "", "", "Follow @seattledesitv for more community stories, events, and local highlights.", "", "#SeattleDesiTV #SeattleDesiCommunity #SeattleEvents #DesiCommunity #PNWDesi"].filter(Boolean).join("\n"));
-    setMessage("Basic caption draft generated.");
-  }
-
-  async function addLogo() {
-    if (!imageUrl.trim()) { setMessage("Upload an image first."); return; }
-    setBusy(true); setMessage("");
-    try {
-      const [base, logo] = await Promise.all([loadImage(imageUrl), loadImage("/sdtv-logo.png")]);
-      const canvas = document.createElement("canvas");
-      canvas.width = base.naturalWidth || base.width; canvas.height = base.naturalHeight || base.height;
-      const ctx = canvas.getContext("2d"); if (!ctx) throw new Error("Could not prepare image.");
-      ctx.drawImage(base, 0, 0, canvas.width, canvas.height);
-      const m = Math.round(canvas.width * 0.035), w = Math.round(canvas.width * 0.2), h = Math.round(w * (logo.naturalHeight / logo.naturalWidth)), p = Math.round(canvas.width * 0.018), th = Math.round(canvas.width * 0.04);
-      ctx.fillStyle = "rgba(255,255,255,0.92)"; ctx.fillRect(m, m, w + p * 2, h + p * 2 + th);
-      ctx.strokeStyle = "rgba(245,158,11,0.95)"; ctx.lineWidth = Math.max(2, Math.round(canvas.width * 0.006)); ctx.strokeRect(m, m, w + p * 2, h + p * 2 + th);
-      ctx.fillStyle = "#111827"; ctx.font = `900 ${Math.max(14, Math.round(canvas.width * 0.028))}px Arial`; ctx.textAlign = "center"; ctx.fillText("MEDIA PARTNER", m + (w + p * 2) / 2, m + p + th * 0.75);
-      ctx.drawImage(logo, m + p, m + p + th, w, h);
-      const blob: Blob = await new Promise((resolve, reject) => canvas.toBlob((b) => b ? resolve(b) : reject(new Error("Could not export image.")), "image/jpeg", 0.92));
-      setImageUrl(await uploadToCloudinary(blob, "sdtv-media-partner-logo.jpg"));
-      setMessage("SDTV media partner logo added and re-uploaded. Review before publishing.");
-    } catch (e: any) { setMessage(e?.message || "Could not add SDTV logo."); }
-    finally { setBusy(false); }
-  }
-
-  async function publish() {
-    setResult(null); setMessage("");
-    if (!imageUrl.trim()) return setMessage("Add a public HTTPS image URL or upload an image first.");
-    if (!caption.trim()) return setMessage("Add a caption first.");
-    if (!confirmed) return setMessage("Please check the confirmation box before publishing live to Instagram.");
-    setPublishing(true);
-    try {
-      const { data } = await supabase.auth.getSession();
-      const token = data?.session?.access_token || "";
-      const res = await fetch("/api/instagram/publish", { method: "POST", headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" }, body: JSON.stringify({ imageUrl: imageUrl.trim(), caption: caption.trim(), collaborators: handles, postContext: postContext.trim() }) });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || json.error) throw new Error(json.error || "Instagram publish failed.");
-      setResult(json); setMessage("Published to Instagram successfully.");
-    } catch (e: any) { setMessage(e?.message || "Instagram publish failed."); }
-    finally { setPublishing(false); }
-  }
-
+  async function init() { setLoading(true); const { data } = await supabase.auth.getUser(); const u = data?.user || null; setUser(u); if (!u) { setMessage("Please login as a Studio admin."); setLoading(false); return; } const r = await resolveUserRole(supabase, u); setRole(r); if (!isAdminRole(r)) { setMessage(`Instagram publishing requires admin access. Current role: ${r}`); setLoading(false); return; } setMessage(""); setLoading(false); }
+  async function uploadToCloudinary(file: File | Blob, name: string) { if (!canUpload) throw new Error("Cloudinary upload is not configured in Vercel."); const fd = new FormData(); fd.append("file", file, name); fd.append("upload_preset", uploadPreset); fd.append("folder", appEnv === "staging" ? "sdtv/staging/instagram" : "sdtv/instagram"); const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: "POST", body: fd }); const json = await res.json().catch(() => ({})); if (!res.ok || !json.secure_url) throw new Error(json?.error?.message || "Cloudinary upload failed."); return json.secure_url as string; }
+  async function uploadImage(event: ChangeEvent<HTMLInputElement>) { const file = event.target.files?.[0]; if (!file) return; setResult(null); setAnalysis(null); setMessage(""); setImageFileName(file.name); if (!file.type.startsWith("image/")) { setMessage("Please choose an image file."); return; } setUploading(true); try { setImageUrl(await uploadToCloudinary(file, file.name)); setMessage("Image uploaded. Click AI Parse Flyer + Caption."); } catch (e: any) { setMessage(e?.message || "Image upload failed."); } finally { setUploading(false); } }
+  async function analyzeFlyer() { if (!imageUrl.trim()) { setMessage("Upload an image or paste an image URL first."); return; } setBusy(true); setMessage(""); setResult(null); try { const { data } = await supabase.auth.getSession(); const token = data?.session?.access_token || ""; const res = await fetch("/api/instagram/analyze-image", { method: "POST", headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" }, body: JSON.stringify({ imageUrl: imageUrl.trim(), postContext: postContext.trim(), collaborators: handles }) }); const json = await res.json().catch(() => ({})); if (!res.ok || json.error) throw new Error(json.error || "AI flyer analysis failed."); const normalized = { ...json, suggestedCaption: captionFromResponse(json, handles) }; setAnalysis(normalized); setCaption(normalized.suggestedCaption); setMessage("AI generated a post-ready caption. Review and publish."); } catch (e: any) { setMessage(e?.message || "AI flyer analysis failed."); } finally { setBusy(false); } }
+  function basicDraft() { const subject = postContext.trim() || humanizeFileName(imageFileName) || "this community moment"; setCaption([`✨ ${subject}`, "", "Seattle Desi TV is proud to spotlight the people, stories, and moments that bring our community together.", handles.length ? `With: ${handles.join(" ")}` : "", "", "Follow @seattledesitv for more community stories, events, and local highlights.", "", "#SeattleDesiTV #SeattleDesiCommunity #SeattleEvents #DesiCommunity #PNWDesi"].filter(Boolean).join("\n")); setMessage("Basic caption draft generated."); }
+  async function addLogo() { if (!imageUrl.trim()) { setMessage("Upload an image first."); return; } setBusy(true); setMessage(""); try { const [base, logo] = await Promise.all([loadImage(imageUrl), loadImage("/sdtv-logo.png")]); const canvas = document.createElement("canvas"); canvas.width = base.naturalWidth || base.width; canvas.height = base.naturalHeight || base.height; const ctx = canvas.getContext("2d"); if (!ctx) throw new Error("Could not prepare image."); ctx.drawImage(base, 0, 0, canvas.width, canvas.height); const m = Math.round(canvas.width * 0.035), w = Math.round(canvas.width * 0.2), h = Math.round(w * (logo.naturalHeight / logo.naturalWidth)), p = Math.round(canvas.width * 0.018), th = Math.round(canvas.width * 0.04); ctx.fillStyle = "rgba(255,255,255,0.92)"; ctx.fillRect(m, m, w + p * 2, h + p * 2 + th); ctx.strokeStyle = "rgba(245,158,11,0.95)"; ctx.lineWidth = Math.max(2, Math.round(canvas.width * 0.006)); ctx.strokeRect(m, m, w + p * 2, h + p * 2 + th); ctx.fillStyle = "#111827"; ctx.font = `900 ${Math.max(14, Math.round(canvas.width * 0.028))}px Arial`; ctx.textAlign = "center"; ctx.fillText("MEDIA PARTNER", m + (w + p * 2) / 2, m + p + th * 0.75); ctx.drawImage(logo, m + p, m + p + th, w, h); const blob: Blob = await new Promise((resolve, reject) => canvas.toBlob((b) => b ? resolve(b) : reject(new Error("Could not export image.")), "image/jpeg", 0.92)); setImageUrl(await uploadToCloudinary(blob, "sdtv-media-partner-logo.jpg")); setMessage("SDTV media partner logo added and re-uploaded. Review before publishing."); } catch (e: any) { setMessage(e?.message || "Could not add SDTV logo."); } finally { setBusy(false); } }
+  async function publish() { setResult(null); setMessage(""); if (!imageUrl.trim()) return setMessage("Add a public HTTPS image URL or upload an image first."); if (!caption.trim()) return setMessage("Add a caption first."); if (!confirmed) return setMessage("Please check the confirmation box before publishing live to Instagram."); setPublishing(true); try { const { data } = await supabase.auth.getSession(); const token = data?.session?.access_token || ""; const res = await fetch("/api/instagram/publish", { method: "POST", headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" }, body: JSON.stringify({ imageUrl: imageUrl.trim(), caption: caption.trim(), collaborators: handles, postContext: postContext.trim() }) }); const json = await res.json().catch(() => ({})); if (!res.ok || json.error) throw new Error(json.error || "Instagram publish failed."); setResult(json); setMessage("Published to Instagram successfully."); } catch (e: any) { setMessage(e?.message || "Instagram publish failed."); } finally { setPublishing(false); } }
   useEffect(() => { init(); }, []);
 
-  return <main className="min-h-screen bg-slate-950 text-white"><StudioHeader /><div className="mx-auto max-w-6xl px-6 py-10">
-    <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><p className="text-sm font-black uppercase tracking-[0.25em] text-pink-300">Instagram Publishing</p><h1 className="mt-2 text-4xl font-black md:text-5xl">Instagram Publisher</h1><p className="mt-3 max-w-3xl text-slate-300">Upload a flyer, let AI read the flyer text, generate a caption, add collaborator mentions, and optionally add the SDTV media partner logo.</p>{user?.email && <p className="mt-2 text-sm text-slate-400">Logged in as {user.email} · Role: {role} · Env: {appEnv}</p>}</div><a href="/studio/social-diagnostics" className="rounded-xl bg-white/10 px-5 py-3 text-center font-black text-white hover:bg-white/20">Open Diagnostics</a></div>
-    {loading && <div className="rounded-2xl bg-white/10 p-6 font-bold">{message}</div>}
-    {!loading && !canAccess && <div className="rounded-2xl bg-white p-8 font-bold text-slate-950">{message}</div>}
-    {!loading && canAccess && <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]"><section className="rounded-3xl bg-white p-6 text-slate-950 shadow-2xl"><div className="mb-6"><h2 className="text-3xl font-black">Create one image post</h2><p className="mt-2 text-sm leading-6 text-slate-600">AI parsing requires OPENAI_API_KEY in Vercel.</p></div><div className="grid gap-5">
-      <label className="grid gap-2"><span className="text-sm font-black uppercase tracking-wide text-slate-600">Upload image</span><input type="file" accept="image/*" onChange={uploadImage} className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-pink-500" /><span className="text-xs font-bold text-slate-500">{canUpload ? "Image uploads use Cloudinary." : "Cloudinary env vars are missing; paste an image URL instead."}</span></label>
-      <label className="grid gap-2"><span className="text-sm font-black uppercase tracking-wide text-slate-600">Image URL</span><input value={imageUrl} onChange={(e) => { setImageUrl(e.target.value); setAnalysis(null); }} placeholder="https://.../image.jpg" className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-pink-500" /></label>
-      {imageUrl && <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"><img src={imageUrl} alt="Instagram post preview" className="max-h-[520px] w-full object-contain" /></div>}
-      <label className="grid gap-2"><span className="text-sm font-black uppercase tracking-wide text-slate-600">Optional post context / prompt</span><textarea value={postContext} onChange={(e) => setPostContext(e.target.value)} rows={3} placeholder="Example: Post-event recap reel for this performance..." className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-pink-500" /></label>
-      <label className="grid gap-2"><span className="text-sm font-black uppercase tracking-wide text-slate-600">Collaborators / handles to mention</span><textarea value={collaborators} onChange={(e) => setCollaborators(e.target.value)} rows={3} placeholder="@handle1, @handle2 or one per line" className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-pink-500" /><span className="text-xs font-bold text-slate-500">This adds handles into the caption; true collab invitations can be added later if your API permissions support it.</span></label>
-      <div className="flex flex-wrap gap-3"><button type="button" onClick={analyzeFlyer} disabled={busy || uploading} className="rounded-xl bg-slate-950 px-5 py-3 font-black text-white hover:bg-slate-800 disabled:opacity-60">{busy ? "Working..." : "AI Parse Flyer + Caption"}</button><button type="button" onClick={basicDraft} className="rounded-xl bg-slate-100 px-5 py-3 font-black text-slate-950 hover:bg-slate-200">Basic Draft</button><button type="button" onClick={addLogo} disabled={busy || uploading || !imageUrl} className="rounded-xl bg-amber-500 px-5 py-3 font-black text-slate-950 hover:bg-amber-400 disabled:opacity-60">Add SDTV Media Partner Logo</button>{handles.length > 0 && <div className="rounded-xl bg-pink-50 px-4 py-3 text-sm font-black text-pink-800">Mentions: {handles.join(" ")}</div>}</div>
-      <label className="grid gap-2"><span className="text-sm font-black uppercase tracking-wide text-slate-600">Caption</span><textarea value={caption} onChange={(e) => setCaption(e.target.value)} rows={11} className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-pink-500" /></label>
-      <label className="flex items-start gap-3 rounded-2xl bg-yellow-50 p-4 text-sm font-bold text-yellow-900"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1 h-4 w-4" /><span>I understand this will publish live to the connected Instagram account.</span></label>
-      {message && <div className={`${result?.ok ? "bg-green-100 text-green-900" : "bg-yellow-100 text-yellow-900"} rounded-2xl p-4 text-sm font-bold`}>{message}</div>}
-      <button onClick={publish} disabled={publishing || uploading || busy} className="rounded-xl bg-pink-600 px-5 py-4 text-lg font-black text-white shadow-lg shadow-pink-900/20 disabled:cursor-not-allowed disabled:opacity-60">{uploading ? "Uploading..." : publishing ? "Publishing..." : "Publish to Instagram"}</button>
-    </div></section><aside className="space-y-6"><section className="rounded-3xl border border-white/10 bg-white/[0.06] p-6"><h3 className="text-2xl font-black">New workflow</h3><div className="mt-4 space-y-3 text-sm leading-6 text-slate-300"><p>1. Upload flyer.</p><p>2. Click AI Parse Flyer + Caption.</p><p>3. Add SDTV logo if missing.</p><p>4. Review and publish.</p></div></section>{analysis && <section className="rounded-3xl bg-white p-6 text-slate-950 shadow-2xl"><h3 className="text-2xl font-black">AI Flyer Readout</h3><div className="mt-4 grid gap-3 text-sm"><div className="rounded-xl bg-slate-50 p-3"><p className="font-black text-slate-500">SDTV Logo Detected</p><p className="font-bold">{analysis.sdtvLogoDetected ? "Yes" : "Not sure / No"}</p></div>{analysis.extractedText && <div className="rounded-xl bg-slate-50 p-3"><p className="font-black text-slate-500">Extracted Flyer Text</p><p className="whitespace-pre-wrap font-bold">{Array.isArray(analysis.extractedText) ? analysis.extractedText.join("\n") : analysis.extractedText}</p></div>}</div></section>}<section className="rounded-3xl border border-white/10 bg-white/[0.06] p-6"><h3 className="text-2xl font-black">Logo note</h3><p className="mt-4 text-sm leading-6 text-slate-300">The logo tool creates a new Cloudinary image with a small MEDIA PARTNER SDTV badge. It does not overwrite the original flyer.</p></section>{result && <section className="rounded-3xl bg-white p-6 text-slate-950 shadow-2xl"><h3 className="text-2xl font-black">Publish Result</h3><div className="mt-4 grid gap-3 text-sm"><div className="rounded-xl bg-slate-50 p-3"><p className="font-black text-slate-500">Source</p><p className="break-words font-bold">{result.source || "—"}</p></div><div className="rounded-xl bg-slate-50 p-3"><p className="font-black text-slate-500">Media ID</p><p className="break-words font-bold">{result.mediaId || "—"}</p></div>{result.permalink && <a href={result.permalink} target="_blank" rel="noreferrer" className="rounded-xl bg-slate-950 px-4 py-3 text-center font-black text-white">Open Instagram Post</a>}</div></section>}</aside></div>}
-  </div></main>;
+  return <main className="min-h-screen bg-slate-950 text-white"><StudioHeader /><div className="mx-auto max-w-6xl px-6 py-10"><div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><p className="text-sm font-black uppercase tracking-[0.25em] text-pink-300">Instagram Publishing</p><h1 className="mt-2 text-4xl font-black md:text-5xl">Instagram Publisher</h1><p className="mt-3 max-w-3xl text-slate-300">Upload a flyer, let AI read it, generate a post-ready caption, add collaborator mentions, and optionally add the SDTV media partner logo.</p>{user?.email && <p className="mt-2 text-sm text-slate-400">Logged in as {user.email} · Role: {role} · Env: {appEnv}</p>}</div><a href="/studio/social-diagnostics" className="rounded-xl bg-white/10 px-5 py-3 text-center font-black text-white hover:bg-white/20">Open Diagnostics</a></div>{loading && <div className="rounded-2xl bg-white/10 p-6 font-bold">{message}</div>}{!loading && !canAccess && <div className="rounded-2xl bg-white p-8 font-bold text-slate-950">{message}</div>}{!loading && canAccess && <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]"><section className="rounded-3xl bg-white p-6 text-slate-950 shadow-2xl"><div className="mb-6"><h2 className="text-3xl font-black">Create one image post</h2><p className="mt-2 text-sm leading-6 text-slate-600">AI parsing uses the configured Gemini key.</p></div><div className="grid gap-5"><label className="grid gap-2"><span className="text-sm font-black uppercase tracking-wide text-slate-600">Upload image</span><input type="file" accept="image/*" onChange={uploadImage} className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-pink-500" /><span className="text-xs font-bold text-slate-500">{canUpload ? "Image uploads use Cloudinary." : "Cloudinary env vars are missing; paste an image URL instead."}</span></label><label className="grid gap-2"><span className="text-sm font-black uppercase tracking-wide text-slate-600">Image URL</span><input value={imageUrl} onChange={(e) => { setImageUrl(e.target.value); setAnalysis(null); }} placeholder="https://.../image.jpg" className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-pink-500" /></label>{imageUrl && <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"><img src={imageUrl} alt="Instagram post preview" className="max-h-[520px] w-full object-contain" /></div>}<label className="grid gap-2"><span className="text-sm font-black uppercase tracking-wide text-slate-600">Optional post context / prompt</span><textarea value={postContext} onChange={(e) => setPostContext(e.target.value)} rows={3} placeholder="Example: Post-event recap reel for this performance..." className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-pink-500" /></label><label className="grid gap-2"><span className="text-sm font-black uppercase tracking-wide text-slate-600">Collaborators / handles to mention</span><textarea value={collaborators} onChange={(e) => setCollaborators(e.target.value)} rows={3} placeholder="@handle1, @handle2 or one per line" className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-pink-500" /><span className="text-xs font-bold text-slate-500">This adds handles into the caption.</span></label><div className="flex flex-wrap gap-3"><button type="button" onClick={analyzeFlyer} disabled={busy || uploading} className="rounded-xl bg-slate-950 px-5 py-3 font-black text-white hover:bg-slate-800 disabled:opacity-60">{busy ? "Working..." : "AI Parse Flyer + Caption"}</button><button type="button" onClick={basicDraft} className="rounded-xl bg-slate-100 px-5 py-3 font-black text-slate-950 hover:bg-slate-200">Basic Draft</button><button type="button" onClick={addLogo} disabled={busy || uploading || !imageUrl} className="rounded-xl bg-amber-500 px-5 py-3 font-black text-slate-950 hover:bg-amber-400 disabled:opacity-60">Add SDTV Media Partner Logo</button>{handles.length > 0 && <div className="rounded-xl bg-pink-50 px-4 py-3 text-sm font-black text-pink-800">Mentions: {handles.join(" ")}</div>}</div><label className="grid gap-2"><span className="text-sm font-black uppercase tracking-wide text-slate-600">Caption</span><textarea value={caption} onChange={(e) => setCaption(e.target.value)} rows={11} className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-pink-500" /></label><label className="flex items-start gap-3 rounded-2xl bg-yellow-50 p-4 text-sm font-bold text-yellow-900"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1 h-4 w-4" /><span>I understand this will publish live to the connected Instagram account.</span></label>{message && <div className={`${result?.ok ? "bg-green-100 text-green-900" : "bg-yellow-100 text-yellow-900"} rounded-2xl p-4 text-sm font-bold`}>{message}</div>}<button onClick={publish} disabled={publishing || uploading || busy} className="rounded-xl bg-pink-600 px-5 py-4 text-lg font-black text-white shadow-lg shadow-pink-900/20 disabled:cursor-not-allowed disabled:opacity-60">{uploading ? "Uploading..." : publishing ? "Publishing..." : "Publish to Instagram"}</button></div></section><aside className="space-y-6"><section className="rounded-3xl border border-white/10 bg-white/[0.06] p-6"><h3 className="text-2xl font-black">Workflow</h3><div className="mt-4 space-y-3 text-sm leading-6 text-slate-300"><p>1. Upload flyer.</p><p>2. Click AI Parse Flyer + Caption.</p><p>3. Review only the caption text.</p><p>4. Publish.</p></div></section>{analysis && <section className="rounded-3xl bg-white p-6 text-slate-950 shadow-2xl"><h3 className="text-2xl font-black">AI Flyer Readout</h3><div className="mt-4 grid gap-3 text-sm"><div className="rounded-xl bg-slate-50 p-3"><p className="font-black text-slate-500">SDTV Logo Detected</p><p className="font-bold">{analysis.sdtvLogoDetected ? "Yes" : "Not sure / No"}</p></div>{analysis.extractedText && <div className="rounded-xl bg-slate-50 p-3"><p className="font-black text-slate-500">Extracted Flyer Text</p><p className="whitespace-pre-wrap font-bold">{Array.isArray(analysis.extractedText) ? analysis.extractedText.join("\n") : analysis.extractedText}</p></div>}</div></section>}<section className="rounded-3xl border border-white/10 bg-white/[0.06] p-6"><h3 className="text-2xl font-black">Logo note</h3><p className="mt-4 text-sm leading-6 text-slate-300">The logo tool creates a new Cloudinary image with a small MEDIA PARTNER SDTV badge. It does not overwrite the original flyer.</p></section>{result && <section className="rounded-3xl bg-white p-6 text-slate-950 shadow-2xl"><h3 className="text-2xl font-black">Publish Result</h3><div className="mt-4 grid gap-3 text-sm"><div className="rounded-xl bg-slate-50 p-3"><p className="font-black text-slate-500">Source</p><p className="break-words font-bold">{result.source || "—"}</p></div><div className="rounded-xl bg-slate-50 p-3"><p className="font-black text-slate-500">Media ID</p><p className="break-words font-bold">{result.mediaId || "—"}</p></div>{result.permalink && <a href={result.permalink} target="_blank" rel="noreferrer" className="rounded-xl bg-slate-950 px-4 py-3 text-center font-black text-white">Open Instagram Post</a>}</div></section>}</aside></div>}</div></main>;
 }
