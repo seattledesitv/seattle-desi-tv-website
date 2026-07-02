@@ -68,6 +68,7 @@ const groups = [
     links: [
       ["Analytics", "/studio/analytics"],
       ["Database Backup", "/studio/database-backup"],
+      ["Database Import", "/studio/database-import"],
     ],
   },
 ];
