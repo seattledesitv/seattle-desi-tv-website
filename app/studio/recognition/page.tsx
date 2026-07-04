@@ -24,15 +24,32 @@ function lastWeekRange() {
   return { start, end };
 }
 function fmt(date: Date) { return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }); }
+function shortFmt(date: Date) { return date.toLocaleDateString(undefined, { month: "short", day: "numeric" }).replace(",", ""); }
 function safeName(email: string, fallback: string) { return fallback && fallback !== email ? fallback : email ? email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (m) => m.toUpperCase()) : "SDTV Volunteer"; }
 function cleanHandle(value: string) { const v = value.trim(); return v ? v.startsWith("@") ? v : `@${v}` : ""; }
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
 function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number, maxLines: number) {
   const words = text.split(" "); let line = ""; let lines = 0;
-  for (const word of words) { const test = `${line}${word} `; if (ctx.measureText(test).width > maxWidth && line) { ctx.fillText(line.trim(), x, y); line = `${word} `; y += lineHeight; lines++; if (lines >= maxLines) return; } else line = test; }
+  for (const word of words) {
+    const test = `${line}${word} `;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      ctx.fillText(line.trim(), x, y);
+      line = `${word} `;
+      y += lineHeight;
+      lines++;
+      if (lines >= maxLines) return;
+    } else line = test;
+  }
   if (line && lines < maxLines) ctx.fillText(line.trim(), x, y);
 }
 function loadImage(src: string) { return new Promise<HTMLImageElement>((resolve) => { const img = new Image(); img.crossOrigin = "anonymous"; img.onload = () => resolve(img); img.onerror = () => resolve(img); img.src = src; }); }
+function drawImageContain(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, maxW: number, maxH: number) {
+  if (!img.complete || !img.naturalWidth || !img.naturalHeight) return;
+  const ratio = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
+  const w = img.naturalWidth * ratio;
+  const h = img.naturalHeight * ratio;
+  ctx.drawImage(img, x + (maxW - w) / 2, y + (maxH - h) / 2, w, h);
+}
 
 export default function StudioRecognitionPage() {
   const { start, end } = useMemo(() => lastWeekRange(), []);
@@ -93,25 +110,38 @@ export default function StudioRecognitionPage() {
       const ctx = canvas.getContext("2d"); if (!ctx) throw new Error("Could not create image.");
       const bg = ctx.createLinearGradient(0, 0, 1080, 1350); bg.addColorStop(0, "#020617"); bg.addColorStop(0.45, "#111827"); bg.addColorStop(1, "#090014"); ctx.fillStyle = bg; ctx.fillRect(0, 0, 1080, 1350);
       for (let i = 0; i < 110; i++) { ctx.fillStyle = `rgba(245,158,11,${Math.random() * 0.35})`; ctx.beginPath(); ctx.arc(Math.random() * 1080, Math.random() * 1100, Math.random() * 3 + 1, 0, Math.PI * 2); ctx.fill(); }
-      ctx.fillStyle = "rgba(245,158,11,0.22)"; ctx.beginPath(); ctx.arc(95, 95, 140, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(970, 880, 220, 0, Math.PI * 2); ctx.fill();
-      const logo = await loadImage("/sdtv-logo.png"); if (logo.complete && logo.naturalWidth) ctx.drawImage(logo, 75, 80, 150, 110);
-      ctx.fillStyle = "#facc15"; ctx.font = "800 26px Arial"; ctx.textAlign = "center"; ctx.fillText("S E A T T L E   D E S I   T V", 540, 110);
+      ctx.fillStyle = "rgba(245,158,11,0.18)"; ctx.beginPath(); ctx.arc(95, 95, 140, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(970, 880, 220, 0, Math.PI * 2); ctx.fill();
+
+      const logo = await loadImage("/sdtv-logo.png");
+      drawImageContain(ctx, logo, 62, 54, 120, 90);
+
+      ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+      ctx.fillStyle = "#facc15"; ctx.font = "800 26px Arial"; ctx.fillText("S E A T T L E   D E S I   T V", 540, 110);
       ctx.fillStyle = "#ffffff"; ctx.font = "italic 86px Georgia"; ctx.fillText("Thank You", 540, 230);
       const gold = ctx.createLinearGradient(260, 280, 830, 380); gold.addColorStop(0, "#f59e0b"); gold.addColorStop(0.5, "#fde68a"); gold.addColorStop(1, "#f59e0b"); ctx.fillStyle = gold; ctx.font = "900 96px Arial"; ctx.fillText("VOLUNTEERS!", 540, 350);
-      ctx.fillStyle = "#111827"; roundRect(ctx, 845, 0, 170, 205, 0); ctx.fillStyle = "#fbbf24"; ctx.fillRect(845, 0, 170, 205); ctx.fillStyle = "#111827"; ctx.font = "900 27px Arial"; ctx.fillText("LAST WEEK", 930, 55); ctx.fillText("COVERAGE", 930, 90); ctx.font = "800 21px Arial"; ctx.fillText(`${fmt(start).replace(",", "")} -`, 930, 128); ctx.fillText(fmt(end).replace(",", ""), 930, 158);
-      ctx.fillStyle = "#ffffff"; ctx.font = "800 30px Arial"; wrapText(ctx, thankMessage, 240, 430, 600, 42, 4);
+
+      ctx.fillStyle = "#fbbf24"; roundRect(ctx, 820, 0, 220, 205, 0); ctx.fill();
+      ctx.fillStyle = "#111827"; ctx.textAlign = "center";
+      ctx.font = "900 25px Arial"; ctx.fillText("LAST WEEK", 930, 52); ctx.fillText("COVERAGE", 930, 84);
+      ctx.font = "800 18px Arial"; ctx.fillText(`${shortFmt(start)} - ${shortFmt(end)}`, 930, 120); ctx.fillText(String(end.getFullYear()), 930, 148);
+
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#ffffff"; ctx.font = "800 30px Arial"; wrapText(ctx, thankMessage, 120, 435, 840, 42, 4);
+      ctx.textAlign = "center";
       ctx.fillStyle = "#facc15"; ctx.font = "900 32px Arial"; ctx.fillText("YOU MADE A DIFFERENCE!", 540, 610);
+
       const people = selected.slice(0, 6); const startX = 140; const gap = 160;
       for (let i = 0; i < people.length; i++) {
         const p = people[i]; const cx = startX + i * gap; const cy = 735;
         ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, 56, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
         if (p.photo) { const img = await loadImage(p.photo); if (img.complete && img.naturalWidth) ctx.drawImage(img, cx - 56, cy - 56, 112, 112); else { ctx.fillStyle = "#fdf2f8"; ctx.fillRect(cx - 56, cy - 56, 112, 112); } }
-        else { ctx.fillStyle = "#fdf2f8"; ctx.fillRect(cx - 56, cy - 56, 112, 112); ctx.fillStyle = "#be185d"; ctx.font = "900 34px Arial"; ctx.fillText(p.name.slice(0, 1), cx, cy + 12); }
+        else { ctx.fillStyle = "#fdf2f8"; ctx.fillRect(cx - 56, cy - 56, 112, 112); ctx.fillStyle = "#be185d"; ctx.font = "900 34px Arial"; ctx.textAlign = "center"; ctx.fillText(p.name.slice(0, 1), cx, cy + 12); }
         ctx.restore(); ctx.strokeStyle = "#facc15"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(cx, cy, 58, 0, Math.PI * 2); ctx.stroke();
-        ctx.fillStyle = "#ffffff"; ctx.font = "900 22px Arial"; ctx.fillText(p.name.length > 12 ? `${p.name.slice(0, 11)}…` : p.name, cx, 835); ctx.fillStyle = "#e5e7eb"; ctx.font = "700 18px Arial"; ctx.fillText(p.role.length > 15 ? `${p.role.slice(0, 14)}…` : p.role, cx, 862);
+        ctx.textAlign = "center"; ctx.fillStyle = "#ffffff"; ctx.font = "900 22px Arial"; ctx.fillText(p.name.length > 12 ? `${p.name.slice(0, 11)}…` : p.name, cx, 835); ctx.fillStyle = "#e5e7eb"; ctx.font = "700 18px Arial"; ctx.fillText(p.role.length > 15 ? `${p.role.slice(0, 14)}…` : p.role, cx, 862);
       }
-      if (!people.length) { ctx.fillStyle = "#ffffff"; ctx.font = "800 36px Arial"; ctx.fillText("No completed coverage found for last week yet.", 540, 720); }
-      ctx.fillStyle = "#facc15"; ctx.font = "italic 42px Georgia"; ctx.fillText("Together, we tell our community's story.", 540, 960); ctx.fillStyle = "#ec4899"; ctx.font = "italic 54px Georgia"; ctx.fillText("♡", 875, 970);
+      if (!people.length) { ctx.textAlign = "center"; ctx.fillStyle = "#ffffff"; ctx.font = "800 34px Arial"; wrapText(ctx, "No completed coverage found for last week yet.", 540, 735, 820, 42, 2); }
+
+      ctx.textAlign = "center"; ctx.fillStyle = "#facc15"; ctx.font = "italic 42px Georgia"; ctx.fillText("Together, we tell our community's story.", 540, 960); ctx.fillStyle = "#ec4899"; ctx.font = "italic 54px Georgia"; ctx.fillText("♡", 875, 970);
       const footer = ctx.createLinearGradient(0, 1115, 1080, 1115); footer.addColorStop(0, "#9d174d"); footer.addColorStop(1, "#db2777"); ctx.fillStyle = footer; ctx.fillRect(0, 1115, 1080, 115);
       ctx.fillStyle = "#ffffff"; ctx.font = "900 27px Arial"; ctx.fillText("seattledesitv.com   |   @seattledesitv", 540, 1185); ctx.font = "800 25px Arial"; ctx.fillText("#SeattleDesiTV  #SDTVVolunteers  #CommunityStories", 540, 1285);
       const url = canvas.toDataURL("image/png"); setImageDataUrl(url); setMessage("Recognition image generated for Instagram and WhatsApp.");
