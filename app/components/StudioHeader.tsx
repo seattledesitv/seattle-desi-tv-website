@@ -23,7 +23,7 @@ const groups = [
       ["Sponsors", "/studio/sponsors"],
     ],
   },
-  { title: "Operations", links: [["Event Operations", "/studio/event-ops-v2"]] },
+  { title: "Operations", links: [["Event Operations", "/studio/event-ops-v2"], ["Video Upload Folders", "/studio/event-upload-folders"]] },
   {
     title: "People",
     links: [
