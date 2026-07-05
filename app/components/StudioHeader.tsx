@@ -25,7 +25,7 @@ const groups = [
   },
   {
     title: "Operations",
-    links: [["Event Operations", "/studio/event-ops-v2"], ["Event Admin POCs", "/studio/event-pocs"]],
+    links: [["Event Operations", "/studio/event-ops-v2"]],
   },
   {
     title: "People",
