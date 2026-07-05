@@ -11,6 +11,8 @@ const infoEmail = process.env.SDTV_INFO_EMAIL || "info@seattledesitv.com";
 
 function cleanEmail(value?: string | null) { return String(value || "").trim().toLowerCase(); }
 function unique(values: string[]) { const seen = new Set<string>(); return values.map(cleanEmail).filter((email) => email.includes("@") && !seen.has(email) && seen.add(email)); }
+function pocEmails(poc: any) { const list = Array.isArray(poc?.pocs) ? poc.pocs : []; return unique([...list.map((p: any) => p.admin_email), poc?.admin_email, infoEmail]); }
+function pocNames(poc: any) { const list = Array.isArray(poc?.pocs) && poc.pocs.length ? poc.pocs : [poc]; return list.filter(Boolean).map((p: any) => `${p.admin_name || "SDTV POC"}${p.admin_email ? ` <${p.admin_email}>` : ""}`).join(", ") || "Not assigned"; }
 
 export async function POST(request: Request) {
   try {
@@ -31,13 +33,13 @@ export async function POST(request: Request) {
     const { data: poc } = await db.from("event_admin_pocs").select("*").eq("event_id", eventId).maybeSingle();
     const senderEmail = cleanEmail(user.email || event.poc_email || "");
     const senderName = String(user.user_metadata?.full_name || user.user_metadata?.name || senderEmail || "Organizer");
-    const to = unique([poc?.admin_email, infoEmail]);
+    const to = pocEmails(poc);
     if (!to.length) return NextResponse.json({ error: "No SDTV recipient configured." }, { status: 500 });
 
     const subject = `Organizer question: ${event.title || "SDTV event"}`;
-    const text = [`Organizer message for SDTV`, ``, `Event: ${event.title || "—"}`, `Date: ${event.date || "—"}`, `Location: ${event.location || "—"}`, `Organizer: ${senderName}`, `Organizer email: ${senderEmail || "—"}`, `Assigned SDTV POC: ${poc?.admin_name || "Not assigned"} ${poc?.admin_email ? `<${poc.admin_email}>` : ""}`, ``, `Message:`, message].join("\n");
+    const text = [`Organizer message for SDTV`, ``, `Event: ${event.title || "—"}`, `Date: ${event.date || "—"}`, `Location: ${event.location || "—"}`, `Organizer: ${senderName}`, `Organizer email: ${senderEmail || "—"}`, `Assigned SDTV POC(s): ${pocNames(poc)}`, ``, `Message:`, message].join("\n");
 
-    await db.from("event_contact_messages").insert({ event_id: eventId, sender_user_id: user.id, sender_email: senderEmail || null, sender_name: senderName || null, message, admin_poc_email: poc?.admin_email || null, recipients: to });
+    await db.from("event_contact_messages").insert({ event_id: eventId, sender_user_id: user.id, sender_email: senderEmail || null, sender_name: senderName || null, message, admin_poc_email: to.filter((e) => e !== infoEmail).join(", ") || null, recipients: to });
 
     let emailStatus: any = { skipped: true, reason: "RESEND_API_KEY is not configured." };
     if (resendKey) {
