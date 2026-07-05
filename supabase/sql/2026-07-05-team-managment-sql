@@ -1,0 +1,51 @@
+-- ==========================================
+-- Team Page Management
+-- ==========================================
+
+create table if not exists public.team_page_settings (
+    key text primary key,
+    value text,
+    updated_at timestamptz default now()
+);
+
+create table if not exists public.team_page_sections (
+    id uuid primary key default gen_random_uuid(),
+    section_key text unique not null,
+    title text not null,
+    subtitle text default '',
+    display_order integer default 100,
+    enabled boolean default true,
+    created_at timestamptz default now(),
+    updated_at timestamptz default now()
+);
+
+create table if not exists public.team_page_member_assignments (
+    member_id uuid not null references public.team_members(id) on delete cascade,
+    section_key text not null references public.team_page_sections(section_key) on delete cascade,
+    display_order integer default 100,
+    updated_at timestamptz default now(),
+    primary key (member_id, section_key)
+);
+
+alter table public.team_page_settings enable row level security;
+alter table public.team_page_sections enable row level security;
+alter table public.team_page_member_assignments enable row level security;
+
+drop policy if exists team_page_settings_public_read on public.team_page_settings;
+drop policy if exists team_page_sections_public_read on public.team_page_sections;
+drop policy if exists team_page_assignments_public_read on public.team_page_member_assignments;
+
+create policy team_page_settings_public_read
+on public.team_page_settings
+for select
+using (true);
+
+create policy team_page_sections_public_read
+on public.team_page_sections
+for select
+using (true);
+
+create policy team_page_assignments_public_read
+on public.team_page_member_assignments
+for select
+using (true);
