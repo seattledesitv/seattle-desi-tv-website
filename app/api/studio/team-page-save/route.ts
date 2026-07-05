@@ -21,6 +21,21 @@ export async function POST(request: Request) {
     const body = await request.json();
     const action = body.action;
 
+    if (action === "seedDefaults") {
+      const sections = Array.isArray(body.sections) ? body.sections : [];
+      const text = body.text || {};
+      if (sections.length) {
+        const result = await db.from("team_page_sections").upsert(sections, { onConflict: "section_key" });
+        if (result.error) throw result.error;
+      }
+      const rows = Object.keys(text).map((key) => ({ key, value: String(text[key] || ""), updated_at: new Date().toISOString() }));
+      if (rows.length) {
+        const result = await db.from("team_page_settings").upsert(rows, { onConflict: "key" });
+        if (result.error) throw result.error;
+      }
+      return NextResponse.json({ ok: true, message: "Default sections and text saved." });
+    }
+
     if (action === "text") {
       const text = body.text || {};
       const rows = Object.keys(text).map((key) => ({ key, value: String(text[key] || ""), updated_at: new Date().toISOString() }));
