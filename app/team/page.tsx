@@ -9,7 +9,7 @@ import { isPubliclyHidden, loadHiddenUsers } from "../lib/publicVisibility";
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "");
 
-type TeamMember = { id: string; name: string; title: string; image: string; email?: string | null; user_id?: string | null; linked_user?: string | null; profile_photo_url?: string | null; id_badge_url?: string | null; admin_role?: string | null; coverage_score?: number; managed_section?: string | null; managed_order?: number | null };
+type TeamMember = { id: string; name: string; title: string; image: string; email?: string | null; user_id?: string | null; profile_photo_url?: string | null; id_badge_url?: string | null; admin_role?: string | null; coverage_score?: number; managed_section?: string | null; managed_order?: number | null };
 type Spotlight = { key: string; name: string; email: string; count: number; photo?: string };
 type CoverageThanks = { key: string; name: string; email: string; eventTitles: string[]; count: number; photo?: string };
 type SectionRow = { section_key: string; title: string; subtitle?: string | null; display_order?: number | null; enabled?: boolean | null };
@@ -29,7 +29,7 @@ function normalizeRole(value?: string | null) { return String(value || "").trim(
 function normalizeText(value?: string | null) { return String(value || "").trim().toLowerCase(); }
 function inferredRole(member: TeamMember) { const explicit = normalizeRole(member.admin_role); if (explicit) return explicit; const title = normalizeText(member.title); if (/founder|co-founder|cofounder|president|chair|board/.test(title)) return "super_admin"; if (/program manager|project manager|pm admin|pm_admin|pm\b|operations manager/.test(title)) return "pm_admin"; if (/admin|director|lead|manager/.test(title)) return "admin"; return "team_member"; }
 function groupKey(member: TeamMember) { if (member.managed_section) return member.managed_section; const role = inferredRole(member); if (role === "super_admin" || role === "superadmin") return "super_admin"; if (["pm_admin", "program_manager_admin", "project_manager_admin"].includes(role)) return "pm_admin"; if (role.includes("admin")) return "admin"; return "team_member"; }
-function memberCoverageScore(member: TeamMember, scoreByEmail: Record<string, number>, scoreByUser: Record<string, number>) { const email = String(member.email || "").toLowerCase(); const ids = [member.user_id, member.linked_user].filter(Boolean).map(String); return Number(scoreByEmail[email] || 0) + ids.reduce((sum, id) => sum + Number(scoreByUser[id] || 0), 0); }
+function memberCoverageScore(member: TeamMember, scoreByEmail: Record<string, number>, scoreByUser: Record<string, number>) { const email = String(member.email || "").toLowerCase(); const userId = String(member.user_id || ""); return Number(scoreByEmail[email] || 0) + Number(scoreByUser[userId] || 0); }
 
 export default function PublicTeamPage() {
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -42,8 +42,9 @@ export default function PublicTeamPage() {
 
   useEffect(() => {
     async function loadTeam() {
+      setError("");
       const [teamResult, assignmentsResult, volunteerProfilesResult, userProfilesResult, adminsResult, hidden, pageSettingsResult, pageSectionsResult, pageAssignmentsResult] = await Promise.all([
-        supabase.from("team_members").select("id,name,title,image,email,user_id,linked_user,show_on_public_team").eq("show_on_public_team", true).order("created_at", { ascending: true }),
+        supabase.from("team_members").select("id,name,title,image,email,user_id,show_on_public_team").eq("show_on_public_team", true).order("created_at", { ascending: true }),
         supabase.from("event_crew_assignments").select("id,user_id,user_email,event_title,coverage_completed,completed_at,status").eq("coverage_completed", true).order("completed_at", { ascending: false }).limit(500),
         supabase.from("volunteer_onboarding_submissions").select("user_id,email,full_name,photo_url"),
         supabase.from("user_profiles").select("user_id,email,full_name,profile_photo_url,id_badge_url"),
@@ -68,11 +69,15 @@ export default function PublicTeamPage() {
       (adminsResult.data || []).forEach((admin: any) => { if (admin.email) adminByEmail[String(admin.email).toLowerCase()] = admin; if (admin.user_id) adminByUserId[admin.user_id] = admin; });
 
       function enrich(member: any) {
-        const email = String(member.email || "").toLowerCase(); const linkedUser = member.linked_user || member.user_id || "";
-        const baseProfile = userProfileByUserId[linkedUser] || userProfileByUserId[member.user_id || ""] || userProfileByEmail[email] || {};
-        const volunteerProfile = volunteerByEmail[email] || {}; const admin = adminByUserId[linkedUser] || adminByUserId[member.user_id || ""] || adminByEmail[email] || {}; const managed = managedByMember[member.id] || {};
-        const enriched: TeamMember = { ...member, linked_user: member.linked_user || null, profile_photo_url: baseProfile.profile_photo_url || volunteerProfile.photo_url || null, id_badge_url: baseProfile.id_badge_url || null, admin_role: admin.role || null, managed_section: managed.section_key || null, managed_order: managed.display_order ?? null };
-        enriched.coverage_score = memberCoverageScore(enriched, scoreByEmail, scoreByUser); return enriched;
+        const email = String(member.email || "").toLowerCase();
+        const userId = member.user_id || "";
+        const baseProfile = userProfileByUserId[userId] || userProfileByEmail[email] || {};
+        const volunteerProfile = volunteerByEmail[email] || {};
+        const admin = adminByUserId[userId] || adminByEmail[email] || {};
+        const managed = managedByMember[member.id] || {};
+        const enriched: TeamMember = { ...member, profile_photo_url: baseProfile.profile_photo_url || volunteerProfile.photo_url || null, id_badge_url: baseProfile.id_badge_url || null, admin_role: admin.role || null, managed_section: managed.section_key || null, managed_order: managed.display_order ?? null };
+        enriched.coverage_score = memberCoverageScore(enriched, scoreByEmail, scoreByUser);
+        return enriched;
       }
 
       if (teamResult.error) { setError(teamResult.error.message); } else setMembers((teamResult.data || []).filter((member: any) => !isPubliclyHidden(member, hidden)).map(enrich));
