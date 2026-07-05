@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
@@ -27,15 +27,42 @@ export default function Page() {
   const [choices, setChoices] = useState<any>({});
   const [text, setText] = useState<any>(defaultText);
   const [newTitle, setNewTitle] = useState("");
+  const [search, setSearch] = useState("");
+  const [groupFilter, setGroupFilter] = useState("all");
   const canAccess = Boolean(user && isAdminRole(role));
 
-  function showResult(error: any, success: string) {
-    if (error) {
-      setMessage(`Could not save: ${error.message || String(error)}`);
+  const visibleSections = useMemo(() => sections.filter((s) => s.enabled !== false).sort((a, b) => Number(a.display_order || 100) - Number(b.display_order || 100)), [sections]);
+  const filteredMembers = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return members.filter((member) => {
+      const assigned = choices[member.id] || "auto";
+      const matchesGroup = groupFilter === "all" || groupFilter === assigned;
+      const textBlob = `${member.name || ""} ${member.title || ""} ${member.email || ""}`.toLowerCase();
+      return matchesGroup && (!term || textBlob.includes(term));
+    });
+  }, [members, choices, search, groupFilter]);
+
+  async function callSave(body: any, success: string) {
+    setSaving(true);
+    setMessage("Saving...");
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data?.session?.access_token || "";
+      const response = await fetch("/api/studio/team-page-save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
+        body: JSON.stringify(body),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || json.error) throw new Error(json.error || "Save failed.");
+      setMessage(json.message || success);
+      return true;
+    } catch (error: any) {
+      setMessage(`Could not save: ${error?.message || "Save failed."}`);
       return false;
+    } finally {
+      setSaving(false);
     }
-    setMessage(success);
-    return true;
   }
 
   async function load() {
@@ -77,24 +104,28 @@ export default function Page() {
     setLoading(false);
   }
 
-  async function saveRows(table: string, rows: any, success: string, onSuccess?: () => void) {
-    setSaving(true);
-    setMessage("Saving...");
-    const result = await supabase.from(table).upsert(rows, { onConflict: table === "team_page_settings" ? "key" : table === "team_page_sections" ? "section_key" : "member_id,section_key" });
-    setSaving(false);
-    if (showResult(result.error, success) && onSuccess) onSuccess();
-  }
   async function seed() {
-    await saveRows("team_page_sections", defaults, "Default sections saved.", async () => {
-      const rows = Object.keys(defaultText).map((key) => ({ key, value: defaultText[key], updated_at: new Date().toISOString() }));
-      await saveRows("team_page_settings", rows, "Default sections and text saved.", load);
-    });
+    const ok = await callSave({ action: "seedDefaults", sections: defaults, text: defaultText }, "Default sections and text saved.");
+    if (ok) load();
   }
-  async function saveText() { await saveRows("team_page_settings", Object.keys(text).map((key) => ({ key, value: text[key], updated_at: new Date().toISOString() })), "Text saved."); }
-  async function saveSection(section: any) { await saveRows("team_page_sections", { ...section, display_order: Number(section.display_order || 100), updated_at: new Date().toISOString() }, "Section saved.", load); }
-  async function addSection() { const title = newTitle.trim(); if (!title) return; await saveSection({ section_key: makeKey(title), title, subtitle: "", display_order: sections.length + 1, enabled: true }); setNewTitle(""); }
-  async function moveMember(id: string, key: string) { if (!key) return; await saveRows("team_page_member_assignments", { member_id: id, section_key: key, display_order: 100, updated_at: new Date().toISOString() }, "Member moved.", () => setChoices((c: any) => ({ ...c, [id]: key }))); }
+  async function saveText() { await callSave({ action: "text", text }, "Text saved."); }
+  async function saveSection(section: any) {
+    const ok = await callSave({ action: "section", section: { ...section, display_order: Number(section.display_order || 100) } }, "Section saved.");
+    if (ok) load();
+  }
+  async function addSection() {
+    const title = newTitle.trim();
+    if (!title) return;
+    const ok = await callSave({ action: "section", section: { section_key: makeKey(title), title, subtitle: "", display_order: sections.length + 1, enabled: true } }, "Section added.");
+    if (ok) { setNewTitle(""); load(); }
+  }
+  async function moveMember(id: string, key: string) {
+    const previous = choices[id] || "";
+    setChoices((c: any) => ({ ...c, [id]: key }));
+    const ok = await callSave({ action: "member", memberId: id, sectionKey: key, displayOrder: 100 }, key ? "Member moved." : "Member returned to auto group.");
+    if (!ok) setChoices((c: any) => ({ ...c, [id]: previous }));
+  }
   useEffect(() => { load(); }, []);
 
-  return <main className="min-h-screen bg-slate-950 text-white"><StudioHeader /><div className="mx-auto max-w-7xl px-6 py-10"><div className="mb-8 flex items-start justify-between gap-4"><div><p className="text-pink-300 text-sm font-black uppercase tracking-[0.25em]">Studio</p><h1 className="mt-2 text-4xl font-black">Team Page Management</h1><p className="mt-3 text-slate-300">Edit team page text, create sections, and move members into the right section.</p></div><a href="/team" target="_blank" className="rounded-xl bg-white px-5 py-3 font-black text-slate-950">View Team Page</a></div>{loading && <div className="rounded-2xl bg-white/10 p-6 font-bold">{message}</div>}{!loading && !canAccess && <div className="rounded-2xl bg-white p-8 font-bold text-slate-950">{message}</div>}{!loading && canAccess && <div className="grid gap-6 lg:grid-cols-2"><section className="space-y-6"><div className="rounded-3xl bg-white p-6 text-slate-950"><h2 className="text-2xl font-black">Page Text</h2>{Object.keys(defaultText).map((key) => <label key={key} className="mt-3 grid gap-1 font-black capitalize"><span>{key}</span><textarea value={text[key] || ""} onChange={(e) => setText({ ...text, [key]: e.target.value })} rows={key === "subtitle" ? 3 : 1} className="rounded-xl border p-3 font-normal" /></label>)}<button onClick={saveText} disabled={saving} className="mt-4 rounded-xl bg-pink-600 px-5 py-3 font-black text-white disabled:opacity-50">{saving ? "Saving..." : "Save Text"}</button></div><div className="rounded-3xl bg-white p-6 text-slate-950"><h2 className="text-2xl font-black">Sections</h2><div className="mt-4 flex gap-2"><input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="New section title" className="min-w-0 flex-1 rounded-xl border p-3" /><button onClick={addSection} disabled={saving} className="rounded-xl bg-slate-950 px-5 py-3 font-black text-white disabled:opacity-50">Add</button></div><div className="mt-4 space-y-3">{sections.map((section) => <div key={section.section_key} className="rounded-2xl border bg-slate-50 p-4"><input value={section.title} onChange={(e) => setSections(sections.map((x) => x.section_key === section.section_key ? { ...x, title: e.target.value } : x))} className="w-full rounded-xl border p-3 font-black" /><textarea value={section.subtitle || ""} onChange={(e) => setSections(sections.map((x) => x.section_key === section.section_key ? { ...x, subtitle: e.target.value } : x))} className="mt-2 w-full rounded-xl border p-3" /><input type="number" value={section.display_order || 100} onChange={(e) => setSections(sections.map((x) => x.section_key === section.section_key ? { ...x, display_order: Number(e.target.value) } : x))} className="mt-2 w-full rounded-xl border p-3" /><div className="mt-2 flex items-center justify-between"><label className="font-bold"><input type="checkbox" checked={section.enabled !== false} onChange={(e) => setSections(sections.map((x) => x.section_key === section.section_key ? { ...x, enabled: e.target.checked } : x))} /> Enabled</label><button onClick={() => saveSection(section)} disabled={saving} className="rounded-xl bg-pink-600 px-4 py-2 font-black text-white disabled:opacity-50">Save</button></div></div>)}</div><button onClick={seed} disabled={saving} className="mt-4 rounded-xl bg-slate-950 px-5 py-3 font-black text-white disabled:opacity-50">Seed Defaults</button></div></section><section className="space-y-6"><div className="rounded-3xl bg-white p-6 text-slate-950"><h2 className="text-2xl font-black">Move Members</h2><div className="mt-4 space-y-3">{members.map((member) => <div key={member.id} className="grid gap-3 rounded-2xl border bg-slate-50 p-4 md:grid-cols-[1fr_220px]"><div><p className="font-black">{member.name}</p><p className="text-sm font-bold text-pink-600">{member.title}</p></div><select value={choices[member.id] || ""} onChange={(e) => moveMember(member.id, e.target.value)} disabled={saving} className="rounded-xl border p-3 font-bold"><option value="">Auto group</option>{sections.filter((s) => s.enabled !== false).map((s) => <option key={s.section_key} value={s.section_key}>{s.title}</option>)}</select></div>)}</div></div>{message && <div className="rounded-2xl bg-yellow-100 p-4 font-bold text-yellow-900">{message}</div>}</section></div>}</div></main>;
+  return <main className="min-h-screen bg-slate-950 text-white"><StudioHeader /><div className="mx-auto max-w-7xl px-6 py-10"><div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between"><div><p className="text-pink-300 text-sm font-black uppercase tracking-[0.25em]">Studio</p><h1 className="mt-2 text-4xl font-black">Team Page Management</h1><p className="mt-3 max-w-3xl text-slate-300">Edit only the public Team page text and grouping. These groups are used only on the public Team page.</p></div><div className="flex gap-3"><button onClick={load} className="rounded-xl bg-white/10 px-5 py-3 font-black text-white">Refresh</button><a href="/team" target="_blank" className="rounded-xl bg-white px-5 py-3 font-black text-slate-950">View Team Page</a></div></div>{loading && <div className="rounded-2xl bg-white/10 p-6 font-bold">{message}</div>}{!loading && !canAccess && <div className="rounded-2xl bg-white p-8 font-bold text-slate-950">{message}</div>}{!loading && canAccess && <div className="grid gap-6 lg:grid-cols-2"><section className="space-y-6"><div className="rounded-3xl bg-white p-6 text-slate-950"><h2 className="text-2xl font-black">Page Text</h2>{Object.keys(defaultText).map((key) => <label key={key} className="mt-3 grid gap-1 font-black capitalize"><span>{key}</span><textarea value={text[key] || ""} onChange={(e) => setText({ ...text, [key]: e.target.value })} rows={key === "subtitle" ? 3 : 1} className="rounded-xl border p-3 font-normal" /></label>)}<button onClick={saveText} disabled={saving} className="mt-4 rounded-xl bg-pink-600 px-5 py-3 font-black text-white disabled:opacity-50">{saving ? "Saving..." : "Save Text"}</button></div><div className="rounded-3xl bg-white p-6 text-slate-950"><h2 className="text-2xl font-black">Team Page Sections</h2><p className="mt-1 text-sm font-semibold text-slate-600">Create, rename, hide, and order sections for the public Team page only.</p><div className="mt-4 flex gap-2"><input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="New section title" className="min-w-0 flex-1 rounded-xl border p-3" /><button onClick={addSection} disabled={saving} className="rounded-xl bg-slate-950 px-5 py-3 font-black text-white disabled:opacity-50">Add</button></div><div className="mt-4 space-y-3">{sections.map((section) => <div key={section.section_key} className="rounded-2xl border bg-slate-50 p-4"><input value={section.title} onChange={(e) => setSections(sections.map((x) => x.section_key === section.section_key ? { ...x, title: e.target.value } : x))} className="w-full rounded-xl border p-3 font-black" /><textarea value={section.subtitle || ""} onChange={(e) => setSections(sections.map((x) => x.section_key === section.section_key ? { ...x, subtitle: e.target.value } : x))} className="mt-2 w-full rounded-xl border p-3" /><input type="number" value={section.display_order || 100} onChange={(e) => setSections(sections.map((x) => x.section_key === section.section_key ? { ...x, display_order: Number(e.target.value) } : x))} className="mt-2 w-full rounded-xl border p-3" /><div className="mt-2 flex items-center justify-between"><label className="font-bold"><input type="checkbox" checked={section.enabled !== false} onChange={(e) => setSections(sections.map((x) => x.section_key === section.section_key ? { ...x, enabled: e.target.checked } : x))} /> Enabled</label><button onClick={() => saveSection(section)} disabled={saving} className="rounded-xl bg-pink-600 px-4 py-2 font-black text-white disabled:opacity-50">Save</button></div></div>)}</div><button onClick={seed} disabled={saving} className="mt-4 rounded-xl bg-slate-950 px-5 py-3 font-black text-white disabled:opacity-50">Seed Defaults</button></div></section><section className="space-y-6"><div className="rounded-3xl bg-white p-6 text-slate-950"><h2 className="text-2xl font-black">Move Members</h2><p className="mt-1 text-sm font-semibold text-slate-600">Search by name/title/email or filter by current section.</p><div className="mt-4 grid gap-3 md:grid-cols-2"><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name..." className="rounded-xl border p-3" /><select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="rounded-xl border p-3 font-bold"><option value="all">All sections</option><option value="auto">Auto group</option>{visibleSections.map((section) => <option key={section.section_key} value={section.section_key}>{section.title}</option>)}</select></div><p className="mt-3 text-xs font-black uppercase text-slate-500">Showing {filteredMembers.length} of {members.length}</p><div className="mt-4 max-h-[760px] space-y-3 overflow-y-auto pr-1">{filteredMembers.map((member) => <div key={member.id} className="grid gap-3 rounded-2xl border bg-slate-50 p-4 md:grid-cols-[1fr_220px]"><div><p className="font-black">{member.name}</p><p className="text-sm font-bold text-pink-600">{member.title}</p><p className="text-xs text-slate-500">{member.email}</p></div><select value={choices[member.id] || ""} onChange={(e) => moveMember(member.id, e.target.value)} disabled={saving} className="rounded-xl border p-3 font-bold"><option value="">Auto group</option>{visibleSections.map((section) => <option key={section.section_key} value={section.section_key}>{section.title}</option>)}</select></div>)}{filteredMembers.length === 0 && <p className="rounded-2xl bg-slate-50 p-4 text-slate-600">No members match this filter.</p>}</div></div>{message && <div className="rounded-2xl bg-yellow-100 p-4 font-bold text-yellow-900">{message}</div>}</section></div>}</div></main>;
 }
