@@ -114,6 +114,8 @@ export default function StudioDashboardPage() {
     { title: "User Control", href: "/studio/users", count: counts.roleRequests + counts.pendingVolunteers, secondary: "profiles and access", description: "Central admin view of users, connected profiles, privacy, images, and role access." },
     { title: "Volunteers", href: "/studio/volunteers", count: counts.volunteers, secondary: `${counts.pendingVolunteers} need action`, description: "Manage volunteer orientation, onboarding submissions, and final team access." },
     { title: "Team", href: "/studio/team", count: counts.team, secondary: "team members", description: "Add, edit, delete, and manage public SDTV team profiles." },
+    { title: "Team Page Management", href: "/studio/team-page", count: counts.team, secondary: "public team page", description: "Edit team page text, sections, grouping, and move members into custom public sections." },
+    { title: "Recognition", href: "/studio/recognition", count: counts.coverageCompletedThisMonth, secondary: "team recognition", description: "Create team recognition images and captions for Instagram and WhatsApp." },
     { title: "Radio Team", href: "/studio/radio-team", count: counts.radioTeam, secondary: "radio hosts / segments", description: "Manage RJ profiles, radio hosts, titles, segments, and images." },
   ];
 
