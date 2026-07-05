@@ -4,7 +4,7 @@ import { isAdminRole, resolveUserRole } from "../../../lib/roles";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-const writeKey = process.env["SUPABASE_SECRET_KEY"] || "";
+const writeKey = process.env["SUPABASE_SECRET_KEY"] || process.env["SUPABASE_SERVICE_ROLE_KEY"] || "";
 
 export async function POST(request: Request) {
   try {
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ ok: false, error: "Login required." }, { status: 401 });
     const role = await resolveUserRole(sessionClient as any, user);
     if (!isAdminRole(role)) return NextResponse.json({ ok: false, error: "Studio admin access required." }, { status: 403 });
-    if (!writeKey) return NextResponse.json({ ok: false, error: "SUPABASE_SECRET_KEY is missing in Vercel." }, { status: 500 });
+    if (!writeKey) return NextResponse.json({ ok: false, error: "SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY is missing in Vercel." }, { status: 500 });
 
     const db = createClient(supabaseUrl, writeKey, { auth: { persistSession: false } }) as any;
     const body = await request.json();
