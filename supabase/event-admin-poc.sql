@@ -5,10 +5,13 @@ create table if not exists public.event_admin_pocs (
   admin_name text,
   admin_phone text,
   admin_photo_url text,
+  pocs jsonb default '[]'::jsonb,
   notes text,
   updated_by uuid,
   updated_at timestamptz default now()
 );
+
+alter table public.event_admin_pocs add column if not exists pocs jsonb default '[]'::jsonb;
 
 create table if not exists public.event_contact_messages (
   id uuid primary key default gen_random_uuid(),
