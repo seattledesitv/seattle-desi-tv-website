@@ -43,6 +43,29 @@ I authorize SDTV to use the profile details and photo I submit for internal onbo
 10. Acknowledgment
 I have read and understood this agreement. I agree to follow SDTV standards and understand that final team access is subject to SDTV review and approval.`;
 
+function normalizePhone(value: string) {
+  const trimmed = String(value || "").trim();
+  const digits = trimmed.replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  if (trimmed.startsWith("+") && digits.length >= 10 && digits.length <= 15) return `+${digits}`;
+  return trimmed;
+}
+function isValidPhone(value: string) {
+  const normalized = normalizePhone(value);
+  return /^\+[1-9]\d{9,14}$/.test(normalized);
+}
+function requiredMissing(form: any) {
+  const missing = [];
+  if (!form.full_name.trim()) missing.push("Full Name");
+  if (!form.phone.trim()) missing.push("Phone");
+  if (!form.city.trim()) missing.push("City / Area");
+  if (!form.interests.trim()) missing.push("Areas you want to help with");
+  if (!form.availability.trim()) missing.push("Availability");
+  if (!form.photo_url.trim()) missing.push("Profile Photo");
+  return missing;
+}
+
 export default function OnboardingPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -103,22 +126,28 @@ export default function OnboardingPage() {
     setMessage("");
     if (!user?.email || !volunteerRequest?.id) { setMessage("Please login and start the volunteer request first."); return; }
     if (volunteerRequest.status !== "awaiting_onboarding") { setMessage("Onboarding is available after SDTV marks your orientation complete."); return; }
-    if (!form.full_name.trim() || !form.phone.trim() || !form.agreement_acknowledged) { setMessage("Please enter your name, phone, and acknowledge the SDTV agreement."); return; }
+    const missing = requiredMissing(form);
+    if (missing.length) { setMessage(`Please complete these required fields: ${missing.join(", ")}.`); return; }
+    if (!isValidPhone(form.phone)) { setMessage("Please enter a valid phone number with country code, for example +14255551234. US 10-digit numbers will be formatted automatically."); return; }
+    if (form.emergency_phone.trim() && !isValidPhone(form.emergency_phone)) { setMessage("Please enter a valid emergency phone number with country code, for example +14255551234."); return; }
+    if (!form.agreement_acknowledged) { setMessage("Please acknowledge the SDTV agreement."); return; }
     if (photoUploading) { setMessage("Please wait for the profile photo upload to finish."); return; }
     setSubmitting(true);
+    const normalizedPhone = normalizePhone(form.phone);
+    const normalizedEmergencyPhone = form.emergency_phone.trim() ? normalizePhone(form.emergency_phone) : "";
     const payload = {
       user_id: user.id,
       email: user.email,
       volunteer_request_id: volunteerRequest.id,
       full_name: form.full_name.trim(),
-      phone: form.phone.trim(),
+      phone: normalizedPhone,
       city: form.city.trim(),
       interests: form.interests.trim(),
       availability: form.availability.trim(),
       experience: form.experience.trim(),
       photo_url: form.photo_url.trim(),
       emergency_contact: form.emergency_contact.trim(),
-      emergency_phone: form.emergency_phone.trim(),
+      emergency_phone: normalizedEmergencyPhone,
       agreement_acknowledged: true,
       agreement_acknowledged_at: new Date().toISOString(),
       agreement_text: agreementText,
@@ -126,11 +155,26 @@ export default function OnboardingPage() {
     };
     const { error: insertError } = await supabase.from("volunteer_onboarding_submissions").insert(payload);
     if (insertError) { setSubmitting(false); setMessage(`Could not submit onboarding: ${insertError.message}. Please confirm the volunteer_onboarding_submissions table exists in Supabase.`); return; }
+    const { error: profileError } = await supabase.from("user_profiles").upsert({
+      user_id: user.id,
+      email: user.email,
+      role: "volunteer",
+      full_name: payload.full_name,
+      phone: payload.phone,
+      city: payload.city,
+      profile_photo_url: payload.photo_url,
+      short_bio: payload.experience || null,
+      interests: payload.interests ? payload.interests.split(",").map((x) => x.trim()).filter(Boolean) : [],
+      allow_sdtv_contact: true,
+      keep_profile_private: false,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
+    if (profileError) { setSubmitting(false); setMessage(`Onboarding saved, but base profile sync failed: ${profileError.message}`); return; }
     const { error: updateError } = await supabase.from("user_role_requests").update({ status: "awaiting_team_role_access" }).eq("id", volunteerRequest.id);
     setSubmitting(false);
-    if (updateError) { setMessage(`Onboarding saved, but status update failed: ${updateError.message}`); return; }
+    if (updateError) { setMessage(`Onboarding and base profile saved, but status update failed: ${updateError.message}`); return; }
     setVolunteerRequest({ ...volunteerRequest, status: "awaiting_team_role_access" });
-    setMessage("Onboarding submitted. Your request is now awaiting team role access approval. Redirecting back to My Hub...");
+    setMessage("Onboarding submitted and your Base SDTV Profile was created. Your request is now awaiting team role access approval. Redirecting back to My Hub...");
     setTimeout(() => { window.location.href = "/my-hub"; }, 1500);
   }
 
@@ -138,5 +182,5 @@ export default function OnboardingPage() {
 
   const canSubmit = volunteerRequest?.status === "awaiting_onboarding";
 
-  return <main className="min-h-screen bg-slate-950 text-white px-6 py-10"><div className="max-w-4xl mx-auto"><a href="/my-hub" className="text-pink-300 font-bold">← Back to My Hub</a><div className="mt-5 bg-white text-slate-950 rounded-3xl p-6 md:p-8 shadow-2xl"><h1 className="text-3xl md:text-4xl font-black">Volunteer Onboarding</h1><p className="text-gray-600 mt-2">Complete this after SDTV orientation. Once submitted, SDTV can approve your final team role access.</p>{loading && <div className="bg-slate-100 rounded-2xl p-5 mt-6 font-bold">{message}</div>}{!loading && message && <div className="bg-yellow-50 border border-yellow-200 text-yellow-900 rounded-2xl p-5 mt-6 font-bold whitespace-pre-line">{message}</div>}{!loading && canSubmit && <div className="grid gap-5 mt-6"><div className="grid md:grid-cols-2 gap-4"><label className="font-bold">Full Name<input className="w-full border rounded-xl p-3 mt-1 font-normal" value={form.full_name} onChange={(e) => updateField("full_name", e.target.value)} /></label><label className="font-bold">Phone<input className="w-full border rounded-xl p-3 mt-1 font-normal" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} /></label><label className="font-bold">City / Area<input className="w-full border rounded-xl p-3 mt-1 font-normal" value={form.city} onChange={(e) => updateField("city", e.target.value)} /></label><div className="font-bold"><label>Profile Photo Upload<input className="w-full border rounded-xl p-3 mt-1 font-normal" type="file" accept="image/*" onChange={(e) => uploadProfilePhoto(e.target.files?.[0])} /></label><p className="text-xs text-gray-500 mt-1">Upload a profile photo, or paste a public image URL below.</p>{photoMessage && <p className="text-xs text-pink-700 mt-1">{photoMessage}</p>}{form.photo_url && <img src={form.photo_url} alt="Profile preview" className="w-20 h-20 rounded-2xl object-cover mt-3 border" />}</div><label className="font-bold md:col-span-2">Profile Photo URL<input className="w-full border rounded-xl p-3 mt-1 font-normal" placeholder="Uploaded Cloudinary URL will appear here, or paste a public image URL" value={form.photo_url} onChange={(e) => updateField("photo_url", e.target.value)} /></label></div><label className="font-bold">Areas you want to help with<textarea className="w-full border rounded-xl p-3 mt-1 font-normal min-h-24" placeholder="Events, interviews, video editing, radio, photography, social media, sponsorships..." value={form.interests} onChange={(e) => updateField("interests", e.target.value)} /></label><label className="font-bold">Availability<textarea className="w-full border rounded-xl p-3 mt-1 font-normal min-h-20" placeholder="Weekdays, weekends, evenings, event coverage availability..." value={form.availability} onChange={(e) => updateField("availability", e.target.value)} /></label><label className="font-bold">Relevant experience<textarea className="w-full border rounded-xl p-3 mt-1 font-normal min-h-20" placeholder="Media, volunteering, camera, hosting, editing, community work..." value={form.experience} onChange={(e) => updateField("experience", e.target.value)} /></label><div className="grid md:grid-cols-2 gap-4"><label className="font-bold">Emergency Contact<input className="w-full border rounded-xl p-3 mt-1 font-normal" value={form.emergency_contact} onChange={(e) => updateField("emergency_contact", e.target.value)} /></label><label className="font-bold">Emergency Phone<input className="w-full border rounded-xl p-3 mt-1 font-normal" value={form.emergency_phone} onChange={(e) => updateField("emergency_phone", e.target.value)} /></label></div><section><h2 className="text-2xl font-black mb-3">SDTV Agreement</h2><div className="h-72 overflow-y-auto border rounded-2xl p-4 bg-slate-50 whitespace-pre-line text-sm leading-6">{agreementText}</div><label className="flex gap-3 items-start mt-4 font-bold"><input type="checkbox" className="mt-1" checked={form.agreement_acknowledged} onChange={(e) => updateField("agreement_acknowledged", e.target.checked)} /><span>I have read and acknowledge the SDTV volunteer/contributor agreement above.</span></label></section><button type="button" onClick={submitOnboarding} disabled={submitting || photoUploading} className="bg-pink-600 text-white px-6 py-4 rounded-xl font-black disabled:opacity-60">{photoUploading ? "Uploading photo..." : submitting ? "Submitting..." : "Submit Onboarding"}</button></div>}</div></div></main>;
+  return <main className="min-h-screen bg-slate-950 text-white px-6 py-10"><div className="max-w-4xl mx-auto"><a href="/my-hub" className="text-pink-300 font-bold">← Back to My Hub</a><div className="mt-5 bg-white text-slate-950 rounded-3xl p-6 md:p-8 shadow-2xl"><h1 className="text-3xl md:text-4xl font-black">Volunteer Onboarding</h1><p className="text-gray-600 mt-2">Complete this after SDTV orientation. Required fields are marked with * and will create your Base SDTV Profile.</p>{loading && <div className="bg-slate-100 rounded-2xl p-5 mt-6 font-bold">{message}</div>}{!loading && message && <div className="bg-yellow-50 border border-yellow-200 text-yellow-900 rounded-2xl p-5 mt-6 font-bold whitespace-pre-line">{message}</div>}{!loading && canSubmit && <div className="grid gap-5 mt-6"><div className="grid md:grid-cols-2 gap-4"><label className="font-bold">Full Name *<input className="w-full border rounded-xl p-3 mt-1 font-normal" required value={form.full_name} onChange={(e) => updateField("full_name", e.target.value)} /></label><label className="font-bold">Phone *<input className="w-full border rounded-xl p-3 mt-1 font-normal" required placeholder="+14255551234" value={form.phone} onBlur={() => updateField("phone", normalizePhone(form.phone))} onChange={(e) => updateField("phone", e.target.value)} /></label><label className="font-bold">Email<input className="w-full border rounded-xl p-3 mt-1 font-normal bg-slate-100" value={user?.email || ""} disabled /></label><label className="font-bold">City / Area *<input className="w-full border rounded-xl p-3 mt-1 font-normal" required value={form.city} onChange={(e) => updateField("city", e.target.value)} /></label><div className="font-bold"><label>Profile Photo Upload *<input className="w-full border rounded-xl p-3 mt-1 font-normal" type="file" accept="image/*" onChange={(e) => uploadProfilePhoto(e.target.files?.[0])} /></label><p className="text-xs text-gray-500 mt-1">Upload a profile photo, or paste a public image URL below.</p>{photoMessage && <p className="text-xs text-pink-700 mt-1">{photoMessage}</p>}{form.photo_url && <img src={form.photo_url} alt="Profile preview" className="w-20 h-20 rounded-2xl object-cover mt-3 border" />}</div><label className="font-bold">Profile Photo URL *<input className="w-full border rounded-xl p-3 mt-1 font-normal" required placeholder="Uploaded Cloudinary URL will appear here, or paste a public image URL" value={form.photo_url} onChange={(e) => updateField("photo_url", e.target.value)} /></label></div><label className="font-bold">Areas you want to help with *<textarea className="w-full border rounded-xl p-3 mt-1 font-normal min-h-24" required placeholder="Events, interviews, video editing, radio, photography, social media, sponsorships..." value={form.interests} onChange={(e) => updateField("interests", e.target.value)} /></label><label className="font-bold">Availability *<textarea className="w-full border rounded-xl p-3 mt-1 font-normal min-h-20" required placeholder="Weekdays, weekends, evenings, event coverage availability..." value={form.availability} onChange={(e) => updateField("availability", e.target.value)} /></label><label className="font-bold">Relevant experience<textarea className="w-full border rounded-xl p-3 mt-1 font-normal min-h-20" placeholder="Media, volunteering, camera, hosting, editing, community work..." value={form.experience} onChange={(e) => updateField("experience", e.target.value)} /></label><div className="grid md:grid-cols-2 gap-4"><label className="font-bold">Emergency Contact<input className="w-full border rounded-xl p-3 mt-1 font-normal" value={form.emergency_contact} onChange={(e) => updateField("emergency_contact", e.target.value)} /></label><label className="font-bold">Emergency Phone<input className="w-full border rounded-xl p-3 mt-1 font-normal" placeholder="+14255551234" value={form.emergency_phone} onBlur={() => updateField("emergency_phone", normalizePhone(form.emergency_phone))} onChange={(e) => updateField("emergency_phone", e.target.value)} /></label></div><section><h2 className="text-2xl font-black mb-3">SDTV Agreement</h2><div className="h-72 overflow-y-auto border rounded-2xl p-4 bg-slate-50 whitespace-pre-line text-sm leading-6">{agreementText}</div><label className="flex gap-3 items-start mt-4 font-bold"><input type="checkbox" className="mt-1" checked={form.agreement_acknowledged} onChange={(e) => updateField("agreement_acknowledged", e.target.checked)} /><span>I have read and acknowledge the SDTV volunteer/contributor agreement above. *</span></label></section><button type="button" onClick={submitOnboarding} disabled={submitting || photoUploading} className="bg-pink-600 text-white px-6 py-4 rounded-xl font-black disabled:opacity-60">{photoUploading ? "Uploading photo..." : submitting ? "Submitting..." : "Submit Onboarding"}</button></div>}</div></div></main>;
 }
