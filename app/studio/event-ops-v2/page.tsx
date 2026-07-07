@@ -67,7 +67,49 @@ export default function EventOpsV2Page() {
     const profileByUser: Record<string, any> = {}; const profileByEmail: Record<string, any> = {}; const teamByEmail: Record<string, any> = {};
     (up.data || []).forEach((p: any) => { if (p.user_id) profileByUser[p.user_id] = p; if (p.email) profileByEmail[String(p.email).toLowerCase()] = p; });
     (team.data || []).forEach((t: any) => { if (t.email) teamByEmail[String(t.email).toLowerCase()] = t; });
-    setTeamUsers((admins.data || []).filter((i: any) => i.email).map((i: any) => { const email = String(i.email || "").toLowerCase(); const profile = profileByUser[i.user_id || ""] || profileByEmail[email] || {}; const teamRow = teamByEmail[email] || {}; return { user_id: i.user_id || i.email, email, role: i.role || "team_member", name: i.name || profile.full_name || teamRow.name || i.email, photo: profile.profile_photo_url || teamRow.image || "" }; }).sort((a: any, b: any) => String(a.name).localeCompare(String(b.name))));
+    const adminRows = (admins.data || [])
+  .filter((i: any) => i.email)
+  .map((i: any) => {
+    const email = String(i.email || "").toLowerCase();
+    const profile = profileByUser[i.user_id || ""] || profileByEmail[email] || {};
+    const teamRow = teamByEmail[email] || {};
+
+    return {
+      user_id: i.user_id || i.email,
+      email,
+      role: i.role || "admin",
+      name: i.name || profile.full_name || teamRow.name || i.email,
+      photo: profile.profile_photo_url || teamRow.image || "",
+    };
+  });
+
+const teamRows = (team.data || [])
+  .filter((t: any) => t.email)
+  .map((t: any) => {
+    const email = String(t.email || "").toLowerCase();
+    const profile = profileByUser[t.user_id || ""] || profileByEmail[email] || {};
+
+    return {
+      user_id: t.user_id || t.email,
+      email,
+      role: "team_member",
+      name: t.name || profile.full_name || t.email,
+      photo: profile.profile_photo_url || t.image || "",
+    };
+  });
+
+const byEmail = new Map<string, any>();
+
+// Team members first, then admins overwrite duplicates
+[...teamRows, ...adminRows].forEach((person) => {
+  byEmail.set(person.email, person);
+});
+
+setTeamUsers(
+  Array.from(byEmail.values()).sort((a: any, b: any) =>
+    String(a.name).localeCompare(String(b.name))
+  )
+);
     const pocMap: Record<string, any> = {}; (pocResult.data || []).forEach((p: any) => { pocMap[p.event_id] = p; }); setEventPocs(pocMap);
     const ids = Array.from(new Set((ir.data || []).map((i: any) => i.influencer_profile_id).filter(Boolean))); if (ids.length) { const { data } = await supabase.from("influencer_profiles").select("*").in("id", ids); const next: Record<string, any> = {}; (data || []).forEach((p: any) => { next[p.id] = p; }); setProfiles(next); } else setProfiles({});
   }
