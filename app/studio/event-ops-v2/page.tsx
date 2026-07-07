@@ -37,7 +37,7 @@ export default function EventOpsV2Page() {
   const [events, setEvents] = useState<any[]>([]); const [assignments, setAssignments] = useState<any[]>([]); const [workflows, setWorkflows] = useState<any[]>([]); const [teamUsers, setTeamUsers] = useState<any[]>([]); const [intents, setIntents] = useState<any[]>([]); const [profiles, setProfiles] = useState<Record<string, any>>({}); const [userProfiles, setUserProfiles] = useState<any[]>([]); const [eventPocs, setEventPocs] = useState<Record<string, any>>({});
   const [selectedEventId, setSelectedEventId] = useState(""); const [eventSearch, setEventSearch] = useState(""); const [monthFilter, setMonthFilter] = useState(""); const [statusFilter, setStatusFilter] = useState("all"); const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [editForm, setEditForm] = useState<any>({}); const [imageUrlInput, setImageUrlInput] = useState(""); const [selectedCrewUserIds, setSelectedCrewUserIds] = useState<string[]>([]); const [selectedCrewRole, setSelectedCrewRole] = useState("General Crew");
-  const [selectedEditorEmail, setSelectedEditorEmail] = useState(""); const [briefNotes, setBriefNotes] = useState(""); const [audience, setAudience] = useState<Audience>("poc"); const [manualRecipient, setManualRecipient] = useState(""); const [selectedRecipientEmails, setSelectedRecipientEmails] = useState<string[]>([]); const [commSubject, setCommSubject] = useState(""); const [commMessage, setCommMessage] = useState("");
+  const [selectedEditorEmail, setSelectedEditorEmail] = useState(""); const [selectedPriority, setSelectedPriority] = useState(10); const [briefNotes, setBriefNotes] = useState(""); const [audience, setAudience] = useState<Audience>("poc"); const [manualRecipient, setManualRecipient] = useState(""); const [selectedRecipientEmails, setSelectedRecipientEmails] = useState<string[]>([]); const [commSubject, setCommSubject] = useState(""); const [commMessage, setCommMessage] = useState("");
   const [pocForm, setPocForm] = useState<any>({ pocs: [blankPoc()], notes: "" });
   const canAccess = Boolean(user && isAdminRole(role));
   const selectedEvent = useMemo(() => events.find((e) => e.id === selectedEventId) || null, [events, selectedEventId]);
@@ -54,7 +54,7 @@ export default function EventOpsV2Page() {
     const [er, ar, wr, ir, up, admins, team, pocResult] = await Promise.all([
       supabase.from("events").select("id,title,date,location,status,created_by,poc_email,poc_phone,ticket_url,description,image,image_urls,featured,created_at").order("date", { ascending: false }).limit(300),
       supabase.from("event_crew_assignments").select("id,event_id,user_id,user_email,assignment_type,status,event_title,coverage_completed,coverage_notes,completed_at,created_at,approved_at,crew_confirmed,approved_by").order("created_at", { ascending: false }).limit(1000),
-      supabase.from("event_video_workflows").select("id,event_id,status,assigned_editor_email,crew_reviewer_email,raw_media_url,external_media_url,crew_notes,updated_at,published_at").order("updated_at", { ascending: false }).limit(300),
+      supabase.from("event_video_workflows").select("id,event_id,status,assigned_editor_email,crew_reviewer_email,raw_media_url,external_media_url,crew_notes,updated_at,published_at,priority").order("updated_at", { ascending: false }).limit(300),
       supabase.from("event_influencer_intents").select("*").order("created_at", { ascending: false }).limit(1000),
       supabase.from("user_profiles").select("user_id,email,full_name,preferred_display_name,profile_photo_url").limit(1000),
       supabase.from("admins").select("user_id,email,role,name,created_at").order("created_at", { ascending: false }),
@@ -116,6 +116,13 @@ setTeamUsers(
   async function init() { setLoading(true); const { data } = await supabase.auth.getUser(); const currentUser = data?.user || null; setUser(currentUser); const nextRole = currentUser ? await resolveUserRole(supabase, currentUser) : ""; setRole(nextRole); if (!currentUser || !isAdminRole(nextRole)) { setMessage("Admin access required."); setLoading(false); return; } await loadData(); setMessage(""); setLoading(false); }
   useEffect(() => { init(); }, []);
   useEffect(() => { if (!selectedEvent) return; setEditForm({ title: selectedEvent.title || "", date: dateInput(selectedEvent.date), location: selectedEvent.location || "", description: selectedEvent.description || "", poc_email: selectedEvent.poc_email || "", poc_phone: selectedEvent.poc_phone || "", ticket_url: selectedEvent.ticket_url || "", image_urls: eventImages(selectedEvent) }); const p = eventPocs[selectedEvent.id] || {}; const list = getPocs(p); setPocForm({ pocs: list.length ? list : [blankPoc()], notes: p.notes || "" }); }, [selectedEventId, eventPocs]);
+  useEffect(() => {
+  if (eventWorkflow) {
+    setSelectedPriority(eventWorkflow.priority ?? 10);
+  } else {
+    setSelectedPriority(10);
+  }
+}, [eventWorkflow]);
   function openEvent(id: string) { setSelectedEventId(id); setActiveTab("overview"); }
   function openCommunications(nextAudience: Audience) { setAudience(nextAudience); setActiveTab("communications"); }
   function selectedCrewUsers() { return teamUsers.filter((u) => selectedCrewUserIds.includes(u.user_id)); }
@@ -129,8 +136,44 @@ setTeamUsers(
   async function updateAssignment(item: any, status: string) { const payload: any = { status }; if (status === "approved") { payload.approved_by = user?.email || null; payload.approved_at = new Date().toISOString(); } const { error } = await supabase.from("event_crew_assignments").update(payload).eq("id", item.id); if (error) setActionMessage(`Crew request update failed: ${error.message}`); else { setActionMessage(`Crew request ${label(status)}.`); await loadData(); } }
   async function updateInfluencerIntent(id: string, status: string) { const { error } = await supabase.from("event_influencer_intents").update({ status, updated_at: new Date().toISOString() }).eq("id", id); if (error) setActionMessage(`Influencer update failed: ${error.message}`); else { setActionMessage(`Influencer request ${label(status)}.`); await loadData(); } }
   async function assignCrew() { if (!selectedEvent || selectedCrewUsers().length === 0) return; const rows = selectedCrewUsers().map((m) => ({ event_id: selectedEvent.id, event_title: selectedEvent.title, user_id: m.user_id, user_email: m.email, assignment_type: roleKey(selectedCrewRole), status: "approved", approved_by: user?.email || null, approved_at: new Date().toISOString(), crew_confirmed: false })); const { error } = await supabase.from("event_crew_assignments").insert(rows); if (error) setActionMessage(`Assign crew failed: ${error.message}`); else { setSelectedCrewUserIds([]); setActionMessage("Crew assigned."); await loadData(); } }
-  async function ensureVideoWorkflow() { if (!selectedEventId || eventWorkflow) return; const { error } = await supabase.from("event_video_workflows").insert({ event_id: selectedEventId, status: "ready_for_editing", assigned_editor_email: selectedEditorEmail || null, crew_reviewer_email: user?.email || null, crew_notes: "Started from Event Operations.", created_by: user?.id || null, updated_by: user?.id || null }); if (error) setActionMessage(`Video workflow failed: ${error.message}`); else { setActionMessage("Video workflow started."); await loadData(); } }
-  async function updateWorkflowStatus(status: string) { if (!eventWorkflow) { await ensureVideoWorkflow(); return; } const { error } = await supabase.from("event_video_workflows").update({ status, assigned_editor_email: selectedEditorEmail || eventWorkflow.assigned_editor_email || null, updated_by: user?.id || null, updated_at: new Date().toISOString() }).eq("id", eventWorkflow.id); if (error) setActionMessage(`Video workflow update failed: ${error.message}`); else { setActionMessage(`Video workflow moved to ${label(status)}.`); await loadData(); } }
+  async function ensureVideoWorkflow() {
+  if (!selectedEventId || eventWorkflow) return;
+
+  const { error } = await supabase
+    .from("event_video_workflows")
+    .insert({
+      event_id: selectedEventId,
+      status: "ready_for_editing",
+
+      assigned_editor_email: selectedEditorEmail || null,
+
+      // NEW
+      priority: selectedPriority,
+
+      crew_reviewer_email: user?.email || null,
+      crew_notes: "Started from Event Operations.",
+      created_by: user?.id || null,
+      updated_by: user?.id || null,
+    });
+
+  if (error) {
+    setActionMessage(`Video workflow failed: ${error.message}`);
+  } else {
+    setActionMessage("Video workflow started.");
+    await loadData();
+  }
+}
+  async function updateWorkflowStatus(status: string) { if (!eventWorkflow) { await ensureVideoWorkflow(); return; } const { error } = await supabase.from("event_video_workflows").update({
+    status,
+    assigned_editor_email:
+        selectedEditorEmail || eventWorkflow.assigned_editor_email || null,
+
+    // NEW
+    priority: selectedPriority,
+
+    updated_by: user?.id || null,
+    updated_at: new Date().toISOString(),
+}).eq("id", eventWorkflow.id); if (error) setActionMessage(`Video workflow update failed: ${error.message}`); else { setActionMessage(`Video workflow moved to ${label(status)}.`); await loadData(); } }
   function recipientsFor(audienceKey: Audience) { const linked = (email?: string) => userProfiles.find((p) => String(p.email || "").toLowerCase() === String(email || "").toLowerCase()); if (audienceKey === "poc") { const p = linked(selectedEvent?.poc_email); return selectedEvent?.poc_email ? [{ email: selectedEvent.poc_email, user_id: p?.user_id || null, name: p?.preferred_display_name || p?.full_name || "Event POC" }] : []; } if (audienceKey === "crew") return approvedCrew.map((a) => ({ email: a.user_email, user_id: a.user_id, name: a.user_email })); if (audienceKey === "influencers") return [...approvedInfluencers, ...completedInfluencers].map((i) => { const p = profiles[i.influencer_profile_id] || {}; const linkedProfile = linked(p.email || i.user_email); return { email: p.email || i.user_email, user_id: i.user_id || linkedProfile?.user_id || null, name: p.full_name || i.user_email }; }); if (audienceKey === "editor") { const email = selectedEditorEmail || eventWorkflow?.assigned_editor_email; const p = linked(email); return email ? [{ email, user_id: p?.user_id || null, name: p?.preferred_display_name || p?.full_name || "Editor" }] : []; } return []; }
   function defaultSubject(a: Audience) { const event = selectedEvent?.title || "SDTV event"; if (a === "crew") return `SDTV coverage brief - ${event}`; if (a === "influencers") return `SDTV influencer coverage update - ${event}`; if (a === "editor") return `SDTV video workflow update - ${event}`; return `SDTV coverage plan - ${event}`; }
   function defaultMessage(a: Audience) { const event = selectedEvent?.title || "the event"; const base = [`Hello,`, ``, `Sharing an SDTV update for ${event}.`, ``, `Event: ${event}`, `Date: ${dateText(selectedEvent?.date)}`, `Location: ${selectedEvent?.location || "—"}`]; if (a === "crew") base.push(``, `Coverage Checklist:`, `- Opening and venue shots`, `- Stage, audience, sponsor banners, and key moments`, `- Short vertical clips for social media`, `- Upload media folder after coverage`, briefNotes ? `\nNotes:\n${briefNotes}` : ""); else if (a === "influencers") base.push(``, `Please confirm your coverage plan and tag Seattle Desi TV where applicable.`, briefNotes ? `\nNotes:\n${briefNotes}` : ""); else if (a === "editor") base.push(``, `Video workflow status: ${label(eventWorkflow?.status || "not started")}`, `Please review raw media and update the workflow when ready.`); else base.push(``, `Crew Coverage: ${approvedCrew.length || "Not assigned yet"}`, `Influencer Coverage: ${approvedInfluencers.length + completedInfluencers.length || "Not approved yet"}`, `Video Status: ${label(eventWorkflow?.status || "not started")}`, briefNotes ? `\nCoverage Brief Notes:\n${briefNotes}` : ""); base.push(``, `Thank you,`, `Seattle Desi TV Team`); return base.filter(Boolean).join("\n"); }
