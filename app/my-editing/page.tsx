@@ -9,11 +9,11 @@ import { isAdminRole, isVideoEditorRole, resolveUserRole } from "../lib/roles";
 const supabase = getSupabaseBrowserClient();
 
 const EDITOR_STATUSES = [
-  { key: "ready_for_editing", label: "Ready For Editing", note: "Crew has shared media and notes. Start here." },
+  { key: "ready_for_editing", label: "Ready for Editing", note: "Crew has shared media and notes. Start here." },
   { key: "in_editing", label: "Currently Editing", note: "Draft work is in progress." },
   { key: "awaiting_crew_review", label: "Awaiting Crew Review", note: "Draft has been submitted for review." },
   { key: "changes_requested", label: "Changes Requested", note: "Crew or admin feedback needs updates." },
-  { key: "approved_for_publishing", label: "Approved For Publishing", note: "Final approval is complete. Publish and close." },
+  { key: "approved_for_publishing", label: "Approved for Publishing", note: "Final approval is complete. Publish and close." },
   { key: "published_complete", label: "Published Complete", note: "Completed editing workflow." },
 ];
 
@@ -80,7 +80,7 @@ export default function MyEditingPage() {
     { title: "Assigned Videos", value: workflows.length },
     { title: "In Progress", value: workflows.filter((workflow) => workflow.status === "in_editing").length },
     { title: "Awaiting Review", value: workflows.filter((workflow) => workflow.status === "awaiting_crew_review").length },
-    { title: "Ready To Publish", value: workflows.filter((workflow) => workflow.status === "approved_for_publishing").length },
+    { title: "Approved for Publishing", value: workflows.filter((workflow) => workflow.status === "approved_for_publishing").length },
   ];
 
   function WorkflowCard({ workflow }: { workflow: any }) {
