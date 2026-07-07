@@ -7,9 +7,21 @@ import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, isVideoEditorRole, resolveUserRole } from "../lib/roles";
 
 const supabase = getSupabaseBrowserClient();
+const STATUS_LABELS: Record<string, string> = {
+  review_requested: "Awaiting Review",
+  approved_for_publishing: "Approved for Publishing",
+  changes_requested: "Changes Requested",
+  assigned_to_editor: "Assigned to Editor",
+  in_editing: "In Editing",
+  ready_for_editing: "Ready for Editing",
+  awaiting_crew_review: "Awaiting Crew Review",
+  awaiting_admin_approval: "Awaiting Admin Approval",
+  published_complete: "Published Complete",
+};
 
 function label(value?: string | null) {
-  return String(value || "").replaceAll("_", " ") || "—";
+  const key = String(value || "");
+  return STATUS_LABELS[key] || key.replaceAll("_", " ") || "—";
 }
 
 function sameEmail(a?: string | null, b?: string | null) {
@@ -114,7 +126,7 @@ export default function MyVideoAssignmentsPage() {
               </div>
               <div className="flex flex-wrap gap-2 mt-5">
                 {row.status === "assigned_to_editor" && <button onClick={() => updateContent(row, { status: "in_editing" }, "Content moved to editing.")} className="bg-slate-950 text-white px-4 py-2 rounded-xl font-black">Start Editing</button>}
-                {["in_editing", "changes_requested"].includes(row.status) && <button onClick={() => updateContent(row, { status: "review_requested", review_requested_at: new Date().toISOString() }, "Review requested.")} className="bg-pink-600 text-white px-4 py-2 rounded-xl font-black">Request Review</button>}
+                {["in_editing", "changes_requested"].includes(row.status) && <button onClick={() => updateContent(row, { status: "review_requested", review_requested_at: new Date().toISOString() }, "Content moved to Awaiting Review.")} className="bg-pink-600 text-white px-4 py-2 rounded-xl font-black">Request Review</button>}
                 {isAdminRole(role) && row.status === "review_requested" && <button onClick={() => updateContent(row, { status: "approved_for_publishing", approved_at: new Date().toISOString() }, "Approved for publishing.")} className="bg-green-700 text-white px-4 py-2 rounded-xl font-black">Approve Publishing</button>}
                 {isAdminRole(role) && row.status === "review_requested" && <button onClick={() => updateContent(row, { status: "changes_requested" }, "Changes requested.")} className="bg-yellow-500 text-white px-4 py-2 rounded-xl font-black">Request Changes</button>}
                 {row.status === "approved_for_publishing" && <button onClick={() => updateContent(row, { status: "published", published_at: new Date().toISOString() }, "Content marked published.")} className="bg-purple-700 text-white px-4 py-2 rounded-xl font-black">Mark Published</button>}
