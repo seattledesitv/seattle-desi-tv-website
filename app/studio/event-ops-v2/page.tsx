@@ -61,139 +61,183 @@ export default function EventOpsV2Page() {
   function statsForEvent(eventId: string) { const rows = assignments.filter((a) => a.event_id === eventId); const infl = intents.filter((i) => i.event_id === eventId); const wf = workflows.find((w) => w.event_id === eventId); return { crew: rows.filter((a) => String(a.status || "") === "approved").length, pendingCrew: rows.filter((a) => String(a.status || "pending") === "pending").length, influencers: infl.filter((i) => ["approved", "completed"].includes(String(i.status || ""))).length, pendingInfluencers: infl.filter((i) => String(i.status || "pending") === "pending").length, submitted: rows.filter((a) => a.coverage_completed && !isNoContent(a.coverage_notes)).length, videoStatus: wf?.status || "not_started" }; }
   const selectedStats = selectedEventId ? statsForEvent(selectedEventId) : null;
 
-  async function loadData() {
-    const [er, ar, wr, ir, up, admins, team, roleRequests, pocResult] = await Promise.all([
-      supabase.from("events").select("id,title,date,location,status,created_by,poc_email,poc_phone,ticket_url,description,image,image_urls,featured,created_at").order("date", { ascending: false }).limit(300),
-      supabase.from("event_crew_assignments").select("id,event_id,user_id,user_email,assignment_type,status,event_title,coverage_completed,coverage_notes,completed_at,created_at,approved_at,crew_confirmed,approved_by").order("created_at", { ascending: false }).limit(1000),
-      supabase.from("event_video_workflows").select("id,event_id,status,assigned_editor_email,crew_reviewer_email,raw_media_url,external_media_url,crew_notes,updated_at,published_at,priority").order("updated_at", { ascending: false }).limit(300),
-      supabase.from("event_influencer_intents").select("*").order("created_at", { ascending: false }).limit(1000),
-      supabase.from("user_profiles").select("user_id,email,full_name,preferred_display_name,profile_photo_url").limit(1000),
-      supabase.from("admins").select("user_id,email,role,name,created_at").order("created_at", { ascending: false }),
-      supabase.from("team_members").select("name,email,image,user_id").limit(1000),
-      supabase.from("user_role_requests").select("user_id,email,approved_role,requested_role,status").eq("status", "approved"),
-      supabase.from("event_admin_pocs").select("*"),
+ async function loadData() {
+  const [er, ar, wr, ir, up, admins, team, roleRequests, pocResult] =
+    await Promise.all([
+      supabase
+        .from("events")
+        .select("id,title,date,location,status,created_by,poc_email,poc_phone,ticket_url,description,image,image_urls,featured,created_at")
+        .order("date", { ascending: false })
+        .limit(300),
+
+      supabase
+        .from("event_crew_assignments")
+        .select("id,event_id,user_id,user_email,assignment_type,status,event_title,coverage_completed,coverage_notes,completed_at,created_at,approved_at,crew_confirmed,approved_by")
+        .order("created_at", { ascending: false })
+        .limit(1000),
+
+      supabase
+        .from("event_video_workflows")
+        .select("id,event_id,status,assigned_editor_email,crew_reviewer_email,raw_media_url,external_media_url,crew_notes,updated_at,published_at,priority")
+        .order("updated_at", { ascending: false })
+        .limit(300),
+
+      supabase
+        .from("event_influencer_intents")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1000),
+
+      supabase
+        .from("user_profiles")
+        .select("user_id,email,full_name,preferred_display_name,profile_photo_url")
+        .limit(1000),
+
+      supabase
+        .from("admins")
+        .select("user_id,email,role,name,created_at")
+        .order("created_at", { ascending: false }),
+
+      supabase
+        .from("team_members")
+        .select("name,email,image,user_id")
+        .limit(1000),
+
+      supabase
+        .from("user_role_requests")
+        .select("user_id,email,approved_role,requested_role,status")
+        .eq("status", "approved"),
+
+      supabase
+        .from("event_admin_pocs")
+        .select("*"),
     ]);
-    if (er.error) setActionMessage(er.error.message);
-    if (pocResult.error) setActionMessage("Event Admin POC table is not ready. Run supabase/event-admin-poc.sql.");
-    setEvents(er.data || []); setAssignments(ar.data || []); setWorkflows(wr.data || []); setIntents(ir.data || []); setUserProfiles(up.data || []);
-    const profileByUser: Record<string, any> = {}; const profileByEmail: Record<string, any> = {}; const teamByEmail: Record<string, any> = {};
-    (up.data || []).forEach((p: any) => { if (p.user_id) profileByUser[p.user_id] = p; if (p.email) profileByEmail[String(p.email).toLowerCase()] = p; });
-    (team.data || []).forEach((t: any) => { if (t.email) teamByEmail[String(t.email).toLowerCase()] = t; });
-    const adminRows = (admins.data || [])
-  .filter((i: any) => i.email)
-  .map((i: any) => {
-    const email = String(i.email || "").toLowerCase();
-    const profile = profileByUser[i.user_id || ""] || profileByEmail[email] || {};
-    const teamRow = teamByEmail[email] || {};
 
-    return {
-      user_id: i.user_id || i.email,
-      email,
-      role: i.role || "admin",
-      name: i.name || profile.full_name || teamRow.name || i.email,
-      photo: profile.profile_photo_url || teamRow.image || "",
-    };
-  });
-
-const teamRows = (team.data || [])
-  .filter((t: any) => t.email)
-  .map((t: any) => {
-    const email = String(t.email || "").toLowerCase();
-    const profile = profileByUser[t.user_id || ""] || profileByEmail[email] || {};
-
-    return {
-      user_id: t.user_id || t.email,
-      email,
-      role: "team_member",
-      name: t.name || profile.full_name || t.email,
-      photo: profile.profile_photo_url || t.image || "",
-    };
-  });
-
-const byEmail = new Map<string, any>();
-
-// Team members first, then admins overwrite duplicates
-[...teamRows, ...adminRows].forEach((person) => {
-  byEmail.set(person.email, person);
-});
-
-const roleByEmail: Record<string, string[]> = {};
-
-(roleRequests.data || []).forEach((r: any) => {
-  const email = String(r.email || "").toLowerCase();
-  const approvedRole = String(r.approved_role || r.requested_role || "").toLowerCase();
-
-  if (!email || !approvedRole) return;
-
-  if (!roleByEmail[email]) roleByEmail[email] = [];
-  if (!roleByEmail[email].includes(approvedRole)) roleByEmail[email].push(approvedRole);
-});
-
-const adminRows = (admins.data || [])
-  .filter((i: any) => i.email)
-  .map((i: any) => {
-    const email = String(i.email || "").toLowerCase();
-    const profile = profileByUser[i.user_id || ""] || profileByEmail[email] || {};
-    const teamRow = teamByEmail[email] || {};
-    const roles = Array.from(new Set([i.role || "admin", ...(roleByEmail[email] || [])]));
-
-    return {
-      user_id: i.user_id || i.email,
-      email,
-      role: roles.join(","),
-      roles,
-      name: i.name || profile.full_name || teamRow.name || i.email,
-      photo: profile.profile_photo_url || teamRow.image || "",
-    };
-  });
-
-const teamRows = (team.data || [])
-  .filter((t: any) => t.email)
-  .map((t: any) => {
-    const email = String(t.email || "").toLowerCase();
-    const profile = profileByUser[t.user_id || ""] || profileByEmail[email] || {};
-    const roles = Array.from(new Set(["team_member", ...(roleByEmail[email] || [])]));
-
-    return {
-      user_id: t.user_id || t.email,
-      email,
-      role: roles.join(","),
-      roles,
-      name: t.name || profile.full_name || t.email,
-      photo: profile.profile_photo_url || t.image || "",
-    };
-  });
-
-const roleOnlyRows = Object.keys(roleByEmail)
-  .filter((email) => !teamByEmail[email])
-  .map((email) => {
-    const profile = profileByEmail[email] || {};
-    const roles = roleByEmail[email] || [];
-
-    return {
-      user_id: profile.user_id || email,
-      email,
-      role: roles.join(","),
-      roles,
-      name: profile.full_name || profile.preferred_display_name || email,
-      photo: profile.profile_photo_url || "",
-    };
-  });
-
-const byEmail = new Map<string, any>();
-
-[...teamRows, ...roleOnlyRows, ...adminRows].forEach((person) => {
-  byEmail.set(person.email, person);
-});
-
-setTeamUsers(
-  Array.from(byEmail.values()).sort((a: any, b: any) =>
-    String(a.name).localeCompare(String(b.name))
-  )
-);
-    const pocMap: Record<string, any> = {}; (pocResult.data || []).forEach((p: any) => { pocMap[p.event_id] = p; }); setEventPocs(pocMap);
-    const ids = Array.from(new Set((ir.data || []).map((i: any) => i.influencer_profile_id).filter(Boolean))); if (ids.length) { const { data } = await supabase.from("influencer_profiles").select("*").in("id", ids); const next: Record<string, any> = {}; (data || []).forEach((p: any) => { next[p.id] = p; }); setProfiles(next); } else setProfiles({});
+  if (er.error) setActionMessage(er.error.message);
+  if (pocResult.error) {
+    setActionMessage("Event Admin POC table is not ready. Run supabase/event-admin-poc.sql.");
   }
+
+  setEvents(er.data || []);
+  setAssignments(ar.data || []);
+  setWorkflows(wr.data || []);
+  setIntents(ir.data || []);
+  setUserProfiles(up.data || []);
+
+  const profileByUser: Record<string, any> = {};
+  const profileByEmail: Record<string, any> = {};
+  const teamByEmail: Record<string, any> = {};
+  const roleByEmail: Record<string, string[]> = {};
+
+  (up.data || []).forEach((p: any) => {
+    const email = String(p.email || "").toLowerCase();
+    if (p.user_id) profileByUser[p.user_id] = p;
+    if (email) profileByEmail[email] = p;
+  });
+
+  (team.data || []).forEach((t: any) => {
+    const email = String(t.email || "").toLowerCase();
+    if (email) teamByEmail[email] = t;
+  });
+
+  (roleRequests.data || []).forEach((r: any) => {
+    const email = String(r.email || "").toLowerCase();
+    const approvedRole = String(r.approved_role || r.requested_role || "").toLowerCase();
+
+    if (!email || !approvedRole) return;
+
+    if (!roleByEmail[email]) roleByEmail[email] = [];
+    if (!roleByEmail[email].includes(approvedRole)) {
+      roleByEmail[email].push(approvedRole);
+    }
+  });
+
+  const adminRows = (admins.data || [])
+    .filter((i: any) => i.email)
+    .map((i: any) => {
+      const email = String(i.email || "").toLowerCase();
+      const profile = profileByUser[i.user_id || ""] || profileByEmail[email] || {};
+      const teamRow = teamByEmail[email] || {};
+      const roles = Array.from(
+        new Set([String(i.role || "admin").toLowerCase(), ...(roleByEmail[email] || [])])
+      );
+
+      return {
+        user_id: i.user_id || i.email,
+        email,
+        role: roles.join(","),
+        roles,
+        name: i.name || profile.full_name || profile.preferred_display_name || teamRow.name || i.email,
+        photo: profile.profile_photo_url || teamRow.image || "",
+      };
+    });
+
+  const teamRows = (team.data || [])
+    .filter((t: any) => t.email)
+    .map((t: any) => {
+      const email = String(t.email || "").toLowerCase();
+      const profile = profileByUser[t.user_id || ""] || profileByEmail[email] || {};
+      const roles = Array.from(new Set(["team_member", ...(roleByEmail[email] || [])]));
+
+      return {
+        user_id: t.user_id || profile.user_id || t.email,
+        email,
+        role: roles.join(","),
+        roles,
+        name: t.name || profile.full_name || profile.preferred_display_name || t.email,
+        photo: profile.profile_photo_url || t.image || "",
+      };
+    });
+
+  const roleOnlyRows = Object.keys(roleByEmail)
+    .filter((email) => !teamByEmail[email])
+    .map((email) => {
+      const profile = profileByEmail[email] || {};
+      const roles = roleByEmail[email] || [];
+
+      return {
+        user_id: profile.user_id || email,
+        email,
+        role: roles.join(","),
+        roles,
+        name: profile.full_name || profile.preferred_display_name || email,
+        photo: profile.profile_photo_url || "",
+      };
+    });
+
+  const byEmail = new Map<string, any>();
+
+  [...teamRows, ...roleOnlyRows, ...adminRows].forEach((person) => {
+    if (person.email) byEmail.set(person.email, person);
+  });
+
+  setTeamUsers(
+    Array.from(byEmail.values()).sort((a: any, b: any) =>
+      String(a.name).localeCompare(String(b.name))
+    )
+  );
+
+  const pocMap: Record<string, any> = {};
+  (pocResult.data || []).forEach((p: any) => {
+    pocMap[p.event_id] = p;
+  });
+  setEventPocs(pocMap);
+
+  const ids = Array.from(
+    new Set((ir.data || []).map((i: any) => i.influencer_profile_id).filter(Boolean))
+  );
+
+  if (ids.length) {
+    const { data } = await supabase.from("influencer_profiles").select("*").in("id", ids);
+    const next: Record<string, any> = {};
+    (data || []).forEach((p: any) => {
+      next[p.id] = p;
+    });
+    setProfiles(next);
+  } else {
+    setProfiles({});
+  }
+}
   async function init() { setLoading(true); const { data } = await supabase.auth.getUser(); const currentUser = data?.user || null; setUser(currentUser); const nextRole = currentUser ? await resolveUserRole(supabase, currentUser) : ""; setRole(nextRole); if (!currentUser || !isAdminRole(nextRole)) { setMessage("Admin access required."); setLoading(false); return; } await loadData(); setMessage(""); setLoading(false); }
   useEffect(() => { init(); }, []);
   useEffect(() => { if (!selectedEvent) return; setEditForm({ title: selectedEvent.title || "", date: dateInput(selectedEvent.date), location: selectedEvent.location || "", description: selectedEvent.description || "", poc_email: selectedEvent.poc_email || "", poc_phone: selectedEvent.poc_phone || "", ticket_url: selectedEvent.ticket_url || "", image_urls: eventImages(selectedEvent) }); const p = eventPocs[selectedEvent.id] || {}; const list = getPocs(p); setPocForm({ pocs: list.length ? list : [blankPoc()], notes: p.notes || "" }); }, [selectedEventId, eventPocs]);
