@@ -34,6 +34,19 @@ function dateText(value?: string | null) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
+function priorityValue(value?: number | string | null) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 10;
+}
+
+function priorityClass(value?: number | string | null) {
+  const priority = priorityValue(value);
+  if (priority <= 3) return "bg-red-50 text-red-700 border-red-100";
+  if (priority <= 7) return "bg-orange-50 text-orange-700 border-orange-100";
+  if (priority <= 12) return "bg-yellow-50 text-yellow-800 border-yellow-100";
+  return "bg-slate-100 text-slate-700 border-slate-200";
+}
+
 export default function MyVideoAssignmentsPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading video assignments...");
@@ -54,7 +67,7 @@ export default function MyVideoAssignmentsPage() {
     setRole(nextRole);
     if (!(isVideoEditorRole(nextRole) || isAdminRole(nextRole))) { setMessage(`This page is for assigned video editors. Current role: ${nextRole}`); setLoading(false); return; }
 
-    const result = await supabase.from("event_video_workflows").select("*, events(id,title,date,location)").order("updated_at", { ascending: false });
+    const result = await supabase.from("event_video_workflows").select("*, events(id,title,date,location)").order("priority", { ascending: true }).order("updated_at", { ascending: false });
     if (result.error) { setMessage(result.error.message); setWorkflows([]); } else {
       const rows = result.data || [];
       const visible = isAdminRole(nextRole) ? rows : rows.filter((row: any) => sameEmail(row.assigned_editor_email, currentUser.email));
@@ -141,11 +154,16 @@ export default function MyVideoAssignmentsPage() {
           <div className="grid lg:grid-cols-2 gap-6">
             {workflows.map((workflow) => {
               const event = workflow.events || {};
+              const priority = priorityValue(workflow.priority);
               return <article key={workflow.id} className="bg-white text-slate-950 rounded-3xl p-6 shadow-xl border">
-                <p className="text-xs font-black uppercase tracking-wide text-pink-600">{label(workflow.status)}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-xs font-black uppercase tracking-wide text-pink-600">{label(workflow.status)}</p>
+                  <span className={`rounded-full border px-3 py-1 text-xs font-black ${priorityClass(priority)}`}>P{priority}</span>
+                </div>
                 <h2 className="text-2xl font-black mt-1">{event.title || "Untitled Event"}</h2>
                 <p className="text-gray-600 mt-1">{event.date || "Date TBD"}{event.location ? ` · ${event.location}` : ""}</p>
                 {workflow.assigned_editor_email && <p className="text-sm text-gray-700 mt-3"><b>Editor:</b> {workflow.assigned_editor_email}</p>}
+                <p className="text-sm text-gray-700 mt-2"><b>Priority:</b> P{priority} {priority === 0 ? "· Highest" : priority === 20 ? "· Lowest" : ""}</p>
                 {workflow.crew_notes && <p className="text-sm text-gray-700 whitespace-pre-line mt-3"><b>Notes:</b> {workflow.crew_notes}</p>}
                 <a href={`/studio/video-production/${workflow.id}`} className="inline-block bg-pink-600 text-white px-4 py-2 rounded-xl font-black mt-5">Open Workflow</a>
               </article>;
