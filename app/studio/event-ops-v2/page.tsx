@@ -261,30 +261,44 @@ export default function EventOpsV2Page() {
   async function updateAssignment(item: any, status: string) { const payload: any = { status }; if (status === "approved") { payload.approved_by = user?.email || null; payload.approved_at = new Date().toISOString(); } const { error } = await supabase.from("event_crew_assignments").update(payload).eq("id", item.id); if (error) setActionMessage(`Crew request update failed: ${error.message}`); else { setActionMessage(`Crew request ${label(status)}.`); await loadData(); } }
   async function updateInfluencerIntent(id: string, status: string) { const { error } = await supabase.from("event_influencer_intents").update({ status, updated_at: new Date().toISOString() }).eq("id", id); if (error) setActionMessage(`Influencer update failed: ${error.message}`); else { setActionMessage(`Influencer request ${label(status)}.`); await loadData(); } }
   async function assignCrew() { if (!selectedEvent || selectedCrewUsers().length === 0) return; const rows = selectedCrewUsers().map((m) => ({ event_id: selectedEvent.id, event_title: selectedEvent.title, user_id: m.user_id, user_email: m.email, assignment_type: roleKey(selectedCrewRole), status: "approved", approved_by: user?.email || null, approved_at: new Date().toISOString(), crew_confirmed: false })); const { error } = await supabase.from("event_crew_assignments").insert(rows); if (error) setActionMessage(`Assign crew failed: ${error.message}`); else { setSelectedCrewUserIds([]); setActionMessage("Crew assigned."); await loadData(); } }
-  async function ensureVideoWorkflow() {
-  if (!selectedEventId || eventWorkflow) return;
+async function ensureVideoWorkflow() {
+  if (!selectedEventId) return;
+
+  const payload = {
+    status: "ready_for_editing",
+    assigned_editor_email: selectedEditorEmail || eventWorkflow?.assigned_editor_email || null,
+    priority: selectedPriority,
+    crew_reviewer_email: user?.email || eventWorkflow?.crew_reviewer_email || null,
+    crew_notes: eventWorkflow?.crew_notes || "Submitted to editor from Event Operations.",
+    updated_by: user?.id || null,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (eventWorkflow) {
+    const { error } = await supabase
+      .from("event_video_workflows")
+      .update(payload)
+      .eq("id", eventWorkflow.id);
+
+    if (error) setActionMessage(`Editor assignment update failed: ${error.message}`);
+    else {
+      setActionMessage("Editor assignment updated.");
+      await loadData();
+    }
+    return;
+  }
 
   const { error } = await supabase
     .from("event_video_workflows")
     .insert({
       event_id: selectedEventId,
-      status: "ready_for_editing",
-
-      assigned_editor_email: selectedEditorEmail || null,
-
-      // NEW
-      priority: selectedPriority,
-
-      crew_reviewer_email: user?.email || null,
-      crew_notes: "Started from Event Operations.",
+      ...payload,
       created_by: user?.id || null,
-      updated_by: user?.id || null,
     });
 
-  if (error) {
-    setActionMessage(`Video workflow failed: ${error.message}`);
-  } else {
-    setActionMessage("Video workflow started.");
+  if (error) setActionMessage(`Submit to editor failed: ${error.message}`);
+  else {
+    setActionMessage("Submitted to editor.");
     await loadData();
   }
 }
@@ -342,7 +356,7 @@ export default function EventOpsV2Page() {
         onClick={ensureVideoWorkflow}
         className="rounded-xl bg-slate-900 px-5 py-3 font-black text-white"
     >
-        Start Workflow
+        Assign & Submit to Editor
     </button>
 
 </div>
