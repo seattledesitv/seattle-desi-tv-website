@@ -24,6 +24,14 @@ function safeFileName(name: string) {
   const base = String(name || "receipt").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 90);
   return base || "receipt";
 }
+function nextMonthStart(month: string) {
+  const [yearText, monthText] = month.split("-");
+  const year = Number(yearText);
+  const monthIndex = Number(monthText);
+  if (!Number.isFinite(year) || !Number.isFinite(monthIndex) || monthIndex < 1 || monthIndex > 12) return "";
+  const next = new Date(Date.UTC(year, monthIndex, 1));
+  return next.toISOString().slice(0, 10);
+}
 function r2Client() {
   if (!r2Endpoint || !r2AccessKeyId || !r2SecretAccessKey) throw new Error("R2 is not configured. Add R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET_NAME in Vercel.");
   return new S3Client({
@@ -54,7 +62,9 @@ export async function GET(request: Request) {
     const category = String(searchParams.get("category") || "").trim();
     let query = auth.db.from("finance_expenses").select("*").order("expense_date", { ascending: false }).order("created_at", { ascending: false }).limit(500);
     if (month && /^\d{4}-\d{2}$/.test(month)) {
-      query = query.gte("expense_date", `${month}-01`).lt("expense_date", `${month}-32`);
+      const startDate = `${month}-01`;
+      const endDate = nextMonthStart(month);
+      if (endDate) query = query.gte("expense_date", startDate).lt("expense_date", endDate);
     }
     if (category && category !== "all") query = query.eq("category", category);
     const { data, error } = await query;
