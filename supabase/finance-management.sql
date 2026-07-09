@@ -1,16 +1,22 @@
 -- Finance Management V1
--- Super-admin-only expense tracking. Bills are stored privately in Cloudflare R2;
--- this table stores metadata and the private R2 object key only.
+-- Super-admin-only expense and mileage reimbursement tracking.
+-- Bills are stored privately in Cloudflare R2; this table stores metadata and the private R2 object key only.
 
 create extension if not exists pgcrypto;
 
 create table if not exists public.finance_expenses (
   id uuid primary key default gen_random_uuid(),
+  expense_type text not null default 'expense',
   expense_date date not null,
   vendor_name text not null,
   category text not null default 'other',
   amount numeric(12,2) not null check (amount > 0),
   payment_method text,
+  reimbursement_status text not null default 'submitted',
+  reimbursed_to text,
+  mileage_miles numeric(10,2),
+  mileage_rate numeric(10,4),
+  paid_at timestamptz,
   description text,
   bill_file_path text,
   bill_file_name text,
@@ -24,9 +30,17 @@ create table if not exists public.finance_expenses (
   updated_at timestamptz not null default now()
 );
 
+alter table public.finance_expenses add column if not exists expense_type text not null default 'expense';
+alter table public.finance_expenses add column if not exists reimbursement_status text not null default 'submitted';
+alter table public.finance_expenses add column if not exists reimbursed_to text;
+alter table public.finance_expenses add column if not exists mileage_miles numeric(10,2);
+alter table public.finance_expenses add column if not exists mileage_rate numeric(10,4);
+alter table public.finance_expenses add column if not exists paid_at timestamptz;
+
 create index if not exists finance_expenses_expense_date_idx on public.finance_expenses (expense_date desc);
 create index if not exists finance_expenses_category_idx on public.finance_expenses (category);
 create index if not exists finance_expenses_created_by_idx on public.finance_expenses (created_by);
+create index if not exists finance_expenses_reimbursement_status_idx on public.finance_expenses (reimbursement_status);
 
 alter table public.finance_expenses enable row level security;
 
