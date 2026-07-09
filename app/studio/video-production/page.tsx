@@ -8,48 +8,32 @@ import { canAccessVideoProduction, isAdminRole, isTeamRole, isVideoEditorRole, r
 const supabase = getSupabaseBrowserClient();
 
 const STATUSES = [
-  { key: "ready_for_editing", label: "Ready For Editing", note: "Crew has uploaded media and notes." },
+  { key: "ready_for_editing", label: "Ready for Editing", note: "Waiting for editor to start." },
   { key: "in_editing", label: "In Editing", note: "Editor is working on the draft." },
   { key: "awaiting_crew_review", label: "Awaiting Crew Review", note: "Editor draft is ready for crew review." },
-  { key: "changes_requested", label: "Changes Requested", note: "Crew/admin feedback needs edits." },
-  { key: "awaiting_admin_approval", label: "Awaiting Admin Approval", note: "Crew approved; admin must approve publishing." },
-  { key: "approved_for_publishing", label: "Approved For Publishing", note: "Editor can publish." },
+  { key: "changes_requested", label: "Changes Requested", note: "Editor needs to address feedback." },
+  { key: "awaiting_admin_approval", label: "Awaiting Admin Approval", note: "Admin must approve publishing." },
+  { key: "approved_for_publishing", label: "Approved for Publishing", note: "Editor can publish." },
   { key: "published_complete", label: "Published Complete", note: "Publishing cycle is complete." },
 ];
 
 const CONTENT_STATUSES = ["new", "reviewing", "assigned_to_editor", "approved_for_publishing", "published", "rejected", "closed"];
+const ACTIVE_STATUSES = ["ready_for_editing", "in_editing", "awaiting_crew_review", "changes_requested", "awaiting_admin_approval", "approved_for_publishing"];
 
-function dateText(value?: string | null) {
-  if (!value) return "";
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? value : d.toLocaleString();
-}
-
-function shortDate(value?: string | null) {
-  if (!value) return "";
-  const d = new Date(`${String(value).split("T")[0]}T00:00:00`);
-  return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString();
-}
-
-function statusLabel(status?: string | null) {
-  return STATUSES.find((item) => item.key === status)?.label || String(status || "Ready For Editing").replaceAll("_", " ");
-}
-
-function label(value?: string | null) {
-  return String(value || "").replaceAll("_", " ") || "—";
-}
-
-function contentStatusClass(status?: string | null) {
-  const value = String(status || "new").toLowerCase();
-  if (value === "new") return "bg-pink-50 text-pink-700";
-  if (value.includes("review") || value.includes("assigned")) return "bg-yellow-50 text-yellow-800";
-  if (value.includes("approved") || value.includes("published")) return "bg-green-50 text-green-700";
-  if (value.includes("reject")) return "bg-red-50 text-red-700";
-  return "bg-slate-100 text-slate-700";
-}
-
-function emailMatches(a?: string | null, b?: string | null) {
-  return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+function dateText(value?: string | null) { if (!value) return ""; const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString(); }
+function shortDate(value?: string | null) { if (!value) return ""; const d = new Date(`${String(value).split("T")[0]}T00:00:00`); return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString(); }
+function statusLabel(status?: string | null) { return STATUSES.find((item) => item.key === status)?.label || String(status || "Ready for Editing").replaceAll("_", " "); }
+function label(value?: string | null) { return String(value || "").replaceAll("_", " ") || "—"; }
+function priorityValue(value?: number | string | null) { const parsed = Number(value); return Number.isFinite(parsed) ? parsed : 10; }
+function priorityClass(value?: number | string | null) { const p = priorityValue(value); if (p <= 3) return "bg-red-50 text-red-700 border-red-100"; if (p <= 7) return "bg-orange-50 text-orange-700 border-orange-100"; if (p <= 12) return "bg-yellow-50 text-yellow-800 border-yellow-100"; return "bg-slate-100 text-slate-700 border-slate-200"; }
+function contentStatusClass(status?: string | null) { const value = String(status || "new").toLowerCase(); if (value === "new") return "bg-pink-50 text-pink-700"; if (value.includes("review") || value.includes("assigned")) return "bg-yellow-50 text-yellow-800"; if (value.includes("approved") || value.includes("published")) return "bg-green-50 text-green-700"; if (value.includes("reject")) return "bg-red-50 text-red-700"; return "bg-slate-100 text-slate-700"; }
+function emailMatches(a?: string | null, b?: string | null) { return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase(); }
+function stuckWith(workflow: any) {
+  const status = String(workflow?.status || "");
+  if (["ready_for_editing", "in_editing", "changes_requested", "approved_for_publishing"].includes(status)) return { label: "Editor", email: workflow.assigned_editor_email || "" };
+  if (status === "awaiting_crew_review") return { label: "Crew Reviewer", email: workflow.crew_reviewer_email || "" };
+  if (status === "awaiting_admin_approval") return { label: "Admin", email: "info@seattledesitv.com" };
+  return { label: "Complete", email: "" };
 }
 
 export default function VideoProductionPage() {
@@ -65,7 +49,8 @@ export default function VideoProductionPage() {
   const [selectedEventId, setSelectedEventId] = useState("");
   const [filter, setFilter] = useState("all");
   const [contentFilter, setContentFilter] = useState("open");
-  const [form, setForm] = useState({ raw_media_url: "", external_media_url: "", crew_notes: "", assigned_editor_email: "", crew_reviewer_email: "" });
+  const [statusSearch, setStatusSearch] = useState("");
+  const [form, setForm] = useState({ raw_media_url: "", external_media_url: "", crew_notes: "", assigned_editor_email: "", crew_reviewer_email: "", priority: 10 });
   const canAccess = Boolean(user && canAccessVideoProduction(role));
   const admin = isAdminRole(role);
   const crew = isTeamRole(role);
@@ -76,318 +61,95 @@ export default function VideoProductionPage() {
     const currentRole = activeRole || role;
     const activeEmail = currentUser?.email || "";
     const { data, error } = await supabase.from("public_content_requests").select("*").order("created_at", { ascending: false }).limit(300);
-    if (error) {
-      setContentRequests([]);
-      setActionMessage((current) => current || `Could not load public content requests: ${error.message}. Run supabase/public-content-requests.sql.`);
-      return;
-    }
+    if (error) { setContentRequests([]); setActionMessage((current) => current || `Could not load public content requests: ${error.message}. Run supabase/public-content-requests.sql.`); return; }
     const rows = data || [];
-    const visibleRows = isAdminRole(currentRole) ? rows : rows.filter((row: any) => emailMatches(row.assigned_editor_email, activeEmail));
-    setContentRequests(visibleRows);
+    setContentRequests(isAdminRole(currentRole) ? rows : rows.filter((row: any) => emailMatches(row.assigned_editor_email, activeEmail)));
   }
 
   async function loadData(currentUser?: any, currentRole?: string) {
     const activeUser = currentUser || user;
     const activeRole = currentRole || role;
     const activeEmail = activeUser?.email || "";
-
-    const workflowResult = await supabase
-      .from("event_video_workflows")
-      .select("*, events(id,title,date,location,image,image_urls)")
-      .order("updated_at", { ascending: false });
-
-    if (workflowResult.error) {
-      setActionMessage(`Could not load video workflows: ${workflowResult.error.message}`);
-      setWorkflows([]);
-    } else {
+    const workflowResult = await supabase.from("event_video_workflows").select("*, events(id,title,date,location,image,image_urls)").order("priority", { ascending: true }).order("updated_at", { ascending: false });
+    if (workflowResult.error) { setActionMessage(`Could not load video workflows: ${workflowResult.error.message}`); setWorkflows([]); }
+    else {
       const rows = workflowResult.data || [];
-      const visibleRows = isAdminRole(activeRole)
-        ? rows
-        : rows.filter((row: any) => emailMatches(row.assigned_editor_email, activeEmail) || emailMatches(row.crew_reviewer_email, activeEmail) || isTeamRole(activeRole));
-      setWorkflows(visibleRows);
+      setWorkflows(isAdminRole(activeRole) ? rows : rows.filter((row: any) => emailMatches(row.assigned_editor_email, activeEmail) || emailMatches(row.crew_reviewer_email, activeEmail) || isTeamRole(activeRole)));
     }
-
     if (isAdminRole(activeRole) || isTeamRole(activeRole)) {
-      const eventResult = await supabase
-        .from("events")
-        .select("id,title,date,location,status")
-        .eq("status", "approved")
-        .order("date", { ascending: false })
-        .limit(100);
+      const eventResult = await supabase.from("events").select("id,title,date,location,status").eq("status", "approved").order("date", { ascending: false }).limit(100);
       if (!eventResult.error) setEvents(eventResult.data || []);
     }
-
     const adminResult = await supabase.from("admins").select("email,name,role").order("created_at", { ascending: false });
-    if (!adminResult.error) {
-      setEditors((adminResult.data || []).filter((item: any) => {
-        const value = String(item.role || "").toLowerCase();
-        return value.includes("admin") || value.includes("editor") || value.includes("production");
-      }));
-    }
-
+    if (!adminResult.error) setEditors((adminResult.data || []).filter((item: any) => { const value = String(item.role || "").toLowerCase(); return value.includes("admin") || value.includes("editor") || value.includes("production"); }));
     await loadContentRequests(activeUser, activeRole);
   }
 
   async function init() {
-    setLoading(true);
-    setActionMessage("");
+    setLoading(true); setActionMessage("");
     const sessionResult = await supabase.auth.getSession();
     const currentUser = sessionResult.data?.session?.user || null;
     setUser(currentUser);
-    if (!currentUser) {
-      setRole("");
-      setMessage("Please login to access Video Production.");
-      setLoading(false);
-      return;
-    }
+    if (!currentUser) { setRole(""); setMessage("Please login to access Video Production."); setLoading(false); return; }
     const nextRole = await resolveUserRole(supabase, currentUser);
     setRole(nextRole);
-    if (!canAccessVideoProduction(nextRole)) {
-      setMessage("You are logged in, but this account does not have Video Production access.");
-      setLoading(false);
-      return;
-    }
-    await loadData(currentUser, nextRole);
-    setMessage("");
-    setLoading(false);
+    if (!canAccessVideoProduction(nextRole)) { setMessage("You are logged in, but this account does not have Video Production access."); setLoading(false); return; }
+    await loadData(currentUser, nextRole); setMessage(""); setLoading(false);
   }
 
   async function createWorkflow(event: React.FormEvent) {
-    event.preventDefault();
-    if (!selectedEventId || !user?.id) return;
+    event.preventDefault(); if (!selectedEventId || !user?.id) return;
     setActionMessage("Creating video workflow...");
-    const { error } = await supabase.from("event_video_workflows").insert({
-      event_id: selectedEventId,
-      status: "ready_for_editing",
-      raw_media_url: form.raw_media_url || null,
-      external_media_url: form.external_media_url || null,
-      crew_notes: form.crew_notes || null,
-      assigned_editor_email: form.assigned_editor_email || null,
-      crew_reviewer_email: form.crew_reviewer_email || user.email || null,
-      created_by: user.id,
-      updated_by: user.id,
-    });
-    if (error) {
-      setActionMessage(`Could not create workflow: ${error.message}`);
-      return;
-    }
-    setActionMessage("Video workflow created and marked ready for editing.");
-    setSelectedEventId("");
-    setForm({ raw_media_url: "", external_media_url: "", crew_notes: "", assigned_editor_email: "", crew_reviewer_email: "" });
-    await loadData();
+    const { error } = await supabase.from("event_video_workflows").insert({ event_id: selectedEventId, status: "ready_for_editing", raw_media_url: form.raw_media_url || null, external_media_url: form.external_media_url || null, crew_notes: form.crew_notes || null, assigned_editor_email: form.assigned_editor_email || null, crew_reviewer_email: form.crew_reviewer_email || user.email || null, priority: Number(form.priority) || 10, created_by: user.id, updated_by: user.id });
+    if (error) { setActionMessage(`Could not create workflow: ${error.message}`); return; }
+    setActionMessage("Video workflow created and marked ready for editing."); setSelectedEventId(""); setForm({ raw_media_url: "", external_media_url: "", crew_notes: "", assigned_editor_email: "", crew_reviewer_email: "", priority: 10 }); await loadData();
   }
 
   async function updateWorkflow(workflow: any, payload: any, success: string) {
     setActionMessage("Updating workflow...");
-    const { error } = await supabase
-      .from("event_video_workflows")
-      .update({ ...payload, updated_by: user?.id || null, updated_at: new Date().toISOString() })
-      .eq("id", workflow.id);
-    if (error) {
-      setActionMessage(`Workflow update failed: ${error.message}`);
-      return;
-    }
-    setActionMessage(success);
-    await loadData();
+    const { error } = await supabase.from("event_video_workflows").update({ ...payload, updated_by: user?.id || null, updated_at: new Date().toISOString() }).eq("id", workflow.id);
+    if (error) { setActionMessage(`Workflow update failed: ${error.message}`); return; }
+    setActionMessage(success); await loadData();
   }
 
-  async function updateContentRequest(row: any, payload: any, success = "Content request updated.") {
-    setActionMessage("Updating content request...");
-    const { error } = await supabase
-      .from("public_content_requests")
-      .update({ ...payload, updated_at: new Date().toISOString() })
-      .eq("id", row.id);
-    if (error) {
-      setActionMessage(`Content request update failed: ${error.message}`);
-      return;
-    }
-    setActionMessage(success);
-    await loadContentRequests();
-  }
+  async function updatePriority(workflow: any, value: string) { await updateWorkflow(workflow, { priority: Number(value) }, `Priority updated to P${value}.`); }
+  async function updateContentRequest(row: any, payload: any, success = "Content request updated.") { setActionMessage("Updating content request..."); const { error } = await supabase.from("public_content_requests").update({ ...payload, updated_at: new Date().toISOString() }).eq("id", row.id); if (error) { setActionMessage(`Content request update failed: ${error.message}`); return; } setActionMessage(success); await loadContentRequests(); }
+  async function assignContentRequest(row: any, email: string) { await updateContentRequest(row, { assigned_editor_email: email || null, assigned_at: email ? new Date().toISOString() : null, status: email ? "assigned_to_editor" : row.status }, email ? "Submission assigned to editor." : "Editor assignment cleared."); }
 
-  async function assignContentRequest(row: any, email: string) {
-    await updateContentRequest(row, {
-      assigned_editor_email: email || null,
-      assigned_at: email ? new Date().toISOString() : null,
-      status: email ? "assigned_to_editor" : row.status,
-    }, email ? "Submission assigned to editor." : "Editor assignment cleared.");
-  }
+  async function sendAdminEmail(workflow: any) { const event = workflow.events || {}; await fetch("/api/notify-admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "video production approval", title: event.title || "Event video workflow", date: event.date || "", location: event.location || "", submittedBy: user?.email || "crew", reviewUrl: `${window.location.origin}/studio/video-production` }) }).catch(() => null); }
+  async function notifyAdminsInApp(workflow: any) { const event = workflow.events || {}; const { data } = await supabase.from("admins").select("user_id,email"); const notifications = (data || []).filter((admin: any) => admin.user_id).map((admin: any) => ({ user_id: admin.user_id, title: "Video workflow awaiting final approval", message: `${event.title || "An event video"} was approved by crew and needs SDTV admin final approval before publishing.`, link: "/studio/video-production", read: false })); if (notifications.length) await supabase.from("notifications").insert(notifications); }
+  async function markCrewApproved(workflow: any) { await updateWorkflow(workflow, { status: "awaiting_admin_approval", crew_reviewer_email: workflow.crew_reviewer_email || user?.email || null, crew_approved_at: new Date().toISOString() }, "Crew approved. Admin has been notified for final approval."); await sendAdminEmail(workflow); await notifyAdminsInApp(workflow); }
 
-  async function sendAdminEmail(workflow: any) {
+  async function sendStuckEmail(workflow: any) {
+    const owner = stuckWith(workflow);
     const event = workflow.events || {};
-    await fetch("/api/notify-admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "video production approval",
-        title: event.title || "Event video workflow",
-        date: event.date || "",
-        location: event.location || "",
-        submittedBy: user?.email || "crew",
-        reviewUrl: `${window.location.origin}/studio/video-production`,
-      }),
-    }).catch(() => null);
-  }
-
-  async function notifyAdminsInApp(workflow: any) {
-    const event = workflow.events || {};
-    const { data } = await supabase.from("admins").select("user_id,email");
-    const admins = data || [];
-    const notifications = admins.filter((admin: any) => admin.user_id).map((admin: any) => ({
-      user_id: admin.user_id,
-      title: "Video workflow awaiting final approval",
-      message: `${event.title || "An event video"} was approved by crew and needs SDTV admin final approval before publishing.`,
-      link: "/studio/video-production",
-      read: false,
-    }));
-    if (!notifications.length) return;
-    await supabase.from("notifications").insert(notifications);
-  }
-
-  async function markCrewApproved(workflow: any) {
-    await updateWorkflow(workflow, { status: "awaiting_admin_approval", crew_reviewer_email: workflow.crew_reviewer_email || user?.email || null, crew_approved_at: new Date().toISOString() }, "Crew approved. Admin has been notified for final approval.");
-    await sendAdminEmail(workflow);
-    await notifyAdminsInApp(workflow);
+    if (!owner.email) { setActionMessage("No POC email is available for this workflow status."); return; }
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token || "";
+    const response = await fetch("/api/studio/send-communication", { method: "POST", headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" }, body: JSON.stringify({ recipients: [{ email: owner.email, user_id: null, name: owner.label }], subject: `Action needed: SDTV video workflow - ${event.title || "Event video"}`, message: [`Hello,`, ``, `This SDTV video workflow currently appears to be waiting on ${owner.label}.`, ``, `Event: ${event.title || "Untitled event"}`, `Status: ${statusLabel(workflow.status)}`, `Priority: P${priorityValue(workflow.priority)}`, `Workflow: ${window.location.origin}/studio/video-production/${workflow.id}`, ``, `Please review and update the workflow when you get a chance.`, ``, `Thank you,`, `Seattle Desi TV Team`].join("\n"), notificationTitle: `Video workflow action needed: ${event.title || "Event video"}`, notificationLink: `/studio/video-production/${workflow.id}` }) });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) setActionMessage(result.error || "Could not send reminder email.");
+    else setActionMessage(`Reminder sent to ${owner.email}.`);
   }
 
   const filteredWorkflows = useMemo(() => filter === "all" ? workflows : workflows.filter((workflow) => workflow.status === filter), [workflows, filter]);
   const grouped = useMemo(() => Object.fromEntries(STATUSES.map((status) => [status.key, filteredWorkflows.filter((workflow) => workflow.status === status.key)])), [filteredWorkflows]);
   const existingEventIds = useMemo(() => new Set(workflows.map((workflow) => workflow.event_id)), [workflows]);
   const availableEvents = events.filter((event) => !existingEventIds.has(event.id));
-  const visibleContentRequests = useMemo(() => {
-    if (contentFilter === "open") return contentRequests.filter((row) => !["published", "rejected", "closed"].includes(String(row.status || "new")));
-    if (contentFilter === "mine") return contentRequests.filter((row) => emailMatches(row.assigned_editor_email, user?.email));
-    return contentRequests.filter((row) => String(row.status || "new") === contentFilter);
-  }, [contentRequests, contentFilter, user?.email]);
+  const visibleContentRequests = useMemo(() => { if (contentFilter === "open") return contentRequests.filter((row) => !["published", "rejected", "closed"].includes(String(row.status || "new"))); if (contentFilter === "mine") return contentRequests.filter((row) => emailMatches(row.assigned_editor_email, user?.email)); return contentRequests.filter((row) => String(row.status || "new") === contentFilter); }, [contentRequests, contentFilter, user?.email]);
+  const managementRows = useMemo(() => { const q = statusSearch.trim().toLowerCase(); return workflows.filter((workflow) => { const event = workflow.events || {}; const owner = stuckWith(workflow); const haystack = `${event.title || ""} ${event.location || ""} ${workflow.status || ""} ${workflow.assigned_editor_email || ""} ${workflow.crew_reviewer_email || ""} ${owner.email || ""}`.toLowerCase(); return !q || haystack.includes(q); }); }, [workflows, statusSearch]);
 
   function WorkflowCard({ workflow }: { workflow: any }) {
-    const event = workflow.events || {};
-    const mediaUrl = workflow.raw_media_url || workflow.external_media_url;
-    const canCrewReview = crew && (workflow.status === "awaiting_crew_review" || workflow.status === "changes_requested");
-    const canAdminApprove = admin && workflow.status === "awaiting_admin_approval";
-    const canEditorPublish = editor && workflow.status === "approved_for_publishing";
-
-    return (
-      <article className="bg-white text-slate-950 rounded-2xl p-5 shadow-sm border space-y-4">
-        <div>
-          <p className="text-xs font-black uppercase tracking-wide text-pink-600">{statusLabel(workflow.status)}</p>
-          <h3 className="text-xl font-black mt-1">{event.title || "Untitled event"}</h3>
-          <p className="text-sm text-gray-600 mt-1">{shortDate(event.date)}{event.location ? ` · ${event.location}` : ""}</p>
-        </div>
-        <div className="text-sm text-gray-700 space-y-1">
-          {workflow.assigned_editor_email && <p><b>Editor:</b> {workflow.assigned_editor_email}</p>}
-          {workflow.crew_reviewer_email && <p><b>Crew Reviewer:</b> {workflow.crew_reviewer_email}</p>}
-          {workflow.crew_notes && <p className="whitespace-pre-line"><b>Crew Notes:</b> {workflow.crew_notes}</p>}
-          {workflow.editor_notes && <p className="whitespace-pre-line"><b>Editor Notes:</b> {workflow.editor_notes}</p>}
-          {mediaUrl && <p><a href={mediaUrl} target="_blank" rel="noreferrer" className="text-pink-600 font-bold">Open media source</a></p>}
-          {workflow.youtube_url && <p><a href={workflow.youtube_url} target="_blank" rel="noreferrer" className="text-pink-600 font-bold">YouTube video</a></p>}
-          {workflow.instagram_url && <p><a href={workflow.instagram_url} target="_blank" rel="noreferrer" className="text-pink-600 font-bold">Instagram post</a></p>}
-          <p className="text-xs text-gray-400">Updated {dateText(workflow.updated_at)}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <a href={`/studio/video-production/${workflow.id}`} className="bg-pink-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Open Workflow</a>
-          {workflow.status === "ready_for_editing" && editor && <button onClick={() => updateWorkflow(workflow, { status: "in_editing", assigned_editor_email: workflow.assigned_editor_email || user?.email || null }, "Workflow moved to editing.")} className="bg-slate-950 text-white px-3 py-2 rounded-lg font-bold text-sm">Start Editing</button>}
-          {workflow.status === "in_editing" && editor && <button onClick={() => updateWorkflow(workflow, { status: "awaiting_crew_review" }, "Draft marked ready for crew review.")} className="bg-pink-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Submit For Crew Review</button>}
-          {canCrewReview && <button onClick={() => markCrewApproved(workflow)} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Crew Approve</button>}
-          {canCrewReview && <button onClick={() => updateWorkflow(workflow, { status: "changes_requested" }, "Changes requested from editor.")} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">Request Changes</button>}
-          {canAdminApprove && <button onClick={() => updateWorkflow(workflow, { status: "approved_for_publishing", admin_approver_email: user?.email || null, admin_approved_at: new Date().toISOString() }, "Admin approved. Editor can publish.")} className="bg-green-700 text-white px-3 py-2 rounded-lg font-bold text-sm">Admin Final Approve</button>}
-          {canAdminApprove && <button onClick={() => updateWorkflow(workflow, { status: "changes_requested" }, "Admin requested changes.")} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">Send Back</button>}
-          {canEditorPublish && <button onClick={() => updateWorkflow(workflow, { status: "published_complete", published_at: new Date().toISOString() }, "Video publishing cycle marked complete.")} className="bg-purple-700 text-white px-3 py-2 rounded-lg font-bold text-sm">Mark Published Complete</button>}
-        </div>
-      </article>
-    );
+    const event = workflow.events || {}; const mediaUrl = workflow.raw_media_url || workflow.external_media_url; const canCrewReview = crew && (workflow.status === "awaiting_crew_review" || workflow.status === "changes_requested"); const canAdminApprove = admin && workflow.status === "awaiting_admin_approval"; const canEditorPublish = editor && workflow.status === "approved_for_publishing";
+    return <article className="bg-white text-slate-950 rounded-2xl p-5 shadow-sm border space-y-4"><div><p className="text-xs font-black uppercase tracking-wide text-pink-600">{statusLabel(workflow.status)}</p><h3 className="text-xl font-black mt-1">{event.title || "Untitled event"}</h3><p className="text-sm text-gray-600 mt-1">{shortDate(event.date)}{event.location ? ` · ${event.location}` : ""}</p></div><div className="text-sm text-gray-700 space-y-1">{workflow.assigned_editor_email && <p><b>Editor:</b> {workflow.assigned_editor_email}</p>}{workflow.crew_reviewer_email && <p><b>Crew Reviewer:</b> {workflow.crew_reviewer_email}</p>}<p><b>Priority:</b> P{priorityValue(workflow.priority)}</p>{workflow.crew_notes && <p className="whitespace-pre-line"><b>Crew Notes:</b> {workflow.crew_notes}</p>}{workflow.editor_notes && <p className="whitespace-pre-line"><b>Editor Notes:</b> {workflow.editor_notes}</p>}{mediaUrl && <p><a href={mediaUrl} target="_blank" rel="noreferrer" className="text-pink-600 font-bold">Open media source</a></p>}{workflow.youtube_url && <p><a href={workflow.youtube_url} target="_blank" rel="noreferrer" className="text-pink-600 font-bold">YouTube video</a></p>}{workflow.instagram_url && <p><a href={workflow.instagram_url} target="_blank" rel="noreferrer" className="text-pink-600 font-bold">Instagram post</a></p>}<p className="text-xs text-gray-400">Updated {dateText(workflow.updated_at)}</p></div><div className="flex flex-wrap gap-2"><a href={`/studio/video-production/${workflow.id}`} className="bg-pink-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Open Workflow</a>{workflow.status === "ready_for_editing" && editor && <button onClick={() => updateWorkflow(workflow, { status: "in_editing", assigned_editor_email: workflow.assigned_editor_email || user?.email || null }, "Workflow moved to editing.")} className="bg-slate-950 text-white px-3 py-2 rounded-lg font-bold text-sm">Start Editing</button>}{workflow.status === "in_editing" && editor && <button onClick={() => updateWorkflow(workflow, { status: "awaiting_crew_review" }, "Draft marked ready for crew review.")} className="bg-pink-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Submit For Crew Review</button>}{canCrewReview && <button onClick={() => markCrewApproved(workflow)} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Crew Approve</button>}{canCrewReview && <button onClick={() => updateWorkflow(workflow, { status: "changes_requested" }, "Changes requested from editor.")} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">Request Changes</button>}{canAdminApprove && <button onClick={() => updateWorkflow(workflow, { status: "approved_for_publishing", admin_approver_email: user?.email || null, admin_approved_at: new Date().toISOString() }, "Admin approved. Editor can publish.")} className="bg-green-700 text-white px-3 py-2 rounded-lg font-bold text-sm">Admin Final Approve</button>}{canAdminApprove && <button onClick={() => updateWorkflow(workflow, { status: "changes_requested" }, "Admin requested changes.")} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">Send Back</button>}{canEditorPublish && <button onClick={() => updateWorkflow(workflow, { status: "published_complete", published_at: new Date().toISOString() }, "Video publishing cycle marked complete.")} className="bg-purple-700 text-white px-3 py-2 rounded-lg font-bold text-sm">Mark Published Complete</button>}</div></article>;
   }
 
   function ContentRequestCard({ row }: { row: any }) {
     const ownerCanUpdate = admin || emailMatches(row.assigned_editor_email, user?.email);
-    return <article className="bg-white text-slate-950 rounded-2xl p-5 shadow-sm border space-y-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div>
-          <p className="text-xs font-black uppercase tracking-wide text-pink-600">Community Submission</p>
-          <h3 className="text-xl font-black mt-1">{row.title}</h3>
-          <p className="text-sm text-gray-600 mt-1">{row.submitter_name} · {row.submitter_email}</p>
-        </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-black uppercase ${contentStatusClass(row.status)}`}>{label(row.status || "new")}</span>
-      </div>
-      {row.content_text && <p className="whitespace-pre-line rounded-xl bg-slate-50 p-3 text-sm text-gray-700">{row.content_text}</p>}
-      <div className="flex flex-wrap gap-2 text-sm">
-        {row.image_url && <a href={row.image_url} target="_blank" rel="noreferrer" className="rounded-lg bg-slate-100 px-3 py-2 font-bold text-pink-600">Open image</a>}
-        {row.video_url && <a href={row.video_url} target="_blank" rel="noreferrer" className="rounded-lg bg-slate-100 px-3 py-2 font-bold text-pink-600">Open video</a>}
-        {row.source_url && <a href={row.source_url} target="_blank" rel="noreferrer" className="rounded-lg bg-slate-100 px-3 py-2 font-bold text-pink-600">Open source</a>}
-      </div>
-      {row.assigned_editor_email && <p className="text-sm text-gray-600"><b>Assigned:</b> {row.assigned_editor_email}</p>}
-      {ownerCanUpdate && <div className="flex flex-wrap gap-2">
-        {admin && <select value={row.assigned_editor_email || ""} onChange={(event) => assignContentRequest(row, event.target.value)} className="rounded-lg border px-3 py-2 text-sm font-bold"><option value="">Assign editor...</option>{editors.map((item) => <option key={item.email} value={item.email}>{item.name || item.email}</option>)}</select>}
-        <select value={row.status || "new"} onChange={(event) => updateContentRequest(row, { status: event.target.value, published_at: event.target.value === "published" ? new Date().toISOString() : row.published_at }, "Content request status updated.")} className="rounded-lg border px-3 py-2 text-sm font-bold">{CONTENT_STATUSES.map((status) => <option key={status} value={status}>{label(status)}</option>)}</select>
-      </div>}
-      <p className="text-xs text-gray-400">Submitted {dateText(row.created_at)}</p>
-    </article>;
+    return <article className="bg-white text-slate-950 rounded-2xl p-5 shadow-sm border space-y-4"><div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between"><div><p className="text-xs font-black uppercase tracking-wide text-pink-600">Community Submission</p><h3 className="text-xl font-black mt-1">{row.title}</h3><p className="text-sm text-gray-600 mt-1">{row.submitter_name} · {row.submitter_email}</p></div><span className={`rounded-full px-3 py-1 text-xs font-black uppercase ${contentStatusClass(row.status)}`}>{label(row.status || "new")}</span></div>{row.content_text && <p className="whitespace-pre-line rounded-xl bg-slate-50 p-3 text-sm text-gray-700">{row.content_text}</p>}<div className="flex flex-wrap gap-2 text-sm">{row.image_url && <a href={row.image_url} target="_blank" rel="noreferrer" className="rounded-lg bg-slate-100 px-3 py-2 font-bold text-pink-600">Open image</a>}{row.video_url && <a href={row.video_url} target="_blank" rel="noreferrer" className="rounded-lg bg-slate-100 px-3 py-2 font-bold text-pink-600">Open video</a>}{row.source_url && <a href={row.source_url} target="_blank" rel="noreferrer" className="rounded-lg bg-slate-100 px-3 py-2 font-bold text-pink-600">Open source</a>}</div>{row.assigned_editor_email && <p className="text-sm text-gray-600"><b>Assigned:</b> {row.assigned_editor_email}</p>}{ownerCanUpdate && <div className="flex flex-wrap gap-2">{admin && <select value={row.assigned_editor_email || ""} onChange={(event) => assignContentRequest(row, event.target.value)} className="rounded-lg border px-3 py-2 text-sm font-bold"><option value="">Assign editor...</option>{editors.map((item) => <option key={item.email} value={item.email}>{item.name || item.email}</option>)}</select>}<select value={row.status || "new"} onChange={(event) => updateContentRequest(row, { status: event.target.value, published_at: event.target.value === "published" ? new Date().toISOString() : row.published_at }, "Content request status updated.")} className="rounded-lg border px-3 py-2 text-sm font-bold">{CONTENT_STATUSES.map((status) => <option key={status} value={status}>{label(status)}</option>)}</select></div>}<p className="text-xs text-gray-400">Submitted {dateText(row.created_at)}</p></article>;
   }
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const requestedStatus = new URLSearchParams(window.location.search).get("status") || "";
-      if (STATUSES.some((status) => status.key === requestedStatus)) setFilter(requestedStatus);
-    }
-    init();
-  }, []);
+  useEffect(() => { if (typeof window !== "undefined") { const requestedStatus = new URLSearchParams(window.location.search).get("status") || ""; if (STATUSES.some((status) => status.key === requestedStatus)) setFilter(requestedStatus); } init(); }, []);
 
-  return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <StudioHeader />
-      <section className="max-w-7xl mx-auto px-6 py-10">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-4xl md:text-5xl font-black">Video Production</h1>
-            <p className="text-slate-300 mt-2">Crew → Editor → Crew Review → Admin Approval → Publish Complete</p>
-            {user?.email && <p className="text-slate-400 text-sm mt-1">Logged in as {user.email} · Role: {role}</p>}
-          </div>
-          <button onClick={init} className="bg-white text-slate-950 px-5 py-3 rounded-xl font-bold">Refresh</button>
-        </div>
-
-        {loading && <div className="bg-white/10 border border-white/10 rounded-2xl p-6">{message}</div>}
-        {!loading && !canAccess && <div className="bg-white text-slate-950 rounded-2xl p-8 max-w-xl"><h2 className="text-2xl font-black">Access Required</h2><p className="text-gray-600 mt-3">{message}</p><a href="/login" className="inline-block bg-pink-600 text-white px-5 py-3 rounded-xl font-bold mt-5">Go to Login</a></div>}
-
-        {!loading && canAccess && <div className="space-y-8">
-          {actionMessage && <div className="bg-yellow-100 text-yellow-900 rounded-2xl p-4 font-bold">{actionMessage}</div>}
-
-          <section className="bg-white/10 border border-white/10 rounded-3xl p-5">
-            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-              <div><p className="text-pink-300 font-black uppercase tracking-wide text-sm">Public submissions</p><h2 className="text-2xl font-black mt-1">Content Submission Queue</h2><p className="text-slate-300 text-sm mt-1">Public content requests from /submit-content can be reviewed and assigned here.</p></div>
-              <div className="flex flex-wrap gap-2"><button onClick={() => setContentFilter("open")} className={`px-4 py-2 rounded-xl font-bold ${contentFilter === "open" ? "bg-pink-600" : "bg-white/10"}`}>Open ({contentRequests.filter((row) => !["published", "rejected", "closed"].includes(String(row.status || "new"))).length})</button><button onClick={() => setContentFilter("mine")} className={`px-4 py-2 rounded-xl font-bold ${contentFilter === "mine" ? "bg-pink-600" : "bg-white/10"}`}>Mine</button><button onClick={() => setContentFilter("all")} className={`px-4 py-2 rounded-xl font-bold ${contentFilter === "all" ? "bg-pink-600" : "bg-white/10"}`}>All ({contentRequests.length})</button></div>
-            </div>
-            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 mt-5">{visibleContentRequests.map((row) => <ContentRequestCard key={row.id} row={row} />)}{visibleContentRequests.length === 0 && <div className="border border-dashed border-white/20 rounded-2xl p-5 text-slate-400 text-sm">No public content submissions in this view.</div>}</div>
-          </section>
-
-          {(admin || crew) && <section className="bg-white text-slate-950 rounded-3xl p-6">
-            <h2 className="text-2xl font-black">Create Video Workflow</h2>
-            <p className="text-gray-600 mt-1">Crew can mark an approved event ready for editing after media and notes are available.</p>
-            <form onSubmit={createWorkflow} className="grid lg:grid-cols-2 gap-4 mt-5">
-              <select required value={selectedEventId} onChange={(event) => setSelectedEventId(event.target.value)} className="border rounded-xl p-3 lg:col-span-2">
-                <option value="">Select approved event without a video workflow</option>
-                {availableEvents.map((event) => <option key={event.id} value={event.id}>{event.title} — {shortDate(event.date)} — {event.location}</option>)}
-              </select>
-              <input value={form.raw_media_url} onChange={(event) => setForm({ ...form, raw_media_url: event.target.value })} placeholder="SDTV upload folder URL" className="border rounded-xl p-3" />
-              <input value={form.external_media_url} onChange={(event) => setForm({ ...form, external_media_url: event.target.value })} placeholder="External shared media URL" className="border rounded-xl p-3" />
-              <input value={form.assigned_editor_email} onChange={(event) => setForm({ ...form, assigned_editor_email: event.target.value })} placeholder="Assigned editor email" className="border rounded-xl p-3" />
-              <input value={form.crew_reviewer_email} onChange={(event) => setForm({ ...form, crew_reviewer_email: event.target.value })} placeholder="Crew reviewer email" className="border rounded-xl p-3" />
-              <textarea value={form.crew_notes} onChange={(event) => setForm({ ...form, crew_notes: event.target.value })} placeholder="Crew notes: location, important moments, sponsor mentions, interviews, credits..." className="border rounded-xl p-3 lg:col-span-2 min-h-28" />
-              <button className="bg-pink-600 text-white px-5 py-3 rounded-xl font-black lg:col-span-2">Mark Ready For Editing</button>
-            </form>
-          </section>}
-
-          <section>
-            <div className="flex flex-wrap gap-3 mb-5">
-              <button onClick={() => setFilter("all")} className={`px-4 py-2 rounded-xl font-bold ${filter === "all" ? "bg-pink-600" : "bg-white/10"}`}>All ({workflows.length})</button>
-              {STATUSES.map((status) => <button key={status.key} onClick={() => setFilter(status.key)} className={`px-4 py-2 rounded-xl font-bold ${filter === status.key ? "bg-pink-600" : "bg-white/10"}`}>{status.label} ({workflows.filter((workflow) => workflow.status === status.key).length})</button>)}
-            </div>
-
-            <div className="grid xl:grid-cols-3 gap-5">
-              {STATUSES.map((status) => <div key={status.key} className="bg-white/10 border border-white/10 rounded-3xl p-4 min-h-40"><div className="mb-4"><h2 className="text-xl font-black">{status.label}</h2><p className="text-slate-300 text-sm">{status.note}</p></div><div className="space-y-4">{(grouped[status.key] || []).map((workflow: any) => <WorkflowCard key={workflow.id} workflow={workflow} />)}{(grouped[status.key] || []).length === 0 && <div className="border border-dashed border-white/20 rounded-2xl p-5 text-slate-400 text-sm">No workflows in this stage.</div>}</div></div>)}
-            </div>
-          </section>
-        </div>}
-      </section>
-    </main>
-  );
+  return <main className="min-h-screen bg-slate-950 text-white"><StudioHeader /><section className="max-w-7xl mx-auto px-6 py-10"><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8"><div><h1 className="text-4xl md:text-5xl font-black">Video Production</h1><p className="text-slate-300 mt-2">Crew → Editor → Crew Review → Admin Approval → Publish Complete</p>{user?.email && <p className="text-slate-400 text-sm mt-1">Logged in as {user.email} · Role: {role}</p>}</div><button onClick={init} className="bg-white text-slate-950 px-5 py-3 rounded-xl font-bold">Refresh</button></div>{loading && <div className="bg-white/10 border border-white/10 rounded-2xl p-6">{message}</div>}{!loading && !canAccess && <div className="bg-white text-slate-950 rounded-2xl p-8 max-w-xl"><h2 className="text-2xl font-black">Access Required</h2><p className="text-gray-600 mt-3">{message}</p><a href="/login" className="inline-block bg-pink-600 text-white px-5 py-3 rounded-xl font-bold mt-5">Go to Login</a></div>}{!loading && canAccess && <div className="space-y-8">{actionMessage && <div className="bg-yellow-100 text-yellow-900 rounded-2xl p-4 font-bold whitespace-pre-line">{actionMessage}</div>}{admin && <section className="bg-white text-slate-950 rounded-3xl p-6"><div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between"><div><p className="text-pink-600 font-black uppercase tracking-wide text-sm">Admin</p><h2 className="text-2xl font-black mt-1">Video Editing Status Management</h2><p className="text-slate-600 text-sm mt-1">All event video workflows with current status, priority, who owns the next action, and reminder controls.</p></div><input value={statusSearch} onChange={(event) => setStatusSearch(event.target.value)} placeholder="Search event, owner, status..." className="rounded-xl border p-3 text-sm md:w-80" /></div><div className="mt-5 overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead><tr className="border-b text-xs uppercase text-slate-500"><th className="py-3">Priority</th><th>Event</th><th>Status</th><th>Stuck With</th><th>Editor</th><th>Crew</th><th>Updated</th><th></th></tr></thead><tbody>{managementRows.map((workflow) => { const event = workflow.events || {}; const owner = stuckWith(workflow); const priority = priorityValue(workflow.priority); return <tr key={workflow.id} className="border-b last:border-0"><td className="py-3"><select value={priority} onChange={(e) => updatePriority(workflow, e.target.value)} className={`rounded-lg border px-2 py-1 text-xs font-black ${priorityClass(priority)}`}>{Array.from({ length: 21 }, (_v, i) => <option key={i} value={i}>P{i}</option>)}</select></td><td><a href={`/studio/video-production/${workflow.id}`} className="font-black text-pink-600">{event.title || "Untitled event"}</a><p className="text-xs text-slate-500">{shortDate(event.date)}{event.location ? ` · ${event.location}` : ""}</p></td><td>{statusLabel(workflow.status)}</td><td><b>{owner.label}</b>{owner.email && <p className="text-xs text-slate-500">{owner.email}</p>}</td><td>{workflow.assigned_editor_email || "—"}</td><td>{workflow.crew_reviewer_email || "—"}</td><td>{dateText(workflow.updated_at)}</td><td className="flex gap-2 py-3"><button onClick={() => sendStuckEmail(workflow)} disabled={!owner.email} className="rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-white disabled:opacity-40">Email POC</button><a href={`/studio/video-production/${workflow.id}`} className="rounded-lg bg-pink-600 px-3 py-2 text-xs font-black text-white">Open</a></td></tr>; })}{managementRows.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-slate-500">No video workflows match your search.</td></tr>}</tbody></table></div></section>}<section className="bg-white/10 border border-white/10 rounded-3xl p-5"><div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between"><div><p className="text-pink-300 font-black uppercase tracking-wide text-sm">Public submissions</p><h2 className="text-2xl font-black mt-1">Content Submission Queue</h2><p className="text-slate-300 text-sm mt-1">Public content requests from /submit-content can be reviewed and assigned here.</p></div><div className="flex flex-wrap gap-2"><button onClick={() => setContentFilter("open")} className={`px-4 py-2 rounded-xl font-bold ${contentFilter === "open" ? "bg-pink-600" : "bg-white/10"}`}>Open ({contentRequests.filter((row) => !["published", "rejected", "closed"].includes(String(row.status || "new"))).length})</button><button onClick={() => setContentFilter("mine")} className={`px-4 py-2 rounded-xl font-bold ${contentFilter === "mine" ? "bg-pink-600" : "bg-white/10"}`}>Mine</button><button onClick={() => setContentFilter("all")} className={`px-4 py-2 rounded-xl font-bold ${contentFilter === "all" ? "bg-pink-600" : "bg-white/10"}`}>All ({contentRequests.length})</button></div></div><div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 mt-5">{visibleContentRequests.map((row) => <ContentRequestCard key={row.id} row={row} />)}{visibleContentRequests.length === 0 && <div className="border border-dashed border-white/20 rounded-2xl p-5 text-slate-400 text-sm">No public content submissions in this view.</div>}</div></section>{(admin || crew) && <section className="bg-white text-slate-950 rounded-3xl p-6"><h2 className="text-2xl font-black">Create Video Workflow</h2><p className="text-gray-600 mt-1">Crew can mark an approved event ready for editing after media and notes are available.</p><form onSubmit={createWorkflow} className="grid lg:grid-cols-2 gap-4 mt-5"><select required value={selectedEventId} onChange={(event) => setSelectedEventId(event.target.value)} className="border rounded-xl p-3 lg:col-span-2"><option value="">Select approved event without a video workflow</option>{availableEvents.map((event) => <option key={event.id} value={event.id}>{event.title} — {shortDate(event.date)} — {event.location}</option>)}</select><input value={form.raw_media_url} onChange={(event) => setForm({ ...form, raw_media_url: event.target.value })} placeholder="SDTV upload folder URL" className="border rounded-xl p-3" /><input value={form.external_media_url} onChange={(event) => setForm({ ...form, external_media_url: event.target.value })} placeholder="External shared media URL" className="border rounded-xl p-3" /><input value={form.assigned_editor_email} onChange={(event) => setForm({ ...form, assigned_editor_email: event.target.value })} placeholder="Assigned editor email" className="border rounded-xl p-3" /><input value={form.crew_reviewer_email} onChange={(event) => setForm({ ...form, crew_reviewer_email: event.target.value })} placeholder="Crew reviewer email" className="border rounded-xl p-3" /><select value={form.priority} onChange={(event) => setForm({ ...form, priority: Number(event.target.value) })} className="border rounded-xl p-3"><option value={10}>Priority P10</option>{Array.from({ length: 21 }, (_v, i) => <option key={i} value={i}>Priority P{i}</option>)}</select><textarea value={form.crew_notes} onChange={(event) => setForm({ ...form, crew_notes: event.target.value })} placeholder="Crew notes for editor" className="border rounded-xl p-3 lg:col-span-2 min-h-28" /><button className="bg-pink-600 text-white px-5 py-3 rounded-xl font-black lg:col-span-2">Create Workflow</button></form></section>}<section><div className="flex flex-wrap gap-2 mb-5"><button onClick={() => setFilter("all")} className={`px-4 py-2 rounded-xl font-bold ${filter === "all" ? "bg-pink-600" : "bg-white/10"}`}>All ({workflows.length})</button>{STATUSES.map((status) => <button key={status.key} onClick={() => setFilter(status.key)} className={`px-4 py-2 rounded-xl font-bold ${filter === status.key ? "bg-pink-600" : "bg-white/10"}`}>{status.label} ({grouped[status.key]?.length || 0})</button>)}</div>{filter === "all" ? <div className="grid xl:grid-cols-2 gap-5">{filteredWorkflows.map((workflow) => <WorkflowCard key={workflow.id} workflow={workflow} />)}</div> : <div className="grid xl:grid-cols-2 gap-5">{filteredWorkflows.map((workflow) => <WorkflowCard key={workflow.id} workflow={workflow} />)}{filteredWorkflows.length === 0 && <div className="bg-white/10 border border-white/10 rounded-2xl p-6 text-slate-300">No workflows in this status.</div>}</div>}</section></div>}</section></main>;
 }
