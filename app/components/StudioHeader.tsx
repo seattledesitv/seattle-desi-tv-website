@@ -61,6 +61,7 @@ const groups = [
   {
     title: "System",
     links: [
+      ["Finance Management", "/studio/finance"],
       ["Analytics", "/studio/analytics"],
       ["Database Backup", "/studio/database-backup"],
       ["Database Import", "/studio/database-import"],
