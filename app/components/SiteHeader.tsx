@@ -79,6 +79,60 @@ export default function SiteHeader() {
 
   return (
     <>
+      <style jsx global>{`
+        @media (min-width: 768px) {
+          header + section.relative.overflow-hidden.bg-slate-950.text-white {
+            min-height: 460px;
+            height: auto !important;
+            background:
+              radial-gradient(circle at 78% 45%, rgba(219, 39, 119, 0.16), transparent 20rem),
+              radial-gradient(circle at 18% 30%, rgba(245, 158, 11, 0.12), transparent 18rem),
+              #020617;
+          }
+          header + section.relative.overflow-hidden.bg-slate-950.text-white::before {
+            content: "";
+            position: absolute;
+            inset: 1.25rem 2rem;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 2rem;
+            pointer-events: none;
+            box-shadow: inset 0 0 70px rgba(255,255,255,0.04);
+          }
+          header + section.relative.overflow-hidden.bg-slate-950.text-white > div.absolute.inset-0:first-child {
+            opacity: 0.48 !important;
+            filter: blur(18px) saturate(1.25);
+            transform: scale(1.18);
+          }
+          header + section.relative.overflow-hidden.bg-slate-950.text-white > div.absolute.inset-0:nth-child(2) {
+            background:
+              linear-gradient(90deg, rgba(2,6,23,0.97) 0%, rgba(2,6,23,0.82) 38%, rgba(2,6,23,0.52) 68%, rgba(2,6,23,0.88) 100%),
+              radial-gradient(circle at 74% 50%, rgba(255,255,255,0.10), transparent 15rem) !important;
+          }
+          header + section.relative.overflow-hidden.bg-slate-950.text-white > div.relative.max-w-7xl {
+            max-width: 1120px;
+            grid-template-columns: minmax(0, 0.82fr) minmax(280px, 0.62fr) !important;
+            gap: 2rem;
+            padding-top: 2.25rem;
+            padding-bottom: 2.25rem;
+          }
+          header + section.relative.overflow-hidden.bg-slate-950.text-white > div.relative.max-w-7xl > div:first-child {
+            max-width: 640px;
+            border-left: 4px solid rgba(236, 72, 153, 0.78);
+            padding-left: 1.4rem;
+          }
+          header + section.relative.overflow-hidden.bg-slate-950.text-white h1 {
+            text-shadow: 0 18px 55px rgba(0,0,0,0.45);
+          }
+          header + section.relative.overflow-hidden.bg-slate-950.text-white > div.relative.max-w-7xl > div:nth-child(2) {
+            justify-content: center !important;
+          }
+          header + section.relative.overflow-hidden.bg-slate-950.text-white > div.relative.max-w-7xl > div:nth-child(2) > div {
+            max-width: 320px !important;
+            transform: rotate(1.5deg);
+            box-shadow: 0 30px 90px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.08);
+          }
+        }
+      `}</style>
       <div className="bg-[#050b18] text-white text-sm px-4 md:px-10 py-2 flex flex-wrap items-center justify-between gap-3">
         <div className="hidden sm:flex gap-4 flex-wrap"><a href="https://www.youtube.com/@SeattleDesiTV" target="_blank" rel="noreferrer" className="hover:text-pink-300">YouTube</a><a href="https://instagram.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-300">Instagram</a><a href="https://facebook.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-300">Facebook</a><a href="mailto:info@seattledesitv.com" className="hover:text-pink-300">info@seattledesitv.com</a></div>
         <span className="font-bold text-yellow-300">Seattle Desi TV + Radio</span>
