@@ -7,7 +7,9 @@ import { isAdminRole, resolveUserRole } from "../lib/roles";
 
 const supabase = getSupabaseBrowserClient();
 const HEADER_CACHE_KEY = "sdtv-header-state-v1";
-const PREMIUM_HERO_STYLE_ID = "sdtv-premium-event-hero-style";
+const HERO_STYLE_ID = "sdtv-hero-theme-style";
+const HERO_THEMES = ["fallback", "gold", "pink", "blue", "festival", "cinematic"];
+let heroThemeByImage: Record<string, string> = {};
 
 type HeaderLink = { label: string; href: string; show: boolean; primary?: boolean };
 
@@ -16,71 +18,57 @@ function readCachedHeaderState() {
   try { const raw = window.localStorage.getItem(HEADER_CACHE_KEY); return raw ? JSON.parse(raw) : { email: "", role: "general_public" }; } catch { return { email: "", role: "general_public" }; }
 }
 function writeCachedHeaderState(state: any) { if (typeof window === "undefined") return; try { window.localStorage.setItem(HEADER_CACHE_KEY, JSON.stringify(state)); } catch {} }
+function normalizeImage(value?: string | null) { return String(value || "").trim().replace(/\?.*$/, ""); }
 
-const HERO_THEMES = ["gold", "pink", "blue", "festival", "cinematic"] as const;
-function heroThemeFor(text: string) {
-  const value = text.toLowerCase();
-  if (/diwali|gala|velvet|classical|katha|temple|heritage|fundraiser/.test(value)) return "gold";
-  if (/holi|bathukamma|festival|mela|pongal|navratri|celebration/.test(value)) return "festival";
-  if (/radio|tech|business|interview|podcast|news|media/.test(value)) return "blue";
-  if (/concert|dance|music|film|performance|show/.test(value)) return "cinematic";
-  let total = 0; for (const char of value) total += char.charCodeAt(0);
-  return HERO_THEMES[total % HERO_THEMES.length] || "pink";
-}
-
-function installPremiumHeroStyle() {
-  if (typeof document === "undefined" || document.getElementById(PREMIUM_HERO_STYLE_ID)) return;
+function installHeroThemeStyles() {
+  if (typeof document === "undefined" || document.getElementById(HERO_STYLE_ID)) return;
   const style = document.createElement("style");
-  style.id = PREMIUM_HERO_STYLE_ID;
-  style.textContent = `
-.sdtv-premium-event-hero{--hero-accent:#ec4899;--hero-accent-soft:rgba(236,72,153,.22);--hero-accent-strong:#db2777;min-height:520px!important;height:auto!important;padding:32px 20px!important;background:#020617!important;isolation:isolate}
-.sdtv-premium-event-hero[data-sdtv-theme="gold"]{--hero-accent:#f6c453;--hero-accent-soft:rgba(245,158,11,.22);--hero-accent-strong:#d99a20}
-.sdtv-premium-event-hero[data-sdtv-theme="pink"]{--hero-accent:#f472b6;--hero-accent-soft:rgba(236,72,153,.24);--hero-accent-strong:#db2777}
-.sdtv-premium-event-hero[data-sdtv-theme="blue"]{--hero-accent:#60a5fa;--hero-accent-soft:rgba(59,130,246,.24);--hero-accent-strong:#2563eb}
-.sdtv-premium-event-hero[data-sdtv-theme="festival"]{--hero-accent:#fb923c;--hero-accent-soft:rgba(249,115,22,.25);--hero-accent-strong:#ea580c}
-.sdtv-premium-event-hero[data-sdtv-theme="cinematic"]{--hero-accent:#a78bfa;--hero-accent-soft:rgba(139,92,246,.24);--hero-accent-strong:#7c3aed}
-.sdtv-premium-event-hero:before{content:"";position:absolute;inset:26px 22px;border:1px solid color-mix(in srgb,var(--hero-accent) 70%,transparent);border-radius:28px;pointer-events:none;z-index:2;box-shadow:inset 0 0 70px var(--hero-accent-soft),0 0 28px var(--hero-accent-soft)}
-.sdtv-premium-event-hero:after{content:"";position:absolute;left:24px;right:24px;bottom:28px;height:112px;background:radial-gradient(circle at 14% 88%,var(--hero-accent-soft),transparent 24rem),linear-gradient(165deg,transparent 30%,var(--hero-accent-soft) 47%,var(--hero-accent) 50%,var(--hero-accent-soft) 54%,transparent 66%);opacity:.72;pointer-events:none;z-index:2}
-.sdtv-premium-event-hero>div:nth-child(1){opacity:.52!important;filter:blur(5px) saturate(1.18) brightness(.88)!important;transform:scale(1.06)!important}
-.sdtv-premium-event-hero>div:nth-child(2){background:linear-gradient(90deg,rgba(2,6,23,.97) 0%,rgba(2,6,23,.82) 40%,rgba(2,6,23,.42) 72%,rgba(2,6,23,.18) 100%)!important}
-.sdtv-premium-event-hero .sdtv-premium-hero-grid{min-height:456px!important;padding-top:22px!important;padding-bottom:22px!important;z-index:3!important}
-.sdtv-premium-event-hero .sdtv-premium-hero-text{max-width:620px!important;padding-left:clamp(0px,3vw,42px)}
-.sdtv-premium-event-hero .sdtv-premium-hero-text p:first-child{color:var(--hero-accent)!important;letter-spacing:.18em!important;font-size:.9rem!important}
-.sdtv-premium-event-hero .sdtv-premium-hero-text h1{font-size:clamp(2.8rem,5.7vw,5.5rem)!important;line-height:.98!important;text-shadow:0 10px 30px rgba(0,0,0,.48)!important}
-.sdtv-premium-event-hero .sdtv-premium-hero-text p:not(:first-child){font-size:clamp(1rem,1.55vw,1.25rem)!important;color:rgba(255,255,255,.88)!important}
-.sdtv-premium-event-hero .sdtv-premium-hero-text a:first-of-type{background:linear-gradient(180deg,color-mix(in srgb,var(--hero-accent) 78%,white),var(--hero-accent-strong))!important;color:white!important;border-radius:16px!important;padding:1rem 1.65rem!important;box-shadow:0 16px 35px var(--hero-accent-soft)!important}
-.sdtv-premium-event-hero[data-sdtv-theme="gold"] .sdtv-premium-hero-text a:first-of-type{color:#111827!important}
-.sdtv-premium-event-hero .sdtv-premium-poster-wrap{display:flex!important;visibility:visible!important;justify-content:center!important;max-height:none!important;padding-right:clamp(0px,3vw,42px)}
-.sdtv-premium-event-hero .sdtv-premium-poster-card{display:block!important;visibility:visible!important;opacity:1!important;max-width:390px!important;width:min(390px,88vw)!important;border:2px solid var(--hero-accent)!important;border-radius:26px!important;background:rgba(15,23,42,.42)!important;padding:10px!important;box-shadow:0 0 0 1px rgba(255,255,255,.12),0 24px 70px rgba(0,0,0,.55),0 0 34px var(--hero-accent-soft)!important}
-.sdtv-premium-event-hero .sdtv-premium-poster-card>div{background:transparent!important}
-.sdtv-premium-event-hero .sdtv-premium-poster-card img{display:block!important;visibility:visible!important;opacity:1!important;width:100%!important;height:100%!important;object-fit:contain!important;background:transparent!important}
-@media(max-width:767px){.sdtv-premium-event-hero{min-height:620px!important;padding:20px 12px!important}.sdtv-premium-event-hero:before{inset:14px 10px;border-radius:22px}.sdtv-premium-event-hero:after{left:10px;right:10px;bottom:15px}.sdtv-premium-event-hero .sdtv-premium-hero-grid{min-height:570px!important}.sdtv-premium-event-hero .sdtv-premium-hero-text{padding-left:0}.sdtv-premium-event-hero .sdtv-premium-poster-wrap{display:none!important}}
-`;
+  style.id = HERO_STYLE_ID;
+  style.textContent = `.sdtv-themed-hero{--hero-accent:#db2777;--hero-soft:rgba(219,39,119,.20);--hero-border:rgba(244,114,182,.40);--hero-button:#db2777;--hero-button-text:#fff}.sdtv-themed-hero:after{content:"";position:absolute;inset:auto -8% -70px -8%;height:155px;pointer-events:none;z-index:1;background:radial-gradient(ellipse at center,var(--hero-soft),transparent 68%);filter:blur(8px)}.sdtv-themed-hero>div:nth-child(1){opacity:.42!important;filter:blur(4px) saturate(1.08)!important;transform:scale(1.04)!important}.sdtv-themed-hero>div:nth-child(2){background:linear-gradient(90deg,rgba(2,6,23,.96) 0%,rgba(2,6,23,.86) 40%,rgba(2,6,23,.50) 72%,rgba(2,6,23,.32) 100%)!important}.sdtv-themed-hero .sdtv-theme-grid{position:relative;z-index:2;border:1px solid var(--hero-border);border-radius:28px;margin-top:22px;margin-bottom:22px;height:calc(100% - 44px)!important;padding-top:22px!important;padding-bottom:22px!important;background:linear-gradient(115deg,rgba(2,6,23,.16),rgba(255,255,255,.015));box-shadow:inset 0 0 60px var(--hero-soft),0 20px 55px rgba(0,0,0,.26)}.sdtv-themed-hero .sdtv-theme-poster-card{border:2px solid var(--hero-border)!important;background:rgba(2,6,23,.34)!important;box-shadow:0 18px 55px rgba(0,0,0,.50),0 0 24px var(--hero-soft)!important}.sdtv-themed-hero .sdtv-theme-poster-card img{display:block!important;visibility:visible!important;opacity:1!important;object-fit:contain!important;background:#020617!important}.sdtv-themed-hero .sdtv-theme-text p:first-child{color:var(--hero-accent)!important}.sdtv-themed-hero .sdtv-theme-text a:first-of-type{background:var(--hero-button)!important;color:var(--hero-button-text)!important;box-shadow:0 12px 28px var(--hero-soft)!important}.sdtv-hero-gold{--hero-accent:#f6c453;--hero-soft:rgba(245,158,11,.22);--hero-border:rgba(251,191,36,.58);--hero-button:linear-gradient(180deg,#fde68a,#d99a20);--hero-button-text:#111827}.sdtv-hero-pink{--hero-accent:#f9a8d4;--hero-soft:rgba(219,39,119,.24);--hero-border:rgba(244,114,182,.50);--hero-button:#db2777;--hero-button-text:#fff}.sdtv-hero-blue{--hero-accent:#93c5fd;--hero-soft:rgba(37,99,235,.25);--hero-border:rgba(96,165,250,.52);--hero-button:#2563eb;--hero-button-text:#fff}.sdtv-hero-festival{--hero-accent:#fdba74;--hero-soft:rgba(249,115,22,.25);--hero-border:rgba(251,146,60,.54);--hero-button:#ea580c;--hero-button-text:#fff}.sdtv-hero-cinematic{--hero-accent:#d8b4fe;--hero-soft:rgba(147,51,234,.25);--hero-border:rgba(192,132,252,.52);--hero-button:#7e22ce;--hero-button-text:#fff}.sdtv-hero-fallback .sdtv-theme-grid{border-color:rgba(255,255,255,.12);box-shadow:none;background:transparent}.sdtv-hero-fallback:after{display:none}@media(max-width:767px){.sdtv-themed-hero .sdtv-theme-grid{margin:12px 10px;height:calc(100% - 24px)!important;border-radius:22px;padding-left:18px!important;padding-right:18px!important}.sdtv-themed-hero:after{height:95px;bottom:-40px}}`;
   document.head.appendChild(style);
 }
 
-function enhancePremiumEventHero() {
+async function loadHeroThemeMap() {
+  const [bannerResult, festivalResult] = await Promise.all([
+    supabase.from("homepage_hero_banners").select("image_url,theme").eq("active", true),
+    supabase.from("festival_hero_assets").select("image_url,theme").eq("active", true),
+  ]);
+  const next: Record<string, string> = {};
+  [...(bannerResult.data || []), ...(festivalResult.data || [])].forEach((row: any) => {
+    const image = normalizeImage(row.image_url);
+    if (image) next[image] = HERO_THEMES.includes(String(row.theme || "")) ? row.theme : "fallback";
+  });
+  heroThemeByImage = next;
+}
+
+function automaticTheme(text: string) {
+  const value = text.toLowerCase();
+  if (/holi|diwali|bathukamma|festival|mela|rangoli|navratri/.test(value)) return "festival";
+  if (/concert|performance|dance|music|cinema|film|show/.test(value)) return "cinematic";
+  if (/radio|business|technology|interview|media/.test(value)) return "blue";
+  if (/katha|gala|temple|classical|wedding|velvet/.test(value)) return "gold";
+  return "fallback";
+}
+
+function enhanceHeroTheme() {
   if (typeof window === "undefined" || window.location.pathname !== "/") return;
-  installPremiumHeroStyle();
+  installHeroThemeStyles();
   const header = document.querySelector("header");
   const section = header?.nextElementSibling as HTMLElement | null;
   if (!section) return;
-  const text = section.textContent || "";
-  if (!text.toLowerCase().includes("featured event")) {
-    section.classList.remove("sdtv-premium-event-hero");
-    section.removeAttribute("data-sdtv-theme");
-    return;
-  }
-  section.classList.add("sdtv-premium-event-hero");
-  section.setAttribute("data-sdtv-theme", heroThemeFor(text));
   const grid = Array.from(section.children).find((child) => child.className?.toString().includes("max-w-7xl")) as HTMLElement | undefined;
-  grid?.classList.add("sdtv-premium-hero-grid");
-  const textPanel = grid?.firstElementChild as HTMLElement | null;
-  textPanel?.classList.add("sdtv-premium-hero-text");
-  const posterWrap = grid?.children?.[1] as HTMLElement | undefined;
-  posterWrap?.classList.add("sdtv-premium-poster-wrap");
+  if (!grid) return;
+  const posterWrap = grid.children?.[1] as HTMLElement | undefined;
   const posterCard = posterWrap?.firstElementChild as HTMLElement | undefined;
-  posterCard?.classList.add("sdtv-premium-poster-card");
+  const imageElement = posterCard?.querySelector("img") as HTMLImageElement | null;
+  const image = normalizeImage(imageElement?.currentSrc || imageElement?.src || "");
+  const selectedTheme = heroThemeByImage[image] || automaticTheme(section.textContent || "");
+  const theme = HERO_THEMES.includes(selectedTheme) ? selectedTheme : "fallback";
+  section.classList.remove("sdtv-premium-event-hero", ...HERO_THEMES.map((name) => `sdtv-hero-${name}`));
+  section.classList.add("sdtv-themed-hero", `sdtv-hero-${theme}`);
+  grid.classList.add("sdtv-theme-grid");
+  (grid.firstElementChild as HTMLElement | null)?.classList.add("sdtv-theme-text");
+  posterCard?.classList.add("sdtv-theme-poster-card");
 }
 
 export default function SiteHeader() {
@@ -97,23 +85,22 @@ export default function SiteHeader() {
       const { data } = await supabase.auth.getUser();
       const currentUser = data?.user || null;
       const nextRole = await resolveUserRole(supabase, currentUser);
-      setIsLoggedIn(Boolean(currentUser?.email)); setRole(nextRole);
+      setIsLoggedIn(Boolean(currentUser?.email));
+      setRole(nextRole);
       writeCachedHeaderState({ email: currentUser?.email || "", role: nextRole });
     }
     loadState();
   }, []);
 
   useEffect(() => {
-    enhancePremiumEventHero();
-    const id = window.setInterval(enhancePremiumEventHero, 500);
+    loadHeroThemeMap().finally(enhanceHeroTheme);
+    const id = window.setInterval(enhanceHeroTheme, 600);
     return () => window.clearInterval(id);
   }, [pathname]);
 
   const canSeeStudio = Boolean(isLoggedIn && isAdminRole(role));
   const communityLinks: HeaderLink[] = [{ label: "Groups", href: "/community-groups", show: true }, { label: "Organizations", href: "/community-organizations", show: true }];
-  const links: HeaderLink[] = [
-    { label: "Home", href: "/", show: true }, { label: "TV", href: "/tv", show: true }, { label: "Radio", href: "/radio", show: true }, { label: "Events", href: "/events", show: true }, { label: "Businesses", href: "/businesses", show: true }, { label: "Influencers", href: "/influencers", show: true }, { label: "Advertise", href: "/marketing-packages", show: true }, { label: "Team", href: "/team", show: true }, { label: "Contact", href: "/contact", show: true }, { label: "My Hub", href: "/my-hub", show: isLoggedIn }, { label: "Studio", href: "/studio", show: canSeeStudio },
-  ];
+  const links: HeaderLink[] = [{ label: "Home", href: "/", show: true }, { label: "TV", href: "/tv", show: true }, { label: "Radio", href: "/radio", show: true }, { label: "Events", href: "/events", show: true }, { label: "Businesses", href: "/businesses", show: true }, { label: "Influencers", href: "/influencers", show: true }, { label: "Advertise", href: "/marketing-packages", show: true }, { label: "Team", href: "/team", show: true }, { label: "Contact", href: "/contact", show: true }, { label: "My Hub", href: "/my-hub", show: isLoggedIn }, { label: "Studio", href: "/studio", show: canSeeStudio }];
   const mobileLinks: HeaderLink[] = [{ label: "Share with SDTV", href: "/submit-content", show: true, primary: true }, ...links];
   function isActive(href: string) { if (href === "/") return pathname === "/"; return pathname === href || pathname.startsWith(`${href}/`); }
   const communityActive = communityLinks.some((link) => isActive(link.href));
