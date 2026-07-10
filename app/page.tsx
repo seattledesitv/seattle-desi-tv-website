@@ -1,5 +1,6 @@
 import HomePageLegacy from "./HomePageLegacy";
+import HomepageHeroBridge from "./components/home/HomepageHeroBridge";
 
 export default function HomePage() {
-  return <HomePageLegacy />;
+  return <div className="sdtv-legacy-home-root"><HomePageLegacy /><HomepageHeroBridge /></div>;
 }
