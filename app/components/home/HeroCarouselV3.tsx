@@ -43,7 +43,7 @@ export default function HeroCarouselV3({ items }: { items: HeroItemV3[] }) {
   const isEvent = String(item.id || "").startsWith("event-");
   const subtitle = splitSubtitle(item.subtitle);
 
-  return <section className="relative overflow-hidden bg-[#020617] px-3 py-4 text-white sm:px-5 md:px-8 md:py-7">
+  return <section className="sdtv-home-hero-v3 relative overflow-hidden bg-[#020617] px-3 py-4 text-white sm:px-5 md:px-8 md:py-7">
     <div className="absolute inset-0 bg-cover bg-center opacity-30 blur-[7px] scale-110" style={{ backgroundImage: `url('${image}')` }} />
     <div className={`absolute inset-0 bg-gradient-to-r ${theme.glow} to-transparent`} />
     <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_40%,rgba(255,255,255,0.10),transparent_26rem)]" />
