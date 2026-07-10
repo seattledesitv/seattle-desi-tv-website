@@ -24,6 +24,11 @@ const themeMap: Record<string, { accent: string; accentSoft: string; button: str
   festival: { accent: "text-orange-300", accentSoft: "bg-orange-400/15 border-orange-300/25", button: "bg-orange-500 hover:bg-orange-400", glow: "from-orange-500/35 via-pink-500/10", line: "border-orange-300/40" },
   cinematic: { accent: "text-violet-300", accentSoft: "bg-violet-400/15 border-violet-300/25", button: "bg-violet-600 hover:bg-violet-500", glow: "from-violet-500/35 via-fuchsia-500/10", line: "border-violet-300/40" },
   emerald: { accent: "text-emerald-300", accentSoft: "bg-emerald-400/15 border-emerald-300/25", button: "bg-emerald-500 hover:bg-emerald-400", glow: "from-emerald-500/35 via-teal-500/10", line: "border-emerald-300/40" },
+  crimson: { accent: "text-rose-300", accentSoft: "bg-rose-500/15 border-rose-300/30", button: "bg-rose-600 hover:bg-rose-500", glow: "from-rose-600/38 via-red-500/12", line: "border-rose-300/45" },
+  teal: { accent: "text-teal-200", accentSoft: "bg-teal-400/15 border-teal-200/30", button: "bg-teal-500 hover:bg-teal-400 text-slate-950", glow: "from-teal-500/35 via-cyan-500/10", line: "border-teal-200/45" },
+  royal: { accent: "text-indigo-200", accentSoft: "bg-indigo-500/18 border-indigo-200/30", button: "bg-indigo-600 hover:bg-indigo-500", glow: "from-indigo-600/40 via-blue-600/12", line: "border-indigo-200/45" },
+  sunset: { accent: "text-orange-200", accentSoft: "bg-orange-500/18 border-orange-200/30", button: "bg-gradient-to-r from-orange-500 to-pink-600 hover:from-orange-400 hover:to-pink-500", glow: "from-orange-500/38 via-pink-500/18", line: "border-orange-200/45" },
+  monochrome: { accent: "text-white", accentSoft: "bg-white/10 border-white/30", button: "bg-white hover:bg-slate-200 text-slate-950", glow: "from-white/18 via-slate-400/8", line: "border-white/35" },
 };
 
 function splitSubtitle(value?: string | null) {
