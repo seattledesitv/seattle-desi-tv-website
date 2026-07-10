@@ -7,6 +7,7 @@ import { isAdminRole, resolveUserRole } from "../lib/roles";
 
 const supabase = getSupabaseBrowserClient();
 const HEADER_CACHE_KEY = "sdtv-header-state-v1";
+const PREMIUM_HERO_STYLE_ID = "sdtv-premium-event-hero-style";
 
 type HeaderLink = { label: string; href: string; show: boolean; primary?: boolean };
 
@@ -15,6 +16,34 @@ function readCachedHeaderState() {
   try { const raw = window.localStorage.getItem(HEADER_CACHE_KEY); return raw ? JSON.parse(raw) : { email: "", role: "general_public" }; } catch { return { email: "", role: "general_public" }; }
 }
 function writeCachedHeaderState(state: any) { if (typeof window === "undefined") return; try { window.localStorage.setItem(HEADER_CACHE_KEY, JSON.stringify(state)); } catch {} }
+
+function installPremiumHeroStyle() {
+  if (typeof document === "undefined" || document.getElementById(PREMIUM_HERO_STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = PREMIUM_HERO_STYLE_ID;
+  style.textContent = `.sdtv-premium-event-hero{min-height:520px!important;height:auto!important;padding:34px 20px!important;background:#020617!important;isolation:isolate}.sdtv-premium-event-hero:before{content:"";position:absolute;inset:30px 22px;border:1px solid rgba(245,190,88,.72);border-radius:28px;pointer-events:none;z-index:2;box-shadow:inset 0 0 70px rgba(245,158,11,.10),0 0 30px rgba(245,158,11,.13)}.sdtv-premium-event-hero:after{content:"";position:absolute;left:24px;right:24px;bottom:30px;height:120px;background:radial-gradient(circle at 12% 90%,rgba(245,158,11,.45),transparent 22rem),linear-gradient(165deg,transparent 30%,rgba(245,158,11,.12) 47%,rgba(251,191,36,.55) 50%,rgba(245,158,11,.12) 54%,transparent 66%);opacity:.9;pointer-events:none;z-index:2}.sdtv-premium-event-hero>div:nth-child(1){opacity:.44!important;filter:blur(7px) saturate(1.22) brightness(.95)!important;transform:scale(1.08)!important}.sdtv-premium-event-hero>div:nth-child(2){background:linear-gradient(90deg,rgba(2,6,23,.95) 0%,rgba(2,6,23,.84) 36%,rgba(2,6,23,.48) 70%,rgba(2,6,23,.24) 100%)!important}.sdtv-premium-event-hero .sdtv-premium-hero-grid{min-height:456px!important;padding-top:24px!important;padding-bottom:24px!important;z-index:3!important}.sdtv-premium-event-hero .sdtv-premium-hero-text{max-width:620px!important;padding-left:clamp(0px,3vw,46px)}.sdtv-premium-event-hero .sdtv-premium-hero-text p:first-child{color:#f8c76b!important;letter-spacing:.18em!important;font-size:.9rem!important}.sdtv-premium-event-hero .sdtv-premium-hero-text h1{font-size:clamp(3rem,6vw,5.8rem)!important;line-height:.95!important;text-shadow:0 10px 30px rgba(0,0,0,.45)!important}.sdtv-premium-event-hero .sdtv-premium-hero-text p:not(:first-child){font-size:clamp(1.05rem,1.7vw,1.35rem)!important;color:rgba(255,255,255,.86)!important}.sdtv-premium-event-hero .sdtv-premium-hero-text a:first-of-type{background:linear-gradient(180deg,#fde68a,#d99a20)!important;color:#111827!important;border-radius:16px!important;padding:1rem 1.65rem!important;box-shadow:0 16px 35px rgba(245,158,11,.24)!important}.sdtv-premium-event-hero .sdtv-premium-poster-wrap{justify-content:center!important;max-height:none!important;padding-right:clamp(0px,3vw,42px)}.sdtv-premium-event-hero .sdtv-premium-poster-card{max-width:390px!important;width:min(390px,88vw)!important;border:2px solid rgba(252,211,77,.85)!important;border-radius:26px!important;background:rgba(15,23,42,.44)!important;padding:10px!important;box-shadow:0 0 0 1px rgba(255,255,255,.12),0 24px 70px rgba(0,0,0,.55),0 0 34px rgba(245,158,11,.22)!important}.sdtv-premium-event-hero .sdtv-premium-poster-card img{display:block!important;visibility:visible!important;opacity:1!important;object-fit:contain!important;background:#020617!important}@media(max-width:767px){.sdtv-premium-event-hero{min-height:620px!important;padding:22px 12px!important}.sdtv-premium-event-hero:before{inset:14px 10px;border-radius:22px}.sdtv-premium-event-hero:after{left:10px;right:10px;bottom:15px}.sdtv-premium-event-hero .sdtv-premium-hero-grid{min-height:570px!important}.sdtv-premium-event-hero .sdtv-premium-hero-text{padding-left:0}}`;
+  document.head.appendChild(style);
+}
+
+function enhancePremiumEventHero() {
+  if (typeof window === "undefined" || window.location.pathname !== "/") return;
+  installPremiumHeroStyle();
+  const header = document.querySelector("header");
+  const section = header?.nextElementSibling as HTMLElement | null;
+  if (!section || section.getAttribute("data-sdtv-premium-event-hero") === "yes") return;
+  const text = (section.textContent || "").toLowerCase();
+  if (!text.includes("featured event")) return;
+  section.setAttribute("data-sdtv-premium-event-hero", "yes");
+  section.classList.add("sdtv-premium-event-hero");
+  const grid = Array.from(section.children).find((child) => child.className?.toString().includes("max-w-7xl")) as HTMLElement | undefined;
+  grid?.classList.add("sdtv-premium-hero-grid");
+  const textPanel = grid?.firstElementChild as HTMLElement | null;
+  textPanel?.classList.add("sdtv-premium-hero-text");
+  const posterWrap = grid?.children?.[1] as HTMLElement | undefined;
+  posterWrap?.classList.add("sdtv-premium-poster-wrap");
+  const posterCard = posterWrap?.firstElementChild as HTMLElement | undefined;
+  posterCard?.classList.add("sdtv-premium-poster-card");
+}
 
 export default function SiteHeader() {
   const cached = readCachedHeaderState();
@@ -36,6 +65,12 @@ export default function SiteHeader() {
     }
     loadState();
   }, []);
+
+  useEffect(() => {
+    enhancePremiumEventHero();
+    const id = window.setInterval(enhancePremiumEventHero, 600);
+    return () => window.clearInterval(id);
+  }, [pathname]);
 
   const canSeeStudio = Boolean(isLoggedIn && isAdminRole(role));
   const communityLinks: HeaderLink[] = [
@@ -79,60 +114,6 @@ export default function SiteHeader() {
 
   return (
     <>
-      <style jsx global>{`
-        @media (min-width: 768px) {
-          header + section.relative.overflow-hidden.bg-slate-950.text-white {
-            min-height: 460px;
-            height: auto !important;
-            background:
-              radial-gradient(circle at 78% 45%, rgba(219, 39, 119, 0.16), transparent 20rem),
-              radial-gradient(circle at 18% 30%, rgba(245, 158, 11, 0.12), transparent 18rem),
-              #020617;
-          }
-          header + section.relative.overflow-hidden.bg-slate-950.text-white::before {
-            content: "";
-            position: absolute;
-            inset: 1.25rem 2rem;
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 2rem;
-            pointer-events: none;
-            box-shadow: inset 0 0 70px rgba(255,255,255,0.04);
-          }
-          header + section.relative.overflow-hidden.bg-slate-950.text-white > div.absolute.inset-0:first-child {
-            opacity: 0.48 !important;
-            filter: blur(18px) saturate(1.25);
-            transform: scale(1.18);
-          }
-          header + section.relative.overflow-hidden.bg-slate-950.text-white > div.absolute.inset-0:nth-child(2) {
-            background:
-              linear-gradient(90deg, rgba(2,6,23,0.97) 0%, rgba(2,6,23,0.82) 38%, rgba(2,6,23,0.52) 68%, rgba(2,6,23,0.88) 100%),
-              radial-gradient(circle at 74% 50%, rgba(255,255,255,0.10), transparent 15rem) !important;
-          }
-          header + section.relative.overflow-hidden.bg-slate-950.text-white > div.relative.max-w-7xl {
-            max-width: 1120px;
-            grid-template-columns: minmax(0, 0.82fr) minmax(280px, 0.62fr) !important;
-            gap: 2rem;
-            padding-top: 2.25rem;
-            padding-bottom: 2.25rem;
-          }
-          header + section.relative.overflow-hidden.bg-slate-950.text-white > div.relative.max-w-7xl > div:first-child {
-            max-width: 640px;
-            border-left: 4px solid rgba(236, 72, 153, 0.78);
-            padding-left: 1.4rem;
-          }
-          header + section.relative.overflow-hidden.bg-slate-950.text-white h1 {
-            text-shadow: 0 18px 55px rgba(0,0,0,0.45);
-          }
-          header + section.relative.overflow-hidden.bg-slate-950.text-white > div.relative.max-w-7xl > div:nth-child(2) {
-            justify-content: center !important;
-          }
-          header + section.relative.overflow-hidden.bg-slate-950.text-white > div.relative.max-w-7xl > div:nth-child(2) > div {
-            max-width: 320px !important;
-            transform: rotate(1.5deg);
-            box-shadow: 0 30px 90px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.08);
-          }
-        }
-      `}</style>
       <div className="bg-[#050b18] text-white text-sm px-4 md:px-10 py-2 flex flex-wrap items-center justify-between gap-3">
         <div className="hidden sm:flex gap-4 flex-wrap"><a href="https://www.youtube.com/@SeattleDesiTV" target="_blank" rel="noreferrer" className="hover:text-pink-300">YouTube</a><a href="https://instagram.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-300">Instagram</a><a href="https://facebook.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-300">Facebook</a><a href="mailto:info@seattledesitv.com" className="hover:text-pink-300">info@seattledesitv.com</a></div>
         <span className="font-bold text-yellow-300">Seattle Desi TV + Radio</span>
