@@ -1,0 +1,11 @@
+export type EventRow = { id: string; title: string; date: string; location: string; image?: string | null; image_urls?: string[] | null };
+export type BusinessRow = { id: string; name: string; category?: string | null; offer?: string | null; discount?: string | null; image?: string | null; image_urls?: string[] | null };
+export type TeamRow = { id: string; name: string; title?: string | null; image?: string | null; photo?: string | null; picture?: string | null };
+export type VideoRow = { id?: string; title: string; description?: string; thumbnail?: string; url: string; publishedAt?: string };
+export type SocialRow = { platform: string; followers?: number | null; views?: number | null; videos?: number | null; href?: string | null };
+export type SponsorRow = { id: string; name: string; website?: string | null; logo_url?: string | null; tier?: string | null; display_order?: number | null };
+export type HeroItem = { id: string; title: string; subtitle?: string | null; image_url?: string | null; button_text?: string | null; button_url?: string | null; badge?: string | null; display_order?: number | null; theme?: string | null };
+export type SectionSetting = { section_key: string; display_order?: number | null; enabled?: boolean | null; title?: string | null; subtitle?: string | null };
+export type Counts = { events: number; businesses: number; coverage: number; team: number; radio: number };
+export type PersonRow = { id: string; name: string; photo?: string | null; image?: string | null; picture?: string | null; count?: number };
+export type HeroLayout = "classic" | "premium_framed" | "full_bleed" | "minimal";
