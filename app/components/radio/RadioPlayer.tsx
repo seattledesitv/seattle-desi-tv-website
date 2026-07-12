@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import SafeImage from "../SafeImage";
 
-const STREAM_URL = process.env.NEXT_PUBLIC_LIVE365_STREAM_URL || "https://streaming.live365.com/a62710";
-const META_URL = process.env.NEXT_PUBLIC_LIVE365_NOWPLAYING_URL || "";
+const STREAM_URL = process.env.NEXT_PUBLIC_LIVE365_STREAM_URL || "https://streaming.live365.com/a45587";
+const META_URL = process.env.NEXT_PUBLIC_LIVE365_NOWPLAYING_URL || "https://live365.com/embeds/v1/played/a45587";
 const DEFAULT_THUMBNAIL = "https://image.live365.com/download/54001cad-5c3f-4dbd-88be-e4f33ca12275.png/400/image.webp";
 
 export default function RadioPlayer() {
@@ -18,18 +18,14 @@ export default function RadioPlayer() {
   async function togglePlay() {
     const audio = audioRef.current;
     if (!audio) return;
-
     setError("");
-    if (!audio.paused) {
-      audio.pause();
-      return;
-    }
-
+    if (!audio.paused) { audio.pause(); return; }
     setLoading(true);
     try {
-      // Reload the live stream so a stale/expired browser connection is not reused.
-      audio.src = `${STREAM_URL}${STREAM_URL.includes("?") ? "&" : "?"}t=${Date.now()}`;
-      audio.load();
+      if (audio.src !== STREAM_URL) {
+        audio.src = STREAM_URL;
+        audio.load();
+      }
       await audio.play();
     } catch (playError) {
       console.error("Radio playback failed", playError);
@@ -46,8 +42,8 @@ export default function RadioPlayer() {
       const response = await fetch(META_URL, { cache: "no-store" });
       if (!response.ok) throw new Error("metadata unavailable");
       const data = await response.json();
-      const current = data?.current || data?.now_playing?.song || {};
-      const title = current?.title || data?.current?.title || "You are tuned into Seattle Desi Radio";
+      const current = data?.current || data?.now_playing?.song || data?.tracks?.[0] || {};
+      const title = current?.title || current?.track || data?.current?.title || "You are tuned into Seattle Desi Radio";
       const artist = current?.artist || data?.current?.artist || "";
       const art = current?.art || current?.artwork || current?.image || data?.current?.art || data?.current?.artwork || "";
       setTrackText(artist ? `${title} — ${artist}` : title);
@@ -58,8 +54,9 @@ export default function RadioPlayer() {
   }
 
   useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) audio.src = STREAM_URL;
     loadMetadata();
-    if (!META_URL) return;
     const timer = window.setInterval(loadMetadata, 30000);
     return () => window.clearInterval(timer);
   }, []);
