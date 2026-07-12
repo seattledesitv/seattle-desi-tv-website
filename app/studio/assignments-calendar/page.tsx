@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import StudioHeader from "../../components/StudioHeader";
 
-const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "", { auth: { storageKey: AUTH_STORAGE_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+const supabase = getSupabaseBrowserClient();
 
 function isAdminRole(role: string) { return String(role || "").toLowerCase().includes("admin"); }
 function firstImage(event: any) { if (Array.isArray(event?.image_urls) && event.image_urls.length > 0) return event.image_urls[0]; return event?.image || ""; }
