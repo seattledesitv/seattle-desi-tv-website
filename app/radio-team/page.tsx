@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import SiteHeader from "../components/SiteHeader";
 import SiteFooter from "../components/SiteFooter";
+import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isPubliclyHidden, loadHiddenUsers } from "../lib/publicVisibility";
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "");
+const supabase = getSupabaseBrowserClient();
 
 type RadioTeamMember = { id: string; name: string; title: string; segment_name: string; image: string; email?: string | null; user_id?: string | null };
 
