@@ -9,17 +9,16 @@ type BrowserSupabaseClient = ReturnType<typeof createClient<any, any, any>>;
 let browserClient: BrowserSupabaseClient | null = null;
 let serverPrerenderClient: BrowserSupabaseClient | null = null;
 
-const SERVER_PLACEHOLDER_URL = "https://prerender-placeholder.supabase.co";
-const SERVER_PLACEHOLDER_KEY = "prerender-placeholder-anon-key";
+const PLACEHOLDER_URL = "https://prerender-placeholder.supabase.co";
+const PLACEHOLDER_KEY = "prerender-placeholder-anon-key";
 
 /**
  * Returns the shared Supabase client used by client components.
  *
- * Next.js may evaluate client-component modules while prerendering on the
- * server. Many existing components request this client at module scope. In
- * that environment browser-only public variables may be unavailable, so we
- * return a non-persistent placeholder client that is never used for browser
- * data access. The browser bundle creates the real client separately.
+ * Next.js may evaluate client-component modules during prerendering. When the
+ * public Supabase variables are unavailable, use a non-persistent placeholder
+ * client instead of throwing at module evaluation. This keeps the public site
+ * and error boundaries renderable while Vercel configuration is corrected.
  */
 export function getSupabaseBrowserClient(): BrowserSupabaseClient {
   const isBrowser = typeof window !== "undefined";
@@ -27,8 +26,8 @@ export function getSupabaseBrowserClient(): BrowserSupabaseClient {
   if (!isBrowser) {
     if (!serverPrerenderClient) {
       serverPrerenderClient = createClient<any, any, any>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL || SERVER_PLACEHOLDER_URL,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || SERVER_PLACEHOLDER_KEY,
+        process.env.NEXT_PUBLIC_SUPABASE_URL || PLACEHOLDER_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || PLACEHOLDER_KEY,
         {
           auth: {
             storageKey: AUTH_STORAGE_KEY,
@@ -36,7 +35,7 @@ export function getSupabaseBrowserClient(): BrowserSupabaseClient {
             autoRefreshToken: false,
             detectSessionInUrl: false,
           },
-        }
+        },
       );
     }
     return serverPrerenderClient;
@@ -46,21 +45,26 @@ export function getSupabaseBrowserClient(): BrowserSupabaseClient {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const hasConfiguration = Boolean(supabaseUrl && supabaseAnonKey);
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      "Supabase browser configuration is missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel."
+  if (!hasConfiguration) {
+    console.error(
+      "Supabase browser configuration is missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY for the Vercel Production environment, then redeploy.",
     );
   }
 
-  browserClient = createClient<any, any, any>(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      storageKey: AUTH_STORAGE_KEY,
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
+  browserClient = createClient<any, any, any>(
+    supabaseUrl || PLACEHOLDER_URL,
+    supabaseAnonKey || PLACEHOLDER_KEY,
+    {
+      auth: {
+        storageKey: AUTH_STORAGE_KEY,
+        persistSession: hasConfiguration,
+        autoRefreshToken: hasConfiguration,
+        detectSessionInUrl: hasConfiguration,
+      },
     },
-  });
+  );
 
   return browserClient;
 }
