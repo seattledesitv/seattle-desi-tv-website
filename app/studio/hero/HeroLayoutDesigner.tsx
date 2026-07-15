@@ -32,7 +32,7 @@ function getImage(item: any) {
   return item?.image || "/hero-sdtv.png";
 }
 
-function HeroPreview({ layout, item }: { layout: HeroLayoutStyle; item: any }) {
+export function HeroPreview({ layout, item }: { layout: HeroLayoutStyle; item: any }) {
   const image = getImage(item);
   const title = item?.title || item?.festival_name || "Seattle Desi TV";
   const subtitle = item?.subtitle || [item?.date, item?.location].filter(Boolean).join(" · ") || "Community stories, events, culture, interviews, radio, and media coverage across the Pacific Northwest.";
@@ -116,7 +116,7 @@ export default function HeroLayoutDesigner({ banners, featuredEvents, festivals 
     <div className="border-b border-slate-200 bg-slate-50 p-5 sm:p-7">
       <p className="text-xs font-black uppercase tracking-[0.2em] text-pink-600">Whole Hero Section</p>
       <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div><h2 className="text-3xl font-black">Global Layout & Live Preview</h2><p className="mt-2 max-w-3xl text-slate-600">Choose the default structure for the homepage hero. Item-specific layouts will be added in the next step.</p></div>
+        <div><h2 className="text-3xl font-black">Global Layout & Live Preview</h2><p className="mt-2 max-w-3xl text-slate-600">Choose the default structure for the homepage hero. Item-specific layouts can override it below.</p></div>
         <div className="rounded-full bg-slate-950 px-4 py-2 text-xs font-black uppercase text-white">Saved: {savedLayout.replaceAll("_", " ")}</div>
       </div>
     </div>
@@ -129,7 +129,7 @@ export default function HeroLayoutDesigner({ banners, featuredEvents, festivals 
       <div className="min-w-0">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-black uppercase tracking-wide text-pink-600">Instant Preview</p><h3 className="text-2xl font-black">How this layout will look</h3></div>{previewItems.length > 0 && <select value={previewSource} onChange={(e) => setPreviewSource(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-4 py-3 font-bold"><option value="auto">Use first active item</option>{previewItems.map((entry) => <option key={entry.key} value={entry.key}>{entry.label}</option>)}</select>}</div>
         <HeroPreview layout={layout} item={previewItem} />
-        <p className="mt-3 text-sm text-slate-500">The preview changes immediately. Saving only stores the global default; it does not yet change the production homepage in this step.</p>
+        <p className="mt-3 text-sm text-slate-500">The preview changes immediately. Saving stores the default used by items set to “Use global layout.”</p>
       </div>
     </div>
   </section>;
