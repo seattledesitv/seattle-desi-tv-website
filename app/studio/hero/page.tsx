@@ -5,6 +5,7 @@ import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
 import { uploadFileToCloudinary } from "../../lib/cloudinaryUpload";
+import HeroLayoutDesigner from "./HeroLayoutDesigner";
 
 const supabase = getSupabaseBrowserClient();
 const THEMES = ["fallback", "gold", "pink", "blue", "festival", "cinematic", "emerald"];
@@ -173,6 +174,8 @@ export default function HeroCmsPage() {
           <div className="rounded-2xl border border-white/10 bg-white/10 p-5"><p className="text-sm text-slate-300">Featured Events</p><p className="mt-1 text-4xl font-black">{featuredEvents.length}</p></div>
           <div className="rounded-2xl border border-white/10 bg-white/10 p-5"><p className="text-sm text-slate-300">Currently Active</p><p className="mt-1 text-4xl font-black">{banners.filter(isCurrentlyScheduled).length + festivals.filter(isCurrentlyScheduled).length}</p></div>
         </section>
+
+        <HeroLayoutDesigner banners={banners} featuredEvents={featuredEvents} festivals={festivals} />
 
         <section className="mt-8 overflow-hidden rounded-3xl bg-white text-slate-950 shadow-2xl">
           <div className="border-b border-slate-200 bg-slate-50 px-4 pt-4 sm:px-6 sm:pt-6">
