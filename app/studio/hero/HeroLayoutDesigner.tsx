@@ -40,7 +40,7 @@ function HeroPreview({ layout, item }: { layout: HeroLayoutStyle; item: any }) {
   const split = layout === "split_left" || layout === "split_right" || layout === "classic" || layout === "premium";
 
   if (layout === "cinematic" || layout === "spotlight" || layout === "minimal" || layout === "image_focus") {
-    return <div className={`relative min-h-[360px] overflow-hidden rounded-3xl bg-slate-950 text-white ${layout === "premium" ? "p-4" : ""}`}>
+    return <div className="relative min-h-[360px] overflow-hidden rounded-3xl bg-slate-950 text-white">
       <img src={image} alt="Hero preview" className={`absolute inset-0 h-full w-full ${layout === "image_focus" ? "object-contain bg-black" : "object-cover"}`} />
       <div className={`absolute inset-0 ${layout === "image_focus" ? "bg-gradient-to-r from-black/80 via-black/35 to-black/15" : layout === "spotlight" ? "bg-[radial-gradient(circle_at_center,transparent_5%,rgba(2,6,23,.88)_78%)]" : "bg-gradient-to-t from-black/90 via-black/30 to-black/10"}`} />
       <div className={`relative z-10 flex min-h-[360px] p-7 sm:p-10 ${layout === "cinematic" || layout === "spotlight" ? "items-center justify-center text-center" : layout === "minimal" ? "items-end" : "items-center"}`}>
