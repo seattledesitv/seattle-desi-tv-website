@@ -17,7 +17,11 @@ const supabase = createClient(
 function cleanRole(role: string) { return String(role || "general_public").toLowerCase().trim(); }
 function isTeamRole(role: string) { const next = cleanRole(role); return next === "team_member" || next.includes("admin"); }
 function isAdminRole(role: string) { return cleanRole(role).includes("admin"); }
-function getImages(event: any) { if (Array.isArray(event?.image_urls) && event.image_urls.length > 0) return event.image_urls; return event?.image ? [event.image] : []; }
+function getImages(event: any) {
+  const urls = Array.isArray(event?.image_urls) ? event.image_urls.filter(Boolean) : [];
+  if (urls.length > 0) return Array.from(new Set(urls));
+  return event?.image ? [event.image] : [];
+}
 function dateText(value?: string) { if (!value) return ""; const d = new Date(`${String(value).split("T")[0]}T00:00:00`); return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" }); }
 function compactDate(value?: string) { if (!value) return ""; const d = new Date(`${String(value).split("T")[0]}T00:00:00`); return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }); }
 function coverageLabel(status?: string) { const value = String(status || "not_requested").toLowerCase(); if (value === "approved") return "Coverage request approved"; if (value === "on_hold") return "Coverage request is under review"; if (value === "rejected") return "Coverage request declined"; if (value === "pending") return "Coverage request pending"; return "No coverage request yet"; }
@@ -70,18 +74,33 @@ export default function EventDetailPage() {
   const [coverageRequest, setCoverageRequest] = useState<any>(null);
   const [crewRequests, setCrewRequests] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
-  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState(0);
+  const [viewerZoom, setViewerZoom] = useState(1);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxZoom, setLightboxZoom] = useState(1);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   const isOwner = Boolean(user?.id && event?.created_by === user.id);
   const canRequestCrew = Boolean(user && isTeamRole(role));
   const canAdmin = Boolean(user && isAdminRole(role));
   const images = getImages(event);
-  const primaryImage = images[0] || null;
-  const galleryImages = images.slice(1);
+  const activeImage = images[selectedDocument] || images[0] || null;
   const eventUrl = `${siteOrigin()}/events/${eventId}`;
   const tags = useMemo(() => deriveTags(event), [event]);
   const countdown = countdownLabel(event?.date);
   const eventEnded = countdown === "Event ended";
+
+  function selectDocument(index: number) {
+    if (!images.length) return;
+    const normalized = (index + images.length) % images.length;
+    setSelectedDocument(normalized);
+    setViewerZoom(1);
+    setLightboxZoom(1);
+  }
+
+  function previousDocument() { selectDocument(selectedDocument - 1); }
+  function nextDocument() { selectDocument(selectedDocument + 1); }
+  function clampZoom(value: number) { return Math.min(3, Math.max(0.75, Number(value.toFixed(2)))); }
 
   async function loadRole(currentUser: any) {
     if (!currentUser?.id) { setRole("general_public"); return; }
@@ -93,13 +112,7 @@ export default function EventDetailPage() {
 
   async function loadRelatedEvents(currentEvent: any) {
     const today = new Date().toISOString().split("T")[0];
-    const { data } = await supabase
-      .from("events")
-      .select("id,title,date,location,image,image_urls,ticket_url,status")
-      .neq("id", currentEvent.id)
-      .gte("date", today)
-      .order("date", { ascending: true })
-      .limit(3);
+    const { data } = await supabase.from("events").select("id,title,date,location,image,image_urls,ticket_url,status").neq("id", currentEvent.id).gte("date", today).order("date", { ascending: true }).limit(3);
     setRelatedEvents(data || []);
   }
 
@@ -108,6 +121,7 @@ export default function EventDetailPage() {
     if (error) { setMessage(`Could not load event: ${error.message}`); return null; }
     if (!data) { setMessage("Event not found."); return null; }
     setEvent(data);
+    setSelectedDocument(0);
     await loadRelatedEvents(data);
     return data;
   }
@@ -177,20 +191,12 @@ export default function EventDetailPage() {
     endDate.setDate(endDate.getDate() + 1);
     const end = endDate.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
     const content = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "PRODID:-//Seattle Desi TV//Events//EN",
-      "BEGIN:VEVENT",
+      "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Seattle Desi TV//Events//EN", "BEGIN:VEVENT",
       `UID:${event.id}@seattledesitv.com`,
       `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z")}`,
-      `DTSTART:${start}`,
-      `DTEND:${end}`,
-      `SUMMARY:${escapeIcs(event.title)}`,
+      `DTSTART:${start}`, `DTEND:${end}`, `SUMMARY:${escapeIcs(event.title)}`,
       `DESCRIPTION:${escapeIcs(event.description || `Event details: ${eventUrl}`)}`,
-      `LOCATION:${escapeIcs(event.location || "")}`,
-      `URL:${eventUrl}`,
-      "END:VEVENT",
-      "END:VCALENDAR",
+      `LOCATION:${escapeIcs(event.location || "")}`, `URL:${eventUrl}`, "END:VEVENT", "END:VCALENDAR",
     ].join("\r\n");
     const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -203,11 +209,18 @@ export default function EventDetailPage() {
 
   useEffect(() => { init(); }, [eventId]);
   useEffect(() => {
-    if (!lightboxImage) return;
-    const onKeyDown = (keyboardEvent: KeyboardEvent) => { if (keyboardEvent.key === "Escape") setLightboxImage(null); };
+    if (!lightboxOpen) return;
+    const onKeyDown = (keyboardEvent: KeyboardEvent) => {
+      if (keyboardEvent.key === "Escape") setLightboxOpen(false);
+      if (keyboardEvent.key === "ArrowLeft") previousDocument();
+      if (keyboardEvent.key === "ArrowRight") nextDocument();
+      if (keyboardEvent.key === "+" || keyboardEvent.key === "=") setLightboxZoom((value) => clampZoom(value + 0.25));
+      if (keyboardEvent.key === "-") setLightboxZoom((value) => clampZoom(value - 0.25));
+      if (keyboardEvent.key === "0") setLightboxZoom(1);
+    };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [lightboxImage]);
+  }, [lightboxOpen, selectedDocument, images.length]);
   useEffect(() => { if (!shareMessage) return; const timer = window.setTimeout(() => setShareMessage(""), 2500); return () => window.clearTimeout(timer); }, [shareMessage]);
 
   const calendarText = encodeURIComponent(event ? `${event.title}\n${event.description || ""}\n${eventUrl}` : "");
@@ -225,10 +238,8 @@ export default function EventDetailPage() {
         <section className="mx-auto max-w-5xl px-6 py-16"><div className="rounded-2xl border bg-white p-8"><p>{message}</p>{eventId === "new" && <a href="/events" className="mt-5 inline-block rounded-xl bg-pink-600 px-5 py-3 font-black text-white">Go to Event Submission</a>}</div></section>
       ) : (
         <>
-          <section className="relative overflow-hidden bg-slate-950 text-white">
-            {primaryImage && <div className="absolute inset-0 bg-cover bg-center opacity-15 blur-sm scale-110" style={{ backgroundImage: `url(${primaryImage})` }} aria-hidden="true" />}
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/95 to-slate-950/75" />
-            <div className="relative mx-auto max-w-7xl px-6 py-12 md:px-10 md:py-16">
+          <section className="bg-gradient-to-br from-slate-950 via-slate-900 to-pink-950 text-white">
+            <div className="mx-auto max-w-7xl px-6 py-12 md:px-10 md:py-16">
               <a href="/events" className="font-bold text-pink-300">← Back to Events</a>
               <div className="mt-5 flex flex-wrap gap-2">
                 <span className={`rounded-full px-3 py-1 text-sm font-black ${eventEnded ? "bg-slate-700 text-slate-200" : "bg-pink-600 text-white"}`}>{countdown}</span>
@@ -249,36 +260,55 @@ export default function EventDetailPage() {
 
           <section className="mx-auto grid max-w-7xl gap-8 px-6 py-10 md:px-10 lg:grid-cols-[1fr_360px]">
             <div className="space-y-6">
+              {images.length > 0 && activeImage && (
+                <div className="overflow-hidden rounded-3xl border bg-white shadow-sm">
+                  <div className="border-b p-5 md:p-6">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <h2 className="text-2xl font-black">Flyers & Event Documents</h2>
+                        <p className="mt-1 text-sm text-slate-500">View every uploaded flyer in full, zoom in to read details, or open it full screen.</p>
+                      </div>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-black text-slate-600">{selectedDocument + 1} / {images.length}</span>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button type="button" onClick={() => setViewerZoom((value) => clampZoom(value - 0.25))} className="rounded-xl border px-3 py-2 text-sm font-black hover:bg-slate-50">− Zoom</button>
+                      <button type="button" onClick={() => setViewerZoom(1)} className="rounded-xl border px-3 py-2 text-sm font-black hover:bg-slate-50">Reset</button>
+                      <button type="button" onClick={() => setViewerZoom((value) => clampZoom(value + 0.25))} className="rounded-xl border px-3 py-2 text-sm font-black hover:bg-slate-50">+ Zoom</button>
+                      <button type="button" onClick={() => { setLightboxZoom(1); setLightboxOpen(true); }} className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-black text-white">Full Screen</button>
+                      <a href={activeImage} download target="_blank" rel="noreferrer" className="rounded-xl border border-pink-300 px-4 py-2 text-sm font-black text-pink-700 hover:bg-pink-50">Download / Open</a>
+                    </div>
+                  </div>
+
+                  <div className="relative overflow-auto bg-slate-100 p-3 md:p-6" style={{ minHeight: "420px", maxHeight: "900px" }}>
+                    <button type="button" onClick={() => { setLightboxZoom(1); setLightboxOpen(true); }} className="mx-auto block min-w-full cursor-zoom-in" aria-label="Open flyer full screen">
+                      <img src={activeImage} alt={`${event.title} flyer ${selectedDocument + 1}`} className="mx-auto max-h-[820px] max-w-full object-contain transition-transform duration-200" style={{ transform: `scale(${viewerZoom})`, transformOrigin: "top center" }} />
+                    </button>
+                  </div>
+
+                  <div className="border-t p-5 md:p-6">
+                    <div className="flex items-center justify-between gap-3">
+                      <button type="button" onClick={previousDocument} disabled={images.length < 2} className="rounded-xl border px-4 py-2 text-sm font-black disabled:cursor-not-allowed disabled:opacity-40">← Previous</button>
+                      <p className="text-center text-sm font-bold text-slate-500">Flyer {selectedDocument + 1} of {images.length}</p>
+                      <button type="button" onClick={nextDocument} disabled={images.length < 2} className="rounded-xl border px-4 py-2 text-sm font-black disabled:cursor-not-allowed disabled:opacity-40">Next →</button>
+                    </div>
+                    {images.length > 1 && (
+                      <div className="mt-5 flex snap-x gap-3 overflow-x-auto pb-2">
+                        {images.map((image: string, index: number) => (
+                          <button key={`${image}-${index}`} type="button" onClick={() => selectDocument(index)} className={`min-w-[112px] snap-start overflow-hidden rounded-xl border-2 bg-slate-100 p-1 transition ${index === selectedDocument ? "border-pink-600 shadow-md" : "border-transparent hover:border-slate-300"}`} aria-label={`View flyer ${index + 1}`}>
+                            <img src={image} alt={`${event.title} flyer thumbnail ${index + 1}`} className="h-32 w-full rounded-lg object-contain" />
+                            <span className="block py-1 text-center text-xs font-black text-slate-600">Flyer {index + 1}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-3xl border bg-white p-6">
                 <h2 className="text-2xl font-black">About This Event</h2>
                 <p className="mt-4 whitespace-pre-line text-gray-700">{event.description || "No description provided."}</p>
               </div>
-
-              {primaryImage && (
-                <div className="rounded-3xl border bg-white p-6">
-                  <div className="flex flex-wrap items-end justify-between gap-3">
-                    <div><h2 className="text-2xl font-black">Full Event Flyer</h2><p className="mt-1 text-sm text-gray-500">The complete original flyer is shown without cropping.</p></div>
-                    <button type="button" onClick={() => setLightboxImage(primaryImage)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">Open full size</button>
-                  </div>
-                  <button type="button" onClick={() => setLightboxImage(primaryImage)} className="mt-5 w-full rounded-2xl bg-slate-100 p-3" aria-label="Open full event flyer">
-                    <img src={primaryImage} alt={`${event.title} full flyer`} className="mx-auto max-h-[900px] w-full object-contain" />
-                  </button>
-                  <p className="mt-3 text-center text-xs font-bold text-gray-500">Click the flyer to enlarge it.</p>
-                </div>
-              )}
-
-              {galleryImages.length > 0 && (
-                <div className="rounded-3xl border bg-white p-6">
-                  <div className="flex items-end justify-between gap-3"><div><h2 className="text-2xl font-black">Event Gallery</h2><p className="mt-1 text-sm text-gray-500">Swipe on mobile or select any image to view it full screen.</p></div><span className="text-sm font-black text-slate-500">{galleryImages.length} photos</span></div>
-                  <div className="mt-5 flex snap-x gap-4 overflow-x-auto pb-3 md:grid md:grid-cols-2 md:overflow-visible xl:grid-cols-3">
-                    {galleryImages.map((image: string, index: number) => (
-                      <button key={image} type="button" onClick={() => setLightboxImage(image)} className="min-w-[82%] snap-center rounded-2xl bg-slate-100 p-2 md:min-w-0">
-                        <img src={image} alt={`${event.title} gallery image ${index + 1}`} className="h-64 w-full rounded-xl object-contain" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               <div className="overflow-hidden rounded-3xl border bg-white">
                 <div className="p-6"><h2 className="text-2xl font-black">Location</h2><p className="mt-2 text-gray-600">{event.location}</p></div>
@@ -344,12 +374,25 @@ export default function EventDetailPage() {
         </>
       )}
 
-      {lightboxImage && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4" role="dialog" aria-modal="true" aria-label="Full event image">
-          <button type="button" onClick={() => setLightboxImage(null)} className="absolute right-5 top-5 rounded-full bg-white px-4 py-2 font-black text-slate-950">Close</button>
-          <button type="button" onClick={() => setLightboxImage(null)} className="flex h-full w-full items-center justify-center" aria-label="Close image preview">
-            <img src={lightboxImage} alt={`${event?.title || "Event"} image`} className="max-h-[92vh] max-w-[96vw] object-contain" />
-          </button>
+      {lightboxOpen && activeImage && (
+        <div className="fixed inset-0 z-[100] flex flex-col bg-black/95 text-white" role="dialog" aria-modal="true" aria-label="Full-screen event flyer" onTouchStart={(touchEvent) => setTouchStartX(touchEvent.touches[0]?.clientX ?? null)} onTouchEnd={(touchEvent) => { if (touchStartX === null) return; const endX = touchEvent.changedTouches[0]?.clientX ?? touchStartX; const distance = endX - touchStartX; if (Math.abs(distance) > 60 && images.length > 1) distance > 0 ? previousDocument() : nextDocument(); setTouchStartX(null); }}>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/15 bg-black/70 px-4 py-3">
+            <div><p className="font-black">{event?.title}</p><p className="text-xs text-slate-300">Flyer {selectedDocument + 1} of {images.length} · Use ← → keys to navigate</p></div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setLightboxZoom((value) => clampZoom(value - 0.25))} className="rounded-lg bg-white/10 px-3 py-2 text-sm font-black">−</button>
+              <button type="button" onClick={() => setLightboxZoom(1)} className="rounded-lg bg-white/10 px-3 py-2 text-sm font-black">Reset</button>
+              <button type="button" onClick={() => setLightboxZoom((value) => clampZoom(value + 0.25))} className="rounded-lg bg-white/10 px-3 py-2 text-sm font-black">+</button>
+              <a href={activeImage} target="_blank" rel="noreferrer" download className="rounded-lg bg-white/10 px-3 py-2 text-sm font-black">Download</a>
+              <button type="button" onClick={() => setLightboxOpen(false)} className="rounded-lg bg-white px-4 py-2 text-sm font-black text-slate-950">Close</button>
+            </div>
+          </div>
+          <div className="relative flex-1 overflow-auto p-4 md:p-8">
+            {images.length > 1 && <button type="button" onClick={previousDocument} className="fixed left-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 px-4 py-3 text-2xl font-black text-slate-950 shadow-lg" aria-label="Previous flyer">‹</button>}
+            <div className="flex min-h-full min-w-full items-center justify-center">
+              <img src={activeImage} alt={`${event?.title || "Event"} flyer ${selectedDocument + 1}`} className="max-h-[calc(100vh-120px)] max-w-[96vw] object-contain transition-transform duration-200" style={{ transform: `scale(${lightboxZoom})`, transformOrigin: "center" }} onDoubleClick={() => setLightboxZoom((value) => value > 1 ? 1 : 2)} />
+            </div>
+            {images.length > 1 && <button type="button" onClick={nextDocument} className="fixed right-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 px-4 py-3 text-2xl font-black text-slate-950 shadow-lg" aria-label="Next flyer">›</button>}
+          </div>
         </div>
       )}
 
