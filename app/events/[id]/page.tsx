@@ -210,7 +210,7 @@ export default function EventDetailPage() {
           </section>
 
           <section className="mx-auto max-w-7xl px-6 py-10 md:px-10">
-            <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_390px]">
+            <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_350px]">
               <div className="space-y-6">
                 {images.length > 0 && activeImage ? (
                   <div className="overflow-hidden rounded-3xl border bg-white shadow-sm">
@@ -238,6 +238,29 @@ export default function EventDetailPage() {
                         <p className="text-center text-sm font-bold text-slate-500">Flyer {selectedDocument + 1} of {images.length}</p>
                         <button type="button" onClick={nextDocument} disabled={images.length < 2} className="rounded-xl border px-4 py-2 text-sm font-black disabled:cursor-not-allowed disabled:opacity-40">Next →</button>
                       </div>
+
+                      <div className="mt-5 grid gap-4 border-t pt-5 md:grid-cols-2">
+                        <div className="rounded-2xl bg-slate-50 p-4">
+                          <h3 className="text-sm font-black uppercase tracking-wide text-slate-500">Share This Event</h3>
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            <a href={`https://wa.me/?text=${encodeURIComponent(`${event.title} ${eventUrl}`)}`} target="_blank" rel="noreferrer" className="rounded-xl bg-emerald-600 px-3 py-3 text-center text-sm font-black text-white">WhatsApp</a>
+                            <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(eventUrl)}`} target="_blank" rel="noreferrer" className="rounded-xl bg-blue-700 px-3 py-3 text-center text-sm font-black text-white">Facebook</a>
+                            <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(event.title)}&url=${encodeURIComponent(eventUrl)}`} target="_blank" rel="noreferrer" className="rounded-xl bg-slate-950 px-3 py-3 text-center text-sm font-black text-white">X</a>
+                            <button type="button" onClick={copyLink} className="rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-black">Copy Link</button>
+                          </div>
+                          {shareMessage && <p className="mt-3 text-center text-sm font-bold text-emerald-700">{shareMessage}</p>}
+                        </div>
+
+                        <div className="rounded-2xl bg-slate-50 p-4">
+                          <h3 className="text-sm font-black uppercase tracking-wide text-slate-500">Add to Calendar</h3>
+                          <div className="mt-3 grid gap-2 sm:grid-cols-3 md:grid-cols-1 xl:grid-cols-3">
+                            <a href={googleCalendarUrl} target="_blank" rel="noreferrer" className="rounded-xl border border-slate-300 bg-white px-3 py-3 text-center text-sm font-black hover:bg-slate-100">Google</a>
+                            <a href={outlookCalendarUrl} target="_blank" rel="noreferrer" className="rounded-xl border border-slate-300 bg-white px-3 py-3 text-center text-sm font-black hover:bg-slate-100">Outlook</a>
+                            <button type="button" onClick={downloadIcs} className="rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-black hover:bg-slate-100">Apple / .ics</button>
+                          </div>
+                        </div>
+                      </div>
+
                       {images.length > 1 && <div className="mt-5 flex snap-x gap-3 overflow-x-auto pb-2">{images.map((image, index) => <button key={`${image}-${index}`} type="button" onClick={() => selectDocument(index)} className={`min-w-[112px] snap-start overflow-hidden rounded-xl border-2 bg-slate-100 p-1 transition ${index === selectedDocument ? "border-pink-600 shadow-md" : "border-transparent hover:border-slate-300"}`} aria-label={`View flyer ${index + 1}`}><img src={image} alt={`${event.title} flyer thumbnail ${index + 1}`} className="h-32 w-full rounded-lg object-contain" /><span className="block py-1 text-center text-xs font-black text-slate-600">Flyer {index + 1}</span></button>)}</div>}
                     </div>
                   </div>
@@ -260,18 +283,7 @@ export default function EventDetailPage() {
                   <iframe title={`Map for ${event.title}`} src={`https://www.google.com/maps?q=${encodeURIComponent(event.location || "")}&output=embed`} className="h-64 w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
                 </div>
 
-                <div className="rounded-3xl border bg-white p-6 shadow-sm">
-                  <h2 className="text-xl font-black">Share This Event</h2>
-                  <div className="mt-4 grid grid-cols-2 gap-2"><a href={`https://wa.me/?text=${encodeURIComponent(`${event.title} ${eventUrl}`)}`} target="_blank" rel="noreferrer" className="rounded-xl bg-emerald-600 px-3 py-3 text-center text-sm font-black text-white">WhatsApp</a><a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(eventUrl)}`} target="_blank" rel="noreferrer" className="rounded-xl bg-blue-700 px-3 py-3 text-center text-sm font-black text-white">Facebook</a><a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(event.title)}&url=${encodeURIComponent(eventUrl)}`} target="_blank" rel="noreferrer" className="rounded-xl bg-slate-950 px-3 py-3 text-center text-sm font-black text-white">X</a><button type="button" onClick={copyLink} className="rounded-xl border border-slate-300 px-3 py-3 text-sm font-black">Copy Link</button></div>
-                  {shareMessage && <p className="mt-3 text-center text-sm font-bold text-emerald-700">{shareMessage}</p>}
-                </div>
-
-                <div className="rounded-3xl border bg-white p-6 shadow-sm">
-                  <h2 className="text-xl font-black">Add to Calendar</h2>
-                  <div className="mt-4 space-y-2"><a href={googleCalendarUrl} target="_blank" rel="noreferrer" className="block rounded-xl border border-slate-300 px-4 py-3 text-center text-sm font-black hover:bg-slate-50">Google Calendar</a><a href={outlookCalendarUrl} target="_blank" rel="noreferrer" className="block rounded-xl border border-slate-300 px-4 py-3 text-center text-sm font-black hover:bg-slate-50">Outlook</a><button type="button" onClick={downloadIcs} className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm font-black hover:bg-slate-50">Apple / Download .ics</button></div>
-                </div>
-
-                <div className="rounded-3xl border bg-white p-6 text-center shadow-sm"><h2 className="text-xl font-black">Scan to Share</h2><p className="mt-2 text-sm text-slate-500">Open this event instantly on another device.</p><img src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(eventUrl)}`} alt={`QR code for ${event.title}`} className="mx-auto mt-4 h-48 w-48 rounded-xl border bg-white p-2" loading="lazy" /></div>
+                <div className="rounded-3xl border bg-white p-6 text-center shadow-sm"><h2 className="text-xl font-black">Scan to Share</h2><p className="mt-2 text-sm text-slate-500">Open this event instantly on another device.</p><img src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(eventUrl)}`} alt={`QR code for ${event.title}`} className="mx-auto mt-4 h-44 w-44 rounded-xl border bg-white p-2" loading="lazy" /></div>
                 {isOwner && <div className="rounded-3xl border bg-white p-6 shadow-sm"><h2 className="text-xl font-black">Organizer Coverage</h2><p className="mt-3 text-gray-600">{coverageLabel(coverageRequest?.status)}</p>{!coverageRequest && <button onClick={requestCoverage} disabled={saving} className="mt-4 w-full rounded-xl bg-slate-950 px-4 py-3 font-black text-white">Request SDTV Coverage</button>}</div>}
                 {canRequestCrew && <div className="rounded-3xl border bg-white p-6 shadow-sm"><h2 className="text-xl font-black">SDTV Team</h2><p className="mt-3 text-gray-600">Request to cover this event as SDTV crew.</p><button onClick={requestToCover} disabled={saving} className="mt-4 w-full rounded-xl border border-pink-600 px-4 py-3 font-black text-pink-600">Request to Cover</button></div>}
                 {canAdmin && <div className="rounded-3xl border bg-white p-6 shadow-sm"><h2 className="text-xl font-black">Admin View</h2><p className="mt-3 text-gray-600">Crew/Coverage records: {crewRequests.length}</p><a href={`/studio/events/${event.id}`} className="mt-4 block rounded-xl bg-pink-600 px-4 py-3 text-center font-black text-white">Manage Event</a></div>}
