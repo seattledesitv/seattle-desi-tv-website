@@ -122,25 +122,15 @@ export default function EventDetailPage() {
       ) : (
         <>
           <section className="bg-slate-950 text-white">
-            <div className="mx-auto grid max-w-7xl items-center gap-8 px-6 py-12 md:px-10 lg:grid-cols-[1.2fr_0.8fr]">
-              <div>
-                <a href="/events" className="font-bold text-pink-300">← Back to Events</a>
-                <h1 className="mt-4 text-4xl font-black md:text-6xl">{event.title}</h1>
-                <p className="mt-4 text-lg text-slate-300">{dateText(event.date)} · {event.location}</p>
-                <div className="mt-6 flex flex-wrap gap-3">
-                  {event.ticket_url && <CheckedExternalLink href={event.ticket_url} notFoundMessage="Page not found. This ticket/register link is not available." className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white disabled:opacity-60">Tickets / Register</CheckedExternalLink>}
-                  <a href={`https://www.google.com/maps?q=${encodeURIComponent(event.location || "")}`} target="_blank" rel="noreferrer" className="rounded-xl bg-white px-5 py-3 font-black text-slate-950">Open Map</a>
-                  {canAdmin && <a href={`/studio/events/${event.id}`} className="rounded-xl border border-white/70 px-5 py-3 font-black">Open in Studio</a>}
-                </div>
+            <div className="mx-auto max-w-7xl px-6 py-12 md:px-10">
+              <a href="/events" className="font-bold text-pink-300">← Back to Events</a>
+              <h1 className="mt-4 max-w-5xl text-4xl font-black md:text-6xl">{event.title}</h1>
+              <p className="mt-4 text-lg text-slate-300">{dateText(event.date)} · {event.location}</p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                {event.ticket_url && <CheckedExternalLink href={event.ticket_url} notFoundMessage="Page not found. This ticket/register link is not available." className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white disabled:opacity-60">Tickets / Register</CheckedExternalLink>}
+                <a href={`https://www.google.com/maps?q=${encodeURIComponent(event.location || "")}`} target="_blank" rel="noreferrer" className="rounded-xl bg-white px-5 py-3 font-black text-slate-950">Open Map</a>
+                {canAdmin && <a href={`/studio/events/${event.id}`} className="rounded-xl border border-white/70 px-5 py-3 font-black">Open in Studio</a>}
               </div>
-              {primaryImage ? (
-                <button type="button" onClick={() => setLightboxImage(primaryImage)} className="group relative min-h-80 w-full overflow-hidden rounded-3xl border border-white/10 bg-black/40 p-3 shadow-2xl" aria-label="Open full event flyer">
-                  <img src={primaryImage} alt={event.title} className="h-80 w-full rounded-2xl object-contain transition duration-300 group-hover:scale-[1.01]" />
-                  <span className="absolute bottom-5 right-5 rounded-full bg-black/70 px-3 py-1.5 text-xs font-black text-white backdrop-blur">View full flyer</span>
-                </button>
-              ) : (
-                <div className="grid h-80 w-full place-items-center rounded-3xl bg-white/10 font-black text-pink-200">Seattle Desi TV</div>
-              )}
             </div>
           </section>
 
