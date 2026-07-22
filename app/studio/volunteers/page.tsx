@@ -147,11 +147,9 @@ export default function StudioVolunteersPage() {
   async function approveTeamAccess(request: any) {
     const teamArea = teamAreas[request.id] || "General Team";
     setActionMessage(`Approving ${request.email} for ${teamArea} and syncing Team page...`);
-    const upsertResult = await supabase.from("admins").upsert({ user_id: request.user_id, email: request.email, role: "team_member" }, { onConflict: "email" });
-    if (upsertResult.error) { setActionMessage(`Could not assign team member role: ${upsertResult.error.message}`); return; }
-    await saveTeamArea(request, teamArea);
     const updateResult = await supabase.from("user_role_requests").update({ status: "approved", approved_role: "team_member", approved_by: user?.email || user?.id || null, approved_at: new Date().toISOString() }).eq("id", request.id);
-    if (updateResult.error) { setActionMessage(`Role assigned, but request update failed: ${updateResult.error.message}`); return; }
+    if (updateResult.error) { setActionMessage(`Could not assign team member role: ${updateResult.error.message}`); return; }
+    await saveTeamArea(request, teamArea);
     const published = await publishToTeamPage(request);
     await notifyVolunteer(request, "SDTV team access approved", `Your SDTV team access is approved. Assigned area: ${teamArea}.`, "/my-hub");
     setActionMessage(`Approved ${request.email} as team_member for ${teamArea}.${published ? " Team page profile auto-synced." : " Team page profile needs manual review."}`);
