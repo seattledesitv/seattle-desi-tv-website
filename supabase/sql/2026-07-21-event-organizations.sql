@@ -43,6 +43,46 @@ with check (
   )
 );
 
+drop policy if exists "Event owners can update organization links" on public.event_organizations;
+create policy "Event owners can update organization links"
+on public.event_organizations for update
+to authenticated
+using (
+  exists (
+    select 1 from public.events e
+    where e.id = event_id
+      and e.created_by = auth.uid()
+  )
+)
+with check (
+  created_by = auth.uid()
+  and exists (
+    select 1 from public.events e
+    where e.id = event_id
+      and e.created_by = auth.uid()
+  )
+  and exists (
+    select 1 from public.community_organizations o
+    where o.id = organization_id
+      and (
+        (o.status = 'approved' and o.approved = true)
+        or o.submitted_by = auth.uid()
+      )
+  )
+);
+
+drop policy if exists "Event owners can delete organization links" on public.event_organizations;
+create policy "Event owners can delete organization links"
+on public.event_organizations for delete
+to authenticated
+using (
+  exists (
+    select 1 from public.events e
+    where e.id = event_id
+      and e.created_by = auth.uid()
+  )
+);
+
 drop policy if exists "Admins can manage event organizations" on public.event_organizations;
 create policy "Admins can manage event organizations"
 on public.event_organizations for all
