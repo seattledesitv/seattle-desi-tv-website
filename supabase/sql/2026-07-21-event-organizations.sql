@@ -22,6 +22,27 @@ create policy "Public can read event organizations"
 on public.event_organizations for select
 using (true);
 
+drop policy if exists "Event submitters can link their organization" on public.event_organizations;
+create policy "Event submitters can link their organization"
+on public.event_organizations for insert
+to authenticated
+with check (
+  created_by = auth.uid()
+  and exists (
+    select 1 from public.events e
+    where e.id = event_id
+      and e.created_by = auth.uid()
+  )
+  and exists (
+    select 1 from public.community_organizations o
+    where o.id = organization_id
+      and (
+        (o.status = 'approved' and o.approved = true)
+        or o.submitted_by = auth.uid()
+      )
+  )
+);
+
 drop policy if exists "Admins can manage event organizations" on public.event_organizations;
 create policy "Admins can manage event organizations"
 on public.event_organizations for all
