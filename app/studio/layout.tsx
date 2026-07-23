@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import StudioEnhancements from "../components/StudioEnhancements";
 
 export const metadata: Metadata = {
   title: "Studio",
@@ -10,5 +11,5 @@ export const metadata: Metadata = {
 };
 
 export default function StudioLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <><StudioEnhancements />{children}</>;
 }
