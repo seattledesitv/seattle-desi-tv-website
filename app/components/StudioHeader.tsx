@@ -6,6 +6,7 @@ import AccountMenu from "./AccountMenu";
 const primaryLinks = [
   ["Dashboard", "/studio"],
   ["Event Operations", "/studio/event-ops-v2"],
+  ["Event Organizations", "/studio/event-organizations"],
   ["User Control", "/studio/users"],
 ];
 
@@ -23,7 +24,7 @@ const groups = [
       ["Sponsors", "/studio/sponsors"],
     ],
   },
-  { title: "Operations", links: [["Event Operations", "/studio/event-ops-v2"], ["Video Upload Folders", "/studio/event-upload-folders"]] },
+  { title: "Operations", links: [["Event Operations", "/studio/event-ops-v2"], ["Event Organizations", "/studio/event-organizations"], ["Video Upload Folders", "/studio/event-upload-folders"]] },
   {
     title: "People",
     links: [

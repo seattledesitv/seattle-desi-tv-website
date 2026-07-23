@@ -46,6 +46,7 @@ export default function MyHubHeader() {
     { label: "My Influencer Profile", href: "/my-influencer-profile", show: Boolean(email) },
     { label: "My Community Submissions", href: "/my-community-submissions", show: Boolean(email) },
     { label: "My Events", href: "/my-events", show: true },
+    { label: "My Event Organizations", href: "/my-event-organizations", show: Boolean(email) },
     { label: "My Event Status", href: "/my-events-v2", show: true },
     { label: "My Businesses", href: "/my-businesses", show: true },
     { label: "My Coverage Opportunities", href: "/my-coverage", show: true, tone: canSeeTeamTools ? "default" : "team" },
