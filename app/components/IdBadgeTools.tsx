@@ -5,8 +5,38 @@ import { useState } from "react";
 const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
+export type IdBadgeOptions = {
+  topHeader?: string;
+  subHeader?: string;
+  highlightLabel?: string;
+  roleLabelText?: string;
+  roleValue?: string;
+  issuedLabel?: string;
+  issueDate?: string;
+  website?: string;
+  showSocialIcons?: boolean;
+};
+
 function safeText(value?: string | null, fallback = "SDTV Team") {
   return String(value || fallback).trim() || fallback;
+}
+
+function formatIssueDate(value?: string) {
+  if (!value) return new Date().toLocaleDateString();
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return value;
+  return new Date(year, month - 1, day).toLocaleDateString();
+}
+
+function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, startSize: number, minSize: number, weight = 900) {
+  let size = startSize;
+  do {
+    ctx.font = `${weight} ${size}px Arial`;
+    if (ctx.measureText(text).width <= maxWidth) return size;
+    size -= 2;
+  } while (size >= minSize);
+  ctx.font = `${weight} ${minSize}px Arial`;
+  return minSize;
 }
 
 async function loadImage(src: string): Promise<HTMLImageElement | null> {
@@ -115,6 +145,7 @@ export default function IdBadgeTools({
   profilePhotoUrl,
   idBadgeUrl,
   onGenerated,
+  options,
   compact = false,
 }: {
   fullName?: string | null;
@@ -123,6 +154,7 @@ export default function IdBadgeTools({
   profilePhotoUrl?: string | null;
   idBadgeUrl?: string | null;
   onGenerated: (url: string) => void;
+  options?: IdBadgeOptions;
   compact?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
@@ -139,9 +171,15 @@ export default function IdBadgeTools({
       if (!ctx) throw new Error("Canvas is not available.");
 
       const name = safeText(fullName, "SDTV Team Member");
-      const badgeTitle = safeText(roleLabel, "Team Member").toUpperCase();
-      const memberRole = "Team Member";
-      const website = "www.seattledesitv.com";
+      const topHeader = safeText(options?.topHeader, "Seattle Desi TV");
+      const subHeader = safeText(options?.subHeader, "OFFICIAL SDTV ID BADGE");
+      const badgeTitle = safeText(options?.highlightLabel, safeText(roleLabel, "TEAM MEMBER")).toUpperCase();
+      const rolePrefix = safeText(options?.roleLabelText, "Role:");
+      const memberRole = safeText(options?.roleValue, "Team Member");
+      const issuedPrefix = safeText(options?.issuedLabel, "Issued:");
+      const issueDate = formatIssueDate(options?.issueDate);
+      const website = safeText(options?.website, "www.seattledesitv.com");
+      const showSocialIcons = options?.showSocialIcons !== false;
 
       const gold = "#f7b718";
       const dark = "#050816";
@@ -149,12 +187,10 @@ export default function IdBadgeTools({
 
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-
       ctx.fillStyle = dark;
       ctx.fillRect(0, 0, canvas.width, 145);
       ctx.fillStyle = pink;
       ctx.fillRect(0, 145, canvas.width, 8);
-
       ctx.fillStyle = gold;
       ctx.beginPath();
       ctx.moveTo(0, 650);
@@ -165,10 +201,10 @@ export default function IdBadgeTools({
       ctx.fill();
 
       ctx.fillStyle = "#ffffff";
-      ctx.font = "900 54px Arial";
-      ctx.fillText("Seattle Desi TV", 54, 88);
-      ctx.font = "800 22px Arial";
-      ctx.fillText("OFFICIAL SDTV ID BADGE", 58, 123);
+      fitText(ctx, topHeader, 900, 54, 36);
+      ctx.fillText(topHeader, 54, 88);
+      fitText(ctx, subHeader, 700, 22, 16, 800);
+      ctx.fillText(subHeader, 58, 123);
 
       const photo = await loadImage(profilePhotoUrl || "");
       ctx.save();
@@ -190,7 +226,6 @@ export default function IdBadgeTools({
         ctx.textAlign = "left";
       }
       ctx.restore();
-
       ctx.strokeStyle = gold;
       ctx.lineWidth = 8;
       ctx.beginPath();
@@ -198,11 +233,11 @@ export default function IdBadgeTools({
       ctx.stroke();
 
       ctx.fillStyle = dark;
-      ctx.font = "900 54px Arial";
-      ctx.fillText(name.slice(0, 27), 445, 270);
+      fitText(ctx, name, 555, 54, 30);
+      ctx.fillText(name, 445, 270);
       ctx.fillStyle = pink;
-      ctx.font = "900 30px Arial";
-      ctx.fillText(badgeTitle.slice(0, 34), 448, 322);
+      fitText(ctx, badgeTitle, 540, 30, 21);
+      ctx.fillText(badgeTitle, 448, 322);
 
       ctx.strokeStyle = gold;
       ctx.lineWidth = 2;
@@ -214,15 +249,19 @@ export default function IdBadgeTools({
       drawRoundIcon(ctx, 472, 395, "●", pink, 18);
       ctx.fillStyle = dark;
       ctx.font = "900 25px Arial";
-      ctx.fillText("Role:", 515, 404);
+      ctx.fillText(rolePrefix, 515, 404);
+      const roleX = 515 + ctx.measureText(rolePrefix).width + 14;
       ctx.font = "500 25px Arial";
-      ctx.fillText(memberRole, 590, 404);
+      fitText(ctx, memberRole, 995 - roleX, 25, 18, 500);
+      ctx.fillText(memberRole, roleX, 404);
 
       drawRoundIcon(ctx, 472, 455, "▦", pink, 24);
       ctx.font = "900 24px Arial";
-      ctx.fillText("Issued:", 515, 464);
+      ctx.fillText(issuedPrefix, 515, 464);
+      const dateX = 515 + ctx.measureText(issuedPrefix).width + 16;
       ctx.font = "500 24px Arial";
-      ctx.fillText(new Date().toLocaleDateString(), 602, 464);
+      fitText(ctx, issueDate, 995 - dateX, 24, 18, 500);
+      ctx.fillText(issueDate, dateX, 464);
 
       ctx.strokeStyle = "#cbd5e1";
       ctx.lineWidth = 1.5;
@@ -233,12 +272,14 @@ export default function IdBadgeTools({
 
       drawRoundIcon(ctx, 472, 530, "◎", pink, 27);
       ctx.fillStyle = dark;
-      ctx.font = "500 25px Arial";
+      fitText(ctx, website, 470, 25, 17, 500);
       ctx.fillText(website, 515, 539);
 
-      drawYouTube(ctx, 448, 558);
-      drawInstagram(ctx, 550, 557);
-      drawFacebook(ctx, 640, 557);
+      if (showSocialIcons) {
+        drawYouTube(ctx, 448, 558);
+        drawInstagram(ctx, 550, 557);
+        drawFacebook(ctx, 640, 557);
+      }
 
       ctx.fillStyle = dark;
       ctx.font = "900 27px Arial";
@@ -248,7 +289,6 @@ export default function IdBadgeTools({
 
       const dataUrl = canvas.toDataURL("image/png");
       let finalUrl = dataUrl;
-
       if (cloudName && uploadPreset) {
         const blob: Blob = await new Promise((resolve, reject) => canvas.toBlob((b) => b ? resolve(b) : reject(new Error("Could not create badge image.")), "image/png"));
         const body = new FormData();
@@ -277,7 +317,7 @@ export default function IdBadgeTools({
     <div className="flex flex-wrap gap-2">
       <button type="button" onClick={generateBadge} disabled={busy} className="rounded-xl bg-slate-950 px-4 py-3 text-sm font-black text-white disabled:opacity-60">{busy ? "Generating..." : "Generate ID Badge"}</button>
       {idBadgeUrl && <button type="button" onClick={() => download(idBadgeUrl, fileName)} className="rounded-xl bg-pink-600 px-4 py-3 text-sm font-black text-white">Download Badge</button>}
-      {idBadgeUrl && <button type="button" onClick={() => printImage(idBadgeUrl)} className="rounded-xl bg-white px-4 py-3 text-sm font-black text-slate-950 border">Print Badge</button>}
+      {idBadgeUrl && <button type="button" onClick={() => printImage(idBadgeUrl)} className="rounded-xl border bg-white px-4 py-3 text-sm font-black text-slate-950">Print Badge</button>}
     </div>
     {message && <p className="text-xs font-bold text-slate-500">{message}</p>}
   </div>;
