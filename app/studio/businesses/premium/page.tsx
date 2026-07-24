@@ -1,0 +1,39 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import StudioHeader from "../../../components/StudioHeader";
+import { getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
+
+const supabase = getSupabaseBrowserClient();
+type Draft = { is_premium: boolean; premium_rank: number; premium_starts_at: string; premium_ends_at: string; premium_label: string; premium_payment_reference: string; premium_notes: string };
+function dateInput(value?: string | null) { return value ? new Date(value).toISOString().slice(0, 10) : ""; }
+function toIso(value: string, end = false) { return value ? new Date(`${value}T${end ? "23:59:59" : "00:00:00"}`).toISOString() : null; }
+
+export default function PremiumBusinessManagerPage() {
+  const [loading, setLoading] = useState(true), [message, setMessage] = useState("Checking access...");
+  const [user, setUser] = useState<any>(null), [businesses, setBusinesses] = useState<any[]>([]), [drafts, setDrafts] = useState<Record<string, Draft>>({}), [saving, setSaving] = useState("");
+
+  async function load() {
+    setLoading(true);
+    const session = await supabase.auth.getSession(); const currentUser = session.data.session?.user || null; setUser(currentUser);
+    if (!currentUser) { setMessage("Please log in to manage premium businesses."); setLoading(false); return; }
+    const admin = await supabase.from("admins").select("role").or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`).maybeSingle();
+    if (!String(admin.data?.role || "").toLowerCase().includes("admin")) { setMessage("Studio admin access is required."); setLoading(false); return; }
+    const { data, error } = await supabase.from("local_businesses").select("id,name,address,category,status,is_premium,premium_rank,premium_starts_at,premium_ends_at,premium_label,premium_payment_reference,premium_notes").order("name");
+    if (error) { setMessage(error.message.includes("is_premium") ? "Run the premium business migration before using this page." : error.message); setLoading(false); return; }
+    const rows = data || []; setBusinesses(rows); const next: Record<string, Draft> = {};
+    rows.forEach((row: any) => next[row.id] = { is_premium: Boolean(row.is_premium), premium_rank: Number(row.premium_rank || 100), premium_starts_at: dateInput(row.premium_starts_at), premium_ends_at: dateInput(row.premium_ends_at), premium_label: row.premium_label || "Premium", premium_payment_reference: row.premium_payment_reference || "", premium_notes: row.premium_notes || "" });
+    setDrafts(next); setMessage(""); setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+  function update(id: string, patch: Partial<Draft>) { setDrafts((current) => ({ ...current, [id]: { ...current[id], ...patch } })); }
+  async function save(business: any) {
+    const draft = drafts[business.id]; if (!draft) return; setSaving(business.id); setMessage("");
+    const { error } = await supabase.from("local_businesses").update({ is_premium: draft.is_premium, premium_rank: Math.max(0, Math.min(9999, Number(draft.premium_rank || 100))), premium_starts_at: toIso(draft.premium_starts_at), premium_ends_at: toIso(draft.premium_ends_at, true), premium_label: draft.premium_label.trim() || "Premium", premium_payment_reference: draft.premium_payment_reference.trim() || null, premium_notes: draft.premium_notes.trim() || null, premium_updated_at: new Date().toISOString(), premium_updated_by: user?.id || null }).eq("id", business.id);
+    setSaving(""); if (error) { setMessage(`Could not save ${business.name}: ${error.message}`); return; }
+    await supabase.from("business_activity_log").insert({ business_id: business.id, activity_type: "premium_listing_updated", activity_label: draft.is_premium ? "Premium placement enabled" : "Premium placement disabled", actor_email: user?.email || null, details: { rank: draft.premium_rank, starts_at: draft.premium_starts_at || null, ends_at: draft.premium_ends_at || null, payment_reference: draft.premium_payment_reference || null } });
+    setMessage(`${business.name} premium placement saved.`); await load();
+  }
+
+  return <main className="min-h-screen bg-slate-950 text-white"><StudioHeader/><div className="mx-auto max-w-6xl px-6 py-10"><div className="mb-8 flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-black uppercase tracking-widest text-amber-300">Paid Placement</p><h1 className="mt-2 text-4xl font-black">Premium Business Manager</h1><p className="mt-2 text-slate-300">Premium businesses appear first under the directory’s Recommended sort. Payment references remain internal.</p></div><div className="flex gap-3"><a href="/studio/businesses" className="rounded-xl border border-white/30 px-4 py-3 font-bold">Back to Businesses</a><button onClick={load} className="rounded-xl bg-white px-4 py-3 font-bold text-slate-950">Refresh</button></div></div>{message&&<div className="mb-6 rounded-xl bg-amber-100 p-4 font-bold text-amber-900">{message}</div>}{loading?<div className="rounded-2xl bg-white/10 p-6">Loading...</div>:<div className="space-y-5">{businesses.map((business) => { const draft = drafts[business.id]; if (!draft) return null; return <article key={business.id} className={`rounded-2xl border p-5 ${draft.is_premium ? "border-amber-300 bg-amber-50 text-slate-950" : "border-white/10 bg-white/10"}`}><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div><h2 className="text-xl font-black">{business.name}</h2><p className={draft.is_premium?"text-slate-600":"text-slate-300"}>{business.category || "Uncategorised"} · {business.address}</p><p className="mt-1 text-xs font-bold uppercase">Listing status: {business.status || "pending"}</p></div><label className="flex items-center gap-3 rounded-xl border px-4 py-3 font-black"><input type="checkbox" checked={draft.is_premium} onChange={(e)=>update(business.id,{is_premium:e.target.checked})}/><span>Premium placement</span></label></div><div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-4"><label className="text-sm font-bold">Display label<input value={draft.premium_label} onChange={(e)=>update(business.id,{premium_label:e.target.value})} className="mt-1 w-full rounded-lg border bg-white px-3 py-2 text-slate-950"/></label><label className="text-sm font-bold">Rank (lower appears first)<input type="number" min="0" max="9999" value={draft.premium_rank} onChange={(e)=>update(business.id,{premium_rank:Number(e.target.value)})} className="mt-1 w-full rounded-lg border bg-white px-3 py-2 text-slate-950"/></label><label className="text-sm font-bold">Starts<input type="date" value={draft.premium_starts_at} onChange={(e)=>update(business.id,{premium_starts_at:e.target.value})} className="mt-1 w-full rounded-lg border bg-white px-3 py-2 text-slate-950"/></label><label className="text-sm font-bold">Ends<input type="date" value={draft.premium_ends_at} onChange={(e)=>update(business.id,{premium_ends_at:e.target.value})} className="mt-1 w-full rounded-lg border bg-white px-3 py-2 text-slate-950"/></label><label className="text-sm font-bold md:col-span-2">Payment / invoice reference<input value={draft.premium_payment_reference} onChange={(e)=>update(business.id,{premium_payment_reference:e.target.value})} className="mt-1 w-full rounded-lg border bg-white px-3 py-2 text-slate-950" placeholder="Internal only"/></label><label className="text-sm font-bold md:col-span-2">Internal notes<input value={draft.premium_notes} onChange={(e)=>update(business.id,{premium_notes:e.target.value})} className="mt-1 w-full rounded-lg border bg-white px-3 py-2 text-slate-950"/></label></div><button disabled={saving===business.id} onClick={()=>save(business)} className="mt-5 rounded-xl bg-amber-500 px-5 py-3 font-black text-slate-950 disabled:opacity-50">{saving===business.id?"Saving...":"Save premium placement"}</button></article>})}</div>}</div></main>;
+}
