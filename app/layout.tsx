@@ -5,6 +5,7 @@ import Script from "next/script";
 import AccessibilityFixes from "./components/AccessibilityFixes";
 import EventOpsInfluencerNotice from "./components/EventOpsInfluencerNotice";
 import HomeCommunityCallouts from "./components/HomeCommunityCallouts";
+import HomepageHeroBridgeV2 from "./components/home/HomepageHeroBridgeV2";
 import { FloatingWhatsAppButton } from "./components/SdtvContactLinks";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seattledesitv.com";
@@ -108,6 +109,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Script>
         <AccessibilityFixes />
         <EventOpsInfluencerNotice />
+        <HomepageHeroBridgeV2 />
         {children}
         <HomeCommunityCallouts />
         <FloatingWhatsAppButton />

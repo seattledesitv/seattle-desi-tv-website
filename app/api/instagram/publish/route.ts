@@ -18,6 +18,18 @@ function getInstagramConfig() {
   return { accessToken, instagramBusinessAccountId, isInstagramLoginToken, graphBase, actorId };
 }
 
+function normalizeHandle(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  return trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
+}
+
+function parseCollaborators(value: unknown) {
+  if (Array.isArray(value)) return value.map((item) => normalizeHandle(String(item))).filter(Boolean);
+  if (typeof value === "string") return value.split(/[\n,]/).map(normalizeHandle).filter(Boolean);
+  return [];
+}
+
 async function postToGraph(url: URL) {
   const response = await fetch(url.toString(), { method: "POST", cache: "no-store" });
   const result = await response.json().catch(() => null);
@@ -42,7 +54,9 @@ export async function POST(request: Request) {
 
     const body = await request.json().catch(() => ({}));
     const imageUrl = String(body.imageUrl || "").trim();
-    const caption = String(body.caption || "").trim();
+    const collaborators = parseCollaborators(body.collaborators);
+    const collaboratorText = collaborators.length ? `\n\n${collaborators.join(" ")}` : "";
+    const caption = `${String(body.caption || "").trim()}${collaboratorText}`.trim();
 
     if (!imageUrl || !/^https:\/\//i.test(imageUrl)) {
       return NextResponse.json({ error: "A public HTTPS image URL is required for this first Instagram publish test." }, { status: 400 });
@@ -90,6 +104,7 @@ export async function POST(request: Request) {
       creationId,
       mediaId,
       permalink,
+      collaborators,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || "Instagram publish failed." }, { status: 500 });

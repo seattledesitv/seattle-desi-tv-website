@@ -64,10 +64,14 @@ export default function StudioRolesPage() {
   async function approveRequest(request: any) {
     const approvedRole = selectedRoles[request.id] || request.requested_role || "general_public";
     setActionMessage("Approving role request...");
-    const { error: upsertError } = await supabase.from("admins").upsert({ user_id: request.user_id, email: request.email, role: approvedRole }, { onConflict: "email" });
-    if (upsertError) { setActionMessage(`Could not update user role: ${upsertError.message}`); return; }
+
+    if (isAdminRole(approvedRole)) {
+      const { error: upsertError } = await supabase.from("admins").upsert({ user_id: request.user_id, email: request.email, role: approvedRole }, { onConflict: "email" });
+      if (upsertError) { setActionMessage(`Could not update admin role: ${upsertError.message}`); return; }
+    }
+
     const { error: updateError } = await supabase.from("user_role_requests").update({ status: "approved", approved_role: approvedRole, approved_by: user?.email || user?.id || null, approved_at: new Date().toISOString() }).eq("id", request.id);
-    if (updateError) { setActionMessage(`Role approved, but request status update failed: ${updateError.message}`); return; }
+    if (updateError) { setActionMessage(`Could not approve role request: ${updateError.message}`); return; }
     await notifyUser(request.user_id, "Role request approved", `Your Seattle Desi TV role request was approved as ${approvedRole}.`, "/portal");
     setActionMessage(`Approved ${request.email} as ${approvedRole}.`);
     await loadRequests();
