@@ -3,6 +3,7 @@ import "./mobile-hero-polish.css";
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import AccessibilityFixes from "./components/AccessibilityFixes";
+import BusinessDirectoryOfferClamp from "./components/BusinessDirectoryOfferClamp";
 import EventOpsInfluencerNotice from "./components/EventOpsInfluencerNotice";
 import HomeCommunityCallouts from "./components/HomeCommunityCallouts";
 import HomepageHeroBridgeV2 from "./components/home/HomepageHeroBridgeV2";
@@ -108,6 +109,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           })}
         </Script>
         <AccessibilityFixes />
+        <BusinessDirectoryOfferClamp />
         <EventOpsInfluencerNotice />
         <HomepageHeroBridgeV2 />
         {children}
