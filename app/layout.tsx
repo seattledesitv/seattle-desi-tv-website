@@ -6,6 +6,7 @@ import AccessibilityFixes from "./components/AccessibilityFixes";
 import BusinessDirectoryOfferClamp from "./components/BusinessDirectoryOfferClamp";
 import EventOpsInfluencerNotice from "./components/EventOpsInfluencerNotice";
 import HomeCommunityCallouts from "./components/HomeCommunityCallouts";
+import HomeSponsorCardPolish from "./components/HomeSponsorCardPolish";
 import HomepageHeroBridgeV2 from "./components/home/HomepageHeroBridgeV2";
 import { FloatingWhatsAppButton } from "./components/SdtvContactLinks";
 
@@ -112,6 +113,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <BusinessDirectoryOfferClamp />
         <EventOpsInfluencerNotice />
         <HomepageHeroBridgeV2 />
+        <HomeSponsorCardPolish />
         {children}
         <HomeCommunityCallouts />
         <FloatingWhatsAppButton />
