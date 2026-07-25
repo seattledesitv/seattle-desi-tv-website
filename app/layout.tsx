@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import AccessibilityFixes from "./components/AccessibilityFixes";
 import BusinessDirectoryOfferClamp from "./components/BusinessDirectoryOfferClamp";
+import BusinessOwnershipActions from "./components/BusinessOwnershipActions";
 import BusinessReviewSummaryEnhancer from "./components/BusinessReviewSummaryEnhancer";
 import EventOpsInfluencerNotice from "./components/EventOpsInfluencerNotice";
 import HomeCommunityCallouts from "./components/HomeCommunityCallouts";
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <Script id="ld-org" type="application/ld+json" strategy="afterInteractive">{JSON.stringify({ "@context": "https://schema.org", "@type": "Organization", name: "Seattle Desi TV", url: siteUrl, logo: `${siteUrl}/sdtv-logo.png`, sameAs: ["https://www.youtube.com/@SeattleDesiTV", "https://instagram.com/seattledesitv", "https://facebook.com/seattledesitv"] })}</Script>
     <AccessibilityFixes />
     <BusinessDirectoryOfferClamp />
+    <BusinessOwnershipActions />
     <BusinessReviewSummaryEnhancer />
     <PremiumBusinessCardPolish />
     <EventOpsInfluencerNotice />
