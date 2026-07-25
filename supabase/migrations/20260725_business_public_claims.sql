@@ -49,10 +49,29 @@ alter table public.business_claim_requests enable row level security;
 alter table public.business_managers enable row level security;
 alter table public.business_edit_suggestions enable row level security;
 
+drop policy if exists "authenticated users submit business claims" on public.business_claim_requests;
 create policy "authenticated users submit business claims" on public.business_claim_requests for insert to authenticated with check (requester_user_id = auth.uid());
+
+drop policy if exists "users read own business claims" on public.business_claim_requests;
 create policy "users read own business claims" on public.business_claim_requests for select to authenticated using (requester_user_id = auth.uid());
+
+drop policy if exists "users update own open business claims" on public.business_claim_requests;
+create policy "users update own open business claims" on public.business_claim_requests
+for update to authenticated
+using (requester_user_id = auth.uid() and status in ('pending','needs_information'))
+with check (requester_user_id = auth.uid() and status = 'pending');
+
+drop policy if exists "admins manage business claims" on public.business_claim_requests;
 create policy "admins manage business claims" on public.business_claim_requests for all to authenticated using (exists(select 1 from public.admins a where (a.user_id=auth.uid() or lower(a.email)=lower(auth.jwt()->>'email')) and lower(a.role) like '%admin%')) with check (exists(select 1 from public.admins a where (a.user_id=auth.uid() or lower(a.email)=lower(auth.jwt()->>'email')) and lower(a.role) like '%admin%'));
+
+drop policy if exists "users read own business manager rows" on public.business_managers;
 create policy "users read own business manager rows" on public.business_managers for select to authenticated using (user_id=auth.uid() or exists(select 1 from public.admins a where a.user_id=auth.uid() or lower(a.email)=lower(auth.jwt()->>'email')));
+
+drop policy if exists "admins manage business managers" on public.business_managers;
 create policy "admins manage business managers" on public.business_managers for all to authenticated using (exists(select 1 from public.admins a where a.user_id=auth.uid() or lower(a.email)=lower(auth.jwt()->>'email'))) with check (exists(select 1 from public.admins a where a.user_id=auth.uid() or lower(a.email)=lower(auth.jwt()->>'email')));
+
+drop policy if exists "anyone submits edit suggestions" on public.business_edit_suggestions;
 create policy "anyone submits edit suggestions" on public.business_edit_suggestions for insert to anon,authenticated with check (true);
+
+drop policy if exists "admins manage edit suggestions" on public.business_edit_suggestions;
 create policy "admins manage edit suggestions" on public.business_edit_suggestions for all to authenticated using (exists(select 1 from public.admins a where a.user_id=auth.uid() or lower(a.email)=lower(auth.jwt()->>'email'))) with check (exists(select 1 from public.admins a where a.user_id=auth.uid() or lower(a.email)=lower(auth.jwt()->>'email')));
