@@ -11,7 +11,7 @@ const primaryLinks = [
 ];
 
 const groups = [
-  { title: "Website", links: [["Homepage", "/studio/homepage"], ["Hero", "/studio/hero"], ["Featured Events", "/studio/featured-events"], ["Featured Social", "/studio/featured-social"], ["Social Media Stats", "/studio/social-stats"], ["Testimonials", "/studio/testimonials"], ["Team Page Management", "/studio/team-page"], ["Sponsors", "/studio/sponsors"]] },
+  { title: "Website", links: [["Homepage", "/studio/homepage"], ["Hero", "/studio/hero"], ["Featured Events", "/studio/featured-events"], ["Featured Social", "/studio/featured-social"], ["Social Media Stats", "/studio/social-stats"], ["Testimonials", "/studio/testimonials"], ["Team Page Management", "/studio/team-page"], ["Contributors", "/studio/sponsors"]] },
   { title: "Operations", links: [["Event Operations", "/studio/event-ops-v2"], ["Event Organizations", "/studio/event-organizations"], ["Video Upload Folders", "/studio/event-upload-folders"]] },
   { title: "People", links: [["User Control", "/studio/users"], ["ID Badges", "/studio/id-badges"], ["Volunteers", "/studio/volunteers"], ["Team", "/studio/team"], ["Team Welcome", "/studio/team-welcome"], ["Recognition", "/studio/recognition"], ["Roles", "/studio/roles"], ["Influencer Management", "/studio/influencer-management"], ["Influencer Applications", "/studio/influencer-ops"], ["Influencer Directory", "/studio/influencers"]] },
   { title: "Media", links: [["Video Production", "/studio/video-production"], ["Community Content", "/studio/community-content"], ["Instagram Publisher", "/studio/instagram-publisher"], ["Radio", "/studio/radio-team"], ["Social Diagnostics", "/studio/social-diagnostics"]] },
