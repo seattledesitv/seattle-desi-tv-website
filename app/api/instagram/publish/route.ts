@@ -4,6 +4,8 @@ import { isAdminRole, resolveUserRole } from "../../../lib/roles";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const POLL_INTERVAL_MS = 2000;
+const MAX_POLL_ATTEMPTS = 25;
 
 function cleanEnv(value: string) {
   return value.trim().replace(/^["']|["']$/g, "");
@@ -30,13 +32,49 @@ function parseCollaborators(value: unknown) {
   return [];
 }
 
-async function postToGraph(url: URL) {
-  const response = await fetch(url.toString(), { method: "POST", cache: "no-store" });
+function sleep(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function graphRequest(url: URL, method: "GET" | "POST" = "GET") {
+  const response = await fetch(url.toString(), { method, cache: "no-store" });
   const result = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(result?.error?.message || `Instagram API request failed with status ${response.status}.`);
+    const error = result?.error;
+    const details = [
+      error?.message,
+      error?.code ? `code ${error.code}` : "",
+      error?.error_subcode ? `subcode ${error.error_subcode}` : "",
+    ].filter(Boolean).join(" · ");
+    throw new Error(details || `Instagram API request failed with status ${response.status}.`);
   }
   return result;
+}
+
+async function waitForContainer(graphBase: string, creationId: string, accessToken: string) {
+  let lastStatus = "IN_PROGRESS";
+
+  for (let attempt = 1; attempt <= MAX_POLL_ATTEMPTS; attempt += 1) {
+    const statusUrl = new URL(`${graphBase}/${creationId}`);
+    statusUrl.searchParams.set("fields", "id,status_code,status");
+    statusUrl.searchParams.set("access_token", accessToken);
+
+    const result = await graphRequest(statusUrl);
+    const status = String(result?.status_code || result?.status || "IN_PROGRESS").toUpperCase();
+    lastStatus = status;
+
+    if (status === "FINISHED" || status === "PUBLISHED") {
+      return { status, attempts: attempt, elapsedMs: (attempt - 1) * POLL_INTERVAL_MS };
+    }
+
+    if (["ERROR", "EXPIRED", "FAILED"].includes(status)) {
+      throw new Error(`Instagram could not process the image. Container status: ${status}.`);
+    }
+
+    if (attempt < MAX_POLL_ATTEMPTS) await sleep(POLL_INTERVAL_MS);
+  }
+
+  throw new Error(`Instagram is still processing the image after ${Math.round((MAX_POLL_ATTEMPTS * POLL_INTERVAL_MS) / 1000)} seconds. Container ${creationId} remains ${lastStatus}. Please try publishing again shortly.`);
 }
 
 export async function POST(request: Request) {
@@ -59,7 +97,7 @@ export async function POST(request: Request) {
     const caption = `${String(body.caption || "").trim()}${collaboratorText}`.trim();
 
     if (!imageUrl || !/^https:\/\//i.test(imageUrl)) {
-      return NextResponse.json({ error: "A public HTTPS image URL is required for this first Instagram publish test." }, { status: 400 });
+      return NextResponse.json({ error: "A public HTTPS image URL is required for Instagram publishing." }, { status: 400 });
     }
     if (!caption) return NextResponse.json({ error: "Caption is required." }, { status: 400 });
 
@@ -74,34 +112,37 @@ export async function POST(request: Request) {
     createContainerUrl.searchParams.set("caption", caption);
     createContainerUrl.searchParams.set("access_token", accessToken);
 
-    const container = await postToGraph(createContainerUrl);
+    const container = await graphRequest(createContainerUrl, "POST");
     const creationId = container?.id;
     if (!creationId) throw new Error("Instagram did not return a media creation ID.");
+
+    const processing = await waitForContainer(graphBase, creationId, accessToken);
 
     const publishUrl = new URL(`${graphBase}/${actorId}/media_publish`);
     publishUrl.searchParams.set("creation_id", creationId);
     publishUrl.searchParams.set("access_token", accessToken);
 
-    const published = await postToGraph(publishUrl);
+    const published = await graphRequest(publishUrl, "POST");
     const mediaId = published?.id || "";
+    if (!mediaId) throw new Error("Instagram completed processing but did not return a published media ID.");
 
     let permalink = "";
-    if (mediaId) {
-      try {
-        const mediaUrl = new URL(`${graphBase}/${mediaId}`);
-        mediaUrl.searchParams.set("fields", "id,permalink");
-        mediaUrl.searchParams.set("access_token", accessToken);
-        const mediaResponse = await fetch(mediaUrl.toString(), { cache: "no-store" });
-        const media = await mediaResponse.json().catch(() => null);
-        permalink = media?.permalink || "";
-      } catch {}
-    }
+    try {
+      const mediaUrl = new URL(`${graphBase}/${mediaId}`);
+      mediaUrl.searchParams.set("fields", "id,permalink");
+      mediaUrl.searchParams.set("access_token", accessToken);
+      const media = await graphRequest(mediaUrl);
+      permalink = media?.permalink || "";
+    } catch {}
 
     return NextResponse.json({
       ok: true,
       message: "Published to Instagram.",
       source: isInstagramLoginToken ? "instagram-login" : "facebook-graph",
       creationId,
+      containerStatus: processing.status,
+      processingAttempts: processing.attempts,
+      processingElapsedMs: processing.elapsedMs,
       mediaId,
       permalink,
       collaborators,
