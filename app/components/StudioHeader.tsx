@@ -16,7 +16,7 @@ const groups = [
   { title: "People", links: [["User Control", "/studio/users"], ["ID Badges", "/studio/id-badges"], ["Volunteers", "/studio/volunteers"], ["Team", "/studio/team"], ["Team Welcome", "/studio/team-welcome"], ["Recognition", "/studio/recognition"], ["Roles", "/studio/roles"], ["Influencer Management", "/studio/influencer-management"], ["Influencer Applications", "/studio/influencer-ops"], ["Influencer Directory", "/studio/influencers"]] },
   { title: "Media", links: [["Video Production", "/studio/video-production"], ["Community Content", "/studio/community-content"], ["Instagram Publisher", "/studio/instagram-publisher"], ["Radio", "/studio/radio-team"], ["Social Diagnostics", "/studio/social-diagnostics"]] },
   { title: "Communications", links: [["Newsletter", "/studio/newsletter"]] },
-  { title: "Community", links: [["Businesses", "/studio/businesses"], ["Community Groups", "/studio/community-groups"], ["Community Orgs", "/studio/community-orgs"], ["Contact Requests", "/studio/contact-requests"]] },
+  { title: "Community", links: [["Businesses", "/studio/businesses"], ["Premium Businesses", "/studio/businesses/premium"], ["Business Reviews", "/studio/business-reviews"], ["Community Groups", "/studio/community-groups"], ["Community Orgs", "/studio/community-orgs"], ["Contact Requests", "/studio/contact-requests"]] },
   { title: "System", links: [["Finance Management", "/studio/finance"], ["Analytics", "/studio/analytics"], ["Database Backup", "/studio/database-backup"], ["Database Import", "/studio/database-import"]] },
 ];
 
