@@ -36,13 +36,17 @@ export default function ClaimBusinessPage() {
     setSaving(true); setMessage("");
     const payload = { requester_name: form.name.trim(), requester_email: form.email.trim().toLowerCase(), requester_phone: form.phone.trim() || null, relationship: form.relationship, verification_details: form.details.trim() || null, status: "pending", updated_at: new Date().toISOString() };
     const result = existingClaim?.id
-      ? await supabase.from("business_claim_requests").update(payload).eq("id", existingClaim.id).eq("requester_user_id", user.id).select("id,status,admin_notes,verification_details,updated_at").single()
+      ? await supabase.from("business_claim_requests").update(payload).eq("id", existingClaim.id).eq("requester_user_id", user.id).select("id,status,admin_notes,verification_details,updated_at").maybeSingle()
       : await supabase.from("business_claim_requests").insert({ ...payload, business_id: business.id, requester_user_id: user.id }).select("id,status,admin_notes,verification_details,updated_at").single();
     setSaving(false);
     if (result.error) {
       if (result.error.code === "23505") { setMessage("You already have an open claim for this business. Refresh this page to view its status or provide the requested information."); return; }
       if (/business_claim_requests|schema cache|relation/i.test(result.error.message || "")) { setMessage(`Claim service database error: ${result.error.message}`); return; }
       setMessage(result.error.message); return;
+    }
+    if (!result.data) {
+      setMessage("Your additional information could not be saved because claim-update permission is missing. Run the latest business-claims SQL migration update and try again.");
+      return;
     }
     setExistingClaim(result.data);
     setMessage(existingClaim?.status === "needs_information" ? "Additional information submitted. Your claim is back in the admin review queue." : "Claim request submitted. SDTV will verify the request before granting access.");
