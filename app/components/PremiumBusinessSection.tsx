@@ -1,4 +1,10 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
 import SafeImage from "./SafeImage";
+import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+
+const supabase = getSupabaseBrowserClient();
 
 type BusinessRow = {
   id: string;
@@ -8,6 +14,11 @@ type BusinessRow = {
   discount?: string | null;
   image?: string | null;
   image_urls?: string[] | null;
+  is_premium?: boolean | null;
+  premium_rank?: number | null;
+  premium_starts_at?: string | null;
+  premium_ends_at?: string | null;
+  premium_label?: string | null;
 };
 
 function firstImage(row: BusinessRow) {
@@ -15,13 +26,22 @@ function firstImage(row: BusinessRow) {
   return row?.image || "";
 }
 
-function BusinessShowcaseCard({ business }: { business: BusinessRow }) {
+function premiumIsActive(business: BusinessRow) {
+  if (!business.is_premium) return false;
+  const now = Date.now();
+  const starts = business.premium_starts_at ? new Date(business.premium_starts_at).getTime() : 0;
+  const ends = business.premium_ends_at ? new Date(business.premium_ends_at).getTime() : Number.POSITIVE_INFINITY;
+  return starts <= now && now <= ends;
+}
+
+function BusinessShowcaseCard({ business, premium }: { business: BusinessRow; premium: boolean }) {
   const image = firstImage(business);
   return (
-    <a href="/businesses" className="group min-w-[250px] max-w-[250px] overflow-hidden rounded-2xl border border-white/10 bg-white text-left shadow-xl transition hover:-translate-y-1 hover:shadow-2xl sm:min-w-[270px] sm:max-w-[270px] md:min-w-[290px] md:max-w-[290px]">
+    <a href="/businesses" className={`group min-w-[250px] max-w-[250px] overflow-hidden rounded-2xl bg-white text-left shadow-xl transition hover:-translate-y-1 hover:shadow-2xl sm:min-w-[270px] sm:max-w-[270px] md:min-w-[290px] md:max-w-[290px] ${premium ? "border-2 border-amber-300 ring-2 ring-amber-300/20" : "border border-white/10"}`}>
       <div className="relative h-40 overflow-hidden bg-slate-100 sm:h-44">
         <SafeImage src={image} alt={business.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.04]" fallbackClassName="h-full w-full bg-pink-50 text-pink-600 grid place-items-center font-black text-sm" fallbackLabel="Seattle Desi TV" widthHint={720} />
-        {business.discount && <span className="absolute left-3 top-3 max-w-[82%] rounded-full bg-pink-600 px-3 py-1.5 text-[10px] font-black uppercase leading-tight text-white shadow-lg">{business.discount}</span>}
+        {premium && <span className="absolute left-3 top-3 rounded-full bg-amber-400 px-3 py-1.5 text-[10px] font-black uppercase text-amber-950 shadow-lg">{business.premium_label || "Featured"}</span>}
+        {business.discount && <span className="absolute bottom-3 left-3 max-w-[86%] rounded-full bg-pink-600 px-3 py-1.5 text-[10px] font-black uppercase leading-tight text-white shadow-lg">{business.discount}</span>}
       </div>
       <div className="p-4">
         <h3 className="line-clamp-1 text-base font-black text-slate-950">{business.name}</h3>
@@ -46,6 +66,38 @@ function Impact({ value, label }: { value: string; label: string }) {
 }
 
 export default function PremiumBusinessSection({ businesses }: { businesses: BusinessRow[] }) {
+  const [premiumBusinesses, setPremiumBusinesses] = useState<BusinessRow[]>([]);
+  const [checkedPremium, setCheckedPremium] = useState(false);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    async function loadPremiumBusinesses() {
+      const result = await supabase
+        .from("local_businesses")
+        .select("id,name,category,offer,discount,image,image_urls,is_premium,premium_rank,premium_starts_at,premium_ends_at,premium_label")
+        .eq("status", "approved")
+        .eq("is_premium", true)
+        .order("premium_rank", { ascending: true })
+        .limit(50);
+      if (!active) return;
+      if (!result.error) setPremiumBusinesses((result.data || []).filter((row: BusinessRow) => premiumIsActive(row)) as BusinessRow[]);
+      setCheckedPremium(true);
+    }
+    loadPremiumBusinesses();
+    return () => { active = false; };
+  }, []);
+
+  const showcaseBusinesses = useMemo(() => {
+    if (premiumBusinesses.length > 0) return premiumBusinesses;
+    return checkedPremium ? businesses : businesses;
+  }, [businesses, checkedPremium, premiumBusinesses]);
+  const showingPremium = premiumBusinesses.length > 0;
+
+  function scroll(direction: number) {
+    scrollerRef.current?.scrollBy({ left: direction * Math.min(scrollerRef.current.clientWidth * 0.85, 900), behavior: "smooth" });
+  }
+
   return (
     <section key="businesses" className="bg-[#050b18] px-4 py-12 md:px-8">
       <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-[#080201] px-5 py-8 text-white shadow-2xl md:px-10">
@@ -56,16 +108,20 @@ export default function PremiumBusinessSection({ businesses }: { businesses: Bus
 
         <div className="relative z-10 flex flex-col items-start justify-between gap-4 sm:flex-row">
           <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#ffe099]">SDTV Businesses ✦</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#ffe099]">{showingPremium ? "Featured SDTV Businesses ✦" : "SDTV Businesses ✦"}</p>
             <h2 className="mt-2 text-3xl font-black tracking-tight md:text-4xl">Discover Local Businesses</h2>
-            <p className="mt-2 max-w-2xl text-sm text-white/70">A visual showcase for trusted community businesses and marketplace partners.</p>
+            <p className="mt-2 max-w-2xl text-sm text-white/70">{showingPremium ? "Explore active premium businesses supporting and serving our community." : "A visual showcase for trusted community businesses and marketplace partners."}</p>
           </div>
-          <a href="/businesses" className="hidden rounded-full bg-pink-600 px-5 py-3 text-xs font-black text-white shadow-lg shadow-pink-600/30 md:inline-flex">View All Businesses →</a>
+          <div className="flex items-center gap-2">
+            {showcaseBusinesses.length > 3 && <><button type="button" onClick={() => scroll(-1)} aria-label="Previous featured businesses" className="grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-white/10 text-xl font-black hover:bg-white/20">‹</button><button type="button" onClick={() => scroll(1)} aria-label="Next featured businesses" className="grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-white/10 text-xl font-black hover:bg-white/20">›</button></>}
+            <a href="/businesses" className="rounded-full bg-pink-600 px-5 py-3 text-xs font-black text-white shadow-lg shadow-pink-600/30">View All Businesses →</a>
+          </div>
         </div>
 
-        <div className="relative z-10 mt-8 flex max-w-full gap-5 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {businesses.length === 0 ? <div className="rounded-2xl border border-white/10 bg-white/10 p-8 text-white/60">No approved businesses yet.</div> : businesses.map((business) => <BusinessShowcaseCard key={business.id} business={business} />)}
+        <div ref={scrollerRef} className="relative z-10 mt-8 flex max-w-full snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {showcaseBusinesses.length === 0 ? <div className="rounded-2xl border border-white/10 bg-white/10 p-8 text-white/60">No approved businesses yet.</div> : showcaseBusinesses.map((business) => <div key={business.id} className="snap-start"><BusinessShowcaseCard business={business} premium={showingPremium} /></div>)}
         </div>
+        {showingPremium && <p className="relative z-10 mt-1 text-xs font-bold text-amber-200">Showing all active premium listings. Use the arrows or swipe to explore more.</p>}
 
         <div className="relative z-10 mt-7 grid grid-cols-2 gap-3 md:grid-cols-4">
           <Impact value="500+" label="Community Reach" />
