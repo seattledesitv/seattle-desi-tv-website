@@ -2,6 +2,13 @@
 
 import { useEffect } from "react";
 
+function tierTone(label: string) {
+  const value = label.toLowerCase();
+  if (value.includes("gold")) return { badge: "★ Gold Sponsor", border: "#e5b94f", background: "linear-gradient(145deg,#fffdf7 0%,#fff7dc 100%)", canvas: "linear-gradient(145deg,#ffffff 0%,#fffaf0 100%)" };
+  if (value.includes("silver")) return { badge: "Silver Sponsor", border: "#cbd5e1", background: "linear-gradient(145deg,#ffffff 0%,#f1f5f9 100%)", canvas: "linear-gradient(145deg,#ffffff 0%,#f8fafc 100%)" };
+  return { badge: "Community Partner", border: "#f9a8d4", background: "linear-gradient(145deg,#ffffff 0%,#fdf2f8 100%)", canvas: "linear-gradient(145deg,#ffffff 0%,#fff7fb 100%)" };
+}
+
 function applySponsorCardPolish() {
   if (typeof window === "undefined" || window.location.pathname !== "/") return;
 
@@ -18,43 +25,61 @@ function applySponsorCardPolish() {
   );
 
   tierHeadings.forEach((heading) => {
+    const tone = tierTone(heading.textContent || "");
     const tierBlock = heading.parentElement;
     const grid = tierBlock?.querySelector(":scope > div.grid");
     if (!grid) return;
 
     grid.classList.remove("xl:grid-cols-4");
-    grid.classList.add("lg:grid-cols-3", "2xl:grid-cols-4");
+    grid.classList.add("sm:grid-cols-2", "lg:grid-cols-3", "2xl:grid-cols-4");
 
     Array.from(grid.children).forEach((entry) => {
       const card = entry.matches("a") ? entry.firstElementChild : entry;
-      if (!(card instanceof HTMLElement)) return;
+      if (!(card instanceof HTMLElement) || card.dataset.sdtvSponsorShowcase === "true") return;
+      card.dataset.sdtvSponsorShowcase = "true";
 
-      card.classList.remove("p-5");
-      card.classList.add("p-4", "overflow-hidden", "group");
+      card.classList.remove("p-5", "shadow-sm");
+      card.classList.add("relative", "overflow-hidden", "group", "p-3", "shadow-lg", "hover:-translate-y-1", "hover:shadow-2xl", "duration-300");
       card.style.minHeight = "0";
+      card.style.borderColor = tone.border;
+      card.style.background = tone.background;
 
-      const logoFrame = card.firstElementChild;
-      if (logoFrame instanceof HTMLElement) {
-        logoFrame.classList.remove("h-24", "mb-4");
-        logoFrame.classList.add("h-36", "md:h-40", "mb-3", "p-3");
+      const badge = document.createElement("span");
+      badge.textContent = tone.badge;
+      badge.className = "absolute left-4 top-4 z-10 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide shadow-sm";
+      badge.style.background = tone.border;
+      badge.style.color = "#111827";
+      card.prepend(badge);
+
+      const logoFrame = Array.from(card.children).find((child) => child instanceof HTMLElement && child.querySelector("img")) as HTMLElement | undefined;
+      if (logoFrame) {
+        logoFrame.className = "mt-8 mb-3 grid w-full place-items-center overflow-hidden rounded-2xl border p-4 sm:p-5";
+        logoFrame.style.height = "clamp(190px, 24vw, 270px)";
+        logoFrame.style.background = tone.canvas;
+        logoFrame.style.borderColor = `${tone.border}66`;
 
         const image = logoFrame.querySelector("img");
         if (image instanceof HTMLImageElement) {
-          image.classList.remove("max-h-20", "p-2");
-          image.classList.add("max-h-full", "max-w-[92%]", "object-contain", "transition", "duration-300", "group-hover:scale-105");
+          image.className = "block transition duration-300 group-hover:scale-[1.03]";
+          image.style.width = "100%";
+          image.style.height = "100%";
+          image.style.maxWidth = "100%";
+          image.style.maxHeight = "100%";
+          image.style.objectFit = "contain";
+          image.style.objectPosition = "center";
+          image.style.padding = "0";
         }
       }
 
       const name = card.querySelector("h3");
       if (name) {
-        name.classList.remove("text-lg");
-        name.classList.add("text-xl", "leading-tight");
+        name.className = "px-2 text-xl font-black leading-tight text-slate-950";
       }
 
-      const visit = card.querySelector("p");
-      if (visit) {
-        visit.classList.remove("mt-2");
-        visit.classList.add("mt-1");
+      const visit = Array.from(card.querySelectorAll("p")).find((item) => /visit sponsor/i.test(item.textContent || ""));
+      if (visit instanceof HTMLElement) {
+        visit.textContent = "Visit Sponsor →";
+        visit.className = "mx-2 mb-1 mt-2 inline-flex rounded-full bg-pink-600 px-4 py-2 text-sm font-black text-white transition group-hover:bg-pink-500";
       }
     });
   });
