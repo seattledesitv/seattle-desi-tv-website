@@ -21,6 +21,9 @@ export default function SocialDiagnosticsPage() {
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState("general_public");
   const [data, setData] = useState<any>(null);
+  const [postImageUrl, setPostImageUrl] = useState("");
+  const [postCheck, setPostCheck] = useState<any>(null);
+  const [checkingPost, setCheckingPost] = useState(false);
 
   const canAccess = Boolean(user && isAdminRole(role));
 
@@ -30,6 +33,33 @@ export default function SocialDiagnosticsPage() {
     const result = await response.json();
     setData(result);
     setMessage("");
+  }
+
+  async function runPostCheck() {
+    if (!postImageUrl.trim()) {
+      setPostCheck({ ok: false, error: "Paste a public HTTPS image URL first." });
+      return;
+    }
+    setCheckingPost(true);
+    setPostCheck(null);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token || "";
+    try {
+      const response = await fetch("/api/instagram/debug", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ imageUrl: postImageUrl.trim() }),
+      });
+      const result = await response.json().catch(() => null);
+      setPostCheck(result || { ok: false, error: `Diagnostic request failed with status ${response.status}.` });
+    } catch (error: any) {
+      setPostCheck({ ok: false, error: error?.message || "Post creation diagnostic failed." });
+    } finally {
+      setCheckingPost(false);
+    }
   }
 
   async function init() {
@@ -108,9 +138,38 @@ export default function SocialDiagnosticsPage() {
             </article>
           </section>}
 
+          <section className="rounded-3xl bg-white p-6 text-slate-950 shadow-2xl">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-sm font-black uppercase tracking-wide text-pink-600">Safe write test</p>
+                <h3 className="mt-1 text-2xl font-black">Post Creation Check</h3>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Tests the same image-container step used by Publish to Instagram. It verifies that Meta can fetch the image and return a creation ID. This check does not call media_publish and will not create a public Instagram post.</p>
+              </div>
+              {postCheck && <Badge ok={Boolean(postCheck.ok)} />}
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]">
+              <input value={postImageUrl} onChange={(event) => setPostImageUrl(event.target.value)} placeholder="Paste the same public Cloudinary image URL used by the post" className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950" />
+              <button onClick={runPostCheck} disabled={checkingPost} className="rounded-xl bg-slate-950 px-5 py-3 font-black text-white disabled:opacity-50">{checkingPost ? "Testing..." : "Test Post Creation"}</button>
+            </div>
+
+            {!postCheck && <div className="mt-4 rounded-xl bg-blue-50 p-4 text-sm font-bold text-blue-900">No post-creation test has been run yet.</div>}
+            {postCheck && <div className={`mt-4 rounded-2xl p-4 ${postCheck.ok ? "bg-green-50 text-green-950" : "bg-red-50 text-red-950"}`}>
+              <p className="font-black">{postCheck.ok ? "Post creation path is working" : "Post creation path needs attention"}</p>
+              <p className="mt-2 text-sm">{postCheck.message || postCheck.error || "No diagnostic message returned."}</p>
+              <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                <Info label="Creation ID" value={postCheck.creationId} />
+                <Info label="Container status" value={postCheck.containerStatus} />
+                <Info label="Graph status" value={postCheck.status} />
+                <Info label="Graph error code" value={[postCheck.graphCode, postCheck.graphSubcode].filter(Boolean).join(" / ")} />
+              </div>
+              <p className="mt-3 text-xs font-bold">Published: {postCheck.published ? "Yes" : "No — diagnostic only"}</p>
+            </div>}
+          </section>
+
           <section className="rounded-3xl border border-white/10 bg-white/[0.06] p-6">
-            <h3 className="text-2xl font-black">Next time</h3>
-            <p className="mt-3 text-sm leading-6 text-slate-300">If Instagram stops showing, open this page first. If the prefix or length differs from the token you saved, Vercel is using a different value. If profile works but media fails, it is a media permission issue. If both fail, regenerate the Instagram token and redeploy.</p>
+            <h3 className="text-2xl font-black">How to read the checks</h3>
+            <p className="mt-3 text-sm leading-6 text-slate-300">If Profile and Media are healthy but Post Creation fails, the token can read Instagram but Meta could not create a container from the supplied image. Check the returned Graph error, the Cloudinary URL, image format and publishing permissions. If Post Creation succeeds but the publishing page still fails, the problem is after container creation—usually the media_publish request or how its returned ID is handled.</p>
           </section>
         </div>}
       </div>
