@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 export type DirectoryImageMode = "cover" | "contain" | "blur";
-export type DirectoryImageCrop = { x: number; y: number; zoom: number; mode: DirectoryImageMode };
+export type DirectoryImageCrop = { x: number; y: number; zoom: number; mode?: DirectoryImageMode };
 
 type Props = {
   src?: string | null;
@@ -31,7 +31,7 @@ export default function DirectoryImageCropper({ src, value, onChange, onFileChan
   }
 
   function pointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    if (!preview || value.mode !== "cover") return;
+    if (!preview || (value.mode || "cover") !== "cover") return;
     dragRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, x: value.x, y: value.y };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
