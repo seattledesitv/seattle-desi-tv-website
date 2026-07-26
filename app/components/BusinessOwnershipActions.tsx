@@ -47,11 +47,11 @@ export default function BusinessOwnershipActions() {
           if (!(body instanceof HTMLElement)) return;
           article.setAttribute("data-ownership-actions", "yes");
           const panel = document.createElement("div");
-          panel.className = "mt-4 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4 text-xs";
+          panel.className = "mt-4 border-t border-slate-100 pt-4 text-xs";
           const verified = Boolean(business.owner_verified_at);
           panel.innerHTML = verified
-            ? `<span class="rounded-full bg-emerald-50 px-3 py-2 font-black text-emerald-700">✓ Owner verified</span><a class="font-bold text-pink-600 hover:text-pink-700" href="/my-businesses/image-editor?business=${business.id}">Manage image</a><a class="font-bold text-slate-500 hover:text-pink-600" href="/businesses/suggest-edit?business=${business.id}">Suggest an edit</a>`
-            : `<a class="rounded-full bg-slate-100 px-3 py-2 font-black text-slate-700 hover:bg-pink-50 hover:text-pink-700" href="/businesses/claim?business=${business.id}">Are you the owner?</a><a class="font-bold text-slate-500 hover:text-pink-600" href="/businesses/suggest-edit?business=${business.id}">Suggest an edit</a>`;
+            ? `<div class="flex flex-wrap items-center gap-3"><span class="rounded-full bg-emerald-50 px-3 py-2 font-black text-emerald-700">✓ Owner verified</span><a class="font-bold text-pink-600 hover:text-pink-700" href="/my-businesses/image-editor?business=${business.id}">Manage image</a><a class="font-bold text-slate-500 hover:text-pink-600" href="/businesses/suggest-edit?business=${business.id}">Suggest an edit</a></div>`
+            : `<p class="mb-3 font-bold text-slate-600">Do you own or manage this business?</p><div class="flex flex-wrap items-center gap-3"><a class="rounded-full bg-pink-600 px-3 py-2 font-black text-white hover:bg-pink-700" href="/businesses/claim?business=${business.id}">Manage this Business</a><a class="font-bold text-slate-500 hover:text-pink-600" href="/businesses/suggest-edit?business=${business.id}">Suggest an edit</a></div>`;
           body.appendChild(panel);
         });
       } finally {
