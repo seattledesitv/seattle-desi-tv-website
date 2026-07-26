@@ -60,15 +60,25 @@ export default function DirectoryMediaEnhancer() {
       if (isBusinessPublic) document.querySelectorAll("main article").forEach((article) => { const row = byName.get(key(article.querySelector("h2")?.textContent)); if (!row) return; const img = article.querySelector("img"); if (!(img instanceof HTMLImageElement)) return; applyPresentation(img.parentElement instanceof HTMLElement ? img.parentElement : article as HTMLElement, img, row); });
 
       if (isOrganizationPublic) document.querySelectorAll("main article").forEach((article) => {
-        const row = byName.get(key(article.querySelector("h3")?.textContent)); const src = row ? imageFor(row) : ""; if (!row || !src) return;
-        let button = article.querySelector("[data-directory-media-image='yes']") as HTMLButtonElement | null;
-        if (!button) {
-          button = document.createElement("button"); button.type = "button"; button.dataset.directoryMediaImage = "yes"; button.className = "group relative mb-5 block h-56 w-full overflow-hidden rounded-2xl bg-slate-100";
-          button.innerHTML = `<img src="${escapeAttribute(src)}" alt="${escapeAttribute(row.name)}" class="h-full w-full transition duration-300 group-hover:brightness-75"><span class="pointer-events-none absolute inset-x-0 bottom-0 z-10 translate-y-full bg-slate-950/80 px-4 py-3 text-center text-sm font-black text-white transition group-hover:translate-y-0">View full image</span>`;
-          button.addEventListener("click", () => { const overlay = document.createElement("div"); overlay.className = "fixed inset-0 z-[1000] grid place-items-center bg-slate-950/90 p-4"; overlay.innerHTML = `<button class="absolute right-4 top-4 rounded-full bg-white px-4 py-2 font-black text-slate-950">Close ×</button><img src="${escapeAttribute(src)}" alt="${escapeAttribute(row.name)}" class="max-h-[90vh] max-w-[95vw] rounded-2xl bg-white object-contain shadow-2xl">`; overlay.addEventListener("click", (event) => { if (event.target === overlay || (event.target as HTMLElement).tagName === "BUTTON") overlay.remove(); }); document.body.appendChild(overlay); });
-          article.prepend(button);
+        const row = byName.get(key(article.querySelector("h3")?.textContent)); if (!row) return;
+        const src = imageFor(row);
+        if (src) {
+          let button = article.querySelector("[data-directory-media-image='yes']") as HTMLButtonElement | null;
+          if (!button) {
+            button = document.createElement("button"); button.type = "button"; button.dataset.directoryMediaImage = "yes"; button.className = "group relative mb-5 block h-56 w-full overflow-hidden rounded-2xl bg-slate-100";
+            button.innerHTML = `<img src="${escapeAttribute(src)}" alt="${escapeAttribute(row.name)}" class="h-full w-full transition duration-300 group-hover:brightness-75"><span class="pointer-events-none absolute inset-x-0 bottom-0 z-10 translate-y-full bg-slate-950/80 px-4 py-3 text-center text-sm font-black text-white transition group-hover:translate-y-0">View full image</span>`;
+            button.addEventListener("click", () => { const overlay = document.createElement("div"); overlay.className = "fixed inset-0 z-[1000] grid place-items-center bg-slate-950/90 p-4"; overlay.innerHTML = `<button class="absolute right-4 top-4 rounded-full bg-white px-4 py-2 font-black text-slate-950">Close ×</button><img src="${escapeAttribute(src)}" alt="${escapeAttribute(row.name)}" class="max-h-[90vh] max-w-[95vw] rounded-2xl bg-white object-contain shadow-2xl">`; overlay.addEventListener("click", (event) => { if (event.target === overlay || (event.target as HTMLElement).tagName === "BUTTON") overlay.remove(); }); document.body.appendChild(overlay); });
+            article.prepend(button);
+          }
+          const img = button.querySelector("img"); if (img instanceof HTMLImageElement) applyPresentation(button, img, row);
         }
-        const img = button.querySelector("img"); if (img instanceof HTMLImageElement) applyPresentation(button, img, row);
+        if (!article.querySelector("[data-organization-manage-action='yes']")) {
+          const panel = document.createElement("div");
+          panel.dataset.organizationManageAction = "yes";
+          panel.className = "mt-5 border-t border-slate-200 pt-4";
+          panel.innerHTML = `<p class="mb-3 text-sm font-bold text-slate-600">Are you an authorized representative of this organization?</p><a href="/community-organizations/manage?organization=${row.id}" class="inline-flex rounded-full bg-pink-600 px-4 py-2 text-sm font-black text-white hover:bg-pink-700">Manage this Organization</a>`;
+          article.appendChild(panel);
+        }
       });
 
       if (isBusinessStudio) document.querySelectorAll("main article").forEach((article) => { if (article.getAttribute("data-admin-media-link") === "yes") return; const row = byName.get(key(article.querySelector("h3")?.textContent)); if (!row) return; const fullEdit = Array.from(article.querySelectorAll("a")).find((anchor) => anchor.textContent?.includes("Full Edit")); if (!fullEdit?.parentElement) return; const link = document.createElement("a"); link.href = `/studio/directory-image-editor?type=business&id=${row.id}`; link.className = "rounded-lg bg-pink-600 px-4 py-3 text-sm font-bold text-white"; link.textContent = "Manage Image"; fullEdit.parentElement.insertBefore(link, fullEdit.nextSibling); article.setAttribute("data-admin-media-link", "yes"); });
