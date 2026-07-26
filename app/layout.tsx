@@ -6,6 +6,7 @@ import AccessibilityFixes from "./components/AccessibilityFixes";
 import BusinessDirectoryOfferClamp from "./components/BusinessDirectoryOfferClamp";
 import BusinessOwnershipActions from "./components/BusinessOwnershipActions";
 import BusinessReviewSummaryEnhancer from "./components/BusinessReviewSummaryEnhancer";
+import DirectoryMediaEnhancer from "./components/DirectoryMediaEnhancer";
 import EventOpsInfluencerNotice from "./components/EventOpsInfluencerNotice";
 import HomeCommunityCallouts from "./components/HomeCommunityCallouts";
 import HomeSponsorCardPolish from "./components/HomeSponsorCardPolish";
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <BusinessDirectoryOfferClamp />
     <BusinessOwnershipActions />
     <BusinessReviewSummaryEnhancer />
+    <DirectoryMediaEnhancer />
     <PremiumBusinessCardPolish />
     <EventOpsInfluencerNotice />
     <HomepageHeroBridgeV2 />
