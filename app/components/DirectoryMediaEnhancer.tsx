@@ -8,6 +8,15 @@ const supabase = getSupabaseBrowserClient();
 type Row = { id: string; name: string; image?: string | null; image_urls?: string[] | null; image_position_x?: number | null; image_position_y?: number | null; image_zoom?: number | null };
 function imageFor(row: Row) { return Array.isArray(row.image_urls) && row.image_urls[0] ? row.image_urls[0] : row.image || ""; }
 function key(value?: string | null) { return String(value || "").trim().toLowerCase(); }
+function applyCrop(img: HTMLImageElement, row: Row) {
+  const x = Number(row.image_position_x ?? 50);
+  const y = Number(row.image_position_y ?? 50);
+  const zoom = Math.max(1, Number(row.image_zoom ?? 1));
+  img.style.setProperty("object-position", `${x}% ${y}%`, "important");
+  img.style.setProperty("transform", `scale(${zoom})`, "important");
+  img.style.setProperty("transform-origin", `${x}% ${y}%`, "important");
+  img.dataset.directoryCropApplied = `${x}-${y}-${zoom}`;
+}
 
 export default function DirectoryMediaEnhancer() {
   useEffect(() => {
@@ -34,26 +43,36 @@ export default function DirectoryMediaEnhancer() {
 
       if (isBusinessPublic) {
         document.querySelectorAll("main article").forEach((article) => {
-          const name = key(article.querySelector("h2")?.textContent);
-          const row = byName.get(name); if (!row) return;
-          const img = article.querySelector("img"); if (!(img instanceof HTMLImageElement)) return;
-          img.style.objectPosition = `${Number(row.image_position_x ?? 50)}% ${Number(row.image_position_y ?? 50)}%`;
-          img.style.transform = `scale(${Number(row.image_zoom ?? 1)})`;
-          img.style.transformOrigin = "center";
+          const heading = article.querySelector("h2");
+          const row = byName.get(key(heading?.textContent));
+          if (!row) return;
+          const imageArea = article.firstElementChild;
+          const img = imageArea?.querySelector("img") || article.querySelector("img");
+          if (!(img instanceof HTMLImageElement)) return;
+          applyCrop(img, row);
+          if (imageArea instanceof HTMLElement) imageArea.style.setProperty("overflow", "hidden", "important");
+          article.setAttribute("data-directory-media", "business");
         });
       }
 
       if (isOrganizationPublic) {
         document.querySelectorAll("main article").forEach((article) => {
-          if (article.getAttribute("data-directory-media") === "yes") return;
           const name = key(article.querySelector("h3")?.textContent);
           const row = byName.get(name); const src = row ? imageFor(row) : "";
           if (!row || !src) return;
-          article.setAttribute("data-directory-media", "yes");
+          const existing = article.querySelector("[data-organization-directory-image='yes']");
+          if (existing) {
+            const img = existing.querySelector("img");
+            if (img instanceof HTMLImageElement) applyCrop(img, row);
+            return;
+          }
           const button = document.createElement("button");
           button.type = "button";
+          button.setAttribute("data-organization-directory-image", "yes");
           button.className = "group relative mb-5 block h-56 w-full overflow-hidden rounded-2xl bg-slate-100";
-          button.innerHTML = `<img src="${src.replaceAll('"', '&quot;')}" alt="${row.name.replaceAll('"', '&quot;')}" class="h-full w-full object-cover transition duration-300 group-hover:brightness-75" style="object-position:${Number(row.image_position_x ?? 50)}% ${Number(row.image_position_y ?? 50)}%;transform:scale(${Number(row.image_zoom ?? 1)})"><span class="pointer-events-none absolute inset-x-0 bottom-0 translate-y-full bg-slate-950/80 px-4 py-3 text-center text-sm font-black text-white transition group-hover:translate-y-0">View full image</span>`;
+          button.innerHTML = `<img src="${src.replaceAll('"', '&quot;')}" alt="${row.name.replaceAll('"', '&quot;')}" class="h-full w-full object-cover transition duration-300 group-hover:brightness-75"><span class="pointer-events-none absolute inset-x-0 bottom-0 translate-y-full bg-slate-950/80 px-4 py-3 text-center text-sm font-black text-white transition group-hover:translate-y-0">View full image</span>`;
+          const img = button.querySelector("img");
+          if (img instanceof HTMLImageElement) applyCrop(img, row);
           button.addEventListener("click", () => {
             const overlay = document.createElement("div");
             overlay.className = "fixed inset-0 z-[1000] grid place-items-center bg-slate-950/90 p-4";
@@ -98,8 +117,8 @@ export default function DirectoryMediaEnhancer() {
 
     void run();
     observer = new MutationObserver(() => { void run(); });
-    observer.observe(document.body, { childList: true, subtree: true });
-    interval = window.setInterval(() => { void run(); }, 1800);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class", "src"] });
+    interval = window.setInterval(() => { void run(); }, 900);
     return () => { cancelled = true; observer?.disconnect(); window.clearInterval(interval); };
   }, []);
   return null;
