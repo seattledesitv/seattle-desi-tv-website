@@ -1,10 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
-
-const supabase = getSupabaseBrowserClient();
-const TIERS = ["Platinum Contributor", "Gold Contributor", "Silver Contributor", "Bronze Contributor", "Community Contributor"];
 
 function tierTone(label: string) {
   const value = label.toLowerCase();
@@ -15,138 +11,53 @@ function tierTone(label: string) {
   return { badge: "Community Contributor", border: "#f9a8d4", background: "linear-gradient(145deg,#ffffff 0%,#fdf2f8 100%)", canvas: "linear-gradient(145deg,#ffffff 0%,#fff7fb 100%)" };
 }
 
-function normalizeTier(value: string) {
-  const tier = String(value || "").trim();
-  if (/platinum/i.test(tier)) return "Platinum Contributor";
-  if (/gold/i.test(tier)) return "Gold Contributor";
-  if (/silver/i.test(tier)) return "Silver Contributor";
-  if (/bronze/i.test(tier)) return "Bronze Contributor";
-  return "Community Contributor";
-}
-
-function createContributorCard(contributor: any, tier: string) {
-  const tone = tierTone(tier);
-  const wrapper = contributor.website ? document.createElement("a") : document.createElement("div");
-  if (contributor.website) {
-    (wrapper as HTMLAnchorElement).href = contributor.website;
-    (wrapper as HTMLAnchorElement).target = "_blank";
-    (wrapper as HTMLAnchorElement).rel = "noreferrer";
-  }
-
-  const card = document.createElement("div");
-  card.className = "relative h-full overflow-hidden rounded-2xl border p-3 text-center shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-2xl";
-  card.style.borderColor = tone.border;
-  card.style.background = tone.background;
-
-  const badge = document.createElement("span");
-  badge.textContent = tone.badge;
-  badge.className = "absolute left-4 top-4 z-10 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide shadow-sm";
-  badge.style.background = tone.border;
-  badge.style.color = "#111827";
-  card.appendChild(badge);
-
-  const logoFrame = document.createElement("div");
-  logoFrame.className = "mt-8 mb-3 grid w-full place-items-center overflow-hidden rounded-2xl border p-4 sm:p-5";
-  logoFrame.style.height = "clamp(190px, 24vw, 270px)";
-  logoFrame.style.background = tone.canvas;
-  logoFrame.style.borderColor = `${tone.border}66`;
-  if (contributor.logo_url) {
-    const image = document.createElement("img");
-    image.src = contributor.logo_url;
-    image.alt = contributor.name || "Contributor";
-    image.className = "block h-full w-full object-contain";
-    logoFrame.appendChild(image);
-  } else {
-    const fallback = document.createElement("span");
-    fallback.textContent = contributor.name || "SDTV Contributor";
-    fallback.className = "px-4 text-center font-black text-pink-600";
-    logoFrame.appendChild(fallback);
-  }
-  card.appendChild(logoFrame);
-
-  const name = document.createElement("h3");
-  name.textContent = contributor.name || "SDTV Contributor";
-  name.className = "px-2 text-xl font-black leading-tight text-slate-950";
-  card.appendChild(name);
-
-  if (contributor.website) {
-    const visit = document.createElement("p");
-    visit.textContent = "Visit Contributor →";
-    visit.className = "mx-2 mb-1 mt-2 inline-flex rounded-full bg-pink-600 px-4 py-2 text-sm font-black text-white";
-    card.appendChild(visit);
-  }
-
-  wrapper.appendChild(card);
-  return wrapper;
-}
-
-async function renderContributors() {
+function applyContributorCardPolish() {
   if (typeof window === "undefined" || window.location.pathname !== "/") return;
   const heading = Array.from(document.querySelectorAll("h2")).find((item) => ["Our Sponsors", "Our Contributors"].includes(item.textContent?.trim() || ""));
   const section = heading?.closest("section");
-  const content = heading?.parentElement;
-  if (!section || !content) return;
+  if (!section || section.getAttribute("data-sdtv-contributor-polished") === "true") return;
+  section.setAttribute("data-sdtv-contributor-polished", "true");
 
-  const eyebrow = Array.from(content.querySelectorAll("p")).find((item) => item.textContent?.trim() === "Sponsors");
+  const eyebrow = Array.from(section.querySelectorAll("p")).find((item) => item.textContent?.trim() === "Sponsors");
   if (eyebrow) eyebrow.textContent = "Contributors";
-  heading.textContent = "Our Contributors";
-  const description = Array.from(content.querySelectorAll("p")).find((item) => /partners supporting Seattle Desi TV|businesses and community contributors/i.test(item.textContent || ""));
+  if (heading) heading.textContent = "Our Contributors";
+  const description = Array.from(section.querySelectorAll("p")).find((item) => /partners supporting Seattle Desi TV/i.test(item.textContent || ""));
   if (description) description.textContent = "Thank you to the businesses and community contributors supporting Seattle Desi TV.";
+  const empty = Array.from(section.querySelectorAll("p")).find((item) => /Sponsors will appear here/i.test(item.textContent || ""));
+  if (empty) empty.textContent = "Contributors will appear here after they are added in Studio.";
 
-  const { data, error } = await supabase
-    .from("homepage_sponsors")
-    .select("id,name,website,logo_url,tier,display_order,active,start_date,end_date")
-    .eq("active", true)
-    .order("display_order", { ascending: true })
-    .order("name", { ascending: true });
-  if (error) return;
-
-  const today = new Date().toISOString().split("T")[0];
-  const contributors = (data || []).filter((row: any) => (!row.start_date || row.start_date <= today) && (!row.end_date || row.end_date >= today));
-
-  Array.from(content.querySelectorAll("[data-sdtv-generated-contributors='true']")).forEach((node) => node.remove());
-  const legacyContainer = Array.from(content.children).find((child) => child instanceof HTMLElement && child.classList.contains("space-y-8"));
-  if (legacyContainer) legacyContainer.remove();
-  const empty = Array.from(content.querySelectorAll("p")).find((item) => /Sponsors will appear here|Contributors will appear here/i.test(item.textContent || ""));
-  if (empty) empty.remove();
-
-  if (!contributors.length) {
-    const message = document.createElement("p");
-    message.dataset.sdtvGeneratedContributors = "true";
-    message.className = "text-gray-500";
-    message.textContent = "Contributors will appear here after they are added in Studio.";
-    content.appendChild(message);
-    return;
-  }
-
-  const groups = document.createElement("div");
-  groups.dataset.sdtvGeneratedContributors = "true";
-  groups.className = "space-y-8";
-  TIERS.forEach((tier) => {
-    const rows = contributors.filter((row: any) => normalizeTier(row.tier) === tier);
-    if (!rows.length) return;
-    const block = document.createElement("div");
-    const title = document.createElement("h3");
-    title.className = "mb-4 text-2xl font-black";
-    title.textContent = `${tier}s`;
-    block.appendChild(title);
-    const grid = document.createElement("div");
-    grid.className = "grid gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4";
-    rows.forEach((row: any) => grid.appendChild(createContributorCard(row, tier)));
-    block.appendChild(grid);
-    groups.appendChild(block);
+  const tierHeadings = Array.from(section.querySelectorAll("h3")).filter((item) => /sponsors|partners|contributors/i.test(item.textContent || ""));
+  tierHeadings.forEach((tierHeading) => {
+    tierHeading.textContent = String(tierHeading.textContent || "")
+      .replace(/Gold Sponsors?/i, "Gold Contributors")
+      .replace(/Silver Sponsors?/i, "Silver Contributors")
+      .replace(/Community Partners?/i, "Community Contributors")
+      .replace(/Platinum Sponsors?/i, "Platinum Contributors")
+      .replace(/Bronze Sponsors?/i, "Bronze Contributors");
+    const tone = tierTone(tierHeading.textContent || "");
+    const tierBlock = tierHeading.parentElement;
+    const grid = tierBlock?.querySelector(":scope > div.grid");
+    if (!grid) return;
+    grid.classList.remove("xl:grid-cols-4");
+    grid.classList.add("sm:grid-cols-2", "lg:grid-cols-3", "2xl:grid-cols-4");
+    Array.from(grid.children).forEach((entry) => {
+      const card = entry.matches("a") ? entry.firstElementChild : entry;
+      if (!(card instanceof HTMLElement) || card.dataset.sdtvContributorShowcase === "true") return;
+      card.dataset.sdtvContributorShowcase = "true";
+      card.classList.remove("p-5", "shadow-sm");
+      card.classList.add("relative", "overflow-hidden", "group", "p-3", "shadow-lg", "hover:-translate-y-1", "hover:shadow-2xl", "duration-300");
+      card.style.minHeight = "0"; card.style.borderColor = tone.border; card.style.background = tone.background;
+      const badge = document.createElement("span"); badge.textContent = tone.badge; badge.className = "absolute left-4 top-4 z-10 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide shadow-sm"; badge.style.background = tone.border; badge.style.color = "#111827"; card.prepend(badge);
+      const logoFrame = Array.from(card.children).find((child) => child instanceof HTMLElement && child.querySelector("img")) as HTMLElement | undefined;
+      if (logoFrame) { logoFrame.className = "mt-8 mb-3 grid w-full place-items-center overflow-hidden rounded-2xl border p-4 sm:p-5"; logoFrame.style.height = "clamp(190px, 24vw, 270px)"; logoFrame.style.background = tone.canvas; logoFrame.style.borderColor = `${tone.border}66`; const image = logoFrame.querySelector("img"); if (image instanceof HTMLImageElement) { image.className = "block transition duration-300 group-hover:scale-[1.03]"; image.style.width = "100%"; image.style.height = "100%"; image.style.maxWidth = "100%"; image.style.maxHeight = "100%"; image.style.objectFit = "contain"; image.style.objectPosition = "center"; image.style.padding = "0"; } }
+      const name = card.querySelector("h3"); if (name) name.className = "px-2 text-xl font-black leading-tight text-slate-950";
+      const visit = Array.from(card.querySelectorAll("p")).find((item) => /visit sponsor|visit contributor/i.test(item.textContent || ""));
+      if (visit instanceof HTMLElement) { visit.textContent = "Visit Contributor →"; visit.className = "mx-2 mb-1 mt-2 inline-flex rounded-full bg-pink-600 px-4 py-2 text-sm font-black text-white transition group-hover:bg-pink-500"; }
+    });
   });
-  content.appendChild(groups);
 }
 
 export default function HomeSponsorCardPolish() {
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => { if (!cancelled) await renderContributors(); };
-    run();
-    const observer = new MutationObserver(() => { if (!document.querySelector("[data-sdtv-generated-contributors='true']")) run(); });
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => { cancelled = true; observer.disconnect(); };
-  }, []);
+  useEffect(() => { applyContributorCardPolish(); const observer = new MutationObserver(applyContributorCardPolish); observer.observe(document.body, { childList: true, subtree: true }); return () => observer.disconnect(); }, []);
   return null;
 }
