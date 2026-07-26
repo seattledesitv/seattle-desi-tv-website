@@ -38,6 +38,7 @@ export default function SiteFooter() {
           <NewsletterSubscribeForm source="footer" compact />
         </div>
       </div>
+
       <div className="max-w-7xl mx-auto mb-8 rounded-[2rem] border border-amber-100 bg-[#fffaf0] p-5 text-slate-950 shadow-2xl shadow-black/20 md:p-6">
         <div className="mb-4">
           <p className="text-sm font-black uppercase tracking-wide text-pink-600">Connect with SDTV</p>
@@ -46,12 +47,14 @@ export default function SiteFooter() {
         </div>
         <SdtvContactButtons tone="light" />
       </div>
-      <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-8">
+
+      <div className="max-w-7xl mx-auto grid gap-8 md:grid-cols-2 xl:grid-cols-4">
         <div>
           <h2 className="text-2xl font-black">Seattle Desi TV</h2>
-          <p className="text-slate-300 mt-3 text-sm">Community media, culture, events, radio, interviews, and stories across the Pacific Northwest.</p>
+          <p className="text-slate-300 mt-3 text-sm leading-6">Community media, culture, events, radio, interviews, and stories across the Pacific Northwest.</p>
           <a href="/submit-content" className="mt-4 inline-flex rounded-xl bg-pink-600 px-4 py-3 text-sm font-black text-white">Submit Content</a>
         </div>
+
         <div>
           <h3 className="font-black mb-3">Explore</h3>
           <div className="grid gap-2 text-sm text-slate-300">
@@ -62,12 +65,12 @@ export default function SiteFooter() {
             <a href="/community-groups">Groups</a>
             <a href="/community-organizations">Organizations</a>
             <a href="/influencers">Influencers</a>
-            <a href="/submit-content">Submit Content</a>
             <a href="/team">Team</a>
             <a href="/contact">Contact</a>
             <a href="/mobile-app">Mobile App Instructions</a>
           </div>
         </div>
+
         <div>
           <h3 className="font-black mb-3">My SDTV</h3>
           <div className="grid gap-2 text-sm text-slate-300">
@@ -79,8 +82,26 @@ export default function SiteFooter() {
             <a href="/login">{loggedIn ? "My Account" : "Login"}</a>
           </div>
         </div>
+
+        <div>
+          <h3 className="font-black mb-3">Legal</h3>
+          <div className="grid gap-2 text-sm text-slate-300">
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms & Conditions</a>
+            <a href="/content-policy">Content Usage Policy</a>
+          </div>
+          <div className="mt-6 border-t border-white/10 pt-5 text-sm text-slate-300">
+            <p className="font-black text-white">Platform designed &amp; developed by</p>
+            <p className="mt-1">Bharath Kumar Arekapudi</p>
+            <a className="mt-2 inline-block text-pink-300 underline" href="mailto:abharathkumar@gmail.com">abharathkumar@gmail.com</a>
+          </div>
+        </div>
       </div>
-      <div className="max-w-7xl mx-auto border-t border-white/10 mt-8 pt-6 text-xs text-slate-400">Seattle Desi TV community media platform.</div>
+
+      <div className="max-w-7xl mx-auto mt-8 flex flex-col gap-3 border-t border-white/10 pt-6 text-xs text-slate-400 md:flex-row md:items-center md:justify-between">
+        <p>© 2026 Seattle Desi TV. All Rights Reserved.</p>
+        <p>SDTV Platform v1.0.3</p>
+      </div>
     </footer>
   );
 }
