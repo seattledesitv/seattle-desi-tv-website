@@ -40,6 +40,18 @@ async function loadRows(table: string, publicOnly: boolean) {
   return fallback.error ? [] : (fallback.data || []) as Row[];
 }
 
+function attachLightbox(button: HTMLButtonElement, src: string, name: string) {
+  if (button.dataset.directoryLightboxReady === "yes") return;
+  button.dataset.directoryLightboxReady = "yes";
+  button.addEventListener("click", () => {
+    const overlay = document.createElement("div");
+    overlay.className = "fixed inset-0 z-[1000] grid place-items-center bg-slate-950/90 p-4";
+    overlay.innerHTML = `<button class="absolute right-4 top-4 rounded-full bg-white px-4 py-2 font-black text-slate-950">Close ×</button><img src="${escapeAttribute(src)}" alt="${escapeAttribute(name)}" class="max-h-[90vh] max-w-[95vw] rounded-2xl bg-white object-contain shadow-2xl">`;
+    overlay.addEventListener("click", (event) => { if (event.target === overlay || (event.target as HTMLElement).tagName === "BUTTON") overlay.remove(); });
+    document.body.appendChild(overlay);
+  });
+}
+
 export default function DirectoryMediaEnhancer() {
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -65,17 +77,15 @@ export default function DirectoryMediaEnhancer() {
         if (src) {
           let button = article.querySelector("[data-directory-media-image='yes']") as HTMLButtonElement | null;
           if (!button) {
-            button = document.createElement("button"); button.type = "button"; button.dataset.directoryMediaImage = "yes"; button.className = "group relative mb-5 block h-56 w-full overflow-hidden rounded-2xl bg-slate-100";
+            button = document.createElement("button"); button.type = "button"; button.dataset.directoryMediaImage = "yes"; button.className = "group relative block h-56 w-full overflow-hidden bg-slate-100";
             button.innerHTML = `<img src="${escapeAttribute(src)}" alt="${escapeAttribute(row.name)}" class="h-full w-full transition duration-300 group-hover:brightness-75"><span class="pointer-events-none absolute inset-x-0 bottom-0 z-10 translate-y-full bg-slate-950/80 px-4 py-3 text-center text-sm font-black text-white transition group-hover:translate-y-0">View full image</span>`;
-            button.addEventListener("click", () => { const overlay = document.createElement("div"); overlay.className = "fixed inset-0 z-[1000] grid place-items-center bg-slate-950/90 p-4"; overlay.innerHTML = `<button class="absolute right-4 top-4 rounded-full bg-white px-4 py-2 font-black text-slate-950">Close ×</button><img src="${escapeAttribute(src)}" alt="${escapeAttribute(row.name)}" class="max-h-[90vh] max-w-[95vw] rounded-2xl bg-white object-contain shadow-2xl">`; overlay.addEventListener("click", (event) => { if (event.target === overlay || (event.target as HTMLElement).tagName === "BUTTON") overlay.remove(); }); document.body.appendChild(overlay); });
             article.prepend(button);
           }
+          attachLightbox(button, src, row.name);
           const img = button.querySelector("img"); if (img instanceof HTMLImageElement) applyPresentation(button, img, row);
         }
         if (!article.querySelector("[data-organization-manage-action='yes']")) {
-          const panel = document.createElement("div");
-          panel.dataset.organizationManageAction = "yes";
-          panel.className = "mt-5 border-t border-slate-200 pt-4";
+          const panel = document.createElement("div"); panel.dataset.organizationManageAction = "yes"; panel.className = "mt-5 border-t border-slate-200 pt-4";
           panel.innerHTML = `<p class="mb-3 text-sm font-bold text-slate-600">Are you an authorized representative of this organization?</p><a href="/community-organizations/manage?organization=${row.id}" class="inline-flex rounded-full bg-pink-600 px-4 py-2 text-sm font-black text-white hover:bg-pink-700">Manage this Organization</a>`;
           article.appendChild(panel);
         }
