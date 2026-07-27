@@ -49,7 +49,7 @@ export default function SubmitEventPage() {
   }
 
   return <main className="min-h-screen bg-slate-50 text-slate-950"><SiteHeader/><section className="mx-auto max-w-4xl px-6 py-12">
-    <a href={organization?.id?`/my-organizations":"/events"} className="font-black text-pink-600">← Back</a>
+    <a href={organization?.id?"/my-organizations":"/events"} className="font-black text-pink-600">← Back</a>
     <p className="mt-8 text-sm font-black uppercase tracking-widest text-pink-600">Community Events</p>
     <h1 className="mt-2 text-4xl font-black">Submit an Event</h1>
     <p className="mt-3 text-slate-600">Share an upcoming community event with Seattle Desi TV. Submissions are reviewed before publication.</p>
