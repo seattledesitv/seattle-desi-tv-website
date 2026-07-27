@@ -38,6 +38,8 @@ function blank(kind: Kind) {
 
 function norm(value: string) { return String(value || "").toLowerCase(); }
 function linkFor(row: any) { return row.group_url || row.website || ""; }
+function imageFor(row: any) { return Array.isArray(row?.image_urls) && row.image_urls[0] ? row.image_urls[0] : row?.image || ""; }
+function initials(value?: string | null) { return String(value || "SDTV").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "SD"; }
 function tag(value?: string | null) { return value ? <span className="rounded-full bg-pink-50 px-3 py-1 text-xs font-black text-pink-700">{value}</span> : null; }
 function dateText(value?: string | null) { if (!value) return ""; const date = new Date(`${String(value).split("T")[0]}T00:00:00`); return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }); }
 function eventImage(event: any) { return Array.isArray(event?.image_urls) && event.image_urls[0] ? event.image_urls[0] : event?.image || ""; }
@@ -76,7 +78,7 @@ export default function CommunityDirectoryPage({ kind }: { kind: Kind }) {
     setUser(auth?.user || null);
     const columns = kind === "groups"
       ? "id,name,platform,category,language,location,description,group_url,contact_name,contact_email,created_at"
-      : "id,name,organization_type,category,location,website,description,contact_name,contact_email,created_at";
+      : "id,name,organization_type,category,location,website,description,contact_name,contact_email,created_at,image,image_position_x,image_position_y,image_zoom,image_display_mode";
     const listingResult = await supabase.from(config.table).select(columns).eq("status", "approved").eq("approved", true).order("created_at", { ascending: false });
     setItems(listingResult.data || []);
     if (kind === "organizations") {
@@ -146,24 +148,31 @@ export default function CommunityDirectoryPage({ kind }: { kind: Kind }) {
             const upcoming = links.filter((link: any) => String(link.events?.date || "") >= today).sort((a: any, b: any) => String(a.events.date).localeCompare(String(b.events.date)));
             const past = links.filter((link: any) => String(link.events?.date || "") < today).sort((a: any, b: any) => String(b.events.date).localeCompare(String(a.events.date)));
             const expanded = expandedId === item.id;
-            return <article key={item.id} className={`rounded-3xl border bg-slate-50 p-5 transition ${expanded ? "md:col-span-2 border-pink-200 shadow-lg" : ""}`}>
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div><h3 className="text-2xl font-black">{item.name}</h3><p className="mt-1 text-sm font-bold text-slate-500">{item.location || "Seattle Area"}</p></div>
-                <div className="flex flex-wrap gap-2">{tag(item.platform || item.organization_type)}{tag(item.category)}{tag(item.language)}</div>
+            const image = imageFor(item);
+            return <article key={item.id} className={`flex h-full flex-col overflow-hidden rounded-3xl border bg-slate-50 transition ${expanded ? "md:col-span-2 border-pink-200 shadow-lg" : ""}`}>
+              {kind === "organizations" && (image
+                ? <button type="button" data-directory-media-image="yes" className="group relative block h-56 w-full overflow-hidden bg-slate-100"><img src={image} alt={item.name} className="h-full w-full object-cover transition duration-300 group-hover:brightness-75" /><span className="pointer-events-none absolute inset-x-0 bottom-0 z-10 translate-y-full bg-slate-950/80 px-4 py-3 text-center text-sm font-black text-white transition group-hover:translate-y-0">View full image</span></button>
+                : <div className="grid h-56 w-full place-items-center bg-gradient-to-br from-slate-100 to-slate-200 text-center"><div><div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-white text-2xl font-black text-pink-600 shadow-sm">{initials(item.name)}</div><p className="mt-3 text-sm font-black text-slate-500">Organization image coming soon</p></div></div>)}
+              <div className="flex flex-1 flex-col p-5">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div><h3 className="text-2xl font-black">{item.name}</h3><p className="mt-1 text-sm font-bold text-slate-500">{item.location || "Seattle Area"}</p></div>
+                  <div className="flex flex-wrap gap-2">{tag(item.platform || item.organization_type)}{tag(item.category)}{tag(item.language)}</div>
+                </div>
+                {item.description && <p className="mt-4 text-slate-700">{item.description}</p>}
+                {kind === "organizations" && <div className="mt-4 flex flex-wrap gap-2 text-xs font-black"><span className="rounded-full border bg-white px-3 py-1">{links.length} linked event{links.length === 1 ? "" : "s"}</span><span className="rounded-full bg-green-50 px-3 py-1 text-green-700">{upcoming.length} upcoming</span>{past.length > 0 && <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{past.length} past</span>}</div>}
+                <div className="mt-4 flex flex-wrap gap-3">
+                  {kind === "organizations" && <a href={`/community-organizations/${item.id}`} className="rounded-xl bg-pink-600 px-4 py-2 text-sm font-black text-white">View Profile →</a>}
+                  {linkFor(item) && <CheckedExternalLink href={linkFor(item)} notFoundMessage="This community link is not available." className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-black text-white disabled:opacity-60">Visit Website</CheckedExternalLink>}
+                  {kind === "organizations" && <button type="button" onClick={() => setExpandedId(expanded ? "" : item.id)} className="rounded-xl border border-pink-200 bg-pink-50 px-4 py-2 text-sm font-black text-pink-700">{expanded ? "Hide Events" : links.length ? "Show Events" : "Event History"} {expanded ? "▲" : "▼"}</button>}
+                  {item.contact_email && <a href={`mailto:${item.contact_email}`} className="rounded-xl border bg-white px-4 py-2 text-sm font-black text-slate-950">Contact</a>}
+                </div>
+                {kind === "organizations" && <div data-organization-manage-action="yes" className="mt-auto pt-5"><div className="rounded-2xl border border-pink-100 bg-white p-4"><p className="text-sm font-black text-slate-800">Are you an authorized representative?</p><p className="mt-1 text-xs font-bold text-slate-500">Verify your role to keep this organization profile accurate.</p><a href={`/community-organizations/manage?organization=${item.id}`} className="mt-3 inline-flex rounded-full bg-pink-600 px-4 py-2 text-sm font-black text-white hover:bg-pink-700">Manage this Organization</a></div></div>}
+                {expanded && <div className="mt-5 border-t pt-5">
+                  <div className="flex items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wide text-pink-600">Connected Events</p><h4 className="mt-1 text-xl font-black">Upcoming Events</h4></div><a href={`/community-organizations/${item.id}`} className="text-sm font-black text-pink-600">View full profile →</a></div>
+                  {upcoming.length > 0 ? <div className="mt-4 grid gap-3 md:grid-cols-3">{upcoming.slice(0, 3).map((link: any) => { const event = link.events; const eventCardImage = eventImage(event); return <a key={link.id} href={`/events/${event.id}`} className="overflow-hidden rounded-2xl border bg-white transition hover:-translate-y-1 hover:shadow-md">{eventCardImage ? <img src={eventCardImage} alt={event.title} className="h-32 w-full object-cover" /> : <div className="grid h-32 place-items-center bg-slate-900 text-sm font-black text-pink-200">Seattle Desi TV</div>}<div className="p-4"><p className="text-xs font-black uppercase tracking-wide text-pink-600">{link.relationship}</p><h5 className="mt-1 line-clamp-2 font-black">{event.title}</h5><p className="mt-2 text-xs font-bold text-slate-500">{dateText(event.date)}{event.location ? ` · ${event.location}` : ""}</p></div></a>; })}</div> : <p className="mt-4 rounded-2xl bg-white p-4 font-bold text-slate-500">No upcoming linked events yet.</p>}
+                  {past.length > 0 && <div className="mt-5"><h4 className="font-black">Recent Past Events</h4><div className="mt-2 grid gap-2 md:grid-cols-2">{past.slice(0, 4).map((link: any) => <a key={link.id} href={`/events/${link.events.id}`} className="flex items-center justify-between gap-3 rounded-xl border bg-white p-3"><div><p className="font-black">{link.events.title}</p><p className="mt-1 text-xs text-slate-500">{dateText(link.events.date)} · {link.relationship}</p></div><span className="font-black text-pink-600">View →</span></a>)}</div></div>}
+                </div>}
               </div>
-              {item.description && <p className="mt-4 text-slate-700">{item.description}</p>}
-              {kind === "organizations" && <div className="mt-4 flex flex-wrap gap-2 text-xs font-black"><span className="rounded-full bg-white px-3 py-1 border">{links.length} linked event{links.length === 1 ? "" : "s"}</span><span className="rounded-full bg-green-50 px-3 py-1 text-green-700">{upcoming.length} upcoming</span>{past.length > 0 && <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{past.length} past</span>}</div>}
-              <div className="mt-4 flex flex-wrap gap-3">
-                {linkFor(item) && <CheckedExternalLink href={linkFor(item)} notFoundMessage="This community link is not available." className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-black text-white disabled:opacity-60">Open Link</CheckedExternalLink>}
-                {item.contact_email && <a href={`mailto:${item.contact_email}`} className="rounded-xl border bg-white px-4 py-2 text-sm font-black text-slate-950">Contact</a>}
-                {kind === "organizations" && <button type="button" onClick={() => setExpandedId(expanded ? "" : item.id)} className="rounded-xl border border-pink-200 bg-pink-50 px-4 py-2 text-sm font-black text-pink-700">{expanded ? "Hide Events" : links.length ? "Show Events" : "Event History"} {expanded ? "▲" : "▼"}</button>}
-                {kind === "organizations" && <a href={`/community-organizations/${item.id}`} className="rounded-xl border bg-white px-4 py-2 text-sm font-black text-slate-950">View Profile →</a>}
-              </div>
-              {expanded && <div className="mt-5 border-t pt-5">
-                <div className="flex items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wide text-pink-600">Connected Events</p><h4 className="mt-1 text-xl font-black">Upcoming Events</h4></div><a href={`/community-organizations/${item.id}`} className="text-sm font-black text-pink-600">View full profile →</a></div>
-                {upcoming.length > 0 ? <div className="mt-4 grid gap-3 md:grid-cols-3">{upcoming.slice(0, 3).map((link: any) => { const event = link.events; const image = eventImage(event); return <a key={link.id} href={`/events/${event.id}`} className="overflow-hidden rounded-2xl border bg-white transition hover:-translate-y-1 hover:shadow-md">{image ? <img src={image} alt={event.title} className="h-32 w-full object-cover" /> : <div className="grid h-32 place-items-center bg-slate-900 text-sm font-black text-pink-200">Seattle Desi TV</div>}<div className="p-4"><p className="text-xs font-black uppercase tracking-wide text-pink-600">{link.relationship}</p><h5 className="mt-1 line-clamp-2 font-black">{event.title}</h5><p className="mt-2 text-xs font-bold text-slate-500">{dateText(event.date)}{event.location ? ` · ${event.location}` : ""}</p></div></a>; })}</div> : <p className="mt-4 rounded-2xl bg-white p-4 font-bold text-slate-500">No upcoming linked events yet.</p>}
-                {past.length > 0 && <div className="mt-5"><h4 className="font-black">Recent Past Events</h4><div className="mt-2 grid gap-2 md:grid-cols-2">{past.slice(0, 4).map((link: any) => <a key={link.id} href={`/events/${link.events.id}`} className="flex items-center justify-between gap-3 rounded-xl border bg-white p-3"><div><p className="font-black">{link.events.title}</p><p className="mt-1 text-xs text-slate-500">{dateText(link.events.date)} · {link.relationship}</p></div><span className="font-black text-pink-600">View →</span></a>)}</div></div>}
-              </div>}
             </article>;
           })}
           {!loading && filtered.length === 0 && <p className="rounded-2xl bg-slate-50 p-5 font-bold text-slate-500 md:col-span-2">No approved listings found yet.</p>}
