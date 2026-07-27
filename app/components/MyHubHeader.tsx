@@ -49,6 +49,7 @@ export default function MyHubHeader() {
     { label: "My Event Organizations", href: "/my-event-organizations", show: Boolean(email) },
     { label: "My Event Status", href: "/my-events-v2", show: true },
     { label: "My Businesses", href: "/my-businesses", show: true },
+    { label: "My Organizations", href: "/my-organizations", show: Boolean(email) },
     { label: "My Coverage Opportunities", href: "/my-coverage", show: true, tone: canSeeTeamTools ? "default" : "team" },
     { label: "My Coverage Assignments", href: "/my-assignments", show: true, tone: canSeeTeamTools ? "default" : "team" },
     { label: "My Video Assignments", href: "/my-video-assignments", show: canSeeVideoTools, tone: "default" },
