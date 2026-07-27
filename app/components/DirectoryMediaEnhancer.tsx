@@ -86,7 +86,7 @@ export default function DirectoryMediaEnhancer() {
         }
         if (!article.querySelector("[data-organization-manage-action='yes']")) {
           const panel = document.createElement("div"); panel.dataset.organizationManageAction = "yes"; panel.className = "mt-5 border-t border-slate-200 pt-4";
-          panel.innerHTML = `<p class="mb-3 text-sm font-bold text-slate-600">Are you an authorized representative of this organization?</p><a href="/community-organizations/manage?organization=${row.id}" class="inline-flex rounded-full bg-pink-600 px-4 py-2 text-sm font-black text-white hover:bg-pink-700">Manage this Organization</a>`;
+          panel.innerHTML = `<p class="mb-3 text-sm font-bold text-slate-600">Are you an authorized representative of this organization?</p><div class="flex flex-wrap gap-2"><a href="/community-organizations/manage?organization=${row.id}" class="inline-flex rounded-full bg-pink-600 px-4 py-2 text-sm font-black text-white hover:bg-pink-700">Manage this Organization</a><a href="/community-organizations/suggest-update?organization=${row.id}" class="inline-flex rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-black text-slate-700 hover:border-pink-300 hover:text-pink-700">Suggest an Update</a></div>`;
           article.appendChild(panel);
         }
       });
