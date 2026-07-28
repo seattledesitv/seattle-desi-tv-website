@@ -15,11 +15,29 @@ type HeaderLink = { label: string; href: string; show: boolean; primary?: boolea
 
 function readCachedHeaderState() {
   if (typeof window === "undefined") return { email: "", role: "general_public" };
-  try { const raw = window.localStorage.getItem(HEADER_CACHE_KEY); return raw ? JSON.parse(raw) : { email: "", role: "general_public" }; } catch { return { email: "", role: "general_public" }; }
+  try {
+    const raw = window.localStorage.getItem(HEADER_CACHE_KEY);
+    return raw ? JSON.parse(raw) : { email: "", role: "general_public" };
+  } catch {
+    return { email: "", role: "general_public" };
+  }
 }
-function writeCachedHeaderState(state: any) { if (typeof window === "undefined") return; try { window.localStorage.setItem(HEADER_CACHE_KEY, JSON.stringify(state)); } catch {} }
-function normalizeImage(value?: string | null) { return String(value || "").trim().replace(/\?.*$/, ""); }
-function eventImage(row: any) { if (Array.isArray(row?.image_urls) && row.image_urls.length > 0) return row.image_urls[0]; return row?.image || ""; }
+
+function writeCachedHeaderState(state: any) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(HEADER_CACHE_KEY, JSON.stringify(state));
+  } catch {}
+}
+
+function normalizeImage(value?: string | null) {
+  return String(value || "").trim().replace(/\?.*$/, "");
+}
+
+function eventImage(row: any) {
+  if (Array.isArray(row?.image_urls) && row.image_urls.length > 0) return row.image_urls[0];
+  return row?.image || "";
+}
 
 function installHeroThemeStyles() {
   if (typeof document === "undefined" || document.getElementById(HERO_STYLE_ID)) return;
@@ -96,7 +114,7 @@ export default function SiteHeader() {
       setRole(nextRole);
       writeCachedHeaderState({ email: currentUser?.email || "", role: nextRole });
     }
-    loadState();
+    void loadState();
   }, []);
 
   useEffect(() => {
@@ -106,13 +124,130 @@ export default function SiteHeader() {
   }, [pathname]);
 
   const canSeeStudio = Boolean(isLoggedIn && isAdminRole(role));
-  const communityLinks: HeaderLink[] = [{ label: "Groups", href: "/community-groups", show: true }, { label: "Organizations", href: "/community-organizations", show: true }];
-  const links: HeaderLink[] = [{ label: "Home", href: "/", show: true }, { label: "TV", href: "/tv", show: true }, { label: "Radio", href: "/radio", show: true }, { label: "Events", href: "/events", show: true }, { label: "Businesses", href: "/businesses", show: true }, { label: "Influencers", href: "/influencers", show: true }, { label: "Advertise", href: "/marketing-packages", show: true }, { label: "Team", href: "/team", show: true }, { label: "Contact", href: "/contact", show: true }, { label: "My Hub", href: "/my-hub", show: isLoggedIn }, { label: "Studio", href: "/studio", show: canSeeStudio }];
+  const communityLinks: HeaderLink[] = [
+    { label: "Groups", href: "/community-groups", show: true },
+    { label: "Organizations", href: "/community-organizations", show: true },
+  ];
+  const links: HeaderLink[] = [
+    { label: "Home", href: "/", show: true },
+    { label: "TV", href: "/tv", show: true },
+    { label: "Radio", href: "/radio", show: true },
+    { label: "Events", href: "/events", show: true },
+    { label: "Businesses", href: "/businesses", show: true },
+    { label: "Influencers", href: "/influencers", show: true },
+    { label: "Advertise", href: "/marketing-packages", show: true },
+    { label: "Team", href: "/team", show: true },
+    { label: "Contact", href: "/contact", show: true },
+    { label: "My Hub", href: "/my-hub", show: isLoggedIn },
+    { label: "Studio", href: "/studio", show: canSeeStudio },
+  ];
   const mobileLinks: HeaderLink[] = [{ label: "Share with SDTV", href: "/submit-content", show: true, primary: true }, ...links];
-  function isActive(href: string) { if (href === "/") return pathname === "/"; return pathname === href || pathname.startsWith(`${href}/`); }
-  const communityActive = communityLinks.some((link) => isActive(link.href));
-  function desktopLinkClass(link: HeaderLink) { if (isActive(link.href)) return "rounded-xl bg-pink-600 px-3 py-2 text-white shadow-sm shadow-pink-200/60 whitespace-nowrap"; return "rounded-xl px-2 py-2 hover:bg-pink-50 hover:text-pink-600 whitespace-nowrap"; }
-  function mobileLinkClass(link: HeaderLink) { if (isActive(link.href)) return "bg-pink-600 text-white ring-2 ring-pink-200"; return link.primary ? "bg-pink-600 text-white" : "bg-slate-100 text-slate-950"; }
 
-  return <><div className="bg-[#050b18] text-white text-sm px-4 md:px-10 py-2 flex flex-wrap items-center justify-between gap-3"><div className="hidden sm:flex gap-4 flex-wrap"><a href="https://www.youtube.com/@SeattleDesiTV" target="_blank" rel="noreferrer" className="hover:text-pink-300">YouTube</a><a href="https://instagram.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-300">Instagram</a><a href="https://facebook.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-300">Facebook</a><a href="mailto:info@seattledesitv.com" className="hover:text-pink-300">info@seattledesitv.com</a></div><span className="font-bold text-yellow-300">Seattle Desi TV + Radio</span></div><header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b px-3 md:px-10 py-3 text-slate-950"><div className="max-w-7xl mx-auto flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3 md:gap-4"><a href="/" className="flex min-w-0 items-center gap-2 font-black text-base md:text-xl"><img src="/sdtv-logo.png" alt="Seattle Desi TV" className="h-10 md:h-14 w-auto shrink-0" /><span className="truncate">Seattle Desi TV</span></a><a href="/submit-content" className="hidden sm:inline-flex rounded-xl bg-pink-600 px-4 py-2 text-sm font-black text-white shadow-sm hover:bg-pink-700">Share with SDTV</a></div><nav className="hidden lg:flex items-center gap-1 font-bold text-sm">{links.filter((link) => link.show).slice(0, 5).map((link) => <a key={link.href + link.label} href={link.href} aria-current={isActive(link.href) ? "page" : undefined} className={desktopLinkClass(link)}>{link.label}</a>)}<div className="relative" onMouseEnter={() => setCommunityOpen(true)} onMouseLeave={() => setCommunityOpen(false)}><button type="button" onClick={() => setCommunityOpen((open) => !open)} aria-expanded={communityOpen} className={communityActive ? "rounded-xl bg-pink-600 px-3 py-2 text-white shadow-sm shadow-pink-200/60 whitespace-nowrap" : "rounded-xl px-2 py-2 hover:bg-pink-50 hover:text-pink-600 whitespace-nowrap"}>Community ▾</button>{communityOpen && <div className="absolute left-0 top-full z-50 mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-2 text-slate-950 shadow-2xl">{communityLinks.map((link) => <a key={link.href} href={link.href} className="block rounded-xl px-4 py-3 hover:bg-pink-50 hover:text-pink-600">{link.label}</a>)}</div>}</div>{links.filter((link) => link.show).slice(5).map((link) => <a key={link.href + link.label} href={link.href} aria-current={isActive(link.href) ? "page" : undefined} className={desktopLinkClass(link)}>{link.label}</a>)}<AccountMenu tone="light" from="site" /></nav><div className="lg:hidden flex items-center gap-2 shrink-0"><AccountMenu tone="light" from="site" /><button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} className="border border-slate-300 px-3 py-2 rounded-xl font-black text-sm">{menuOpen ? "Close" : "Menu"}</button></div></div>{menuOpen && <nav className="lg:hidden max-w-7xl mx-auto mt-3 grid grid-cols-2 gap-2 text-sm font-bold">{mobileLinks.filter((link) => link.show).map((link) => <a key={link.href + link.label} href={link.href} aria-current={isActive(link.href) ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`${mobileLinkClass(link)} px-3 py-3 rounded-xl text-center`}>{link.label}</a>)}<div className="col-span-2 mt-1 rounded-xl bg-slate-950 px-3 py-2 text-center text-xs font-black uppercase tracking-wide text-pink-200">Community</div>{communityLinks.map((link) => <a key={link.href} href={link.href} aria-current={isActive(link.href) ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`${mobileLinkClass(link)} px-3 py-3 rounded-xl text-center`}>{link.label}</a>)}</nav>}</header></>;
+  function isActive(href: string) {
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
+
+  const communityActive = communityLinks.some((link) => isActive(link.href));
+
+  function desktopLinkClass(link: HeaderLink) {
+    if (isActive(link.href)) return "rounded-xl bg-pink-600 px-3 py-2 text-white shadow-sm shadow-pink-200/60 whitespace-nowrap";
+    return "rounded-xl px-2 py-2 hover:bg-pink-50 hover:text-pink-600 whitespace-nowrap";
+  }
+
+  function mobileLinkClass(link: HeaderLink) {
+    if (isActive(link.href)) return "bg-pink-600 text-white ring-2 ring-pink-200";
+    return link.primary ? "bg-pink-600 text-white" : "bg-slate-100 text-slate-950";
+  }
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-[#050b18] px-4 py-2 text-sm text-white md:px-10">
+        <div className="hidden flex-wrap gap-4 sm:flex">
+          <a href="https://www.youtube.com/@SeattleDesiTV" target="_blank" rel="noreferrer" className="hover:text-pink-300">YouTube</a>
+          <a href="https://instagram.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-300">Instagram</a>
+          <a href="https://facebook.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-300">Facebook</a>
+          <a href="mailto:info@seattledesitv.com" className="hover:text-pink-300">info@seattledesitv.com</a>
+        </div>
+        <span className="font-bold text-yellow-300">Seattle Desi TV + Radio</span>
+      </div>
+
+      <header className="sticky top-0 z-40 border-b bg-white/95 px-3 py-3 text-slate-950 backdrop-blur md:px-10">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3 md:gap-4">
+            <a href="/" className="flex min-w-0 items-center gap-2 text-base font-black md:text-xl">
+              <img src="/sdtv-logo.png" alt="Seattle Desi TV" className="h-10 w-auto shrink-0 md:h-14" />
+              <span className="truncate">Seattle Desi TV</span>
+            </a>
+            <a href="/submit-content" className="hidden rounded-xl bg-pink-600 px-4 py-2 text-sm font-black text-white shadow-sm hover:bg-pink-700 sm:inline-flex">Share with SDTV</a>
+          </div>
+
+          <nav className="hidden items-center gap-1 text-sm font-bold lg:flex">
+            {links.filter((link) => link.show).slice(0, 5).map((link) => (
+              <a key={link.href + link.label} href={link.href} aria-current={isActive(link.href) ? "page" : undefined} className={desktopLinkClass(link)}>{link.label}</a>
+            ))}
+
+            <div
+              className="relative"
+              onMouseEnter={() => setCommunityOpen(true)}
+              onMouseLeave={() => setCommunityOpen(false)}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setCommunityOpen(false);
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setCommunityOpen((open) => !open)}
+                aria-expanded={communityOpen}
+                aria-haspopup="menu"
+                className={communityActive ? "rounded-xl bg-pink-600 px-3 py-2 text-white shadow-sm shadow-pink-200/60 whitespace-nowrap" : "rounded-xl px-2 py-2 hover:bg-pink-50 hover:text-pink-600 whitespace-nowrap"}
+              >
+                Community ▾
+              </button>
+
+              {communityOpen && (
+                <div className="absolute left-0 top-full z-[100] w-56 pt-2" role="menu">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-2 text-slate-950 shadow-2xl">
+                    {communityLinks.map((link) => (
+                      <a
+                        key={link.href}
+                        href={link.href}
+                        role="menuitem"
+                        onClick={() => setCommunityOpen(false)}
+                        className="block rounded-xl px-4 py-3 hover:bg-pink-50 hover:text-pink-600 focus:bg-pink-50 focus:text-pink-600 focus:outline-none"
+                      >
+                        {link.label}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {links.filter((link) => link.show).slice(5).map((link) => (
+              <a key={link.href + link.label} href={link.href} aria-current={isActive(link.href) ? "page" : undefined} className={desktopLinkClass(link)}>{link.label}</a>
+            ))}
+            <AccountMenu tone="light" from="site" />
+          </nav>
+
+          <div className="flex shrink-0 items-center gap-2 lg:hidden">
+            <AccountMenu tone="light" from="site" />
+            <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-black">{menuOpen ? "Close" : "Menu"}</button>
+          </div>
+        </div>
+
+        {menuOpen && (
+          <nav className="mx-auto mt-3 grid max-w-7xl grid-cols-2 gap-2 text-sm font-bold lg:hidden">
+            {mobileLinks.filter((link) => link.show).map((link) => (
+              <a key={link.href + link.label} href={link.href} aria-current={isActive(link.href) ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`${mobileLinkClass(link)} rounded-xl px-3 py-3 text-center`}>{link.label}</a>
+            ))}
+            <div className="col-span-2 mt-1 rounded-xl bg-slate-950 px-3 py-2 text-center text-xs font-black uppercase tracking-wide text-pink-200">Community</div>
+            {communityLinks.map((link) => (
+              <a key={link.href} href={link.href} aria-current={isActive(link.href) ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`${mobileLinkClass(link)} rounded-xl px-3 py-3 text-center`}>{link.label}</a>
+            ))}
+          </nav>
+        )}
+      </header>
+    </>
+  );
 }
