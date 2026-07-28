@@ -54,6 +54,13 @@ using (
   )
 );
 
+drop policy if exists "organization event link requests revise own pending" on public.organization_event_link_requests;
+create policy "organization event link requests revise own pending"
+on public.organization_event_link_requests for update
+to authenticated
+using (requested_by = auth.uid() and status = 'pending')
+with check (requested_by = auth.uid() and status = 'pending');
+
 drop policy if exists "organization event link requests admins update" on public.organization_event_link_requests;
 create policy "organization event link requests admins update"
 on public.organization_event_link_requests for update
