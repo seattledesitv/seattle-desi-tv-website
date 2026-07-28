@@ -7,6 +7,7 @@ import BusinessDirectoryOfferClamp from "./components/BusinessDirectoryOfferClam
 import BusinessOwnershipActions from "./components/BusinessOwnershipActions";
 import BusinessReviewSummaryEnhancer from "./components/BusinessReviewSummaryEnhancer";
 import DirectoryMediaEnhancer from "./components/DirectoryMediaEnhancer";
+import EngagementTracker from "./components/EngagementTracker";
 import EventOpsInfluencerNotice from "./components/EventOpsInfluencerNotice";
 import HomeCommunityCallouts from "./components/HomeCommunityCallouts";
 import HomeSponsorCardPolish from "./components/HomeSponsorCardPolish";
@@ -37,6 +38,7 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, maxi
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return <html lang="en"><body>
     <Script id="ld-org" type="application/ld+json" strategy="afterInteractive">{JSON.stringify({ "@context": "https://schema.org", "@type": "Organization", name: "Seattle Desi TV", url: siteUrl, logo: `${siteUrl}/sdtv-logo.png`, sameAs: ["https://www.youtube.com/@SeattleDesiTV", "https://instagram.com/seattledesitv", "https://facebook.com/seattledesitv"] })}</Script>
+    <EngagementTracker />
     <AccessibilityFixes />
     <BusinessDirectoryOfferClamp />
     <BusinessOwnershipActions />
