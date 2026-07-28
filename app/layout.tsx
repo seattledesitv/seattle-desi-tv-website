@@ -13,6 +13,7 @@ import HomeCommunityCallouts from "./components/HomeCommunityCallouts";
 import HomeSponsorCardPolish from "./components/HomeSponsorCardPolish";
 import HomepageHeroBridgeV2 from "./components/home/HomepageHeroBridgeV2";
 import PremiumBusinessCardPolish from "./components/PremiumBusinessCardPolish";
+import PremiumOrganizationCardPolish from "./components/PremiumOrganizationCardPolish";
 import { FloatingWhatsAppButton } from "./components/SdtvContactLinks";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seattledesitv.com";
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <BusinessReviewSummaryEnhancer />
     <DirectoryMediaEnhancer />
     <PremiumBusinessCardPolish />
+    <PremiumOrganizationCardPolish />
     <EventOpsInfluencerNotice />
     <HomepageHeroBridgeV2 />
     <HomeSponsorCardPolish />
