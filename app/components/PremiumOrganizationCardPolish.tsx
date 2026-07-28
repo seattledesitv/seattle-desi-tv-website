@@ -17,15 +17,22 @@ export default function PremiumOrganizationCardPolish() {
   useEffect(() => {
     if (window.location.pathname !== "/community-organizations") return;
     let cancelled = false;
-    let observer: MutationObserver | null = null;
+    const timers: number[] = [];
 
     async function apply() {
-      const { data, error } = await supabase.from("community_organizations").select("id,is_premium,premium_rank,premium_starts_at,premium_ends_at,premium_label").eq("status", "approved").eq("approved", true);
+      const { data, error } = await supabase
+        .from("community_organizations")
+        .select("id,is_premium,premium_rank,premium_starts_at,premium_ends_at,premium_label")
+        .eq("status", "approved")
+        .eq("approved", true);
       if (cancelled || error) return;
+
       const premium = new Map((data || []).filter(active).map((row: any) => [String(row.id), row]));
 
       const enhance = () => {
-        const profileLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href^="/community-organizations/"]')).filter((link) => !link.href.includes("/manage") && !link.href.includes("/suggest-update"));
+        if (cancelled) return;
+        const profileLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href^="/community-organizations/"]'))
+          .filter((link) => !link.href.includes("/manage") && !link.href.includes("/suggest-update"));
         const cards = Array.from(new Set(profileLinks.map((link) => link.closest("article")).filter(Boolean))) as HTMLElement[];
         if (!cards.length) return;
         const parent = cards[0].parentElement;
@@ -49,20 +56,30 @@ export default function PremiumOrganizationCardPolish() {
           }
         });
 
-        cards.sort((a, b) => {
+        const sorted = [...cards].sort((a, b) => {
           const premiumDifference = Number(b.dataset.premium === "yes") - Number(a.dataset.premium === "yes");
           if (premiumDifference) return premiumDifference;
           return Number(a.dataset.premiumRank || 999999) - Number(b.dataset.premiumRank || 999999);
-        }).forEach((card) => parent.appendChild(card));
+        });
+
+        // Reorder only when necessary. This avoids repeated DOM mutations and browser freezes.
+        const current = Array.from(parent.children).filter((child) => cards.includes(child as HTMLElement));
+        const alreadySorted = sorted.every((card, index) => current[index] === card);
+        if (!alreadySorted) sorted.forEach((card) => parent.appendChild(card));
       };
 
-      enhance();
-      observer = new MutationObserver(enhance);
-      observer.observe(document.body, { childList: true, subtree: true });
+      // The directory renders after its database request. A few bounded retries are enough
+      // and avoid the previous body-wide MutationObserver feedback loop.
+      [0, 250, 750, 1500].forEach((delay) => {
+        timers.push(window.setTimeout(enhance, delay));
+      });
     }
 
     void apply();
-    return () => { cancelled = true; observer?.disconnect(); };
+    return () => {
+      cancelled = true;
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
   }, []);
 
   return null;
