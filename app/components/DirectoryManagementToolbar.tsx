@@ -26,6 +26,7 @@ const configs: Record<DirectoryKind, { title: string; links: ToolbarLink[] }> = 
     title: "Organization tools",
     links: [
       { label: "Generate Organizations", href: "/studio/directory-generator?kind=organizations", emphasis: true },
+      { label: "Premium & Hero", href: "/studio/community-orgs/premium" },
       { label: "Research Queue", href: "/studio/community-orgs?queue=research" },
       { label: "Missing Websites", href: "/studio/community-orgs?queue=missing-website" },
       { label: "Missing Images", href: "/studio/community-orgs?queue=missing-image" },
