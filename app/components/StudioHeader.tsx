@@ -48,7 +48,7 @@ function enhanceEventOpsVideoTab() {
     const guidance = statusGuidance(status);
     const helper = document.createElement("div");
     helper.className = `mb-5 rounded-2xl border p-5 ${guidance.tone}`;
-    helper.innerHTML = `<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><p class="text-xs font-black uppercase tracking-wide opacity-80">Admin Video Workflow Guidance</p><h4 class="mt-1 text-2xl font-black capitalize">${guidance.title}</h4><p class="mt-2 text-sm"><b>Current status:</b> ${status}</p><p class="mt-1 text-sm"><b>Waiting on:</b> ${guidance.waiting}</p><p class="mt-2 text-sm">${guidance.action}</p></div><div class="rounded-xl bg-white/70 px-4 py-3 text-center text-sm font-black shadow-sm">Recommended<br/>${guidance.button}</div></div><div class="mt-4 grid gap-2 text-xs font-black md:grid-cols-5">${["Submitted", "Editing", "Crew Review", "Admin Approval", "Published"].map((step) => `<span class="rounded-full bg-white/70 px-3 py-2 text-center">${step}</span>`).join("")}</div>`;
+    helper.innerHTML = `<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><p class="text-xs font-black uppercase tracking-wide opacity-80">Admin Video Workflow Guidance</p><h4 class="mt-1 text-2xl font-black capitalize">${guidance.title}</h4><p class="mt-2 text-sm"><b>Current status:</b> ${status}</p><p class="mt-1 text-sm"><b>Waiting on:</b> ${guidance.waiting}</p><p class="mt-2 text-sm">${guidance.action}</p></div><div class="rounded-xl bg-white/70 px-4 py-3 text-center text-sm font-black shadow-sm">Recommended<br/>${guidance.button}</div></div>`;
     heading.insertAdjacentElement("afterend", helper);
   });
 }
@@ -57,7 +57,7 @@ export default function StudioHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState("");
   const [pathname, setPathname] = useState("");
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const desktopNavRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => { setPathname(window.location.pathname || ""); }, []);
   useEffect(() => {
@@ -65,30 +65,23 @@ export default function StudioHeader() {
     const id = window.setInterval(enhanceEventOpsVideoTab, 700);
     return () => window.clearInterval(id);
   }, [pathname]);
-  useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
 
-  function cancelClose() {
-    if (closeTimer.current) {
-      clearTimeout(closeTimer.current);
-      closeTimer.current = null;
+  useEffect(() => {
+    function closeFromOutside(event: PointerEvent) {
+      if (!desktopNavRef.current?.contains(event.target as Node)) setOpenGroup("");
     }
-  }
+    function closeFromKeyboard(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpenGroup("");
+    }
+    document.addEventListener("pointerdown", closeFromOutside);
+    document.addEventListener("keydown", closeFromKeyboard);
+    return () => {
+      document.removeEventListener("pointerdown", closeFromOutside);
+      document.removeEventListener("keydown", closeFromKeyboard);
+    };
+  }, []);
 
-  function openDesktopGroup(title: string) {
-    cancelClose();
-    setOpenGroup(title);
-  }
-
-  function scheduleClose() {
-    cancelClose();
-    closeTimer.current = setTimeout(() => setOpenGroup(""), 350);
-  }
-
-  function toggleGroup(title: string) {
-    cancelClose();
-    setOpenGroup((current) => current === title ? "" : title);
-  }
-
+  function toggleGroup(title: string) { setOpenGroup((current) => current === title ? "" : title); }
   function isActive(href: string) { return pathname === href || pathname.startsWith(`${href}/`); }
   function navClass(href: string, primary = false) {
     if (isActive(href)) return "bg-pink-600 text-white ring-1 ring-pink-200/40 shadow-lg shadow-pink-900/30";
@@ -104,7 +97,7 @@ export default function StudioHeader() {
             <div className="flex shrink-0 items-center gap-2"><AccountMenu tone="dark" from="studio" /><button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} className="rounded-lg border border-white/20 px-3 py-2 text-sm font-black transition lg:hidden">{menuOpen ? "Close" : "Menu"}</button></div>
           </div>
 
-          <nav className="hidden gap-2 text-sm font-bold lg:grid">
+          <nav ref={desktopNavRef} className="hidden gap-2 text-sm font-bold lg:grid">
             <div className="flex flex-wrap items-center gap-2 border-b border-white/10 pb-2">
               {primaryLinks.map(([label, href]) => <a key={href} href={href} aria-current={isActive(href) ? "page" : undefined} className={`${navClass(href, true)} rounded-lg px-3 py-2 transition`}>{label}</a>)}
             </div>
@@ -112,10 +105,10 @@ export default function StudioHeader() {
               {groups.map((group) => {
                 const isOpen = openGroup === group.title;
                 const groupActive = group.links.some(([, href]) => isActive(href));
-                return <div key={group.title} className="relative" onMouseEnter={() => openDesktopGroup(group.title)} onMouseLeave={scheduleClose}>
+                return <div key={group.title} className="relative" onPointerEnter={() => setOpenGroup(group.title)}>
                   <button type="button" onClick={() => toggleGroup(group.title)} aria-expanded={isOpen} className={`${groupActive ? "bg-pink-600 text-white ring-1 ring-pink-200/40" : "bg-white/10 text-white hover:bg-white/20"} rounded-lg px-3 py-2 transition`}>{group.title} ▾</button>
-                  {isOpen && <div className="absolute left-0 top-full z-50 min-w-64 pt-2" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
-                    <div className="rounded-2xl border border-white/10 bg-slate-900 p-2 shadow-2xl">
+                  {isOpen && <div className="absolute left-0 top-full z-[100] min-w-72 pt-1">
+                    <div className="max-h-[70vh] overflow-y-auto rounded-2xl border border-white/10 bg-slate-900 p-2 shadow-2xl">
                       {group.links.map(([label, href]) => <a key={href} href={href} aria-current={isActive(href) ? "page" : undefined} onClick={() => setOpenGroup("")} className={`${isActive(href) ? "bg-pink-600 ring-1 ring-pink-200/40" : "hover:bg-pink-600"} block rounded-xl px-3 py-2 text-sm text-white`}>{label}</a>)}
                     </div>
                   </div>}
