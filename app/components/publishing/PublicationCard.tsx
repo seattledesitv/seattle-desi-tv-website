@@ -12,12 +12,8 @@ type Props = {
 };
 
 const statusTone: Record<string, string> = {
-  draft: "bg-yellow-100 text-yellow-800",
-  review: "bg-blue-100 text-blue-800",
-  approved: "bg-purple-100 text-purple-800",
-  scheduled: "bg-indigo-100 text-indigo-800",
-  published: "bg-green-100 text-green-800",
-  archived: "bg-slate-200 text-slate-700",
+  draft: "bg-yellow-100 text-yellow-800", review: "bg-blue-100 text-blue-800", approved: "bg-purple-100 text-purple-800",
+  scheduled: "bg-indigo-100 text-indigo-800", published: "bg-green-100 text-green-800", archived: "bg-slate-200 text-slate-700",
 };
 
 function formatDate(value: string) {
@@ -34,8 +30,9 @@ export default function PublicationCard({ publication, busy, onOpen, onDuplicate
         <p className="mt-3 line-clamp-2 text-sm text-slate-600">{publication.description || "No description added yet."}</p>
         <p className="mt-4 text-xs font-bold text-slate-400">Updated {formatDate(publication.updated_at)}</p>
       </div>
-      <div className="flex shrink-0 flex-wrap gap-2 md:max-w-64 md:justify-end">
-        <button disabled={busy} onClick={() => onOpen(publication)} className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-black text-white disabled:opacity-50">Open</button>
+      <div className="flex shrink-0 flex-wrap gap-2 md:max-w-72 md:justify-end">
+        <a href={`/studio/publishing/${publication.id}/content`} className="rounded-xl bg-pink-600 px-4 py-2 text-sm font-black text-white">Content</a>
+        <button disabled={busy} onClick={() => onOpen(publication)} className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-black text-white disabled:opacity-50">Overview</button>
         <button disabled={busy} onClick={() => onDuplicate(publication)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-black disabled:opacity-50">Duplicate</button>
         {publication.status !== "archived" && <button disabled={busy} onClick={() => onArchive(publication)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-black disabled:opacity-50">Archive</button>}
         {publication.status === "draft" && <button disabled={busy} onClick={() => onDelete(publication)} className="rounded-xl border border-red-200 px-4 py-2 text-sm font-black text-red-600 disabled:opacity-50">Delete</button>}
