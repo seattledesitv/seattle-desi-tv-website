@@ -5,7 +5,8 @@
 - Active branch: `feature/publishing-platform-v2`
 - Publishing Platform Sprints 1–4: complete
 - Publishing Platform Sprint 5A: complete
-- Next planned sprint: Sprint 5B — AI Content Engine
+- Publishing Platform Sprint 5B: code complete; migration and provider key required for live use
+- Next planned sprint: Sprint 6 — Preview and Export Engine
 - Deployment and merge status: not performed by the Sprint 4 development work
 
 ## Completed publishing foundation
@@ -74,13 +75,22 @@ No migration was required. Custom text sections use the existing publication-sec
 
 ## Sprint 5B recommendation
 
-Implement the AI Content Engine by extending the existing publication services and item manual-content model:
+Completed functionality:
 
-1. Audit existing AI and prompt integrations.
-2. Define generation requests and source-attribution types.
-3. Add prompt-management persistence only if no suitable schema exists.
-4. Implement item regeneration first, preserving manual fields.
-5. Extend generation to sections and publications.
-6. Add refresh-from-source behavior with explicit editorial merge rules.
-7. Add responsive Studio controls, loading/error states, and generation history where supported.
-8. Complete lint, type checking, affected tests, production build, documentation, and logical commits.
+- Secure admin-only AI generation API
+- Existing Gemini-first/OpenAI-fallback provider convention
+- Item, section, and publication regeneration controls
+- Review-before-apply workflow that protects manual edits
+- Source attribution captured with item generation
+- Versioned administrator prompt management
+- Auditable generation success and failure history
+- No additional npm dependency
+
+Operational requirements:
+
+- Apply `20260729170000_add_publication_ai_content_engine.sql` to Supabase.
+- Configure `GEMINI_API_KEY` or `OPENAI_API_KEY` for live generation.
+
+## Sprint 6 recommendation
+
+Build the multi-channel preview and export engine inside the unified editor, beginning with complete publication and PDF previews, then website, newsletter, social, and mobile renderers.

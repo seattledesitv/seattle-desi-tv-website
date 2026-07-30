@@ -46,6 +46,12 @@ The publication library remains a dashboard. Its primary `Open Editor` action op
 
 Custom text sections use the existing `publication_sections` table with `custom_` section keys and `custom_text` type. Built-in sections may be excluded but not deleted; custom sections may be deleted through the section service. Database cascade rules remove their child publication items.
 
+### AI content engine
+
+The unified editor calls `publicationAiService.ts`, which sends the authenticated session to the admin-only generation API. Provider keys remain server-side. The API uses Gemini when configured and otherwise OpenAI, loads active versioned prompts from Supabase, and records every successful or failed request with its input snapshot, output, source attribution, provider, and model.
+
+AI output is always presented as a suggestion. Editors must explicitly apply it, after which existing section or item autosave persists the chosen fields. Manual content is included in generation context so the model can respect editorial intent; unattended background generation never overwrites manual edits.
+
 ### Editorial save behavior
 
 Manual item fields are saved after a two-second debounce. The hook merges rapid field changes, prevents stale retries from overwriting newer edits, refreshes canonical records after successful saves, and retains still-pending optimistic changes. Immediate actions optimistically update the UI and roll back on failure.
