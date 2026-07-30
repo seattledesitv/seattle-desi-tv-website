@@ -202,3 +202,9 @@ section:has(a[href="/contact?interest=volunteer"]) > div { max-width: 80rem !imp
   iframe { width: 100% !important; }
   img.object-contain, img.object-cover { max-height: 70vh; }
 }
+@media print {
+  body * { visibility: hidden !important; }
+  .publication-print-root, .publication-print-root * { visibility: visible !important; }
+  .publication-print-root { position: absolute !important; inset: 0 !important; width: 100% !important; max-width: none !important; border-radius: 0 !important; box-shadow: none !important; }
+  @page { size: letter; margin: 0.5in; }
+}
