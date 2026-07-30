@@ -167,6 +167,10 @@ export function usePublicationItems(
   }, [runOptimistic, supabase]);
 
   const remove = useCallback((itemId: string) => {
+    const queuedTimer = timers.current.get(itemId);
+    if (queuedTimer) clearTimeout(queuedTimer);
+    timers.current.delete(itemId);
+    pending.current.delete(itemId);
     const next = itemsRef.current.filter((item) => item.id !== itemId);
     return runOptimistic(next, () => removePublicationItem(supabase, itemId), "Could not delete item.");
   }, [runOptimistic, supabase]);
