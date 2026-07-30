@@ -1,0 +1,12 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { listSections } from "../repositories/sectionRepository";
+import { getPublicationItems } from "./publicationItemService";
+import { openPublicationEditorialWorkspace } from "./publicationWorkspaceService";
+import type { PublicationPreviewModel } from "../preview/types";
+export async function buildPublicationPreview(supabase: SupabaseClient, publicationId: string): Promise<PublicationPreviewModel> {
+  const publication = await openPublicationEditorialWorkspace(supabase, publicationId);
+  const sections = (await listSections(supabase, publicationId)).filter((section) => section.included);
+  const withItems = await Promise.all(sections.map(async (section) => ({ ...section, items: (await getPublicationItems(supabase, section.id)).filter((item) => item.inclusion_status === "included") })));
+  return { publication, sections: withItems, generatedAt: new Date().toISOString() };
+}
+export function previewFileName(name: string, extension: string) { return `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "publication"}.${extension}`; }
