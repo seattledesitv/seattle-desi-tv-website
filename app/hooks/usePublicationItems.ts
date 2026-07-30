@@ -96,8 +96,11 @@ export function usePublicationItems(
       const queued = pending.current.get(itemId);
       if (queued === changes) pending.current.delete(itemId);
       await refresh();
-      markSaved();
+      if (pending.current.size) setSaveState("saving");
+      else markSaved();
     } catch (nextError) {
+      const queued = pending.current.get(itemId);
+      if (queued !== changes) return;
       if (attempt === 0) {
         timers.current.set(itemId, setTimeout(
           () => void saveEdits(itemId, changes, 1),
@@ -142,7 +145,8 @@ export function usePublicationItems(
     try {
       await action();
       await refresh();
-      markSaved();
+      if (pending.current.size) setSaveState("saving");
+      else markSaved();
     } catch (nextError) {
       replaceItems(previous);
       setSaveState("error");
