@@ -6,7 +6,8 @@
 - Publishing Platform Sprints 1–4: complete
 - Publishing Platform Sprint 5A: complete
 - Publishing Platform Sprint 5B: code complete; migration and provider key required for live use
-- Next planned sprint: Sprint 6 — Preview and Export Engine
+- Publishing Platform Sprint 6: complete
+- Next planned sprint: Sprint 7 — Publishing Pipeline
 - Deployment and merge status: not performed by the Sprint 4 development work
 
 ## Completed publishing foundation
@@ -93,4 +94,24 @@ Operational requirements:
 
 ## Sprint 6 recommendation
 
-Build the multi-channel preview and export engine inside the unified editor, beginning with complete publication and PDF previews, then website, newsletter, social, and mobile renderers.
+Completed functionality:
+
+- Canonical complete-publication preview model
+- Website preview
+- Newsletter preview
+- Instagram preview
+- Facebook preview
+- LinkedIn preview
+- Mobile preview
+- Print/PDF preview
+- Native Print / Save PDF workflow
+- Standalone HTML export
+- Structured JSON export
+- Included-section and included-item filtering
+- Responsive preview controls within the unified editor
+
+No database migration or npm dependency was required for Sprint 6.
+
+## Sprint 7 recommendation
+
+Implement the publishing pipeline with channel selection, draft output generation, scheduling, retry, publishing history, and per-channel status tracking. Keep actual external publishing adapters isolated behind services and require explicit confirmation before sending content.

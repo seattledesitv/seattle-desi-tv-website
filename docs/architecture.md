@@ -52,6 +52,12 @@ The unified editor calls `publicationAiService.ts`, which sends the authenticate
 
 AI output is always presented as a suggestion. Editors must explicitly apply it, after which existing section or item autosave persists the chosen fields. Manual content is included in generation context so the model can respect editorial intent; unattended background generation never overwrites manual edits.
 
+### Preview and export engine
+
+`previewService.ts` builds one canonical preview model from included sections and included items. Website, newsletter, Instagram, Facebook, LinkedIn, mobile, and print renderers consume that model so channel output cannot drift from editorial state.
+
+The preview workspace supports JSON and standalone HTML downloads. PDF export uses a dedicated print stylesheet and the browser's native Save as PDF workflow, preserving selectable text and avoiding a client-side PDF dependency. Print rules isolate the publication renderer, set letter-size margins, and discourage page breaks inside section items.
+
 ### Editorial save behavior
 
 Manual item fields are saved after a two-second debounce. The hook merges rapid field changes, prevents stale retries from overwriting newer edits, refreshes canonical records after successful saves, and retains still-pending optimistic changes. Immediate actions optimistically update the UI and roll back on failure.
