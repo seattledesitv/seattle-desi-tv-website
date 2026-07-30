@@ -2,20 +2,15 @@
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
 import CheckedExternalLink from "../../../components/CheckedExternalLink";
 import { firstError, normalizeUrl, requireText, validateImageFile, validateOptionalEmail, validateOptionalPhone, validateOptionalUrl } from "../../../lib/validation";
 
-const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
+import { AUTH_STORAGE_KEY, getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
 const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-  { auth: { storageKey: AUTH_STORAGE_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
-);
+const supabase = getSupabaseBrowserClient();
 
 function roleContainsAdmin(role: string) { return String(role || "").toLowerCase().trim().includes("admin"); }
 function emptyForm() { return { name: "", address: "", website: "", category: "", discount: "", offer: "", poc_name: "", poc_email: "", poc_phone: "", image: "", status: "pending", approved: false }; }

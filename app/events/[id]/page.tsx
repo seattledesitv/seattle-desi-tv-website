@@ -2,13 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
 import SiteHeader from "../../components/SiteHeader";
 import SiteFooter from "../../components/SiteFooter";
 import CheckedExternalLink from "../../components/CheckedExternalLink";
 
-const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "", { auth: { storageKey: AUTH_STORAGE_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+import { AUTH_STORAGE_KEY, getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+const supabase = getSupabaseBrowserClient();
 
 function cleanRole(role: string) { return String(role || "general_public").toLowerCase().trim(); }
 function isTeamRole(role: string) { const next = cleanRole(role); return next === "team_member" || next.includes("admin"); }

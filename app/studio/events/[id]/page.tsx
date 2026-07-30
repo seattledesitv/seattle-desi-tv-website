@@ -1,12 +1,10 @@
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
+import { AUTH_STORAGE_KEY, getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
 const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "", { auth: { storageKey: AUTH_STORAGE_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+const supabase = getSupabaseBrowserClient();
 
 const RELATIONSHIPS = ["Organizer", "Co-Organizer", "Community Partner", "Venue Partner", "Media Partner", "Sponsor", "Charity Partner", "Educational Partner"];
 function roleContainsAdmin(role: string) { return String(role || "").toLowerCase().trim().includes("admin"); }
