@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PublicationSectionChanges, PublicationSectionRecord } from "../lib/publishing/repositories/sectionRepository";
-import { ensurePublicationSections, saveSectionChanges, saveSectionOrder } from "../lib/publishing/services/sectionService";
+import { addCustomTextSection, ensurePublicationSections, removeCustomSection, saveSectionChanges, saveSectionOrder } from "../lib/publishing/services/sectionService";
 
 export type SectionSaveState = "idle" | "saving" | "saved" | "error";
 
@@ -20,14 +20,17 @@ export function usePublicationSections(supabase: SupabaseClient, publicationId: 
     setError("");
     try {
       setSections(await ensurePublicationSections(supabase, publicationId));
-    } catch (nextError: any) {
-      setError(nextError.message || "Could not load publication sections.");
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Could not load publication sections.");
     } finally {
       setLoading(false);
     }
   }, [publicationId, supabase]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const loadTimer = setTimeout(() => void load(), 0);
+    return () => clearTimeout(loadTimer);
+  }, [load]);
   useEffect(() => () => timers.current.forEach((timer) => clearTimeout(timer)), []);
 
   const updateLocal = useCallback((sectionId: string, changes: PublicationSectionChanges) => {
@@ -44,9 +47,9 @@ export function usePublicationSections(supabase: SupabaseClient, publicationId: 
       setSections((current) => current.map((item) => item.id === saved.id ? saved : item));
       setSaveState("saved");
       window.setTimeout(() => setSaveState("idle"), 1500);
-    } catch (nextError: any) {
+    } catch (nextError) {
       setSaveState("error");
-      setError(nextError.message || "Could not save section changes.");
+      setError(nextError instanceof Error ? nextError.message : "Could not save section changes.");
     }
   }, [sections, supabase]);
 
@@ -70,12 +73,43 @@ export function usePublicationSections(supabase: SupabaseClient, publicationId: 
       setSections(await saveSectionOrder(supabase, nextSections));
       setSaveState("saved");
       window.setTimeout(() => setSaveState("idle"), 1500);
-    } catch (nextError: any) {
+    } catch (nextError) {
       setSaveState("error");
-      setError(nextError.message || "Could not save section order.");
+      setError(nextError instanceof Error ? nextError.message : "Could not save section order.");
       void load();
     }
   }, [load, supabase]);
 
-  return { sections, loading, saveState, error, update, reorder, reload: load };
+  const addTextSection = useCallback(async (title = "New text section") => {
+    setSaveState("saving");
+    setError("");
+    try {
+      const sortOrder = sections.length ? Math.max(...sections.map((section) => section.sort_order)) + 10 : 0;
+      const created = await addCustomTextSection(supabase, publicationId, title, sortOrder);
+      setSections((current) => [...current, created]);
+      setSaveState("saved");
+      return created;
+    } catch (nextError) {
+      setSaveState("error");
+      setError(nextError instanceof Error ? nextError.message : "Could not add text section.");
+      return null;
+    }
+  }, [publicationId, sections, supabase]);
+
+  const remove = useCallback(async (section: PublicationSectionRecord) => {
+    setSaveState("saving");
+    setError("");
+    try {
+      await removeCustomSection(supabase, section);
+      setSections((current) => current.filter((item) => item.id !== section.id));
+      setSaveState("saved");
+      return true;
+    } catch (nextError) {
+      setSaveState("error");
+      setError(nextError instanceof Error ? nextError.message : "Could not delete section.");
+      return false;
+    }
+  }, [supabase]);
+
+  return { sections, loading, saveState, error, update, reorder, addTextSection, remove, reload: load };
 }

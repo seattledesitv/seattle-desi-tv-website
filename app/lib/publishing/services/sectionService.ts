@@ -1,13 +1,21 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createDefaultSectionSeeds, hasSectionDefinition } from "../sections/registry";
 import {
+  createSection,
   createMissingSections,
+  deleteSection,
   listSections,
   reorderSections,
   updateSection,
   type PublicationSectionChanges,
   type PublicationSectionRecord,
 } from "../repositories/sectionRepository";
+
+function requireId(value: string, label: string): string {
+  const normalized = value.trim();
+  if (!normalized) throw new Error(`${label} is required.`);
+  return normalized;
+}
 
 export async function ensurePublicationSections(
   supabase: SupabaseClient,
@@ -52,4 +60,35 @@ export async function saveSectionOrder(
 ): Promise<PublicationSectionRecord[]> {
   await reorderSections(supabase, sections.map((section) => section.id));
   return sections.map((section, index) => ({ ...section, sort_order: index * 10 }));
+}
+
+export async function addCustomTextSection(
+  supabase: SupabaseClient,
+  publicationId: string,
+  title: string,
+  sortOrder: number,
+): Promise<PublicationSectionRecord> {
+  const normalizedTitle = title.trim() || "New text section";
+  return createSection(supabase, {
+    publication_id: requireId(publicationId, "Publication ID"),
+    section_key: `custom_${crypto.randomUUID()}`,
+    title: normalizedTitle,
+    introduction: "",
+    included: true,
+    section_type: "custom_text",
+    sort_order: sortOrder,
+    source_config: { layout: "editorial", style: "standard" },
+    manual_content: {},
+    is_manually_edited: true,
+  });
+}
+
+export async function removeCustomSection(
+  supabase: SupabaseClient,
+  section: PublicationSectionRecord,
+): Promise<void> {
+  if (!section.section_key.startsWith("custom_")) {
+    throw new Error("Built-in publication sections cannot be deleted. Exclude them instead.");
+  }
+  await deleteSection(supabase, section.id);
 }

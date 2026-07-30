@@ -22,6 +22,10 @@ export type PublicationSectionChanges = Partial<Pick<PublicationSectionRecord,
   "title" | "introduction" | "included" | "sort_order" | "source_config" | "manual_content" | "is_manually_edited"
 >>;
 
+export type CreatePublicationSectionInput = Pick<PublicationSectionRecord,
+  "publication_id" | "section_key" | "title" | "section_type" | "sort_order"
+> & Partial<Pick<PublicationSectionRecord, "introduction" | "included" | "source_config" | "manual_content" | "is_manually_edited">>;
+
 const SECTION_COLUMNS = "id,publication_id,section_key,title,introduction,included,sort_order,section_type,source_config,generated_content,manual_content,is_manually_edited,created_at,updated_at";
 
 export async function listSections(supabase: SupabaseClient, publicationId: string): Promise<PublicationSectionRecord[]> {
@@ -47,6 +51,20 @@ export async function createMissingSections(
 
   if (error) throw error;
   return listSections(supabase, publicationId);
+}
+
+export async function createSection(
+  supabase: SupabaseClient,
+  input: CreatePublicationSectionInput,
+): Promise<PublicationSectionRecord> {
+  const { data, error } = await supabase
+    .from("publication_sections")
+    .insert(input)
+    .select(SECTION_COLUMNS)
+    .single();
+
+  if (error) throw error;
+  return data as unknown as PublicationSectionRecord;
 }
 
 export async function updateSection(
@@ -79,4 +97,9 @@ export async function reorderSections(
   const results = await Promise.all(updates);
   const failed = results.find((result) => result.error);
   if (failed?.error) throw failed.error;
+}
+
+export async function deleteSection(supabase: SupabaseClient, sectionId: string): Promise<void> {
+  const { error } = await supabase.from("publication_sections").delete().eq("id", sectionId);
+  if (error) throw error;
 }
