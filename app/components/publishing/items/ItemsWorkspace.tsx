@@ -8,10 +8,11 @@ import ItemCard from "./ItemCard";
 import ItemEditor from "./ItemEditor";
 import ItemPreview from "./ItemPreview";
 import ItemToolbar from "./ItemToolbar";
+import AiAssistantPanel from "../AiAssistantPanel";
 
-type Props = { supabase: SupabaseClient; publicationSectionId: string };
+type Props = { supabase: SupabaseClient; publicationSectionId: string; publicationId?: string };
 
-export default function ItemsWorkspace({ supabase, publicationSectionId }: Props) {
+export default function ItemsWorkspace({ supabase, publicationSectionId, publicationId }: Props) {
   const workspace = usePublicationItems(supabase, publicationSectionId);
   const [selectedId, setSelectedId] = useState("");
   const [draggedId, setDraggedId] = useState("");
@@ -54,7 +55,7 @@ export default function ItemsWorkspace({ supabase, publicationSectionId }: Props
         {!workspace.items.length && <p className="p-6 text-center text-sm text-slate-500">This section has no publication items.</p>}
       </section>
       <section aria-label="Item editor" className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        {selected ? <><ItemToolbar item={selected} first={selectedIndex === 0} last={selectedIndex === workspace.items.length - 1} onIncludedChange={(included) => void workspace.setIncluded(selected.id, included)} onFeaturedChange={(featured) => void workspace.setFeatured(selected.id, featured)} onDelete={() => { if (window.confirm("Delete this publication item? This cannot be undone.")) void workspace.remove(selected.id); }} onMove={(direction) => move(selected, direction)} /><div className="mt-5"><ItemEditor item={selected} onChange={(changes) => workspace.update(selected.id, changes)} /></div></> : <p className="py-10 text-center text-slate-500">Select an item to edit.</p>}
+        {selected ? <><ItemToolbar item={selected} first={selectedIndex === 0} last={selectedIndex === workspace.items.length - 1} onIncludedChange={(included) => void workspace.setIncluded(selected.id, included)} onFeaturedChange={(featured) => void workspace.setFeatured(selected.id, featured)} onDelete={() => { if (window.confirm("Delete this publication item? This cannot be undone.")) void workspace.remove(selected.id); }} onMove={(direction) => move(selected, direction)} /><div className="mt-5"><ItemEditor item={selected} onChange={(changes) => workspace.update(selected.id, changes)} /></div>{publicationId && <div className="mt-5"><AiAssistantPanel supabase={supabase} publicationId={publicationId} sectionId={publicationSectionId} itemId={selected.id} targetType="item" context={{ title: selected.title, description: selected.description, generatedContent: selected.generated_content, manualContent: selected.manual_content }} sourceAttribution={{ sourceType: selected.source_type, sourceId: selected.source_id }} onApply={(content) => workspace.update(selected.id, { title: content.title, description: content.description, image_url: content.image_url, destination_url: content.destination_url })} /></div>}</> : <p className="py-10 text-center text-slate-500">Select an item to edit.</p>}
       </section>
       <section aria-label="Live preview"><div className="mb-3 flex items-center justify-between"><h2 className="font-black">Preview</h2><span aria-live="polite" className={`text-xs font-black ${workspace.saveState === "error" ? "text-red-600" : workspace.saveState === "saved" ? "text-emerald-600" : "text-slate-400"}`}>{workspace.saveState === "saving" ? "Saving…" : workspace.saveState === "saved" ? "Saved" : workspace.saveState === "error" ? "Save failed" : "All changes saved"}</span></div>{selected ? <ItemPreview item={selected} /> : <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-400">Preview appears here.</div>}</section>
     </div>
