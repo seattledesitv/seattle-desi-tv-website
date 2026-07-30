@@ -118,7 +118,13 @@ The Publishing Platform is the content engine for the website, newsletter, Insta
 - Status indicators
 - Responsive layout
 
-### Sprint 5 — AI Content Engine
+### Sprint 5A — Unified Publication Editor
+
+- One editor route for sections, items, discovery, and preview
+- Custom text sections
+- Inclusion, exclusion, ordering, editing, and autosave in one workspace
+
+### Sprint 5B — AI Content Engine
 
 - Regenerate item, section, and publication
 - Merge AI output with manual edits
@@ -129,6 +135,7 @@ The Publishing Platform is the content engine for the website, newsletter, Insta
 ### Sprint 6 — Preview Engine
 
 - Website, newsletter, Instagram, Facebook, LinkedIn, PDF, and mobile previews
+- Downloadable PDF and file exports
 
 ### Sprint 7 — Publishing Pipeline
 

@@ -38,6 +38,13 @@ Publishing is implemented under `app/lib/publishing`, `app/hooks`, `app/componen
 - `usePublicationItems.ts` owns item loading, optimistic mutations, two-second autosave, retry, refresh, deletion, inclusion, featuring, and ordering.
 - `app/components/publishing/items` contains reusable item cards, editor controls, toolbar, badges, preview, and workspace composition.
 - `/studio/publishing/[publicationId]/items` is the responsive editorial workspace.
+- `/studio/publishing/[publicationId]` is the unified editor shell. It composes section editing, item editing, content discovery, and live preview without duplicating their underlying hooks or services.
+
+### Unified editor behavior
+
+The publication library remains a dashboard. Its primary `Open Editor` action opens the unified editor, where the left rail owns section selection and ordering while the main workspace switches between section fields, publication items, approved-content discovery, and preview.
+
+Custom text sections use the existing `publication_sections` table with `custom_` section keys and `custom_text` type. Built-in sections may be excluded but not deleted; custom sections may be deleted through the section service. Database cascade rules remove their child publication items.
 
 ### Editorial save behavior
 

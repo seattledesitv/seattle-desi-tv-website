@@ -4,7 +4,8 @@
 
 - Active branch: `feature/publishing-platform-v2`
 - Publishing Platform Sprints 1–4: complete
-- Next planned sprint: Sprint 5 — AI Content Engine
+- Publishing Platform Sprint 5A: complete
+- Next planned sprint: Sprint 5B — AI Content Engine
 - Deployment and merge status: not performed by the Sprint 4 development work
 
 ## Completed publishing foundation
@@ -49,13 +50,29 @@ Completed functionality:
 
 No new Sprint 4 migration was required. The editorial workspace uses the existing publication-item schema and service layer.
 
+## Sprint 5A — Unified Publication Editor
+
+Completed functionality:
+
+- One `Open Editor` action from each publication card
+- Single editor URL for sections, items, discovery, and preview
+- Responsive section rail with selection, drag-and-drop, and move controls
+- Add and delete custom text sections
+- Preserve built-in sections by using inclusion/exclusion instead of deletion
+- Embedded approved-content discovery, filtering, selection, and snapshot import
+- Existing item workspace and autosave reused without duplication
+- Existing section editor and preview reused without duplication
+- Repository, service, hook, and component boundaries maintained
+
+No migration was required. Custom text sections use the existing publication-section schema and RLS policies.
+
 ## Known issues
 
 - Repository-wide lint reports legacy findings outside Sprint 4, primarily explicit `any` usage and newer React lint rules in existing modules. These should be handled as scoped maintenance rather than mixed into publishing sprints.
 - A Vercel preview should be verified from the current feature-branch head before any merge.
 - Production environment variables remain required for live Supabase operations even though prerender uses a safe placeholder client.
 
-## Sprint 5 recommendation
+## Sprint 5B recommendation
 
 Implement the AI Content Engine by extending the existing publication services and item manual-content model:
 
