@@ -68,9 +68,8 @@ export function usePublicationItems(
     pending.current.clear();
     timers.current.forEach(clearTimeout);
     timers.current.clear();
-    setSaveState("idle");
-    setError("");
-    void refresh(true);
+    const loadTimer = setTimeout(() => void refresh(true), 0);
+    return () => clearTimeout(loadTimer);
   }, [refresh]);
 
   useEffect(() => () => {
@@ -87,30 +86,31 @@ export function usePublicationItems(
   const saveEdits = useCallback(async (
     itemId: string,
     changes: PublicationItemEditorialChanges,
-    attempt = 0,
   ) => {
     setSaveState("saving");
     setError("");
-    try {
-      await savePublicationItemEdits(supabase, itemId, changes);
-      const queued = pending.current.get(itemId);
-      if (queued === changes) pending.current.delete(itemId);
-      await refresh();
-      if (pending.current.size) setSaveState("saving");
-      else markSaved();
-    } catch (nextError) {
-      const queued = pending.current.get(itemId);
-      if (queued !== changes) return;
-      if (attempt === 0) {
-        timers.current.set(itemId, setTimeout(
-          () => void saveEdits(itemId, changes, 1),
-          AUTOSAVE_DELAY_MS,
-        ));
-        setError("Save failed. Retrying automatically…");
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        await savePublicationItemEdits(supabase, itemId, changes);
+        const queued = pending.current.get(itemId);
+        if (queued === changes) pending.current.delete(itemId);
+        await refresh();
+        if (pending.current.size) setSaveState("saving");
+        else markSaved();
         return;
+      } catch (nextError) {
+        const queued = pending.current.get(itemId);
+        if (queued !== changes) return;
+        if (attempt === 0) {
+          setError("Save failed. Retrying automatically…");
+          await new Promise<void>((resolve) => {
+            timers.current.set(itemId, setTimeout(resolve, AUTOSAVE_DELAY_MS));
+          });
+          continue;
+        }
+        setSaveState("error");
+        setError(errorMessage(nextError, "Could not save publication item."));
       }
-      setSaveState("error");
-      setError(errorMessage(nextError, "Could not save publication item."));
     }
   }, [markSaved, refresh, supabase]);
 
@@ -188,7 +188,7 @@ export function usePublicationItems(
   }, [runOptimistic, supabase]);
 
   const retry = useCallback(() => {
-    pending.current.forEach((changes, itemId) => void saveEdits(itemId, changes, 1));
+    pending.current.forEach((changes, itemId) => void saveEdits(itemId, changes));
   }, [saveEdits]);
 
   return {

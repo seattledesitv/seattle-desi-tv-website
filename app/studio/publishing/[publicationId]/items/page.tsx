@@ -36,14 +36,12 @@ export default function PublicationItemsPage() {
     if (publicationId) void initialize();
   }, [publicationId]);
 
-  useEffect(() => {
-    if (!sections.length) setSelectedSectionId("");
-    else if (!sections.some((section) => section.id === selectedSectionId)) setSelectedSectionId(sections[0].id);
-  }, [sections, selectedSectionId]);
-
+  const activeSectionId = sections.some((section) => section.id === selectedSectionId)
+    ? selectedSectionId
+    : sections[0]?.id || "";
   const selectedSection = useMemo(
-    () => sections.find((section) => section.id === selectedSectionId) || null,
-    [sections, selectedSectionId],
+    () => sections.find((section) => section.id === activeSectionId) || null,
+    [activeSectionId, sections],
   );
 
   return <main className="min-h-screen bg-slate-100 text-slate-950">
@@ -67,7 +65,7 @@ export default function PublicationItemsPage() {
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <div className="shrink-0"><h2 className="font-black">Sections</h2><p className="text-xs text-slate-500">Select items to edit</p></div>
             {sectionsLoading ? <p className="text-sm font-bold text-slate-400">Loading sections…</p> : <div className="flex gap-2 overflow-x-auto pb-1 md:ml-4">
-              {sections.map((section) => <button key={section.id} type="button" onClick={() => setSelectedSectionId(section.id)} className={`shrink-0 rounded-xl px-4 py-2 text-sm font-black ${selectedSectionId === section.id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700"}`}>
+              {sections.map((section) => <button key={section.id} type="button" onClick={() => setSelectedSectionId(section.id)} className={`shrink-0 rounded-xl px-4 py-2 text-sm font-black ${activeSectionId === section.id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700"}`}>
                 {section.title}<span className={`ml-2 text-[10px] uppercase ${section.included ? "text-emerald-500" : "text-slate-400"}`}>{section.included ? "Included" : "Excluded"}</span>
               </button>)}
             </div>}

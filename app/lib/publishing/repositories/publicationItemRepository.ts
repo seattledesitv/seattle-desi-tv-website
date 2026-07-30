@@ -71,7 +71,7 @@ export async function listItems(
     .order("created_at", { ascending: true });
 
   if (error) throw error;
-  return (data || []) as PublicationItemRecord[];
+  return (data || []) as unknown as PublicationItemRecord[];
 }
 
 export async function getItem(
@@ -85,7 +85,7 @@ export async function getItem(
     .single();
 
   if (error) throw error;
-  return data as PublicationItemRecord;
+  return data as unknown as PublicationItemRecord;
 }
 
 export async function updateItem(
@@ -101,7 +101,7 @@ export async function updateItem(
     .single();
 
   if (error) throw error;
-  return data as PublicationItemRecord;
+  return data as unknown as PublicationItemRecord;
 }
 
 export async function setIncluded(

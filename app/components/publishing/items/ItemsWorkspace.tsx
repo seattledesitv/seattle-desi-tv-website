@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { usePublicationItems } from "../../../hooks/usePublicationItems";
 import type { PublicationItemRecord } from "../../../lib/publishing/repositories/publicationItemRepository";
@@ -16,12 +16,10 @@ export default function ItemsWorkspace({ supabase, publicationSectionId }: Props
   const [selectedId, setSelectedId] = useState("");
   const [draggedId, setDraggedId] = useState("");
 
-  useEffect(() => {
-    if (!workspace.items.length) setSelectedId("");
-    else if (!workspace.items.some((item) => item.id === selectedId)) setSelectedId(workspace.items[0].id);
-  }, [selectedId, workspace.items]);
-
-  const selected = useMemo(() => workspace.items.find((item) => item.id === selectedId) || null, [selectedId, workspace.items]);
+  const activeSelectedId = workspace.items.some((item) => item.id === selectedId)
+    ? selectedId
+    : workspace.items[0]?.id || "";
+  const selected = useMemo(() => workspace.items.find((item) => item.id === activeSelectedId) || null, [activeSelectedId, workspace.items]);
   const selectedIndex = selected ? workspace.items.findIndex((item) => item.id === selected.id) : -1;
 
   function move(item: PublicationItemRecord, direction: -1 | 1) {
@@ -52,7 +50,7 @@ export default function ItemsWorkspace({ supabase, publicationSectionId }: Props
     <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)_minmax(300px,0.8fr)]">
       <section aria-label="Publication items" className="rounded-3xl border border-slate-200 bg-slate-50 p-3">
         <div className="flex items-center justify-between px-2 py-3"><div><h2 className="font-black">Items</h2><p className="text-xs text-slate-500">Drag to reorder</p></div><span className="rounded-full bg-white px-3 py-1 text-xs font-black">{workspace.items.length}</span></div>
-        <div className="grid max-h-[70vh] gap-2 overflow-y-auto pr-1">{workspace.items.map((item) => <ItemCard key={item.id} item={item} selected={item.id === selectedId} onSelect={() => setSelectedId(item.id)} onDragStart={() => setDraggedId(item.id)} onDrop={() => dropOn(item.id)} />)}</div>
+        <div className="grid max-h-[70vh] gap-2 overflow-y-auto pr-1">{workspace.items.map((item) => <ItemCard key={item.id} item={item} selected={item.id === activeSelectedId} onSelect={() => setSelectedId(item.id)} onDragStart={() => setDraggedId(item.id)} onDrop={() => dropOn(item.id)} />)}</div>
         {!workspace.items.length && <p className="p-6 text-center text-sm text-slate-500">This section has no publication items.</p>}
       </section>
       <section aria-label="Item editor" className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
