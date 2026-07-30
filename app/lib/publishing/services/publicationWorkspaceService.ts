@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isAdminRole, resolveUserRole } from "../../roles";
-import { getPublication } from "../repository";
+import { getPublication, updatePublication } from "../repository";
 import type { PublicationRecord } from "../types";
 
 export async function openPublicationEditorialWorkspace(
@@ -17,4 +17,15 @@ export async function openPublicationEditorialWorkspace(
   }
 
   return getPublication(supabase, publicationId);
+}
+
+export async function savePublicationEditorialChanges(
+  supabase: SupabaseClient,
+  publication: PublicationRecord,
+  changes: { description?: string },
+): Promise<PublicationRecord> {
+  const session = await supabase.auth.getSession();
+  const user = session.data.session?.user;
+  if (!user) throw new Error("Please log in to edit this publication.");
+  return updatePublication(supabase, publication.id, changes, user.id);
 }
