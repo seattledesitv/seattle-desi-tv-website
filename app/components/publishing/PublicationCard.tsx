@@ -31,9 +31,7 @@ export default function PublicationCard({ publication, busy, onOpen, onDuplicate
         <p className="mt-4 text-xs font-bold text-slate-400">Updated {formatDate(publication.updated_at)}</p>
       </div>
       <div className="flex shrink-0 flex-wrap gap-2 md:max-w-80 md:justify-end">
-        <a href={`/studio/publishing/${publication.id}/items`} className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-black text-white">Items</a>
-        <a href={`/studio/publishing/${publication.id}/sections`} className="rounded-xl bg-pink-600 px-4 py-2 text-sm font-black text-white">Sections</a>
-        <a href={`/studio/publishing/${publication.id}/content`} className="rounded-xl border border-pink-200 px-4 py-2 text-sm font-black text-pink-700">Content</a>
+        <a href={`/studio/publishing/${publication.id}`} className="rounded-xl bg-pink-600 px-5 py-2 text-sm font-black text-white">Open Editor</a>
         <button disabled={busy} onClick={() => onOpen(publication)} className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-black text-white disabled:opacity-50">Overview</button>
         <button disabled={busy} onClick={() => onDuplicate(publication)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-black disabled:opacity-50">Duplicate</button>
         {publication.status !== "archived" && <button disabled={busy} onClick={() => onArchive(publication)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-black disabled:opacity-50">Archive</button>}
