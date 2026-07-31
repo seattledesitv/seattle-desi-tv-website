@@ -12,6 +12,7 @@ import ItemsWorkspace from "../../../components/publishing/items/ItemsWorkspace"
 import SectionEditor from "../../../components/publishing/sections/SectionEditor";
 import PublicationPreviewWorkspace from "../../../components/publishing/previews/PublicationPreviewWorkspace";
 import WeeklyEventsInstagramWorkspace from "../../../components/publishing/instagram/WeeklyEventsInstagramWorkspace";
+import PublicationReviewWorkspace from "../../../components/publishing/workflow/PublicationReviewWorkspace";
 import { usePublicationSections } from "../../../hooks/usePublicationSections";
 import type { PublicationSectionRecord } from "../../../lib/publishing/repositories/sectionRepository";
 import { openPublicationEditorialWorkspace, savePublicationEditorialChanges } from "../../../lib/publishing/services/publicationWorkspaceService";
@@ -19,7 +20,7 @@ import type { PublicationRecord } from "../../../lib/publishing/types";
 import { getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
 
 const supabase = getSupabaseBrowserClient();
-type EditorMode = "section" | "items" | "content" | "ai" | "preview" | "events-instagram" | "publish";
+type EditorMode = "section" | "items" | "content" | "ai" | "preview" | "events-instagram" | "review" | "publish";
 
 const modes: Array<{ key: EditorMode; label: string }> = [
   { key: "section", label: "Edit section" },
@@ -28,6 +29,7 @@ const modes: Array<{ key: EditorMode; label: string }> = [
   { key: "ai", label: "AI assistant" },
   { key: "preview", label: "Preview" },
   { key: "events-instagram", label: "Events → Instagram" },
+  { key: "review", label: "Review & approve" },
   { key: "publish", label: "Publish" },
 ];
 
@@ -113,9 +115,10 @@ export default function UnifiedPublicationEditorPage() {
         <section className="min-w-0">
           {mode === "ai" && <div className="mb-5"><PromptManager supabase={supabase} /></div>}
           {mode === "content" && <ContentDiscoveryWorkspace supabase={supabase} publication={publication} />}
-          {mode === "publish" && <PublishingPipelineWorkspace supabase={supabase} publicationId={publication.id} />}
+          {mode === "publish" && <PublishingPipelineWorkspace supabase={supabase} publicationId={publication.id} publicationStatus={publication.status} />}
           {mode === "events-instagram" && <WeeklyEventsInstagramWorkspace supabase={supabase} publication={publication} />}
-          {mode !== "content" && mode !== "events-instagram" && !selected && <div className="rounded-3xl bg-white p-10 text-center text-slate-500">Select or add a section to begin.</div>}
+          {mode === "review" && <PublicationReviewWorkspace supabase={supabase} publication={publication} onPublicationChange={setPublication} />}
+          {mode !== "content" && mode !== "events-instagram" && mode !== "review" && !selected && <div className="rounded-3xl bg-white p-10 text-center text-slate-500">Select or add a section to begin.</div>}
           {selected && mode === "section" && <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="mb-5 flex items-center justify-between"><div><p className="text-xs font-black uppercase text-pink-600">Section editor</p><h2 className="text-2xl font-black">{selected.title}</h2></div>{selected.section_key.startsWith("custom_") && <button type="button" onClick={() => void deleteSelected()} className="rounded-xl bg-red-50 px-4 py-2 text-sm font-black text-red-700">Delete section</button>}</div><SectionEditor section={selected} onChange={(changes, debounce) => sectionState.update(selected.id, changes, debounce)} /></div>}
           {selected && mode === "items" && <ItemsWorkspace key={selected.id} supabase={supabase} publicationId={publication.id} publicationSectionId={selected.id} />}
           {selected && mode === "ai" && <div className="grid gap-5"><AiAssistantPanel supabase={supabase} publicationId={publication.id} sectionId={selected.id} targetType="section" context={{ title: selected.title, introduction: selected.introduction, generatedContent: selected.generated_content, manualContent: selected.manual_content }} sourceAttribution={{ sectionKey: selected.section_key }} onApply={(content) => sectionState.update(selected.id, { title: content.title ?? selected.title, introduction: content.introduction ?? content.description ?? selected.introduction ?? "" })} /><AiAssistantPanel supabase={supabase} publicationId={publication.id} targetType="publication" context={{ name: publication.name, editionLabel: publication.edition_label, description: publication.description, startDate: publication.start_date, endDate: publication.end_date, sections: sectionState.sections.map((section) => ({ title: section.title, introduction: section.introduction, included: section.included })) }} onApply={(content) => void savePublicationEditorialChanges(supabase, publication, { description: content.description ?? content.summary ?? publication.description ?? "" }).then(setPublication).catch((error) => setPageError(error instanceof Error ? error.message : "Could not apply publication suggestion."))} /></div>}

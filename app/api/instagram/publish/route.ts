@@ -91,6 +91,12 @@ export async function POST(request: Request) {
     if (!isAdminRole(resolvedRole)) return NextResponse.json({ error: `Studio admin access required. Resolved role: ${resolvedRole}.` }, { status: 403 });
 
     const body = await request.json().catch(() => ({}));
+    const publicationId = String(body.publicationId || "").trim();
+    if (publicationId) {
+      const { data: publication, error: publicationError } = await sessionClient.from("publications").select("status").eq("id", publicationId).single();
+      if (publicationError) return NextResponse.json({ error: publicationError.message }, { status: 400 });
+      if (!["approved", "scheduled", "published"].includes(String(publication?.status))) return NextResponse.json({ error: "Approve this publication before posting it to Instagram." }, { status: 409 });
+    }
     const requestedUrls = Array.isArray(body.imageUrls) ? body.imageUrls : [body.imageUrl];
     const imageUrls = requestedUrls.map((value: unknown) => String(value || "").trim()).filter(Boolean);
     const collaborators = parseCollaborators(body.collaborators);

@@ -65,6 +65,11 @@ export async function POST(request: Request) {
   if (!['email', 'newsletter'].includes(String(output.channel))) return NextResponse.json({ error: "Select an email or newsletter output." }, { status: 400 });
   const payload = emailPayload(output.content);
   if (!payload) return NextResponse.json({ error: "Generate a new email output before sending." }, { status: 400 });
+  if (action === "send_all") {
+    const { data: publication, error: publicationError } = await db.from("publications").select("status").eq("id", output.publication_id).single();
+    if (publicationError) return NextResponse.json({ error: publicationError.message }, { status: 400 });
+    if (!["approved", "scheduled", "published"].includes(String(publication?.status))) return NextResponse.json({ error: "Approve this publication in Review & approve before sending it to subscribers." }, { status: 409 });
+  }
   const resend = new Resend(resendKey);
   const baseAttempt = { publication_id: output.publication_id, campaign_id: output.campaign_id, output_id: output.id, channel: output.channel, attempted_by: user.id };
 
