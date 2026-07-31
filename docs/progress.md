@@ -8,6 +8,7 @@
 - Publishing Platform Sprint 5B: code complete; migration and provider key required for live use
 - Publishing Platform Sprint 6: complete
 - Publishing Platform Sprint 7 internal pipeline: complete
+- Publishing Platform Sprint 8 content completeness: complete
 - External automatic channel adapters: intentionally pending credentials and provider-specific implementation
 - Deployment and merge status: not performed by the Sprint 4 development work
 
@@ -134,3 +135,25 @@ Operational requirements:
 - Apply `20260730100000_add_publication_pipeline_history.sql` to Supabase.
 - Apply the earlier Sprint 5 AI migration if it is not already installed.
 - Implement and test provider-specific automatic adapters only after credentials and publishing-account requirements are confirmed.
+
+## Sprint 8 — Content completeness
+
+Completed functionality:
+
+- Homepage hero and cover-image discovery
+- Featured social content for Highlights and Videos
+- Team content for Recognition
+- Live Events, Businesses, Coverage Requests, Team Members, Radio Hosts, and Social Followers statistics
+- Homepage-aligned Volunteer, Sponsor, Submit Content, and Request Coverage actions
+- Cover image hero rendering across publication previews
+- Purpose-built statistics and Get Involved preview layouts
+- Rich standalone HTML export with images, links, responsive styling, and print rules
+- Existing editorial include/exclude, feature, ordering, and manual editing retained for every imported item
+
+No database migration or npm dependency was required. Existing publications receive the richer content after the editor runs Discover Content and adds the selected results.
+
+Recommended next work:
+
+- Push and apply the pending Sprint 7 pipeline migration before testing Publish mode.
+- Verify the complete publication with authenticated feature-branch data, including Print / Save PDF.
+- Implement provider-specific automatic delivery adapters only after credentials and account requirements are available.

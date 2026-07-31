@@ -64,6 +64,12 @@ The unified editor's Publish mode prepares immutable channel output snapshots fr
 
 Channel-specific delivery is isolated behind `app/lib/publishing/adapters/registry.ts`. All adapters default to manual handoff until their external credentials, API behavior, and failure semantics are explicitly implemented and tested. The UI requires confirmation before a handoff, preventing development code from posting externally.
 
+### Homepage content bridge
+
+Publication discovery reuses the public homepage's source tables to create a complete editorial starting point. Repository helpers load source rows and live counts; discovery services normalize them into publication items for Cover, Highlights, Events, Businesses, Organizations, Groups, Recognition, Videos, Statistics, and Get Involved.
+
+Cover candidates include active homepage banners, featured events, and scheduled festival heroes. The preview uses the featured cover item as its image hero when a publication-level cover image is not set. Statistics are captured as editable item snapshots so published output remains auditable while a fresh discovery can pull current totals. Get Involved actions mirror the homepage destinations and remain editable in the item workspace.
+
 ### Editorial save behavior
 
 Manual item fields are saved after a two-second debounce. The hook merges rapid field changes, prevents stale retries from overwriting newer edits, refreshes canonical records after successful saves, and retains still-pending optimistic changes. Immediate actions optimistically update the UI and roll back on failure.
