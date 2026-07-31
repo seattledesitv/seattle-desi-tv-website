@@ -252,3 +252,32 @@ Validation:
 - Targeted ESLint passed
 - Full TypeScript check passed
 - Production build passed and generated all 157 routes
+
+## Sprint 12 — Weekly Events Instagram carousel
+
+Completed functionality:
+
+- Publication-native Events → Instagram workspace
+- Reuses the publication's included event items and edited flyer/title/link fields
+- Event selection and carousel ordering without duplicating source event data
+- Editable cover headline, week label, introduction, caption, and hashtags
+- Branded 1080 × 1350 cover and individual event-flyer slides
+- Browser previews and individual PNG downloads
+- Cloudinary upload only after editor review
+- Single-image and multi-image carousel support in the existing Instagram publisher
+- Ten-slide Instagram limit enforced as one cover plus up to nine events
+- Explicit final confirmation before any external Instagram post
+
+No database migration or npm dependency was required.
+
+Validation:
+
+- Targeted ESLint passed
+- Full TypeScript check passed
+- Production build passed and generated all 157 routes
+
+Operational notes:
+
+- Flyer rendering requires public images that permit browser canvas access; SDTV Cloudinary event flyers support this workflow.
+- Automatic posting still requires the existing Instagram credentials and Cloudinary upload configuration in the preview environment.
+- No Instagram post was made during implementation or validation.

@@ -70,6 +70,14 @@ The pipeline workspace can download HTML or text handoff files and copy channel 
 
 Email is the first automatic delivery adapter. Its admin-only server route requires a successful test for the same output within 24 hours before subscriber delivery. It selects only active subscribers, sends personalized messages in provider-supported batches, includes subscription-management links, and writes a per-recipient delivery ledger. Successfully delivered addresses are skipped on retry, preventing duplicate campaign email after a partial failure.
 
+### Weekly Events Instagram composer
+
+The unified editor's Events → Instagram mode consumes the canonical publication preview rather than querying events or Supabase from the UI. It selects the included items from the Events section, then the hook manages local selection, ordering, editable copy, generation, upload, and status.
+
+`weeklyEventsInstagramService.ts` is responsible for the 4:5 branded canvas layout and final caption assembly. Generated PNG files remain local for review and download until the editor explicitly uploads them through the existing Cloudinary helper. `instagramPublishingService.ts` handles the authenticated UI-to-API boundary.
+
+The existing admin-only Instagram endpoint accepts either one image or a carousel. Carousel publishing creates and verifies each child image container, creates the parent container, waits for processing, and publishes only after explicit confirmation in the workspace. The API enforces Instagram's ten-image carousel limit. No background action or ordinary autosave can publish externally.
+
 ### Homepage content bridge
 
 Publication discovery reuses the public homepage's source tables to create a complete editorial starting point. Repository helpers load source rows and live counts; discovery services normalize them into publication items for Cover, Highlights, Events, Businesses, Organizations, Groups, Recognition, Videos, Statistics, and Get Involved.
