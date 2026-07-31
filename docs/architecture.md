@@ -92,6 +92,12 @@ Newsletter email is the single subscriber-delivery channel. It produces package 
 
 The historical `newsletter` channel remains in stored types so old campaigns remain auditable, but it is not offered for new generation. Existing version-1 packages are marked legacy and must be regenerated before delivery.
 
+Email package version 3 is a deliberately concise digest rather than a complete visual copy of the website. It prioritizes featured items, limits each section to five entries, truncates descriptions at editorially useful boundaries, and links to the canonical public edition for remaining content. Cloudinary delivery transformations provide consistent thumbnail dimensions without modifying source assets.
+
+The website channel remains the complete edition but uses denser responsive presentation: a shorter hero, three-column desktop cards, smaller imagery, and bounded descriptions. Mobile retains a single readable column.
+
+The Weekly Events Instagram final-caption override lives in its hook alongside generated copy. The final approval signature combines the complete ordered image URL set and exact caption text, so any post-review caption or media change invalidates approval before the publishing service can run.
+
 ### Homepage content bridge
 
 Publication discovery reuses the public homepage's source tables to create a complete editorial starting point. Repository helpers load source rows and live counts; discovery services normalize them into publication items for Cover, Highlights, Events, Businesses, Organizations, Groups, Recognition, Videos, Statistics, and Get Involved.

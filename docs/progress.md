@@ -324,3 +324,22 @@ Operational testing:
 - Generate a new Newsletter email output; previous package-v1 outputs are intentionally treated as legacy.
 - Send a test email and inspect it in the actual Gmail/Outlook/mobile clients used by SDTV.
 - Generate Website output, press Publish to website, then verify its public link and the footer archive before subscriber delivery.
+
+### Sprint 13 follow-up — Professional compact layouts
+
+- Reviewed the supplied 49-page Gmail print sample and confirmed full-width media, long copy, and card/page fragmentation as the primary causes of excessive length.
+- Reworked Newsletter email into a compact editorial digest with small thumbnail rows, featured-first ordering, short excerpts, and a maximum of five items per section.
+- Added full-edition links for content intentionally summarized in email.
+- Added Cloudinary delivery transforms for consistently cropped, optimized email thumbnails and hero media.
+- Reduced website hero height, card image height, padding, and copy density.
+- Added a responsive three-column website grid on large screens and three-line description limits.
+- Made the final Weekly Events Instagram caption editable with a 2,200-character counter and generated-caption reset.
+- Instagram approval now signs both the uploaded images and final caption; editing either requires fresh approval.
+- Bumped current channel packages to version 3 so previous spacious email packages cannot be sent as current output.
+
+Validation:
+
+- Targeted ESLint passed.
+- Full TypeScript check passed.
+- Production build passed and generated all 158 routes.
+- No email, Instagram post, website publication, deployment, or merge occurred.
