@@ -7,7 +7,7 @@ export type ChannelMediaAsset = {
 };
 
 export type ChannelOutputPayload = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   channel: PublishingChannel;
   title: string;
   edition: string | null;
