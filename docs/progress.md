@@ -165,13 +165,17 @@ Completed functionality:
 
 - Latest YouTube videos available directly in publication discovery
 - Latest Instagram posts and reels available as community highlights
+- Instagram video posts also populate Videos as clearly labeled Instagram Reels
+- YouTube and Instagram platform badges shown on publication cards
 - Existing server-side social API integrations reused without exposing credentials
 - Homepage-style Get Involved preview with four clear action buttons
 - Correct public contact routes for Volunteer, Sponsorship, and Event Coverage
 - Working Submit Content route
 - Letter-size magazine print layout with a dedicated cover page
 - Improved print colors, page breaks, item grids, image sizing, and link preservation
+- Print-safe Get Involved contrast when browser background graphics are disabled
 - Production base URL added to downloaded HTML so internal links work outside the website
+- Publishing pipeline now displays the original Supabase/service error instead of masking it with a generic message
 
 No database migration or npm dependency was required.
 
