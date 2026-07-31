@@ -229,8 +229,10 @@ section:has(a[href="/contact?interest=volunteer"]) > div { max-width: 80rem !imp
   .publication-item-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0.16in !important; }
   .publication-item { break-inside: avoid !important; page-break-inside: avoid !important; box-shadow: none !important; }
   .publication-item img { height: 1.65in !important; }
-  .publication-get-involved { margin-top: 0.2in !important; padding: 0.35in !important; }
-  .publication-action { color: inherit !important; text-decoration: none !important; }
+  .publication-get-involved { margin-top: 0.2in !important; padding: 0.35in !important; border: 2px solid #0f172a !important; background: #fff !important; color: #0f172a !important; }
+  .publication-get-involved h2, .publication-get-involved p { color: #0f172a !important; }
+  .publication-get-involved > div:first-child { display: none !important; }
+  .publication-action { border: 2px solid #0f172a !important; background: #fff !important; color: #0f172a !important; text-decoration: none !important; }
   .publication-print-root footer { margin-top: 0.25in !important; }
   @page { size: letter portrait; margin: 0.45in; }
 }
