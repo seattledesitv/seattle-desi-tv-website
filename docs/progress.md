@@ -10,6 +10,7 @@
 - Publishing Platform Sprint 7 internal pipeline: complete
 - Publishing Platform Sprint 8 content completeness: complete
 - Publishing Platform Sprint 9 sharing quality: complete
+- Publishing Platform Sprint 10 channel handoffs: complete
 - External automatic channel adapters: intentionally pending credentials and provider-specific implementation
 - Deployment and merge status: not performed by the Sprint 4 development work
 
@@ -185,3 +186,33 @@ Validation:
 - Full TypeScript check passed
 - Production build passed and generated all 156 routes
 - Automated browser/PDF visual inspection was blocked by the local Windows app sandbox; verify Print / Save PDF from the authenticated feature preview with real content before release
+
+## Sprint 10 — Channel handoff packages
+
+Completed functionality:
+
+- Versioned channel-output payload contract
+- Website HTML handoff package
+- Newsletter and email subject, preheader, text, and responsive HTML packages
+- Instagram, Facebook, and LinkedIn captions with bounded length and hashtags
+- PDF print-ready HTML handoff package
+- Deduplicated media asset references with source links
+- Download controls for HTML and text packages
+- Copy-text controls for manual social and editorial workflows
+- Channel package summaries and media counts
+- Clear legacy-snapshot treatment without rewriting history
+- Existing manual confirmation and no-automatic-posting safety preserved
+
+No database migration or npm dependency was required.
+
+Validation:
+
+- Targeted ESLint passed
+- Full TypeScript check passed
+- Production build passed and generated all 156 routes
+
+Operational requirements:
+
+- Apply `20260730100000_add_publication_pipeline_history.sql` if Generate Outputs reports a missing table or column.
+- Generate new channel outputs after this sprint; older generic snapshots are intentionally marked as legacy.
+- Verify downloaded HTML and social copy using authenticated feature-branch data before release.

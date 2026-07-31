@@ -64,6 +64,10 @@ The unified editor's Publish mode prepares immutable channel output snapshots fr
 
 Channel-specific delivery is isolated behind `app/lib/publishing/adapters/registry.ts`. All adapters default to manual handoff until their external credentials, API behavior, and failure semantics are explicitly implemented and tested. The UI requires confirmation before a handoff, preventing development code from posting externally.
 
+`channelOutputService.ts` converts the canonical preview model into versioned channel packages. Website, PDF, newsletter, and email packages contain self-contained responsive HTML; Instagram, Facebook, and LinkedIn packages contain bounded captions, hashtags, text, links, and media references. Each database output stores its own immutable payload so a later editorial change cannot alter an already prepared handoff.
+
+The pipeline workspace can download HTML or text handoff files and copy channel text. Legacy generic snapshots remain readable in history but are explicitly identified and must be regenerated before download. Provider adapters remain a separate concern and consume these packages only after credentials and channel-specific delivery rules are approved.
+
 ### Homepage content bridge
 
 Publication discovery reuses the public homepage's source tables to create a complete editorial starting point. Repository helpers load source rows and live counts; discovery services normalize them into publication items for Cover, Highlights, Events, Businesses, Organizations, Groups, Recognition, Videos, Statistics, and Get Involved.
