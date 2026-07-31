@@ -281,3 +281,16 @@ Operational notes:
 - Flyer rendering requires public images that permit browser canvas access; SDTV Cloudinary event flyers support this workflow.
 - Automatic posting still requires the existing Instagram credentials and Cloudinary upload configuration in the preview environment.
 - No Instagram post was made during implementation or validation.
+
+### Sprint 12 follow-up — Weekly workflow and publish approval
+
+- Added Weekly Instagram Events Update to the new-publication type selector.
+- Added a versioned database constraint migration for the new publication type.
+- Weekly Instagram publications open directly in Events → Instagram mode.
+- Selecting the workflow pre-fills a sensible publication name and description when those fields are empty.
+- Replaced the final publish checkbox with a deliberate two-button sequence: Everything looks good, followed by Publish carousel to Instagram.
+- Approval is tied to the exact uploaded image URLs and becomes invalid if the images change.
+
+Migration:
+
+- `20260730170000_add_weekly_instagram_publication_type.sql`

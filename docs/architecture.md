@@ -78,6 +78,8 @@ The unified editor's Events → Instagram mode consumes the canonical publicatio
 
 The existing admin-only Instagram endpoint accepts either one image or a carousel. Carousel publishing creates and verifies each child image container, creates the parent container, waits for processing, and publishes only after explicit confirmation in the workspace. The API enforces Instagram's ten-image carousel limit. No background action or ordinary autosave can publish externally.
 
+`weekly_instagram` is a first-class publication type protected by the publications table constraint. It keeps the complete publication architecture but opens the unified editor in the Events → Instagram workspace by default. Final approval stores an in-memory signature of the reviewed Cloudinary URL set; changing or regenerating the images invalidates approval before publishing.
+
 ### Homepage content bridge
 
 Publication discovery reuses the public homepage's source tables to create a complete editorial starting point. Repository helpers load source rows and live counts; discovery services normalize them into publication items for Cover, Highlights, Events, Businesses, Organizations, Groups, Recognition, Videos, Statistics, and Get Involved.
