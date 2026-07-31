@@ -343,3 +343,39 @@ Validation:
 - Full TypeScript check passed.
 - Production build passed and generated all 158 routes.
 - No email, Instagram post, website publication, deployment, or merge occurred.
+
+## Sprint 14 — Editorial review and release approval
+
+Completed functionality:
+
+- Added a Review & approve workspace to the unified publication editor.
+- Added controlled Draft, In review, Approved, Published, and Archived transitions.
+- Approval requires an editorial note.
+- Added an append-only status transition history with editor identity and timestamps.
+- Added an atomic database function that validates, updates, and audits status changes.
+- Added review readiness indicators for publication name, edition, description, and review state.
+- Website publishing now records the Approved → Published workflow transition.
+- Subscriber delivery is blocked until the publication is approved; test emails remain available for review.
+- Publication-based Instagram delivery is blocked until approval.
+- Publishing-pipeline controls clearly display and enforce approval requirements.
+- Server routes repeat approval validation so UI state cannot bypass release controls.
+
+Migration:
+
+- `20260731100000_add_publication_review_workflow.sql`
+- Adds `publication_status_history`, its publication/time index, admin RLS, and `transition_publication_status`.
+
+Validation:
+
+- Targeted ESLint passed.
+- Full TypeScript check passed.
+- Production build passed and generated all 158 routes.
+- No email, Instagram post, website publication, deployment, or merge occurred.
+
+Operational requirement:
+
+- Apply the Sprint 14 migration before opening Review & approve or attempting a status transition.
+
+Recommended next sprint:
+
+- Sprint 15 — Scheduling operations: due-job processing, scheduled release controls, cancellation/retry behavior, and operational visibility for website and subscriber delivery.

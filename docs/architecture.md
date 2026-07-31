@@ -98,6 +98,16 @@ The website channel remains the complete edition but uses denser responsive pres
 
 The Weekly Events Instagram final-caption override lives in its hook alongside generated copy. The final approval signature combines the complete ordered image URL set and exact caption text, so any post-review caption or media change invalidates approval before the publishing service can run.
 
+### Editorial review and release governance
+
+Publication lifecycle changes use the `transition_publication_status` database function. The function runs with the caller's permissions, verifies Studio admin membership, locks the publication row, validates the requested transition, updates the canonical status, and appends `publication_status_history` in one transaction. Components never write status fields directly.
+
+`usePublicationWorkflow` owns review state and history. `publicationWorkflowService.ts` defines the allowed transition graph and approval-note requirements, while `publicationWorkflowRepository.ts` contains status-history reads and the transition RPC call.
+
+Delivery requires a publication status of Approved, Scheduled, or Published. The publishing service enforces this for website and manual channel handoffs; subscriber email and publication-based Instagram routes repeat the check server-side. Email tests and output generation remain available before approval so editors can complete quality assurance without authorizing release.
+
+Website publishing transitions an approved publication to Published through the same audited workflow. Returning a published publication to Draft removes it from anonymous access through the existing published-only RLS policies and requires a new review and approval before another release.
+
 ### Homepage content bridge
 
 Publication discovery reuses the public homepage's source tables to create a complete editorial starting point. Repository helpers load source rows and live counts; discovery services normalize them into publication items for Cover, Highlights, Events, Businesses, Organizations, Groups, Recognition, Videos, Statistics, and Get Involved.
