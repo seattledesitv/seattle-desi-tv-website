@@ -9,6 +9,7 @@
 - Publishing Platform Sprint 6: complete
 - Publishing Platform Sprint 7 internal pipeline: complete
 - Publishing Platform Sprint 8 content completeness: complete
+- Publishing Platform Sprint 9 sharing quality: complete
 - External automatic channel adapters: intentionally pending credentials and provider-specific implementation
 - Deployment and merge status: not performed by the Sprint 4 development work
 
@@ -157,3 +158,26 @@ Recommended next work:
 - Push and apply the pending Sprint 7 pipeline migration before testing Publish mode.
 - Verify the complete publication with authenticated feature-branch data, including Print / Save PDF.
 - Implement provider-specific automatic delivery adapters only after credentials and account requirements are available.
+
+## Sprint 9 — Sharing quality
+
+Completed functionality:
+
+- Latest YouTube videos available directly in publication discovery
+- Latest Instagram posts and reels available as community highlights
+- Existing server-side social API integrations reused without exposing credentials
+- Homepage-style Get Involved preview with four clear action buttons
+- Correct public contact routes for Volunteer, Sponsorship, and Event Coverage
+- Working Submit Content route
+- Letter-size magazine print layout with a dedicated cover page
+- Improved print colors, page breaks, item grids, image sizing, and link preservation
+- Production base URL added to downloaded HTML so internal links work outside the website
+
+No database migration or npm dependency was required.
+
+Validation:
+
+- Targeted ESLint passed
+- Full TypeScript check passed
+- Production build passed and generated all 156 routes
+- Automated browser/PDF visual inspection was blocked by the local Windows app sandbox; verify Print / Save PDF from the authenticated feature preview with real content before release

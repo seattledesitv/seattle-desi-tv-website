@@ -68,7 +68,11 @@ Channel-specific delivery is isolated behind `app/lib/publishing/adapters/regist
 
 Publication discovery reuses the public homepage's source tables to create a complete editorial starting point. Repository helpers load source rows and live counts; discovery services normalize them into publication items for Cover, Highlights, Events, Businesses, Organizations, Groups, Recognition, Videos, Statistics, and Get Involved.
 
+YouTube and Instagram discovery uses the platform's existing server API routes through `socialFeedRepository.ts`, keeping provider credentials server-side and avoiding duplicate provider integrations. If either feed is unavailable, discovery returns the other sources and reports a non-blocking warning.
+
 Cover candidates include active homepage banners, featured events, and scheduled festival heroes. The preview uses the featured cover item as its image hero when a publication-level cover image is not set. Statistics are captured as editable item snapshots so published output remains auditable while a fresh discovery can pull current totals. Get Involved actions mirror the homepage destinations and remain editable in the item workspace.
+
+Print output uses a dedicated letter-size stylesheet with a full cover page, exact background-color printing, controlled card fragmentation, two-column editorial grids, and a compact Get Involved block. Standalone HTML exports include a production base URL so internal calls to action remain functional when the downloaded file is opened locally.
 
 ### Editorial save behavior
 
