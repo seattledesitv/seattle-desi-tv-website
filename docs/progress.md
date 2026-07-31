@@ -379,3 +379,21 @@ Operational requirement:
 Recommended next sprint:
 
 - Sprint 15 — Scheduling operations: due-job processing, scheduled release controls, cancellation/retry behavior, and operational visibility for website and subscriber delivery.
+
+### Sprint 14 follow-up — Editor experience optimization
+
+- Replaced eight equal-priority editor tabs with a four-stage workflow: Build, Preview, Approve, and Publish.
+- Grouped contextual tools under the stage where staff need them.
+- Added plain-language guidance describing the purpose of every stage.
+- Kept the publication status visible beside the publication title.
+- Added horizontally scrollable workflow navigation for small screens.
+- Limited the section rail to Section, Items, and AI editing where section context is required.
+- Gave discovery, channel preview, Events Instagram, approval, and publishing the full workspace width.
+- Preserved all existing editor modes, services, routes, and autosave behavior.
+
+Validation:
+
+- Targeted ESLint passed.
+- Full TypeScript check passed.
+- Production build passed and generated all 158 routes.
+- No content was sent, published, deployed, or merged.

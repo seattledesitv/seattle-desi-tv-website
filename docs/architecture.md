@@ -42,7 +42,9 @@ Publishing is implemented under `app/lib/publishing`, `app/hooks`, `app/componen
 
 ### Unified editor behavior
 
-The publication library remains a dashboard. Its primary `Open Editor` action opens the unified editor, where the left rail owns section selection and ordering while the main workspace switches between section fields, publication items, approved-content discovery, and preview.
+The publication library remains a dashboard. Its primary `Open Editor` action opens a workflow-oriented editor with four stages: Build, Preview, Approve, and Publish. Each stage exposes only its relevant tools while preserving the underlying editor modes and URLs.
+
+The section rail owns section selection and ordering only during Section, Items, and AI editing. Discovery and downstream workflow stages use the full workspace width because they operate on the publication rather than one selected section. Stage navigation scrolls horizontally on small screens, and contextual sub-navigation avoids presenting every tool at the same visual priority.
 
 Custom text sections use the existing `publication_sections` table with `custom_` section keys and `custom_text` type. Built-in sections may be excluded but not deleted; custom sections may be deleted through the section service. Database cascade rules remove their child publication items.
 
