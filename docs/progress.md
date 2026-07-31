@@ -436,3 +436,13 @@ Safety:
 - Reduced email thumbnails to a consistent 112×84 layout.
 - Matched the Studio Newsletter preview to the compact website treatment with smaller images and two-line descriptions.
 - Bumped generated output packages to version 4 so older long-form email packages must be regenerated before sending.
+
+### Sprint 15 follow-up — Corrected Highlights and Videos sources
+
+- Community Highlights now uses only `featured_social_content`, ordered by `display_order` and capped at three records.
+- Removed Instagram API posts from Community Highlights.
+- Removed featured-community table records from Videos.
+- Videos now uses only the YouTube API feed and Instagram API video/reel results.
+- Successful discovery refreshes remove stale mixed records while preserving manually edited items.
+- Cleanup is skipped when a relevant feed fails, protecting publications during temporary API outages.
+- Targeted ESLint, full TypeScript checking, and the production build passed.

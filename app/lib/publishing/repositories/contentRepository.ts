@@ -59,6 +59,12 @@ export async function countPublishingSourceRows(
   return count || 0;
 }
 
+export async function deletePublicationItemsByIds(supabase: SupabaseClient, itemIds: string[]) {
+  if (!itemIds.length) return;
+  const { error } = await supabase.from("publication_items").delete().in("id", itemIds);
+  if (error) throw error;
+}
+
 export async function saveDiscoverySnapshot(
   supabase: SupabaseClient,
   sections: PublicationSectionRecord[],
@@ -92,6 +98,19 @@ export async function saveDiscoverySnapshot(
       });
     }
   }
+
+  const desiredDiscoveryKeys = new Set(rows
+    .filter((row) => row.source_type === "highlight" || row.source_type === "video")
+    .map((row) => `${row.publication_section_id}:${row.source_type}:${row.source_id}`));
+  const cleanlyRefreshedTypes = new Set(["highlight", "video"].filter((sourceType) => {
+    const matchingResults = results.filter((result) => result.sourceType === sourceType);
+    return matchingResults.length > 0 && matchingResults.every((result) => !result.error);
+  }));
+  const staleMixedItemIds = (existing as PublicationItemRecord[])
+    .filter((item) => cleanlyRefreshedTypes.has(item.source_type) && !item.is_manually_edited)
+    .filter((item) => !desiredDiscoveryKeys.has(`${item.publication_section_id}:${item.source_type}:${item.source_id}`))
+    .map((item) => item.id);
+  await deletePublicationItemsByIds(supabase, staleMixedItemIds);
 
   if (!rows.length) return 0;
   const { error } = await supabase.from("publication_items").upsert(rows, { onConflict: "publication_section_id,source_type,source_id" });

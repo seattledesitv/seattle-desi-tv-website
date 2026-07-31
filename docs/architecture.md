@@ -126,6 +126,10 @@ Website publishing transitions an approved publication to Published through the 
 
 Publication discovery reuses the public homepage's source tables to create a complete editorial starting point. Repository helpers load source rows and live counts; discovery services normalize them into publication items for Cover, Highlights, Events, Businesses, Organizations, Groups, Recognition, Videos, Statistics, and Get Involved.
 
+Community Highlights and Videos have intentionally separate ownership. Community Highlights contains at most the first three active, featured rows from `featured_social_content`, ordered by homepage display order. Videos contains only live YouTube API results and Instagram API results whose media type is video. Neither source is allowed to populate the other section.
+
+When a clean Highlights/Video refresh succeeds, the discovery repository removes stale, non-manually-edited items no longer returned by the correct sources before upserting the new snapshot. Manually edited items are preserved, and cleanup is skipped for a source type if any of its feeds failed so temporary API outages cannot erase content.
+
 YouTube and Instagram discovery uses the platform's existing server API routes through `socialFeedRepository.ts`, keeping provider credentials server-side and avoiding duplicate provider integrations. If either feed is unavailable, discovery returns the other sources and reports a non-blocking warning.
 
 Cover candidates include active homepage banners, featured events, and scheduled festival heroes. The preview uses the featured cover item as its image hero when a publication-level cover image is not set. Statistics are captured as editable item snapshots so published output remains auditable while a fresh discovery can pull current totals. Get Involved actions mirror the homepage destinations and remain editable in the item workspace.

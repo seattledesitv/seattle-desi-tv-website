@@ -82,32 +82,27 @@ async function discoverHomepageHeroes(supabase: SupabaseClient): Promise<Discove
   }
 }
 
-async function discoverFeaturedContent(supabase: SupabaseClient): Promise<DiscoveryResult[]> {
+async function discoverCommunityHighlights(supabase: SupabaseClient): Promise<DiscoveryResult> {
   try {
-    const rows = (await listPublishingSourceRows(supabase, "featured_social_content")).filter((row) => row.active !== false && row.featured !== false);
-    const makeItems = (sourceType: "highlight" | "video", filter: (row: Record<string, unknown>) => boolean): PublishingContentItem[] => rows.filter(filter).map((row, index) => ({
-      sourceType,
-      sourceId: String(row.id || `${sourceType}-${index}`),
+    const rows = (await listPublishingSourceRows(supabase, "featured_social_content"))
+      .filter((row) => row.active !== false && row.featured !== false)
+      .sort((a, b) => Number(a.display_order ?? 999) - Number(b.display_order ?? 999) || String(b.created_at || "").localeCompare(String(a.created_at || "")))
+      .slice(0, 3);
+    const items: PublishingContentItem[] = rows.map((row, index) => ({
+      sourceType: "highlight",
+      sourceId: String(row.id || `highlight-${index}`),
       title: text(row.title) || "SDTV Community Highlight",
       description: text(row.subtitle) || text(row.description),
       imageUrl: firstImage(row),
-      destinationUrl: text(row.content_url) || "https://www.youtube.com/@SeattleDesiTV",
+      destinationUrl: text(row.content_url) || "/",
       sourceDate: text(row.published_at) || text(row.created_at) || null,
       status: "active",
       featured: Boolean(row.featured),
-      metadata: row,
+      metadata: { ...row, sourceTable: "featured_social_content" },
     }));
-    const isVideo = (row: Record<string, unknown>) => /video|youtube|reel|short/i.test(`${text(row.content_type)} ${text(row.platform)}`);
-    return [
-      { sourceType: "highlight" as const, label: "Community Highlights", items: makeItems("highlight", () => true) },
-      { sourceType: "video" as const, label: "Videos", items: makeItems("video", isVideo) },
-    ];
+    return { sourceType: "highlight", label: "Community Highlights", items };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not load featured content.";
-    return [
-      { sourceType: "highlight" as const, label: "Community Highlights", items: [], error: message },
-      { sourceType: "video" as const, label: "Videos", items: [], error: message },
-    ];
+    return { sourceType: "highlight", label: "Community Highlights", items: [], error: error instanceof Error ? error.message : "Could not load community highlights." };
   }
 }
 
@@ -119,11 +114,10 @@ async function discoverLiveSocialContent(): Promise<DiscoveryResult[]> {
   const videos: DiscoveryResult = youtube.status === "fulfilled"
     ? { sourceType: "video", label: "Latest YouTube", items: youtube.value.map((video) => ({ sourceType: "video", sourceId: `youtube-${video.id}`, title: text(video.title) || "Seattle Desi TV Video", description: text(video.description) || "Watch the latest Seattle Desi TV community video.", imageUrl: text(video.thumbnail) || "/hero-sdtv.png", destinationUrl: text(video.url) || "https://www.youtube.com/@SeattleDesiTV/videos", sourceDate: text(video.publishedAt) || null, status: "published", featured: false, metadata: { platform: "YouTube", liveFeed: true } })) }
     : { sourceType: "video", label: "Latest YouTube", items: [], error: youtube.reason instanceof Error ? youtube.reason.message : "YouTube feed is unavailable." };
-  const instagramItems = instagram.status === "fulfilled" ? instagram.value.map((post) => ({ sourceType: "highlight" as const, sourceId: `instagram-${post.id}`, title: text(post.caption).split(/[.!?]/)[0].slice(0, 90) || "Seattle Desi TV on Instagram", description: text(post.caption) || "Latest community highlight from Seattle Desi TV.", imageUrl: text(post.thumbnailUrl) || text(post.mediaUrl) || "/sdtv-logo.png", destinationUrl: text(post.permalink) || "https://instagram.com/seattledesitv", sourceDate: text(post.timestamp) || null, status: "published", featured: false, metadata: { platform: "Instagram", mediaType: post.mediaType, username: post.username, liveFeed: true } })) : [];
+  const instagramItems = instagram.status === "fulfilled" ? instagram.value.filter((post) => String(post.mediaType || "").toUpperCase() === "VIDEO").map((post) => ({ sourceType: "video" as const, sourceId: `instagram-${post.id}`, title: text(post.caption).split(/[.!?]/)[0].slice(0, 90) || "Seattle Desi TV on Instagram", description: text(post.caption) || "Watch the latest Seattle Desi TV reel.", imageUrl: text(post.thumbnailUrl) || text(post.mediaUrl) || "/sdtv-logo.png", destinationUrl: text(post.permalink) || "https://instagram.com/seattledesitv", sourceDate: text(post.timestamp) || null, status: "published", featured: false, metadata: { platform: "Instagram", mediaType: post.mediaType, username: post.username, liveFeed: true } })) : [];
   const instagramError = instagram.status === "rejected" ? (instagram.reason instanceof Error ? instagram.reason.message : "Instagram feed is unavailable.") : undefined;
-  const instagramVideos: DiscoveryResult = { sourceType: "video", label: "Latest Instagram Reels", items: instagramItems.filter((item) => String(item.metadata.mediaType || "").toUpperCase() === "VIDEO").map((item) => ({ ...item, sourceType: "video" as const, sourceId: `video-${item.sourceId}` })), error: instagramError };
-  const highlights: DiscoveryResult = { sourceType: "highlight", label: "Latest Instagram & Community Highlights", items: instagramItems, error: instagramError };
-  return [videos, instagramVideos, highlights];
+  const instagramVideos: DiscoveryResult = { sourceType: "video", label: "Latest Instagram Reels", items: instagramItems, error: instagramError };
+  return [videos, instagramVideos];
 }
 
 async function discoverRecognition(supabase: SupabaseClient): Promise<DiscoveryResult> {
@@ -170,13 +164,13 @@ function discoverGetInvolved(): DiscoveryResult {
 }
 
 export async function discoverConfiguredSources(supabase: SupabaseClient, range: DiscoveryRange): Promise<DiscoveryResult[]> {
-  const [standard, hero, featured, liveSocial, recognition, statistics] = await Promise.all([
+  const [standard, hero, highlights, liveSocial, recognition, statistics] = await Promise.all([
     Promise.all(SOURCES.map((source) => discoverSource(supabase, source, range))),
     discoverHomepageHeroes(supabase),
-    discoverFeaturedContent(supabase),
+    discoverCommunityHighlights(supabase),
     discoverLiveSocialContent(),
     discoverRecognition(supabase),
     discoverStatistics(supabase),
   ]);
-  return [hero, ...liveSocial, ...featured, ...standard, recognition, statistics, discoverGetInvolved()];
+  return [hero, highlights, ...liveSocial, ...standard, recognition, statistics, discoverGetInvolved()];
 }
