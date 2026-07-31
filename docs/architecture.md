@@ -96,6 +96,8 @@ The historical `newsletter` channel remains in stored types so old campaigns rem
 
 Email package version 3 is a deliberately concise digest rather than a complete visual copy of the website. It prioritizes featured items, limits each section to five entries, truncates descriptions at editorially useful boundaries, and links to the canonical public edition for remaining content. Cloudinary delivery transformations provide consistent thumbnail dimensions without modifying source assets.
 
+Email package version 4 standardizes the digest further: every section is limited to four items, story excerpts are capped at 105 characters, thumbnails use a consistent compact 112×84 presentation, and overflow content is directed to the canonical website edition. Studio's Newsletter preview also uses compact images and two-line descriptions so editorial review better reflects the delivered density.
+
 The website channel remains the complete edition but uses denser responsive presentation: a shorter hero, three-column desktop cards, smaller imagery, and bounded descriptions. Mobile retains a single readable column.
 
 The Weekly Events Instagram final-caption override lives in its hook alongside generated copy. The final approval signature combines the complete ordered image URL set and exact caption text, so any post-review caption or media change invalidates approval before the publishing service can run.

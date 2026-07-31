@@ -428,3 +428,11 @@ Safety:
 - Added a browser-style newsletter frame, SDTV branding, launch status, and Read Now call-to-action.
 - The generated image remains reviewable, downloadable, uploadable, and approval-gated through the existing Social launch workflow.
 - Targeted ESLint, full TypeScript checking, and the production build passed.
+
+### Sprint 15 follow-up — Standardized newsletter density
+
+- Limited newsletter sections to four featured-first items.
+- Standardized story excerpts to a maximum of 105 characters.
+- Reduced email thumbnails to a consistent 112×84 layout.
+- Matched the Studio Newsletter preview to the compact website treatment with smaller images and two-line descriptions.
+- Bumped generated output packages to version 4 so older long-form email packages must be regenerated before sending.

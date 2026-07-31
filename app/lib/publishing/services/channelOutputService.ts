@@ -19,7 +19,7 @@ function absoluteUrl(value: string | null | undefined) {
   return `${SITE_URL}${url.startsWith("/") ? url : `/${url}`}`;
 }
 
-function excerpt(value: unknown, limit = 180) {
+function excerpt(value: unknown, limit = 105) {
   const text = clean(value);
   return text.length > limit ? `${text.slice(0, limit - 1).trimEnd()}…` : text;
 }
@@ -63,9 +63,9 @@ function emailHtml(model: PublicationPreviewModel) {
   const publicUrl = `${SITE_URL}/publications/${model.publication.id}`;
   const sectionRows = model.sections.filter((section) => section.section_key !== "cover").map((section) => {
     const actions = section.section_key === "get_involved";
-    const prioritized = [...section.items].sort((a, b) => Number(b.featured) - Number(a.featured)).slice(0, actions ? 4 : 5);
+    const prioritized = [...section.items].sort((a, b) => Number(b.featured) - Number(a.featured)).slice(0, 4);
     const itemRows = prioritized.map((item) => {
-      const image = item.image_url ? `<td width="150" valign="top" style="width:150px;padding:0"><img src="${escapeHtml(cloudinaryCrop(item.image_url, 300, 240))}" alt="${escapeHtml(item.title)}" width="150" height="120" style="display:block;width:150px;height:120px;object-fit:cover;border:0;border-radius:10px"></td>` : "";
+      const image = item.image_url ? `<td width="112" valign="top" style="width:112px;padding:0"><img src="${escapeHtml(cloudinaryCrop(item.image_url, 224, 168))}" alt="${escapeHtml(item.title)}" width="112" height="84" style="display:block;width:112px;height:84px;object-fit:cover;border:0;border-radius:9px"></td>` : "";
       const link = item.destination_url ? `<a href="${escapeHtml(absoluteUrl(item.destination_url))}" style="color:#be185d;text-decoration:none;font:700 13px/1.4 Arial,sans-serif">Read more →</a>` : "";
       return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 12px;border-bottom:1px solid #e2e8f0;background:${actions ? "#ffffff" : "#ffffff"}"><tbody><tr>${image}<td valign="top" style="padding:${image ? "4px 8px 14px 16px" : "4px 8px 14px"}"><h3 style="margin:0;color:#0f172a;font:700 17px/1.3 Arial,sans-serif">${escapeHtml(item.title || "Untitled")}</h3>${item.description ? `<p style="margin:7px 0;color:#475569;font:14px/1.45 Arial,sans-serif">${escapeHtml(excerpt(item.description))}</p>` : ""}${link}</td></tr></tbody></table>`;
     }).join("");
@@ -94,7 +94,7 @@ export function buildChannelOutput(model: PublicationPreviewModel, channel: Publ
   const html = social ? null : email ? emailHtml(model) : publicationHtml(model, false);
   const caption = social ? socialCaption(model, channel) : null;
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     channel,
     title,
     edition,
@@ -122,6 +122,6 @@ export function serializeChannelOutput(payload: ChannelOutputPayload) {
 }
 
 export function readChannelOutput(value: Record<string, unknown>): ChannelOutputPayload | null {
-  if (value.schemaVersion !== 3 || typeof value.channel !== "string" || typeof value.title !== "string" || typeof value.text !== "string") return null;
+  if (value.schemaVersion !== 4 || typeof value.channel !== "string" || typeof value.title !== "string" || typeof value.text !== "string") return null;
   return value as unknown as ChannelOutputPayload;
 }

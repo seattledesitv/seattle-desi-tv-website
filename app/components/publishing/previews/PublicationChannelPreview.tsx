@@ -38,11 +38,11 @@ export default function PublicationChannelPreview({ model, channel }: { model: P
               const metadata = item.generated_content?.metadata;
               const platform = metadata && typeof metadata === "object" && "platform" in metadata ? String(metadata.platform || "") : "";
               const body = <>
-                {item.image_url && <SafeImage src={item.image_url} alt={item.title || "Publication item"} className={`${channel === "website" ? "aspect-[16/9] max-h-28" : "h-40"} w-full object-cover`} widthHint={channel === "website" ? 420 : 700} enableFullPreview={false} />}
-                <div className={channel === "website" ? "p-3" : "p-4"}>
+                {item.image_url && <SafeImage src={item.image_url} alt={item.title || "Publication item"} className={`${channel === "website" ? "aspect-[16/9] max-h-28" : channel === "newsletter" ? "h-28" : "h-40"} w-full object-cover`} widthHint={channel === "website" || channel === "newsletter" ? 420 : 700} enableFullPreview={false} />}
+                <div className={channel === "website" || channel === "newsletter" ? "p-3" : "p-4"}>
                   <div className="flex flex-wrap gap-2">{platform && <span className="rounded-full bg-slate-950 px-2 py-1 text-[10px] font-black uppercase text-white">{platform}</span>}{item.featured && !statistics && <span className="rounded-full bg-pink-50 px-2 py-1 text-[10px] font-black uppercase text-pink-600">Featured</span>}</div>
                   <h3 className={`${statistics ? "text-2xl text-pink-600" : channel === "website" ? "text-base" : "text-lg"} mt-1 font-black`}>{item.title || "Untitled"}</h3>
-                  {item.description && <p className={`mt-2 text-sm text-slate-600 ${channel === "website" ? "line-clamp-2 leading-5" : "leading-6"}`}>{item.description}</p>}
+                  {item.description && <p className={`mt-2 text-sm text-slate-600 ${channel === "website" || channel === "newsletter" ? "line-clamp-2 leading-5" : "leading-6"}`}>{item.description}</p>}
                 </div>
               </>;
               const classes = "publication-item break-inside-avoid overflow-hidden rounded-2xl border border-slate-200 bg-white";
