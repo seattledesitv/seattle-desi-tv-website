@@ -35,10 +35,12 @@ export default function PublicationChannelPreview({ model, channel }: { model: P
           {section.introduction && <p className={`mt-3 leading-7 ${actions ? "text-slate-300" : "text-slate-600"}`}>{section.introduction}</p>}
           <div className={`publication-item-grid mt-4 grid gap-4 ${channel !== "mobile" ? statistics ? "sm:grid-cols-3" : "sm:grid-cols-2" : ""}`}>
             {section.items.map((item) => {
+              const metadata = item.generated_content?.metadata;
+              const platform = metadata && typeof metadata === "object" && "platform" in metadata ? String(metadata.platform || "") : "";
               const body = <>
                 {item.image_url && <SafeImage src={item.image_url} alt={item.title || "Publication item"} className="h-40 w-full object-cover" widthHint={700} enableFullPreview={false} />}
                 <div className="p-4">
-                  {item.featured && !statistics && <span className="text-xs font-black uppercase text-pink-600">Featured</span>}
+                  <div className="flex flex-wrap gap-2">{platform && <span className="rounded-full bg-slate-950 px-2 py-1 text-[10px] font-black uppercase text-white">{platform}</span>}{item.featured && !statistics && <span className="rounded-full bg-pink-50 px-2 py-1 text-[10px] font-black uppercase text-pink-600">Featured</span>}</div>
                   <h3 className={`${statistics ? "text-2xl text-pink-600" : "text-lg"} mt-1 font-black`}>{item.title || "Untitled"}</h3>
                   {item.description && <p className="mt-2 text-sm leading-6 text-slate-600">{item.description}</p>}
                 </div>
