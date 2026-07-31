@@ -420,3 +420,11 @@ Provider configuration:
 Safety:
 
 - No social post, website publication, email, deployment, or merge occurred during implementation or validation.
+
+### Sprint 15 follow-up — Instagram publication mockup
+
+- Replaced the Instagram launch cover with a polished 1080×1350 publication-preview composition.
+- The design includes the real publication hero, edition label, title, and up to four included section teasers.
+- Added a browser-style newsletter frame, SDTV branding, launch status, and Read Now call-to-action.
+- The generated image remains reviewable, downloadable, uploadable, and approval-gated through the existing Social launch workflow.
+- Targeted ESLint, full TypeScript checking, and the production build passed.
