@@ -13,6 +13,7 @@ import SectionEditor from "../../../components/publishing/sections/SectionEditor
 import PublicationPreviewWorkspace from "../../../components/publishing/previews/PublicationPreviewWorkspace";
 import WeeklyEventsInstagramWorkspace from "../../../components/publishing/instagram/WeeklyEventsInstagramWorkspace";
 import PublicationReviewWorkspace from "../../../components/publishing/workflow/PublicationReviewWorkspace";
+import SocialLaunchWorkspace from "../../../components/publishing/social/SocialLaunchWorkspace";
 import { usePublicationSections } from "../../../hooks/usePublicationSections";
 import type { PublicationSectionRecord } from "../../../lib/publishing/repositories/sectionRepository";
 import { openPublicationEditorialWorkspace, savePublicationEditorialChanges } from "../../../lib/publishing/services/publicationWorkspaceService";
@@ -20,12 +21,12 @@ import type { PublicationRecord } from "../../../lib/publishing/types";
 import { getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
 
 const supabase = getSupabaseBrowserClient();
-type EditorMode = "section" | "items" | "content" | "ai" | "preview" | "events-instagram" | "review" | "publish";
+type EditorMode = "section" | "items" | "content" | "ai" | "preview" | "events-instagram" | "social-launch" | "review" | "publish";
 type EditorStage = "build" | "preview" | "approve" | "publish";
 
 const stages: Array<{ key: EditorStage; label: string; description: string; modes: Array<{ key: EditorMode; label: string }> }> = [
   { key: "build", label: "1. Build", description: "Choose content, organize sections, and refine the writing.", modes: [{ key: "section", label: "Section" }, { key: "items", label: "Items" }, { key: "content", label: "Discover" }, { key: "ai", label: "AI assistant" }] },
-  { key: "preview", label: "2. Preview", description: "Review the complete edition and prepare event social content.", modes: [{ key: "preview", label: "All channels" }, { key: "events-instagram", label: "Events Instagram" }] },
+  { key: "preview", label: "2. Preview", description: "Review the complete edition and prepare social content.", modes: [{ key: "preview", label: "All channels" }, { key: "social-launch", label: "Social launch" }, { key: "events-instagram", label: "Events Instagram" }] },
   { key: "approve", label: "3. Approve", description: "Complete editorial review and record the release decision.", modes: [{ key: "review", label: "Review & approve" }] },
   { key: "publish", label: "4. Publish", description: "Generate outputs, test delivery, publish, and inspect history.", modes: [{ key: "publish", label: "Publishing pipeline" }] },
 ];
@@ -121,6 +122,7 @@ export default function UnifiedPublicationEditorPage() {
           {mode === "content" && <ContentDiscoveryWorkspace supabase={supabase} publication={publication} />}
           {mode === "publish" && <PublishingPipelineWorkspace supabase={supabase} publicationId={publication.id} publicationStatus={publication.status} />}
           {mode === "events-instagram" && <WeeklyEventsInstagramWorkspace supabase={supabase} publication={publication} />}
+          {mode === "social-launch" && <SocialLaunchWorkspace supabase={supabase} publication={publication} />}
           {mode === "review" && <PublicationReviewWorkspace supabase={supabase} publication={publication} onPublicationChange={setPublication} />}
           {needsSectionRail && !selected && <div className="rounded-3xl bg-white p-10 text-center text-slate-500">Select or add a section to begin.</div>}
           {selected && mode === "section" && <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="mb-5 flex items-center justify-between"><div><p className="text-xs font-black uppercase text-pink-600">Section editor</p><h2 className="text-2xl font-black">{selected.title}</h2></div>{selected.section_key.startsWith("custom_") && <button type="button" onClick={() => void deleteSelected()} className="rounded-xl bg-red-50 px-4 py-2 text-sm font-black text-red-700">Delete section</button>}</div><SectionEditor section={selected} onChange={(changes, debounce) => sectionState.update(selected.id, changes, debounce)} /></div>}
