@@ -11,6 +11,7 @@ export default function PublishingPipelineWorkspace({ supabase, publicationId }:
   const pipeline = usePublishingPipeline(supabase, publicationId);
   const [channels, setChannels] = useState<Set<PublishingChannel>>(new Set(["website", "newsletter", "pdf"]));
   const [scheduledAt, setScheduledAt] = useState("");
+  const [testEmails, setTestEmails] = useState<Record<string, string>>({});
 
   function toggle(channel: PublishingChannel) {
     setChannels((current) => { const next = new Set(current); if (next.has(channel)) next.delete(channel); else next.add(channel); return next; });
@@ -20,6 +21,12 @@ export default function PublishingPipelineWorkspace({ supabase, publicationId }:
     const output = pipeline.outputs.find((item) => item.id === outputId);
     if (!output || !window.confirm(`Confirm ${output.status === "failed" ? "retry" : "publishing handoff"} for ${output.channel}?`)) return;
     void pipeline.publish(output);
+  }
+
+  function sendAllEmail(outputId: string) {
+    const output = pipeline.outputs.find((item) => item.id === outputId);
+    if (!output || !window.confirm("Send this tested publication email to every active subscriber? Already delivered subscribers will be skipped.")) return;
+    void pipeline.sendAll(output);
   }
 
   return <div className="grid gap-5">
@@ -41,7 +48,8 @@ export default function PublishingPipelineWorkspace({ supabase, publicationId }:
           {payload ? <><p className="mt-2 line-clamp-2 text-sm text-slate-600">{payload.summary}</p><p className="mt-2 text-xs font-bold text-slate-400">{payload.media.length} media asset{payload.media.length === 1 ? "" : "s"} · package v{payload.schemaVersion}</p></> : <p className="mt-2 text-xs font-bold text-amber-700">Legacy snapshot — generate a new package to download or copy.</p>}
           {output.scheduled_at && <p className="mt-2 text-xs text-slate-500">Scheduled {new Date(output.scheduled_at).toLocaleString()}</p>}
           {output.last_error && <p className="mt-2 text-sm text-red-600">{output.last_error}</p>}
-          <div className="mt-3 flex flex-wrap gap-2">{payload && <><button type="button" onClick={() => pipeline.download(output)} className="rounded-lg border px-3 py-2 text-xs font-black">Download</button><button type="button" onClick={() => void pipeline.copy(output)} className="rounded-lg border px-3 py-2 text-xs font-black">Copy text</button></>}{["ready", "failed"].includes(output.status) && <button type="button" disabled={pipeline.busy} onClick={() => publish(output.id)} className="rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-white">{output.status === "failed" ? "Retry" : "Confirm handoff"}</button>}{output.status === "scheduled" && <button type="button" disabled={pipeline.busy} onClick={() => void pipeline.cancel(output)} className="rounded-lg bg-red-50 px-3 py-2 text-xs font-black text-red-700">Cancel</button>}</div>
+          {output.channel === "email" && payload && <div className="mt-4 rounded-xl bg-slate-50 p-3"><p className="text-xs font-black uppercase text-slate-500">Email delivery</p><div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]"><input type="email" value={testEmails[output.id] || ""} onChange={(event) => setTestEmails((current) => ({ ...current, [output.id]: event.target.value }))} placeholder="Test email address" className="rounded-lg border bg-white px-3 py-2 text-sm" /><button type="button" disabled={pipeline.emailBusyId === output.id} onClick={() => void pipeline.sendTest(output, testEmails[output.id] || "")} className="rounded-lg bg-pink-600 px-3 py-2 text-xs font-black text-white disabled:opacity-50">Send test</button></div><button type="button" disabled={pipeline.emailBusyId === output.id || output.status === "published"} onClick={() => sendAllEmail(output.id)} className="mt-2 w-full rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-white disabled:opacity-50">{output.status === "published" ? "Sent to subscribers" : "Send to active subscribers"}</button><p className="mt-2 text-xs text-slate-500">A successful test from the last 24 hours is required before subscriber delivery.</p></div>}
+          <div className="mt-3 flex flex-wrap gap-2">{payload && <><button type="button" onClick={() => pipeline.download(output)} className="rounded-lg border px-3 py-2 text-xs font-black">Download</button><button type="button" onClick={() => void pipeline.copy(output)} className="rounded-lg border px-3 py-2 text-xs font-black">Copy text</button></>}{output.channel !== "email" && ["ready", "failed"].includes(output.status) && <button type="button" disabled={pipeline.busy} onClick={() => publish(output.id)} className="rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-white">{output.status === "failed" ? "Retry" : "Confirm handoff"}</button>}{output.status === "scheduled" && <button type="button" disabled={pipeline.busy} onClick={() => void pipeline.cancel(output)} className="rounded-lg bg-red-50 px-3 py-2 text-xs font-black text-red-700">Cancel</button>}</div>
         </article>;
       })}{!pipeline.outputs.length && <p className="text-sm text-slate-500">No outputs generated yet.</p>}</div>}
     </section>
