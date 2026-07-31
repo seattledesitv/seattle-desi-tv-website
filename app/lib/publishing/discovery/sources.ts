@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DiscoveryRange, DiscoveryResult, PublishingContentItem, PublishingSourceType } from "../core/content";
 import { isApprovedRow, isWithinRange, normalizeRow } from "./normalizer";
 import { countPublishingSourceRows, listPublishingSourceRows } from "../repositories/contentRepository";
+import { listLatestInstagramPosts, listLatestYoutubeVideos } from "../repositories/socialFeedRepository";
 
 type SourceDefinition = {
   sourceType: PublishingSourceType;
@@ -110,6 +111,20 @@ async function discoverFeaturedContent(supabase: SupabaseClient): Promise<Discov
   }
 }
 
+async function discoverLiveSocialContent(): Promise<DiscoveryResult[]> {
+  const [youtube, instagram] = await Promise.allSettled([
+    listLatestYoutubeVideos(),
+    listLatestInstagramPosts(6),
+  ]);
+  const videos: DiscoveryResult = youtube.status === "fulfilled"
+    ? { sourceType: "video", label: "Latest YouTube", items: youtube.value.map((video) => ({ sourceType: "video", sourceId: `youtube-${video.id}`, title: text(video.title) || "Seattle Desi TV Video", description: text(video.description) || "Watch the latest Seattle Desi TV community video.", imageUrl: text(video.thumbnail) || "/hero-sdtv.png", destinationUrl: text(video.url) || "https://www.youtube.com/@SeattleDesiTV/videos", sourceDate: text(video.publishedAt) || null, status: "published", featured: false, metadata: { platform: "YouTube", liveFeed: true } })) }
+    : { sourceType: "video", label: "Latest YouTube", items: [], error: youtube.reason instanceof Error ? youtube.reason.message : "YouTube feed is unavailable." };
+  const highlights: DiscoveryResult = instagram.status === "fulfilled"
+    ? { sourceType: "highlight", label: "Latest Instagram & Community Highlights", items: instagram.value.map((post) => ({ sourceType: "highlight", sourceId: `instagram-${post.id}`, title: text(post.caption).split(/[.!?]/)[0].slice(0, 90) || "Seattle Desi TV on Instagram", description: text(post.caption) || "Latest community highlight from Seattle Desi TV.", imageUrl: text(post.thumbnailUrl) || text(post.mediaUrl) || "/sdtv-logo.png", destinationUrl: text(post.permalink) || "https://instagram.com/seattledesitv", sourceDate: text(post.timestamp) || null, status: "published", featured: false, metadata: { platform: "Instagram", mediaType: post.mediaType, username: post.username, liveFeed: true } })) }
+    : { sourceType: "highlight", label: "Latest Instagram & Community Highlights", items: [], error: instagram.reason instanceof Error ? instagram.reason.message : "Instagram feed is unavailable." };
+  return [videos, highlights];
+}
+
 async function discoverRecognition(supabase: SupabaseClient): Promise<DiscoveryResult> {
   try {
     const rows = await listPublishingSourceRows(supabase, "team_members");
@@ -145,21 +160,22 @@ async function discoverStatistics(supabase: SupabaseClient): Promise<DiscoveryRe
 
 function discoverGetInvolved(): DiscoveryResult {
   const actions = [
-    ["Volunteer", "Join the SDTV volunteer team and help serve the community.", "/contact?interest=volunteer"],
-    ["Sponsor", "Support SDTV programming, events, and community storytelling.", "/contact?interest=sponsor"],
+    ["Volunteer", "Join the SDTV volunteer team and help serve the community.", "/contact?interest=Volunteer"],
+    ["Sponsor", "Support SDTV programming, events, and community storytelling.", "/contact?interest=Sponsorship"],
     ["Submit Content", "Share a community story, announcement, or media submission.", "/submit-content"],
-    ["Request Coverage", "Invite Seattle Desi TV to cover your event or initiative.", "/coverage"],
+    ["Request Coverage", "Invite Seattle Desi TV to cover your event or initiative.", "/contact?interest=Event%20Coverage"],
   ];
   return { sourceType: "call_to_action", label: "Get Involved", items: actions.map(([title, description, destinationUrl], index) => ({ sourceType: "call_to_action", sourceId: `get-involved-${index}`, title, description, imageUrl: "", destinationUrl, sourceDate: null, status: "active", featured: index === 0, metadata: { source: "homepage-contact" } })) };
 }
 
 export async function discoverConfiguredSources(supabase: SupabaseClient, range: DiscoveryRange): Promise<DiscoveryResult[]> {
-  const [standard, hero, featured, recognition, statistics] = await Promise.all([
+  const [standard, hero, featured, liveSocial, recognition, statistics] = await Promise.all([
     Promise.all(SOURCES.map((source) => discoverSource(supabase, source, range))),
     discoverHomepageHeroes(supabase),
     discoverFeaturedContent(supabase),
+    discoverLiveSocialContent(),
     discoverRecognition(supabase),
     discoverStatistics(supabase),
   ]);
-  return [hero, ...featured, ...standard, recognition, statistics, discoverGetInvolved()];
+  return [hero, ...liveSocial, ...featured, ...standard, recognition, statistics, discoverGetInvolved()];
 }
