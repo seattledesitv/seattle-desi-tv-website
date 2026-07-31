@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DiscoveryResult, PublishingContentItem } from "../core/content";
+import type { PublicationItemRecord } from "./publicationItemRepository";
 
 export type PublicationSectionRecord = {
   id: string;
@@ -25,8 +26,37 @@ export async function listPublicationItems(supabase: SupabaseClient, sectionIds:
 }
 
 function sectionKeyFor(sourceType: PublishingContentItem["sourceType"]) {
-  const mapping: Record<string, string> = { event: "events", business: "businesses", organization: "organizations", group: "groups", recognition: "recognition", video: "videos" };
+  const mapping: Record<PublishingContentItem["sourceType"], string> = {
+    hero: "cover",
+    highlight: "highlights",
+    event: "events",
+    business: "businesses",
+    organization: "organizations",
+    group: "groups",
+    recognition: "recognition",
+    video: "videos",
+    statistic: "statistics",
+    call_to_action: "get_involved",
+  };
   return mapping[sourceType];
+}
+
+export async function listPublishingSourceRows(supabase: SupabaseClient, table: string) {
+  const { data, error } = await supabase.from(table).select("*").limit(250);
+  if (error) throw error;
+  return (data || []) as Record<string, unknown>[];
+}
+
+export async function countPublishingSourceRows(
+  supabase: SupabaseClient,
+  table: string,
+  filter?: { column: string; value: string },
+) {
+  let query = supabase.from(table).select("id", { count: "exact", head: true });
+  if (filter) query = query.eq(filter.column, filter.value);
+  const { count, error } = await query;
+  if (error) throw error;
+  return count || 0;
 }
 
 export async function saveDiscoverySnapshot(
@@ -37,14 +67,14 @@ export async function saveDiscoverySnapshot(
   const sectionByKey = new Map(sections.map((section) => [section.section_key, section]));
   const sectionIds = sections.map((section) => section.id);
   const existing = await listPublicationItems(supabase, sectionIds);
-  const existingBySource = new Map(existing.map((item: any) => [`${item.publication_section_id}:${item.source_type}:${item.source_id}`, item]));
+  const existingBySource = new Map((existing as PublicationItemRecord[]).map((item) => [`${item.publication_section_id}:${item.source_type}:${item.source_id}`, item]));
   const rows: Record<string, unknown>[] = [];
 
   for (const result of results) {
     for (const [index, item] of result.items.entries()) {
       const section = sectionByKey.get(sectionKeyFor(item.sourceType));
       if (!section) continue;
-      const previous: any = existingBySource.get(`${section.id}:${item.sourceType}:${item.sourceId}`);
+      const previous = existingBySource.get(`${section.id}:${item.sourceType}:${item.sourceId}`);
       rows.push({
         publication_section_id: section.id,
         source_type: item.sourceType,

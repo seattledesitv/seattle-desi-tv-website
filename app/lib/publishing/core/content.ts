@@ -1,4 +1,14 @@
-export type PublishingSourceType = "event" | "business" | "organization" | "group" | "recognition" | "video";
+export type PublishingSourceType =
+  | "hero"
+  | "highlight"
+  | "event"
+  | "business"
+  | "organization"
+  | "group"
+  | "recognition"
+  | "video"
+  | "statistic"
+  | "call_to_action";
 
 export type PublishingContentItem = {
   sourceType: PublishingSourceType;
