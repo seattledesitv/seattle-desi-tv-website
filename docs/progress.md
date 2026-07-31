@@ -11,6 +11,7 @@
 - Publishing Platform Sprint 8 content completeness: complete
 - Publishing Platform Sprint 9 sharing quality: complete
 - Publishing Platform Sprint 10 channel handoffs: complete
+- Publishing Platform Sprint 11 subscriber email delivery: complete
 - External automatic channel adapters: intentionally pending credentials and provider-specific implementation
 - Deployment and merge status: not performed by the Sprint 4 development work
 
@@ -216,3 +217,38 @@ Operational requirements:
 - Apply `20260730100000_add_publication_pipeline_history.sql` if Generate Outputs reports a missing table or column.
 - Generate new channel outputs after this sprint; older generic snapshots are intentionally marked as legacy.
 - Verify downloaded HTML and social copy using authenticated feature-branch data before release.
+
+## Sprint 11 — Subscriber email delivery
+
+Completed functionality:
+
+- Dedicated email delivery controls in the publication pipeline
+- Test email to an editor-supplied address
+- Successful test required within 24 hours before subscriber delivery
+- Explicit confirmation before sending to all active subscribers
+- Server-side admin authorization and server-only credentials
+- Active-subscriber filtering and email deduplication
+- Personalized subscription-management links
+- Resend batch delivery in groups of at most 100
+- Per-output, per-subscriber delivery ledger
+- Duplicate prevention for successful recipients during retries
+- Test, success, and failure events recorded in publishing history
+- Email output marked published only after pending subscriber batches are accepted
+
+Migration:
+
+- `20260730143000_add_publication_email_delivery.sql`
+- Adds `publication_email_deliveries`, indexes, admin RLS, and `email_test` / `email_send` publishing-attempt actions
+
+Operational requirements:
+
+- Apply the Sprint 11 migration before testing email delivery.
+- Configure `RESEND_API_KEY`, `NEWSLETTER_FROM_EMAIL`, and `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_SECRET_KEY` in the feature-preview environment.
+- Use a verified Resend sender domain for subscriber delivery.
+- Send and inspect a test email before using Send to active subscribers.
+
+Validation:
+
+- Targeted ESLint passed
+- Full TypeScript check passed
+- Production build passed and generated all 157 routes

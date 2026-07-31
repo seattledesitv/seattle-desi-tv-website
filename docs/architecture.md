@@ -68,6 +68,8 @@ Channel-specific delivery is isolated behind `app/lib/publishing/adapters/regist
 
 The pipeline workspace can download HTML or text handoff files and copy channel text. Legacy generic snapshots remain readable in history but are explicitly identified and must be regenerated before download. Provider adapters remain a separate concern and consume these packages only after credentials and channel-specific delivery rules are approved.
 
+Email is the first automatic delivery adapter. Its admin-only server route requires a successful test for the same output within 24 hours before subscriber delivery. It selects only active subscribers, sends personalized messages in provider-supported batches, includes subscription-management links, and writes a per-recipient delivery ledger. Successfully delivered addresses are skipped on retry, preventing duplicate campaign email after a partial failure.
+
 ### Homepage content bridge
 
 Publication discovery reuses the public homepage's source tables to create a complete editorial starting point. Repository helpers load source rows and live counts; discovery services normalize them into publication items for Cover, Highlights, Events, Businesses, Organizations, Groups, Recognition, Videos, Statistics, and Get Involved.
