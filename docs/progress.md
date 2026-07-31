@@ -7,7 +7,8 @@
 - Publishing Platform Sprint 5A: complete
 - Publishing Platform Sprint 5B: code complete; migration and provider key required for live use
 - Publishing Platform Sprint 6: complete
-- Next planned sprint: Sprint 7 — Publishing Pipeline
+- Publishing Platform Sprint 7 internal pipeline: complete
+- External automatic channel adapters: intentionally pending credentials and provider-specific implementation
 - Deployment and merge status: not performed by the Sprint 4 development work
 
 ## Completed publishing foundation
@@ -114,4 +115,22 @@ No database migration or npm dependency was required for Sprint 6.
 
 ## Sprint 7 recommendation
 
-Implement the publishing pipeline with channel selection, draft output generation, scheduling, retry, publishing history, and per-channel status tracking. Keep actual external publishing adapters isolated behind services and require explicit confirmation before sending content.
+Completed functionality:
+
+- Website, newsletter, Instagram, Facebook, LinkedIn, PDF, and email channel selection
+- Canonical output snapshot generation
+- Immediate and scheduled output preparation
+- Per-channel output status
+- Explicit confirmation before publishing handoff
+- Retry pathway for failed outputs
+- Scheduled-output cancellation
+- Publishing history and immutable attempt audit records
+- Attempt count, last error, and last-attempt tracking
+- Isolated channel adapter registry
+- Safe manual-handoff default for every external channel
+
+Operational requirements:
+
+- Apply `20260730100000_add_publication_pipeline_history.sql` to Supabase.
+- Apply the earlier Sprint 5 AI migration if it is not already installed.
+- Implement and test provider-specific automatic adapters only after credentials and publishing-account requirements are confirmed.

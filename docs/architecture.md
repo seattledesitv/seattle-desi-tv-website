@@ -58,6 +58,12 @@ AI output is always presented as a suggestion. Editors must explicitly apply it,
 
 The preview workspace supports JSON and standalone HTML downloads. PDF export uses a dedicated print stylesheet and the browser's native Save as PDF workflow, preserving selectable text and avoiding a client-side PDF dependency. Print rules isolate the publication renderer, set letter-size margins, and discourage page breaks inside section items.
 
+### Publishing pipeline
+
+The unified editor's Publish mode prepares immutable channel output snapshots from the canonical preview model. Campaigns group output records; each output independently tracks status, schedule, attempts, errors, and timestamps. `publication_publish_attempts` provides an append-only audit trail for generation, scheduling, publishing confirmation, retry, and cancellation.
+
+Channel-specific delivery is isolated behind `app/lib/publishing/adapters/registry.ts`. All adapters default to manual handoff until their external credentials, API behavior, and failure semantics are explicitly implemented and tested. The UI requires confirmation before a handoff, preventing development code from posting externally.
+
 ### Editorial save behavior
 
 Manual item fields are saved after a two-second debounce. The hook merges rapid field changes, prevents stale retries from overwriting newer edits, refreshes canonical records after successful saves, and retains still-pending optimistic changes. Immediate actions optimistically update the UI and roll back on failure.
