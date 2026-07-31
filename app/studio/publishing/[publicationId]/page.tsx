@@ -7,6 +7,7 @@ import StudioHeader from "../../../components/StudioHeader";
 import ContentDiscoveryWorkspace from "../../../components/publishing/ContentDiscoveryWorkspace";
 import AiAssistantPanel from "../../../components/publishing/AiAssistantPanel";
 import PromptManager from "../../../components/publishing/PromptManager";
+import PublishingPipelineWorkspace from "../../../components/publishing/pipeline/PublishingPipelineWorkspace";
 import ItemsWorkspace from "../../../components/publishing/items/ItemsWorkspace";
 import SectionEditor from "../../../components/publishing/sections/SectionEditor";
 import PublicationPreviewWorkspace from "../../../components/publishing/previews/PublicationPreviewWorkspace";
@@ -17,7 +18,7 @@ import type { PublicationRecord } from "../../../lib/publishing/types";
 import { getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
 
 const supabase = getSupabaseBrowserClient();
-type EditorMode = "section" | "items" | "content" | "ai" | "preview";
+type EditorMode = "section" | "items" | "content" | "ai" | "preview" | "publish";
 
 const modes: Array<{ key: EditorMode; label: string }> = [
   { key: "section", label: "Edit section" },
@@ -25,6 +26,7 @@ const modes: Array<{ key: EditorMode; label: string }> = [
   { key: "content", label: "Discover content" },
   { key: "ai", label: "AI assistant" },
   { key: "preview", label: "Preview" },
+  { key: "publish", label: "Publish" },
 ];
 
 export default function UnifiedPublicationEditorPage() {
@@ -107,6 +109,7 @@ export default function UnifiedPublicationEditorPage() {
         <section className="min-w-0">
           {mode === "ai" && <div className="mb-5"><PromptManager supabase={supabase} /></div>}
           {mode === "content" && <ContentDiscoveryWorkspace supabase={supabase} publication={publication} />}
+          {mode === "publish" && <PublishingPipelineWorkspace supabase={supabase} publicationId={publication.id} />}
           {mode !== "content" && !selected && <div className="rounded-3xl bg-white p-10 text-center text-slate-500">Select or add a section to begin.</div>}
           {selected && mode === "section" && <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="mb-5 flex items-center justify-between"><div><p className="text-xs font-black uppercase text-pink-600">Section editor</p><h2 className="text-2xl font-black">{selected.title}</h2></div>{selected.section_key.startsWith("custom_") && <button type="button" onClick={() => void deleteSelected()} className="rounded-xl bg-red-50 px-4 py-2 text-sm font-black text-red-700">Delete section</button>}</div><SectionEditor section={selected} onChange={(changes, debounce) => sectionState.update(selected.id, changes, debounce)} /></div>}
           {selected && mode === "items" && <ItemsWorkspace key={selected.id} supabase={supabase} publicationId={publication.id} publicationSectionId={selected.id} />}
