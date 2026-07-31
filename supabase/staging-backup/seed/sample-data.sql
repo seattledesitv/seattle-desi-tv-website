@@ -1,0 +1,2 @@
+-- Safe sample records for staging can be added here.
+-- Do not add production secrets or private user data.

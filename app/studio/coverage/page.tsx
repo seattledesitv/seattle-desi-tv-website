@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import StudioHeader from "../../components/StudioHeader";
+import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 
-const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "", { auth: { storageKey: AUTH_STORAGE_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+const supabase = getSupabaseBrowserClient();
 
 function isAdminRole(role: string) { return String(role || "").toLowerCase().includes("admin"); }
 function dateText(value?: string) { if (!value) return ""; const d = new Date(`${String(value).split("T")[0]}T00:00:00`); return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString(); }
@@ -48,7 +47,7 @@ export default function CoverageRequestsPage() {
   async function updateRequestStatus(request: any, status: string) {
     setActionMessage("Updating coverage request...");
     const payload: any = { status };
-    if (status === "approved" || status === "rejected" || status === "on_hold") { payload.approved_by = user?.email || user?.id || null; payload.approved_at = new Date().toISOString(); }
+    if (["approved", "rejected", "on_hold"].includes(status)) { payload.approved_by = user?.email || user?.id || null; payload.approved_at = new Date().toISOString(); }
     const { error } = await supabase.from("event_crew_assignments").update(payload).eq("id", request.id);
     if (error) { setActionMessage(`Update failed: ${error.message}`); return; }
     setActionMessage(`Coverage request marked ${status}.`);

@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import StudioHeader from "../../components/StudioHeader";
 import CheckedExternalLink from "../../components/CheckedExternalLink";
 
-const AUTH_STORAGE_KEY = "sdtv-auth-token-v2";
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "", { auth: { storageKey: AUTH_STORAGE_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+import { AUTH_STORAGE_KEY, getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+const supabase = getSupabaseBrowserClient();
 const STATUSES = ["all", "pending", "approved", "on_hold", "rejected"];
 
 function roleContainsAdmin(role: string) { return String(role || "").toLowerCase().trim().includes("admin"); }
