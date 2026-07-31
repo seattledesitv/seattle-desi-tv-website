@@ -9,7 +9,7 @@ export default function PublicationChannelPreview({ model, channel }: { model: P
   const heroImage = model.publication.cover_image_url || coverItem?.image_url;
 
   return <article className={`publication-print-root overflow-hidden rounded-3xl bg-white text-slate-950 shadow-xl ${frame}`}>
-    <header className={`publication-cover ${social ? "aspect-square" : "min-h-80"} relative flex flex-col justify-end overflow-hidden bg-gradient-to-br from-slate-950 via-pink-950 to-pink-600 p-7 text-white`}>
+    <header className={`publication-cover ${social ? "aspect-square" : channel === "website" ? "min-h-64" : "min-h-80"} relative flex flex-col justify-end overflow-hidden bg-gradient-to-br from-slate-950 via-pink-950 to-pink-600 p-6 text-white`}>
       {heroImage && <SafeImage src={heroImage} alt={coverItem?.title || model.publication.name} className="absolute inset-0 h-full w-full object-cover" widthHint={1400} enableFullPreview={false} />}
       <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/75 to-slate-950/15" />
       <div className="relative">
@@ -19,7 +19,7 @@ export default function PublicationChannelPreview({ model, channel }: { model: P
         {model.publication.description && <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-200">{model.publication.description}</p>}
       </div>
     </header>
-    {!social && <div className={`publication-body ${channel === "mobile" ? "p-4" : "p-6 md:p-8"} grid gap-7`}>
+    {!social && <div className={`publication-body ${channel === "mobile" ? "p-4" : channel === "website" ? "p-5 md:p-6" : "p-6 md:p-8"} grid ${channel === "website" ? "gap-5" : "gap-7"}`}>
       {model.sections.filter((section) => section.section_key !== "cover").map((section) => {
         const statistics = section.section_key === "statistics";
         const actions = section.section_key === "get_involved";
@@ -33,16 +33,16 @@ export default function PublicationChannelPreview({ model, channel }: { model: P
         return <section key={section.id} className="publication-section break-inside-avoid">
           <h2 className="border-b-2 border-pink-500 pb-2 text-2xl font-black">{section.title}</h2>
           {section.introduction && <p className={`mt-3 leading-7 ${actions ? "text-slate-300" : "text-slate-600"}`}>{section.introduction}</p>}
-          <div className={`publication-item-grid mt-4 grid gap-4 ${channel !== "mobile" ? statistics ? "sm:grid-cols-3" : "sm:grid-cols-2" : ""}`}>
+          <div className={`publication-item-grid mt-4 grid gap-4 ${channel !== "mobile" ? statistics ? "sm:grid-cols-3" : channel === "website" ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2" : ""}`}>
             {section.items.map((item) => {
               const metadata = item.generated_content?.metadata;
               const platform = metadata && typeof metadata === "object" && "platform" in metadata ? String(metadata.platform || "") : "";
               const body = <>
-                {item.image_url && <SafeImage src={item.image_url} alt={item.title || "Publication item"} className="h-40 w-full object-cover" widthHint={700} enableFullPreview={false} />}
-                <div className="p-4">
+                {item.image_url && <SafeImage src={item.image_url} alt={item.title || "Publication item"} className={`${channel === "website" ? "h-32" : "h-40"} w-full object-cover`} widthHint={channel === "website" ? 500 : 700} enableFullPreview={false} />}
+                <div className={channel === "website" ? "p-3.5" : "p-4"}>
                   <div className="flex flex-wrap gap-2">{platform && <span className="rounded-full bg-slate-950 px-2 py-1 text-[10px] font-black uppercase text-white">{platform}</span>}{item.featured && !statistics && <span className="rounded-full bg-pink-50 px-2 py-1 text-[10px] font-black uppercase text-pink-600">Featured</span>}</div>
-                  <h3 className={`${statistics ? "text-2xl text-pink-600" : "text-lg"} mt-1 font-black`}>{item.title || "Untitled"}</h3>
-                  {item.description && <p className="mt-2 text-sm leading-6 text-slate-600">{item.description}</p>}
+                  <h3 className={`${statistics ? "text-2xl text-pink-600" : channel === "website" ? "text-base" : "text-lg"} mt-1 font-black`}>{item.title || "Untitled"}</h3>
+                  {item.description && <p className={`mt-2 text-sm text-slate-600 ${channel === "website" ? "line-clamp-3 leading-5" : "leading-6"}`}>{item.description}</p>}
                 </div>
               </>;
               const classes = "publication-item break-inside-avoid overflow-hidden rounded-2xl border border-slate-200 bg-white";

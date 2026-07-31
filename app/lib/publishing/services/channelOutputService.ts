@@ -19,6 +19,18 @@ function absoluteUrl(value: string | null | undefined) {
   return `${SITE_URL}${url.startsWith("/") ? url : `/${url}`}`;
 }
 
+function excerpt(value: unknown, limit = 180) {
+  const text = clean(value);
+  return text.length > limit ? `${text.slice(0, limit - 1).trimEnd()}…` : text;
+}
+
+function cloudinaryCrop(value: string, width: number, height: number) {
+  const url = absoluteUrl(value);
+  return url.includes("res.cloudinary.com/") && url.includes("/upload/")
+    ? url.replace("/upload/", `/upload/c_fill,g_auto,w_${width},h_${height},q_auto,f_auto/`)
+    : url;
+}
+
 function includedItems(model: PublicationPreviewModel) {
   return model.sections.flatMap((section) => section.items.map((item) => ({ section, item })));
 }
@@ -48,16 +60,19 @@ function publicationHtml(model: PublicationPreviewModel, compact = false) {
 
 function emailHtml(model: PublicationPreviewModel) {
   const cover = model.publication.cover_image_url || model.sections.find((section) => section.section_key === "cover")?.items.find((item) => item.image_url)?.image_url;
+  const publicUrl = `${SITE_URL}/publications/${model.publication.id}`;
   const sectionRows = model.sections.filter((section) => section.section_key !== "cover").map((section) => {
     const actions = section.section_key === "get_involved";
-    const itemRows = section.items.map((item) => {
-      const image = item.image_url ? `<tr><td style="padding:0"><img src="${escapeHtml(absoluteUrl(item.image_url))}" alt="${escapeHtml(item.title)}" width="600" style="display:block;width:100%;max-width:600px;height:auto;border:0"></td></tr>` : "";
-      const link = item.destination_url ? `<p style="margin:16px 0 0"><a href="${escapeHtml(absoluteUrl(item.destination_url))}" style="display:inline-block;background:${actions ? "#db2777" : "#0f172a"};color:#ffffff;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:8px">${actions ? escapeHtml(item.title || "Get involved") : "Read more"}</a></p>` : "";
-      return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 18px;border:1px solid #e2e8f0;border-radius:14px;background:#ffffff;overflow:hidden"><tbody>${image}<tr><td style="padding:20px"><h3 style="margin:0;color:#0f172a;font:700 20px/1.3 Arial,sans-serif">${escapeHtml(item.title || "Untitled")}</h3>${item.description ? `<p style="margin:10px 0 0;color:#475569;font:15px/1.6 Arial,sans-serif">${escapeHtml(item.description)}</p>` : ""}${link}</td></tr></tbody></table>`;
+    const prioritized = [...section.items].sort((a, b) => Number(b.featured) - Number(a.featured)).slice(0, actions ? 4 : 5);
+    const itemRows = prioritized.map((item) => {
+      const image = item.image_url ? `<td width="150" valign="top" style="width:150px;padding:0"><img src="${escapeHtml(cloudinaryCrop(item.image_url, 300, 240))}" alt="${escapeHtml(item.title)}" width="150" height="120" style="display:block;width:150px;height:120px;object-fit:cover;border:0;border-radius:10px"></td>` : "";
+      const link = item.destination_url ? `<a href="${escapeHtml(absoluteUrl(item.destination_url))}" style="color:#be185d;text-decoration:none;font:700 13px/1.4 Arial,sans-serif">Read more →</a>` : "";
+      return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 12px;border-bottom:1px solid #e2e8f0;background:${actions ? "#ffffff" : "#ffffff"}"><tbody><tr>${image}<td valign="top" style="padding:${image ? "4px 8px 14px 16px" : "4px 8px 14px"}"><h3 style="margin:0;color:#0f172a;font:700 17px/1.3 Arial,sans-serif">${escapeHtml(item.title || "Untitled")}</h3>${item.description ? `<p style="margin:7px 0;color:#475569;font:14px/1.45 Arial,sans-serif">${escapeHtml(excerpt(item.description))}</p>` : ""}${link}</td></tr></tbody></table>`;
     }).join("");
-    return `<tr><td style="padding:28px 26px ${actions ? "30px" : "10px"};${actions ? "background:#0f172a;border-radius:18px" : ""}"><h2 style="margin:0;padding:0 0 10px;border-bottom:3px solid #db2777;color:${actions ? "#ffffff" : "#0f172a"};font:800 26px/1.2 Arial,sans-serif">${escapeHtml(section.title)}</h2>${section.introduction ? `<p style="margin:12px 0 18px;color:${actions ? "#cbd5e1" : "#475569"};font:16px/1.6 Arial,sans-serif">${escapeHtml(section.introduction)}</p>` : ""}${itemRows}</td></tr>`;
+    const more = section.items.length > prioritized.length ? `<p style="margin:4px 0 0"><a href="${publicUrl}" style="color:#be185d;text-decoration:none;font:700 14px/1.4 Arial,sans-serif">View ${section.items.length - prioritized.length} more in the full publication →</a></p>` : "";
+    return `<tr><td style="padding:22px 26px 8px"><h2 style="margin:0;padding:0 0 8px;border-bottom:3px solid #db2777;color:#0f172a;font:800 24px/1.2 Arial,sans-serif">${escapeHtml(section.title)}</h2>${section.introduction ? `<p style="margin:9px 0 14px;color:#64748b;font:14px/1.5 Arial,sans-serif">${escapeHtml(excerpt(section.introduction, 140))}</p>` : ""}${itemRows}${more}</td></tr>`;
   }).join("");
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(model.publication.name)}</title></head><body style="margin:0;padding:0;background:#f1f5f9"><div style="display:none;max-height:0;overflow:hidden;color:transparent">${escapeHtml(model.publication.description || model.publication.name)}</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1f5f9"><tbody><tr><td align="center" style="padding:20px 10px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;max-width:652px;background:#ffffff;border-radius:20px;overflow:hidden"><tbody>${cover ? `<tr><td><img src="${escapeHtml(absoluteUrl(cover))}" alt="${escapeHtml(model.publication.name)}" width="652" style="display:block;width:100%;max-width:652px;height:auto;border:0"></td></tr>` : ""}<tr><td style="padding:32px 26px;background:#211025"><p style="margin:0;color:#f9a8d4;font:800 12px/1.4 Arial,sans-serif;letter-spacing:2px">SEATTLE DESI TV</p><h1 style="margin:10px 0 0;color:#ffffff;font:900 34px/1.08 Arial,sans-serif">${escapeHtml(model.publication.name)}</h1>${model.publication.edition_label ? `<p style="margin:12px 0 0;color:#fbcfe8;font:700 18px/1.4 Arial,sans-serif">${escapeHtml(model.publication.edition_label)}</p>` : ""}${model.publication.description ? `<p style="margin:16px 0 0;color:#e2e8f0;font:16px/1.6 Arial,sans-serif">${escapeHtml(model.publication.description)}</p>` : ""}</td></tr>${sectionRows}<tr><td style="padding:24px;text-align:center;background:#f8fafc;color:#64748b;font:13px/1.5 Arial,sans-serif">Seattle Desi TV · Community Media Platform<br><a href="${SITE_URL}/publications" style="color:#be185d;font-weight:700">View all publications online</a></td></tr></tbody></table></td></tr></tbody></table></body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(model.publication.name)}</title></head><body style="margin:0;padding:0;background:#eef2f7"><div style="display:none;max-height:0;overflow:hidden;color:transparent">${escapeHtml(excerpt(model.publication.description || model.publication.name, 150))}</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef2f7"><tbody><tr><td align="center" style="padding:16px 8px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;max-width:652px;background:#ffffff;border-radius:18px;overflow:hidden"><tbody>${cover ? `<tr><td><img src="${escapeHtml(cloudinaryCrop(cover, 1200, 480))}" alt="${escapeHtml(model.publication.name)}" width="652" height="260" style="display:block;width:100%;max-width:652px;height:260px;object-fit:cover;border:0"></td></tr>` : ""}<tr><td style="padding:24px 26px;background:#211025"><p style="margin:0;color:#f9a8d4;font:800 11px/1.4 Arial,sans-serif;letter-spacing:2px">SEATTLE DESI TV</p><h1 style="margin:7px 0 0;color:#ffffff;font:900 30px/1.08 Arial,sans-serif">${escapeHtml(model.publication.name)}</h1>${model.publication.edition_label ? `<p style="margin:8px 0 0;color:#fbcfe8;font:700 16px/1.4 Arial,sans-serif">${escapeHtml(model.publication.edition_label)}</p>` : ""}${model.publication.description ? `<p style="margin:10px 0 0;color:#e2e8f0;font:14px/1.5 Arial,sans-serif">${escapeHtml(excerpt(model.publication.description, 180))}</p>` : ""}<p style="margin:16px 0 0"><a href="${publicUrl}" style="display:inline-block;border-radius:8px;background:#db2777;color:#ffffff;text-decoration:none;padding:11px 16px;font:700 14px Arial,sans-serif">Read the full edition</a></p></td></tr>${sectionRows}<tr><td style="padding:22px;text-align:center;background:#f8fafc;color:#64748b;font:13px/1.5 Arial,sans-serif">Seattle Desi TV · Community Media Platform<br><a href="${SITE_URL}/publications" style="color:#be185d;font-weight:700">View all publications online</a></td></tr></tbody></table></td></tr></tbody></table></body></html>`;
 }
 
 function socialCaption(model: PublicationPreviewModel, channel: PublishingChannel) {
@@ -79,7 +94,7 @@ export function buildChannelOutput(model: PublicationPreviewModel, channel: Publ
   const html = social ? null : email ? emailHtml(model) : publicationHtml(model, false);
   const caption = social ? socialCaption(model, channel) : null;
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     channel,
     title,
     edition,
@@ -107,6 +122,6 @@ export function serializeChannelOutput(payload: ChannelOutputPayload) {
 }
 
 export function readChannelOutput(value: Record<string, unknown>): ChannelOutputPayload | null {
-  if (value.schemaVersion !== 2 || typeof value.channel !== "string" || typeof value.title !== "string" || typeof value.text !== "string") return null;
+  if (value.schemaVersion !== 3 || typeof value.channel !== "string" || typeof value.title !== "string" || typeof value.text !== "string") return null;
   return value as unknown as ChannelOutputPayload;
 }

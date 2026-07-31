@@ -19,7 +19,7 @@ function escapeHtml(value: unknown) { return String(value || "").replace(/[&<>"'
 function emailPayload(value: unknown): ChannelOutputPayload | null {
   if (!value || typeof value !== "object") return null;
   const payload = value as Partial<ChannelOutputPayload>;
-  return payload.schemaVersion === 2 && typeof payload.title === "string" && typeof payload.html === "string" && typeof payload.text === "string" ? payload as ChannelOutputPayload : null;
+  return payload.schemaVersion === 3 && typeof payload.title === "string" && typeof payload.html === "string" && typeof payload.text === "string" ? payload as ChannelOutputPayload : null;
 }
 function withFooter(html: string, email: string) {
   const manageUrl = `${siteUrl}/unsubscribe?email=${encodeURIComponent(email)}`;

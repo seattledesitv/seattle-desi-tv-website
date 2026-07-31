@@ -21,6 +21,7 @@ export function useWeeklyEventsInstagram(supabase: SupabaseClient, publicationId
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [captionOverride, setCaptionOverride] = useState<string | null>(null);
   const initializedSelection = useRef(false);
 
   useEffect(() => {
@@ -33,12 +34,16 @@ export function useWeeklyEventsInstagram(supabase: SupabaseClient, publicationId
   useEffect(() => () => imageUrls.forEach((url) => { if (url.startsWith("blob:")) URL.revokeObjectURL(url); }), [imageUrls]);
 
   const selectedEvents = useMemo(() => selectedIds.map((id) => events.find((event) => event.id === id)).filter(Boolean) as typeof events, [events, selectedIds]);
-  const caption = useMemo(() => buildWeeklyEventsCaption(copy, selectedEvents), [copy, selectedEvents]);
+  const generatedCaption = useMemo(() => buildWeeklyEventsCaption(copy, selectedEvents), [copy, selectedEvents]);
+  const caption = captionOverride ?? generatedCaption;
 
-  function updateCopy(changes: Partial<WeeklyEventsInstagramCopy>) { setCopy((current) => ({ ...current, ...changes })); setFiles([]); setImageUrls([]); setMessage(""); }
-  function toggle(itemId: string) { setSelectedIds((current) => current.includes(itemId) ? current.filter((id) => id !== itemId) : [...current, itemId]); setFiles([]); setImageUrls([]); }
+  function updateCopy(changes: Partial<WeeklyEventsInstagramCopy>) { setCopy((current) => ({ ...current, ...changes })); setCaptionOverride(null); setFiles([]); setImageUrls([]); setMessage(""); }
+  function updateFinalCaption(value: string) { setCaptionOverride(value); }
+  function resetFinalCaption() { setCaptionOverride(null); }
+  function toggle(itemId: string) { setSelectedIds((current) => current.includes(itemId) ? current.filter((id) => id !== itemId) : [...current, itemId]); setCaptionOverride(null); setFiles([]); setImageUrls([]); }
   function move(itemId: string, direction: -1 | 1) {
     setSelectedIds((current) => { const from = current.indexOf(itemId); const to = from + direction; if (from < 0 || to < 0 || to >= current.length) return current; const next = [...current]; [next[from], next[to]] = [next[to], next[from]]; return next; });
+    setCaptionOverride(null);
     setFiles([]); setImageUrls([]);
   }
   async function generate() {
@@ -58,5 +63,5 @@ export function useWeeklyEventsInstagram(supabase: SupabaseClient, publicationId
     catch (nextError) { setError(nextError instanceof Error ? nextError.message : "Could not upload event images."); }
     finally { setBusy(false); }
   }
-  return { ...previewState, events, selectedEvents, selectedIds, copy, caption, files, imageUrls, busy, error: error || previewState.error, message, updateCopy, toggle, move, generate, upload };
+  return { ...previewState, events, selectedEvents, selectedIds, copy, caption, generatedCaption, captionEdited: captionOverride !== null, files, imageUrls, busy, error: error || previewState.error, message, updateCopy, updateFinalCaption, resetFinalCaption, toggle, move, generate, upload };
 }
