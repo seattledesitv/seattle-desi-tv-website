@@ -24,7 +24,7 @@ export default function PublicationCard({ publication, busy, onOpen, onDuplicate
   return <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
       <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-3 py-1 text-xs font-black uppercase ${statusTone[publication.status] || statusTone.archived}`}>{publication.status}</span><span className="text-xs font-bold uppercase tracking-wide text-slate-400">{publication.publication_type.replace("_", " ")}</span></div>
+        <div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-3 py-1 text-xs font-black uppercase ${statusTone[publication.status] || statusTone.archived}`}>{publication.status}</span><span className="text-xs font-bold uppercase tracking-wide text-slate-400">{publication.publication_type === "weekly_instagram" ? "Weekly Instagram" : publication.publication_type.replace("_", " ")}</span></div>
         <h3 className="mt-3 truncate text-2xl font-black">{publication.name}</h3>
         <p className="mt-1 text-sm font-bold text-pink-600">{publication.edition_label || "Edition not set"}</p>
         <p className="mt-3 line-clamp-2 text-sm text-slate-600">{publication.description || "No description added yet."}</p>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import PublicationCard from "../../components/publishing/PublicationCard";
 import PublicationForm from "../../components/publishing/PublicationForm";
 import StudioHeader from "../../components/StudioHeader";
@@ -37,6 +38,7 @@ function SaveIndicator({ state, savedAt }: { state: SaveState; savedAt: Date | n
 }
 
 export default function PublishingPlatformPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState("");
   const [accessMessage, setAccessMessage] = useState("Checking Studio access...");
@@ -102,7 +104,9 @@ export default function PublishingPlatformPage() {
     try {
       const created = await createPublication(supabase, draft, userId);
       setPublications((current) => [created, ...current]);
-      setDraft(emptyDraft); setShowCreate(false); openEditor(created);
+      setDraft(emptyDraft); setShowCreate(false);
+      if (created.publication_type === "weekly_instagram") router.push(`/studio/publishing/${created.id}`);
+      else openEditor(created);
     } catch (error: any) { setErrorMessage(error.message || "Could not create publication."); }
     finally { setBusyId(""); }
   }

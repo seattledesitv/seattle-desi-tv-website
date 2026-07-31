@@ -1,4 +1,4 @@
-export type PublicationType = "monthly" | "quarterly" | "six_month" | "annual" | "custom";
+export type PublicationType = "monthly" | "quarterly" | "six_month" | "annual" | "custom" | "weekly_instagram";
 export type PublicationStatus = "draft" | "review" | "approved" | "scheduled" | "published" | "archived";
 
 export type PublicationRecord = {

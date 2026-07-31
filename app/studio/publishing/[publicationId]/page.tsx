@@ -45,7 +45,9 @@ export default function UnifiedPublicationEditorPage() {
   useEffect(() => {
     const loadTimer = setTimeout(async () => {
       try {
-        setPublication(await openPublicationEditorialWorkspace(supabase, publicationId));
+        const opened = await openPublicationEditorialWorkspace(supabase, publicationId);
+        setPublication(opened);
+        if (opened.publication_type === "weekly_instagram") setMode("events-instagram");
         setAuthorized(true);
       } catch (error) {
         setPageError(error instanceof Error ? error.message : "Could not open the publication editor.");
