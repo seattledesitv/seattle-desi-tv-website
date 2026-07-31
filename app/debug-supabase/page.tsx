@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-
+import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 type DebugResult = Record<string, any>;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -36,9 +35,7 @@ export default function DebugSupabasePage() {
         return;
       }
 
-      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
-      });
+      const supabase = getSupabaseBrowserClient();
 
       const { data: userData, error: userError } = await supabase.auth.getUser();
       output.currentUser = userData?.user

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import NewsletterSubscribeForm from "./NewsletterSubscribeForm";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, isTeamRole, resolveUserRole } from "../lib/roles";
@@ -58,16 +59,17 @@ export default function SiteFooter() {
         <div>
           <h3 className="font-black mb-3">Explore</h3>
           <div className="grid gap-2 text-sm text-slate-300">
-            <a href="/tv">TV</a>
-            <a href="/radio">Radio</a>
-            <a href="/events">Events</a>
-            <a href="/businesses">Businesses</a>
-            <a href="/community-groups">Groups</a>
-            <a href="/community-organizations">Organizations</a>
-            <a href="/influencers">Influencers</a>
-            <a href="/team">Team</a>
-            <a href="/contact">Contact</a>
-            <a href="/mobile-app">Mobile App Instructions</a>
+            <Link href="/tv">TV</Link>
+            <Link href="/radio">Radio</Link>
+            <Link href="/events">Events</Link>
+            <Link href="/publications">Publications</Link>
+            <Link href="/businesses">Businesses</Link>
+            <Link href="/community-groups">Groups</Link>
+            <Link href="/community-organizations">Organizations</Link>
+            <Link href="/influencers">Influencers</Link>
+            <Link href="/team">Team</Link>
+            <Link href="/contact">Contact</Link>
+            <Link href="/mobile-app">Mobile App Instructions</Link>
           </div>
         </div>
 

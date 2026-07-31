@@ -8,7 +8,11 @@ function validEmail(value: string) {
 }
 
 export default function UnsubscribePage() {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const value = new URLSearchParams(window.location.search).get("email") || "";
+    return validEmail(value) ? value.trim().toLowerCase() : "";
+  });
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
