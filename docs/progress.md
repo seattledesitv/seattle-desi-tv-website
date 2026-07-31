@@ -294,3 +294,33 @@ Operational notes:
 Migration:
 
 - `20260730170000_add_weekly_instagram_publication_type.sql`
+
+## Sprint 13 — Email rendering and public publication archive
+
+Completed functionality:
+
+- Replaced browser-oriented newsletter HTML with email-safe inline styles and presentation tables.
+- Preserved the publication hero, section hierarchy, images, descriptions, links, Get Involved actions, and SDTV branding in email clients.
+- Consolidated the duplicate Newsletter and Email choices into one Newsletter email workflow.
+- Preserved previous newsletter records as legacy history without rewriting them.
+- Bumped generated channel packages to version 2 so older email markup cannot accidentally be resent as current output.
+- Added a public `/publications` archive for published editions.
+- Added shareable `/publications/[publicationId]` edition pages using the canonical publication preview.
+- Added Publications to the site footer.
+- Website publishing now marks the publication public, records the public URL, and exposes an Open public publication link in Studio.
+- Public pages rely on the existing published-only RLS policies; drafts remain inaccessible to anonymous visitors.
+
+No database migration or npm dependency was required.
+
+Validation:
+
+- Targeted ESLint passed.
+- Full TypeScript check passed.
+- Production build passed and generated all 158 routes.
+- No test or subscriber email was sent and no website edition was published during validation.
+
+Operational testing:
+
+- Generate a new Newsletter email output; previous package-v1 outputs are intentionally treated as legacy.
+- Send a test email and inspect it in the actual Gmail/Outlook/mobile clients used by SDTV.
+- Generate Website output, press Publish to website, then verify its public link and the footer archive before subscriber delivery.

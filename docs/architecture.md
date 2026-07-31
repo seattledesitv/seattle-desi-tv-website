@@ -80,6 +80,18 @@ The existing admin-only Instagram endpoint accepts either one image or a carouse
 
 `weekly_instagram` is a first-class publication type protected by the publications table constraint. It keeps the complete publication architecture but opens the unified editor in the Events → Instagram workspace by default. Final approval stores an in-memory signature of the reviewed Cloudinary URL set; changing or regenerating the images invalidates approval before publishing.
 
+### Public publication delivery
+
+Website output is an internal publishing adapter rather than a manual external handoff. Confirming a Website output marks the canonical publication as published, stores `/publications/{publicationId}` on the output, and records a completed publishing attempt. Existing published-only RLS policies then make the publication, included sections, and included items readable to anonymous visitors.
+
+The public archive and detail routes consume a dedicated public-preview hook and service. They do not reuse the admin-gated editorial workspace service and cannot load drafts. The public detail renderer shares the canonical channel preview component with Studio, preventing visual drift between preview and the public edition.
+
+### Email output compatibility
+
+Newsletter email is the single subscriber-delivery channel. It produces package version 2 with table-based structure, inline typography, spacing, colors, images, and buttons for broad email-client compatibility. The browser preview remains optimized for the website; the email renderer intentionally translates that design into email-safe markup rather than sending browser CSS.
+
+The historical `newsletter` channel remains in stored types so old campaigns remain auditable, but it is not offered for new generation. Existing version-1 packages are marked legacy and must be regenerated before delivery.
+
 ### Homepage content bridge
 
 Publication discovery reuses the public homepage's source tables to create a complete editorial starting point. Repository helpers load source rows and live counts; discovery services normalize them into publication items for Cover, Highlights, Events, Businesses, Organizations, Groups, Recognition, Videos, Statistics, and Get Involved.
