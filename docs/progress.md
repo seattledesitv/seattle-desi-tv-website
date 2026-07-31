@@ -397,3 +397,26 @@ Validation:
 - Full TypeScript check passed.
 - Production build passed and generated all 158 routes.
 - No content was sent, published, deployed, or merged.
+
+## Sprint 15 — Social publication launch studio
+
+- Further condensed the website edition with a shorter hero, four-column wide-screen grid, 16:9 thumbnails capped at 112px, tighter spacing, and two-line summaries.
+- Applied the same compact treatment to downloadable website HTML.
+- Added Social launch under Preview in the unified publication editor.
+- Added branded launch-image generation in native Instagram, Facebook, and LinkedIn dimensions.
+- Added independent, editable captions with the canonical public-publication link.
+- Added Cloudinary upload and per-channel review indicators.
+- Approval is bound to the exact uploaded image and caption; either changing invalidates it.
+- Direct social publishing is locked until the website edition is Published and requires a final browser confirmation.
+- Reused the existing Instagram publisher and added authenticated Facebook Page and LinkedIn organization adapters.
+- No database migration or new npm dependency was required.
+
+Provider configuration:
+
+- Facebook: `FACEBOOK_PAGE_ID`, `FACEBOOK_PAGE_ACCESS_TOKEN`; optional `META_GRAPH_API_VERSION`.
+- LinkedIn: `LINKEDIN_ACCESS_TOKEN`, `LINKEDIN_AUTHOR_URN`, `LINKEDIN_API_VERSION`.
+- Existing Instagram and Cloudinary variables remain required for those operations.
+
+Safety:
+
+- No social post, website publication, email, deployment, or merge occurred during implementation or validation.

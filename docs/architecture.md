@@ -100,6 +100,14 @@ The website channel remains the complete edition but uses denser responsive pres
 
 The Weekly Events Instagram final-caption override lives in its hook alongside generated copy. The final approval signature combines the complete ordered image URL set and exact caption text, so any post-review caption or media change invalidates approval before the publishing service can run.
 
+### Social publication launch studio
+
+The unified editor's Social launch mode generates dedicated 1080×1350 Instagram, 1200×630 Facebook, and 1200×627 LinkedIn artwork from the canonical publication cover. Captions are independently editable and include the canonical `/publications/{publicationId}` URL.
+
+Generated files stay local until an editor uploads them through the existing Cloudinary helper. Approval signs the exact uploaded URL and caption for each channel; regenerating the artwork or editing the caption invalidates that approval. Direct publishing also requires the publication to be Published so announcements cannot link to an inaccessible edition.
+
+Provider routes repeat authentication, Studio-admin authorization, publication-status, media-URL, and caption validation. Instagram reuses the existing Graph publishing endpoint. Facebook publishes a Page photo using `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN`. LinkedIn uses its Images and Posts APIs with `LINKEDIN_ACCESS_TOKEN`, `LINKEDIN_AUTHOR_URN`, and an explicitly configured supported `LINKEDIN_API_VERSION`. Provider credentials remain server-side.
+
 ### Editorial review and release governance
 
 Publication lifecycle changes use the `transition_publication_status` database function. The function runs with the caller's permissions, verifies Studio admin membership, locks the publication row, validates the requested transition, updates the canonical status, and appends `publication_status_history` in one transaction. Components never write status fields directly.
