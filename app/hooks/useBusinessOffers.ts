@@ -6,7 +6,7 @@ import type { BusinessOffer, BusinessOfferInput, OfferBusiness } from "../lib/bu
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../lib/roles";
 
-function errorMessage(cause: unknown, fallback: string) { return cause instanceof Error ? cause.message : fallback; }
+function errorMessage(cause: unknown, fallback: string) { if (cause instanceof Error) return cause.message; if (cause && typeof cause === "object" && "message" in cause && typeof cause.message === "string") return cause.message; return fallback; }
 
 export function useBusinessOffers(mode: "public" | "owner" | "admin") {
   const [offers, setOffers] = useState<BusinessOffer[]>([]);
