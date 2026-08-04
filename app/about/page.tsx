@@ -20,6 +20,7 @@ export default function AboutPage() {
       <div className="absolute -right-20 bottom-0 h-80 w-80 rounded-full bg-amber-400/20 blur-3xl" />
       <div className="relative mx-auto max-w-6xl">
         <span className="inline-flex rounded-full border border-pink-300/30 bg-pink-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-pink-200">501(c)(3) nonprofit organization</span>
+        <p className="mt-5 max-w-4xl rounded-2xl border border-amber-300/30 bg-amber-300/10 px-5 py-4 text-base font-black text-amber-100 md:text-lg">Seattle Desi TV is an approved 501(c)(3) nonprofit community organization.</p>
         <div className="mt-7 grid items-end gap-8 lg:grid-cols-[1.2fr_.8fr]">
           <div><p className="font-black uppercase tracking-[0.22em] text-amber-300">About Seattle Desi TV</p><h1 className="mt-3 max-w-4xl text-5xl font-black leading-[.95] md:text-7xl">Stories, culture and community—shared with the world.</h1></div>
           <p className="text-lg leading-8 text-slate-300">Seattle Desi TV is a community media platform dedicated to celebrating the vibrant culture, talent, and voices of the Desi community in Seattle and beyond.</p>
