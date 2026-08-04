@@ -144,6 +144,14 @@ Ordering supports drag-and-drop and explicit move controls. The service persists
 
 ## Browser Supabase clients
 
+## Business offers
+
+Business offers are separate, time-bound records linked to `local_businesses`, allowing a business to run multiple promotions without overwriting its directory profile. UI pages use `useBusinessOffers`, which delegates validation and placement behavior to `BusinessOfferService`, while `businessOfferRepository` owns Supabase access.
+
+Owners and approved managers can submit offers for review. Public reads require approved, currently active records. Premium and featured placement plus payment status are admin-controlled through RLS. The payment fields form a provider-neutral boundary for a future checkout/webhook integration; they do not currently initiate a charge.
+
+Featured approved offers are eligible for the homepage hero, while premium and featured ranks control ordering on the offers page.
+
 Client pages use `app/lib/supabaseBrowser.ts`. The helper provides one configured browser client and a non-persistent placeholder during server prerender when public environment variables are unavailable. This keeps client pages buildable without weakening runtime configuration requirements.
 
 Direct module-level `createClient` calls in browser pages should not be introduced.
@@ -161,3 +169,16 @@ Direct module-level `createClient` calls in browser pages should not be introduc
 2. Manual publication-item edits are recorded in both editable columns and `manual_content`, with `is_manually_edited` preserving editorial intent.
 3. AI generation must merge with manual edits instead of overwriting them.
 4. Multi-channel preview and publishing must consume the same canonical publication and item services rather than build channel-specific data silos.
+### Business offer pricing and payment workflow
+
+Offer placement pricing is stored in `business_offer_pricing` and managed through Studio. Submission does not activate an offer: editorial approval snapshots the current tier price onto the offer, paid tiers enter `approved_pending_payment`, and activation occurs only after payment confirmation. Payment links are provider-neutral so Stripe or another checkout adapter can be connected without changing the offer domain model. Offers normally reference `local_businesses`, while authenticated users and administrators may submit accountable standalone offers using advertiser identity fields.
+
+### Sponsor onboarding
+
+Sponsor packages are reusable configuration, while each `sponsorship_agreements` row is a dated and priced snapshot. Studio uses `useSponsorships` through the sponsorship service and repository layers. Secure send, acceptance, payment-proof, and verification operations use server routes because they require email delivery, service-role access, and audit logging.
+
+Raw agreement access tokens are emailed but never stored; only SHA-256 hashes are persisted. Public token reads return a restricted agreement view and cannot expose internal notes or administrative fields. Acceptance records signer name, title, timestamp, IP, and user agent. Installment verification is intentionally separate from proof submission, and activation creates a homepage contributor only when the agreement's activation condition is satisfied.
+
+Authenticated sponsors can also read agreements through My Sponsorships when their login email matches the agreement or they actively manage its linked business. Signed agreement text is immutable; Studio may edit draft text but presents the accepted snapshot read-only afterward.
+
+Active sponsorships provide marketplace entitlements without bypassing editorial approval. Offer approval resolves the linked business's current active agreement, checks the requested placement against the tier matrix, and snapshots both the agreement ID and waiver tier onto the offer. Sponsorship activation also updates the linked business's premium directory dates so public placement expires with the agreement.

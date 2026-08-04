@@ -429,6 +429,15 @@ Safety:
 - The generated image remains reviewable, downloadable, uploadable, and approval-gated through the existing Social launch workflow.
 - Targeted ESLint, full TypeScript checking, and the production build passed.
 
+### Marketplace follow-up — weekly events and business offers foundation
+
+- Split homepage events into the current Monday–Sunday week and later upcoming events.
+- Added a dedicated business-offers schema with ownership, approval, active dates, RLS, payment state, premium rank, and featured rank.
+- Added public `/offers`, owner `/my-businesses/offers`, and admin `/studio/businesses/offers` workspaces.
+- Featured offers can participate in the homepage hero after admin approval and activation.
+- Payment state and reference fields are manual plumbing only; no payment provider or automatic charging is enabled yet.
+- The offers migration must be applied before deploying code that queries `business_offers`.
+
 ### Sprint 15 follow-up — Standardized newsletter density
 
 - Limited newsletter sections to four featured-first items.
@@ -446,3 +455,35 @@ Safety:
 - Successful discovery refreshes remove stale mixed records while preserving manually edited items.
 - Cleanup is skipped when a relevant feed fails, protecting publications during temporary API outages.
 - Targeted ESLint, full TypeScript checking, and the production build passed.
+### Marketplace follow-up — configurable pricing and approval-first payment
+
+- Added Studio offer-pricing management for standard, premium, featured, and homepage hero tiers.
+- Added standalone advertiser offers while retaining business-linked offers as the preferred path.
+- Added approval → frozen quote → payment link → payment confirmation → activation workflow.
+- Added owner-facing current prices and payment-link handoff.
+- Payment-provider automation remains a follow-up; Studio supports manual secure checkout links and confirmation now.
+### Sponsor onboarding agreement content
+
+- Added legally reviewable master sponsorship agreement copy with editable placeholders.
+- Added Platinum, Gold, Silver, and intentionally blank Bronze package schedules.
+- Added flexible Zelle installment schedule language and payment-proof verification terms.
+
+### Sponsor onboarding workflow
+
+- Added configurable Platinum, Gold, Silver, and Bronze package templates and pricing.
+- Added a Studio agreement builder with optional business linking, editable contract text, admin discount finalization, flexible installment amounts/dates, and activation rules.
+- Added secure emailed review links, electronic acceptance audit fields, decline handling, and immutable-on-send content hashing.
+- Added sponsor-facing Zelle instructions and payment-confirmation upload per installment.
+- Added admin-triggered email reminders for individual incomplete installments.
+- Added Studio payment verification and automatic homepage contributor activation after acceptance, first payment, or full payment according to the agreement.
+- The migration `20260804150000_add_sponsor_onboarding.sql` must be applied before testing this workflow.
+
+### Sponsor portal and marketplace entitlements
+
+- Added My Sponsorships to My Hub for agreement text, signer details, benefits, dates, installments, and confirmation uploads.
+- Admins can inspect the exact signed agreement snapshot; only unsigned drafts remain editable.
+- Sponsorship activation automatically creates the homepage contributor and enables premium placement for the linked business.
+- Offer approval checks active sponsorship entitlements: Bronze includes Premium, Silver includes Premium and Featured, and Gold/Platinum include Premium, Featured, and Homepage Hero.
+- Included placements remain approval-first but bypass payment with an auditable sponsorship waiver.
+- Apply `20260804170000_integrate_sponsor_portal_entitlements.sql` after the base sponsor onboarding migration.
+- Added admin offer creation for approved directory businesses and independent one-off advertisers; new records enter the same approval, entitlement, and payment workflow.

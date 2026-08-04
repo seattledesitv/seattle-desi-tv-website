@@ -60,10 +60,12 @@ export default function SiteFooter() {
           <h3 className="font-black mb-3">Explore</h3>
           <div className="grid gap-2 text-sm text-slate-300">
             <Link href="/tv">TV</Link>
+            <Link href="/about">About Us</Link>
             <Link href="/radio">Radio</Link>
             <Link href="/events">Events</Link>
             <Link href="/publications">Publications</Link>
             <Link href="/businesses">Businesses</Link>
+            <Link href="/offers">Business Offers</Link>
             <Link href="/community-groups">Groups</Link>
             <Link href="/community-organizations">Organizations</Link>
             <Link href="/influencers">Influencers</Link>

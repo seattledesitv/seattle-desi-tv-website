@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
+import { formatEventTime } from "../../../lib/eventTime";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -33,7 +34,7 @@ export default function PendingEventsPage() {
   async function loadEvents() {
     const { data, error } = await supabase
       .from("events")
-      .select("id,title,date,location,description,status,image,image_urls,ticket_url,poc_email,created_at")
+      .select("id,title,date,local_start_time,local_end_time,event_timezone,location,description,status,image,image_urls,ticket_url,poc_email,created_at")
       .or("status.is.null,status.eq.pending")
       .order("created_at", { ascending: false });
 
@@ -121,7 +122,7 @@ export default function PendingEventsPage() {
                   {getImage(event) ? <img src={getImage(event)} alt={event.title} className="w-28 h-28 rounded-xl object-cover" /> : <div className="w-28 h-28 bg-pink-50 rounded-xl grid place-items-center text-pink-600 font-black text-xs">No image</div>}
                   <div>
                     <h2 className="text-xl font-black">{event.title}</h2>
-                    <p className="text-sm text-gray-600">{dateText(event.date)} · {event.location}</p>
+                    <p className="text-sm text-gray-600">{dateText(event.date)} · {formatEventTime(event.local_start_time, event.local_end_time, event.event_timezone)} · {event.location}</p>
                     {event.description && <p className="text-sm text-gray-700 mt-2 line-clamp-2">{event.description}</p>}
                     {event.poc_email && <p className="text-xs text-gray-500 mt-2">POC: {event.poc_email}</p>}
                   </div>
