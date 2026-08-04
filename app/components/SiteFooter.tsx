@@ -65,6 +65,7 @@ export default function SiteFooter() {
             <Link href="/events">Events</Link>
             <Link href="/publications">Publications</Link>
             <Link href="/businesses">Businesses</Link>
+            <Link href="/offers">Business Offers</Link>
             <Link href="/community-groups">Groups</Link>
             <Link href="/community-organizations">Organizations</Link>
             <Link href="/influencers">Influencers</Link>

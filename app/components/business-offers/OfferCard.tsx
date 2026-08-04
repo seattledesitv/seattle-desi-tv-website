@@ -1,0 +1,12 @@
+import type { BusinessOffer } from "../../lib/businessOffers/types";
+import SafeImage from "../SafeImage";
+
+function dateLabel(value?: string | null) { if (!value) return "Ongoing"; const date = new Date(`${value}T00:00:00`); return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }); }
+
+export default function OfferCard({ offer }: { offer: BusinessOffer }) {
+  const business = offer.local_businesses; const image = offer.image_url || business?.image || business?.image_urls?.[0];
+  return <article className={`overflow-hidden rounded-3xl border bg-white shadow-sm ${offer.is_featured ? "border-pink-400 ring-2 ring-pink-100" : offer.is_premium ? "border-amber-300" : "border-slate-200"}`}>
+    <div className="relative h-48 bg-slate-100">{image ? <SafeImage src={image} alt={offer.title} className="h-full w-full object-cover" fallbackClassName="grid h-full place-items-center font-black text-pink-600" fallbackLabel="SDTV Offer" widthHint={900} /> : <div className="grid h-full place-items-center font-black text-pink-600">SDTV Offer</div>}<div className="absolute left-3 top-3 flex gap-2">{offer.is_featured && <span className="rounded-full bg-pink-600 px-3 py-1 text-xs font-black text-white">Featured</span>}{offer.is_premium && <span className="rounded-full bg-amber-400 px-3 py-1 text-xs font-black text-amber-950">Premium</span>}</div></div>
+    <div className="p-6"><p className="text-xs font-black uppercase tracking-wide text-pink-600">{business?.name || "Local business"}</p><h2 className="mt-2 text-2xl font-black">{offer.title}</h2>{offer.description && <p className="mt-3 leading-7 text-slate-600">{offer.description}</p>}<p className="mt-4 text-sm font-bold text-slate-500">{dateLabel(offer.starts_at)} – {dateLabel(offer.ends_at)}</p>{offer.offer_code && <div className="mt-4 rounded-xl border border-dashed border-pink-300 bg-pink-50 p-3 text-center"><span className="text-xs font-black uppercase text-pink-700">Offer code</span><p className="text-xl font-black">{offer.offer_code}</p></div>}{offer.terms && <p className="mt-3 text-xs text-slate-500">{offer.terms}</p>}<div className="mt-5 flex gap-3">{offer.destination_url && <a href={offer.destination_url} target="_blank" rel="noreferrer" className="rounded-xl bg-pink-600 px-4 py-3 font-black text-white">Get Offer</a>}{business?.website && <a href={business.website} target="_blank" rel="noreferrer" className="rounded-xl border px-4 py-3 font-black">Business Website</a>}</div></div>
+  </article>;
+}

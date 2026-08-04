@@ -144,6 +144,14 @@ Ordering supports drag-and-drop and explicit move controls. The service persists
 
 ## Browser Supabase clients
 
+## Business offers
+
+Business offers are separate, time-bound records linked to `local_businesses`, allowing a business to run multiple promotions without overwriting its directory profile. UI pages use `useBusinessOffers`, which delegates validation and placement behavior to `BusinessOfferService`, while `businessOfferRepository` owns Supabase access.
+
+Owners and approved managers can submit offers for review. Public reads require approved, currently active records. Premium and featured placement plus payment status are admin-controlled through RLS. The payment fields form a provider-neutral boundary for a future checkout/webhook integration; they do not currently initiate a charge.
+
+Featured approved offers are eligible for the homepage hero, while premium and featured ranks control ordering on the offers page.
+
 Client pages use `app/lib/supabaseBrowser.ts`. The helper provides one configured browser client and a non-persistent placeholder during server prerender when public environment variables are unavailable. This keeps client pages buildable without weakening runtime configuration requirements.
 
 Direct module-level `createClient` calls in browser pages should not be introduced.

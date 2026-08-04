@@ -429,6 +429,15 @@ Safety:
 - The generated image remains reviewable, downloadable, uploadable, and approval-gated through the existing Social launch workflow.
 - Targeted ESLint, full TypeScript checking, and the production build passed.
 
+### Marketplace follow-up — weekly events and business offers foundation
+
+- Split homepage events into the current Monday–Sunday week and later upcoming events.
+- Added a dedicated business-offers schema with ownership, approval, active dates, RLS, payment state, premium rank, and featured rank.
+- Added public `/offers`, owner `/my-businesses/offers`, and admin `/studio/businesses/offers` workspaces.
+- Featured offers can participate in the homepage hero after admin approval and activation.
+- Payment state and reference fields are manual plumbing only; no payment provider or automatic charging is enabled yet.
+- The offers migration must be applied before deploying code that queries `business_offers`.
+
 ### Sprint 15 follow-up — Standardized newsletter density
 
 - Limited newsletter sections to four featured-first items.
