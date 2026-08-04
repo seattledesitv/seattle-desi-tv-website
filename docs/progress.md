@@ -462,3 +462,8 @@ Safety:
 - Added approval → frozen quote → payment link → payment confirmation → activation workflow.
 - Added owner-facing current prices and payment-link handoff.
 - Payment-provider automation remains a follow-up; Studio supports manual secure checkout links and confirmation now.
+### Sponsor onboarding agreement content
+
+- Added legally reviewable master sponsorship agreement copy with editable placeholders.
+- Added Platinum, Gold, Silver, and intentionally blank Bronze package schedules.
+- Added flexible Zelle installment schedule language and payment-proof verification terms.
