@@ -249,6 +249,7 @@ export default function EventsPage() {
   }
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("add") === "1") setShowSubmitForm(true);
     async function init() { const { data } = await supabase.auth.getUser(); const currentUser = data?.user || null; setUser(currentUser); await loadUserContext(currentUser); await loadCoverageRequests(currentUser); await loadOrganizations(); setAuthChecked(true); await loadEvents(); }
     init();
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => { const nextUser = session?.user || null; setUser(nextUser); await loadUserContext(nextUser); await loadCoverageRequests(nextUser); await loadOrganizations(); });
