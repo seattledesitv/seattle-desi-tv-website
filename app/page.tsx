@@ -9,7 +9,7 @@ import FeaturedSocialSection, { FeaturedSocialItem } from "./components/Featured
 import { getSupabaseBrowserClient } from "./lib/supabaseBrowser";
 
 const supabase = getSupabaseBrowserClient();
-const SPONSOR_TIERS = ["Gold Sponsor", "Silver Sponsor", "Community Partner"];
+const SPONSOR_TIERS = ["Platinum Contributor", "Gold Contributor", "Silver Contributor", "Bronze Contributor", "Community Contributor", "Gold Sponsor", "Silver Sponsor", "Community Partner"];
 
 const fallbackSectionSettings = [
   { section_key: "home", display_order: 1, enabled: true },

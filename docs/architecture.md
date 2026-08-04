@@ -172,3 +172,9 @@ Direct module-level `createClient` calls in browser pages should not be introduc
 ### Business offer pricing and payment workflow
 
 Offer placement pricing is stored in `business_offer_pricing` and managed through Studio. Submission does not activate an offer: editorial approval snapshots the current tier price onto the offer, paid tiers enter `approved_pending_payment`, and activation occurs only after payment confirmation. Payment links are provider-neutral so Stripe or another checkout adapter can be connected without changing the offer domain model. Offers normally reference `local_businesses`, while authenticated users and administrators may submit accountable standalone offers using advertiser identity fields.
+
+### Sponsor onboarding
+
+Sponsor packages are reusable configuration, while each `sponsorship_agreements` row is a dated and priced snapshot. Studio uses `useSponsorships` through the sponsorship service and repository layers. Secure send, acceptance, payment-proof, and verification operations use server routes because they require email delivery, service-role access, and audit logging.
+
+Raw agreement access tokens are emailed but never stored; only SHA-256 hashes are persisted. Public token reads return a restricted agreement view and cannot expose internal notes or administrative fields. Acceptance records signer name, title, timestamp, IP, and user agent. Installment verification is intentionally separate from proof submission, and activation creates a homepage contributor only when the agreement's activation condition is satisfied.

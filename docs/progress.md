@@ -467,3 +467,12 @@ Safety:
 - Added legally reviewable master sponsorship agreement copy with editable placeholders.
 - Added Platinum, Gold, Silver, and intentionally blank Bronze package schedules.
 - Added flexible Zelle installment schedule language and payment-proof verification terms.
+
+### Sponsor onboarding workflow
+
+- Added configurable Platinum, Gold, Silver, and Bronze package templates and pricing.
+- Added a Studio agreement builder with optional business linking, editable contract text, admin discount finalization, flexible installment amounts/dates, and activation rules.
+- Added secure emailed review links, electronic acceptance audit fields, decline handling, and immutable-on-send content hashing.
+- Added sponsor-facing Zelle instructions and payment-confirmation upload per installment.
+- Added Studio payment verification and automatic homepage contributor activation after acceptance, first payment, or full payment according to the agreement.
+- The migration `20260804150000_add_sponsor_onboarding.sql` must be applied before testing this workflow.
