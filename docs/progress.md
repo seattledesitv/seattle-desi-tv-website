@@ -486,3 +486,4 @@ Safety:
 - Offer approval checks active sponsorship entitlements: Bronze includes Premium, Silver includes Premium and Featured, and Gold/Platinum include Premium, Featured, and Homepage Hero.
 - Included placements remain approval-first but bypass payment with an auditable sponsorship waiver.
 - Apply `20260804170000_integrate_sponsor_portal_entitlements.sql` after the base sponsor onboarding migration.
+- Added admin offer creation for approved directory businesses and independent one-off advertisers; new records enter the same approval, entitlement, and payment workflow.

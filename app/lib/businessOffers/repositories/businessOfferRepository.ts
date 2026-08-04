@@ -85,6 +85,15 @@ export async function listManagedBusinesses(userId: string) {
   });
   return Array.from(map.values());
 }
+export async function listApprovedBusinesses() {
+  const { data, error } = await supabase
+    .from("local_businesses")
+    .select("id,name,address,website,category,image,image_urls")
+    .eq("status", "approved")
+    .order("name");
+  if (error) throw error;
+  return (data || []) as OfferBusiness[];
+}
 export async function listActiveSponsorships(businessIds: string[]) {
   if (!businessIds.length) return [];
   const today = new Date().toISOString().slice(0, 10);

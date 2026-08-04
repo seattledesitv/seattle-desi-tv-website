@@ -45,6 +45,13 @@ export const BusinessOfferService = {
     };
   },
   listForAdmin: repository.listAllOffers,
+  async adminWorkspace() {
+    const [offers, businesses] = await Promise.all([
+      repository.listAllOffers(),
+      repository.listApprovedBusinesses(),
+    ]);
+    return { offers, businesses };
+  },
   async create(input: BusinessOfferInput, userId: string) {
     validate(input);
     return repository.createOffer(

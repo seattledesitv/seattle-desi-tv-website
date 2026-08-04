@@ -2,5 +2,430 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
 import StudioHeader from "../../../components/StudioHeader";
 import { useBusinessOffers } from "../../../hooks/useBusinessOffers";
+import { useState } from "react";
+import { uploadFileToCloudinary } from "../../../lib/cloudinaryUpload";
+import type { OfferPlacement } from "../../../lib/businessOffers/types";
 
-export default function StudioBusinessOffersPage() { const { offers, loading, saving, error, moderate, approveForPayment, confirmPayment } = useBusinessOffers("admin"); return <main className="min-h-screen bg-slate-950 text-white"><StudioHeader/><section className="mx-auto max-w-7xl px-6 py-10"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="font-black uppercase text-amber-300">Marketplace Operations</p><h1 className="mt-2 text-4xl font-black">Business Offers</h1><p className="mt-2 text-slate-300">Approve content first, request payment, then activate after payment is confirmed.</p></div><a href="/studio/businesses/offers/pricing" className="rounded-xl bg-amber-400 px-5 py-3 font-black text-slate-950">Configure Pricing</a></div>{error && <div className="mt-5 rounded-2xl bg-red-100 p-4 font-bold text-red-800">{error}</div>}{loading ? <div className="mt-8 rounded-2xl bg-white/10 p-8">Loading offers...</div> : <div className="mt-8 grid gap-5">{offers.map((offer) => <article key={offer.id} className="rounded-3xl bg-white p-6 text-slate-950"><div className="flex flex-col gap-4 lg:flex-row lg:justify-between"><div><p className="text-xs font-black uppercase text-pink-600">{offer.local_businesses?.name || offer.advertiser_name || "Standalone advertiser"}</p><h2 className="mt-1 text-2xl font-black">{offer.title}</h2><p className="mt-2 max-w-3xl text-slate-600">{offer.description || "No description"}</p><div className="mt-3 flex flex-wrap gap-2 text-xs font-black"><span className="rounded-full bg-pink-50 px-3 py-1 capitalize">Requested: {offer.requested_placement}</span><span className="rounded-full bg-slate-100 px-3 py-1 capitalize">Status: {offer.status.replaceAll("_", " ")}</span>{offer.quoted_price_cents != null && <span className="rounded-full bg-emerald-50 px-3 py-1">Quote: ${(offer.quoted_price_cents / 100).toFixed(2)}</span>}</div></div><div className="flex flex-wrap gap-2"><button disabled={saving || offer.status !== "pending"} onClick={() => approveForPayment(offer.id, offer.requested_placement)} className="rounded-xl bg-green-600 px-4 py-3 font-black text-white disabled:opacity-40">Approve & Request Payment</button><button disabled={saving || offer.status !== "approved_pending_payment"} onClick={() => confirmPayment(offer.id, offer.payment_reference || undefined)} className="rounded-xl bg-blue-600 px-4 py-3 font-black text-white disabled:opacity-40">Confirm Paid & Activate</button><button disabled={saving} onClick={() => moderate(offer.id, { status: "rejected", is_premium: false, is_featured: false, is_homepage_hero: false })} className="rounded-xl bg-red-600 px-4 py-3 font-black text-white">Reject</button></div></div>{offer.image_url && <img src={offer.image_url} alt="" className="mt-5 h-52 w-full rounded-2xl border object-cover lg:w-96"/>}<div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4"><label className="grid gap-1 text-sm font-bold md:col-span-2">Payment link<input defaultValue={offer.payment_link || ""} onBlur={(e) => moderate(offer.id, { payment_link: e.target.value || null })} className="rounded-xl border p-3 font-normal" placeholder="Stripe/payment checkout URL"/></label><label className="grid gap-1 text-sm font-bold">Payment reference<input defaultValue={offer.payment_reference || ""} onBlur={(e) => moderate(offer.id, { payment_reference: e.target.value || null })} className="rounded-xl border p-3 font-normal"/></label><label className="grid gap-1 text-sm font-bold">Payment status<select value={offer.payment_status} onChange={(e) => moderate(offer.id, { payment_status: e.target.value })} className="rounded-xl border p-3 font-normal">{["unpaid","pending","paid","waived","refunded"].map((status) => <option key={status}>{status}</option>)}</select></label><label className="rounded-xl border p-4 font-bold"><input type="checkbox" checked={offer.is_premium} onChange={(e) => moderate(offer.id, { is_premium: e.target.checked })} className="mr-2"/>Premium</label><label className="rounded-xl border p-4 font-bold"><input type="checkbox" checked={offer.is_featured} onChange={(e) => moderate(offer.id, { is_featured: e.target.checked })} className="mr-2"/>Featured</label><label className="rounded-xl border p-4 font-bold"><input type="checkbox" checked={offer.is_homepage_hero} onChange={(e) => moderate(offer.id, { is_homepage_hero: e.target.checked })} className="mr-2"/>Homepage hero</label><div className="rounded-xl bg-slate-50 p-4 text-sm"><b>Advertiser email:</b><br/>{offer.advertiser_email || "Directory business"}</div></div></article>)}{offers.length === 0 && <div className="rounded-2xl bg-white/10 p-8">No offers found.</div>}</div>}</section></main>; }
+const today = () => new Date().toISOString().slice(0, 10);
+
+export default function StudioBusinessOffersPage() {
+  const {
+    offers,
+    businesses,
+    loading,
+    saving,
+    error,
+    moderate,
+    approveForPayment,
+    confirmPayment,
+    create,
+  } = useBusinessOffers("admin");
+  const [message, setMessage] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [form, setForm] = useState({
+    business_id: "",
+    advertiser_name: "",
+    advertiser_email: "",
+    title: "",
+    description: "",
+    terms: "",
+    offer_code: "",
+    destination_url: "",
+    image_url: "",
+    starts_at: today(),
+    ends_at: "",
+    requested_placement: "standard" as OfferPlacement,
+    status: "pending" as const,
+  });
+  async function upload(file?: File) {
+    if (!file) return;
+    setUploading(true);
+    setMessage("");
+    try {
+      const imageUrl = await uploadFileToCloudinary(file);
+      setForm((current) => ({
+        ...current,
+        image_url: imageUrl,
+      }));
+      setMessage("Offer image uploaded.");
+    } catch (cause) {
+      setMessage(
+        cause instanceof Error ? cause.message : "Image upload failed.",
+      );
+    } finally {
+      setUploading(false);
+    }
+  }
+  async function addOffer() {
+    setMessage("");
+    try {
+      await create(form);
+      setForm({
+        ...form,
+        title: "",
+        description: "",
+        terms: "",
+        offer_code: "",
+        destination_url: "",
+        image_url: "",
+        starts_at: today(),
+        ends_at: "",
+      });
+      setMessage("Admin offer created and queued for approval.");
+    } catch {
+      /* hook displays validation */
+    }
+  }
+  return (
+    <main className="min-h-screen bg-slate-950 text-white">
+      <StudioHeader />
+      <section className="mx-auto max-w-7xl px-6 py-10">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="font-black uppercase text-amber-300">
+              Marketplace Operations
+            </p>
+            <h1 className="mt-2 text-4xl font-black">Business Offers</h1>
+            <p className="mt-2 text-slate-300">
+              Approve content first, request payment, then activate after
+              payment is confirmed.
+            </p>
+          </div>
+          <a
+            href="/studio/businesses/offers/pricing"
+            className="rounded-xl bg-amber-400 px-5 py-3 font-black text-slate-950"
+          >
+            Configure Pricing
+          </a>
+        </div>
+        {(error || message) && (
+          <div className="mt-5 rounded-2xl bg-red-100 p-4 font-bold text-red-800">
+            {error || message}
+          </div>
+        )}
+        <section className="mt-8 rounded-3xl bg-white p-6 text-slate-950">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-2xl font-black">Add an offer</h2>
+              <p className="text-slate-600">
+                Create a one-off advertiser offer or attach it to an approved
+                business.
+              </p>
+            </div>
+            <button
+              disabled={saving || uploading}
+              onClick={addOffer}
+              className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white disabled:opacity-50"
+            >
+              Create for approval
+            </button>
+          </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <label className="grid gap-1 font-bold">
+              Business (optional)
+              <select
+                value={form.business_id}
+                onChange={(e) =>
+                  setForm({ ...form, business_id: e.target.value })
+                }
+                className="rounded-xl border p-3 font-normal"
+              >
+                <option value="">One-off advertiser</option>
+                {businesses.map((business) => (
+                  <option key={business.id} value={business.id}>
+                    {business.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {!form.business_id && (
+              <>
+                <label className="grid gap-1 font-bold">
+                  Advertiser name
+                  <input
+                    value={form.advertiser_name}
+                    onChange={(e) =>
+                      setForm({ ...form, advertiser_name: e.target.value })
+                    }
+                    className="rounded-xl border p-3 font-normal"
+                  />
+                </label>
+                <label className="grid gap-1 font-bold">
+                  Advertiser email
+                  <input
+                    type="email"
+                    value={form.advertiser_email}
+                    onChange={(e) =>
+                      setForm({ ...form, advertiser_email: e.target.value })
+                    }
+                    className="rounded-xl border p-3 font-normal"
+                  />
+                </label>
+              </>
+            )}
+            <label className="grid gap-1 font-bold">
+              Offer title
+              <input
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                className="rounded-xl border p-3 font-normal"
+              />
+            </label>
+            <label className="grid gap-1 font-bold md:col-span-2">
+              Description
+              <textarea
+                value={form.description}
+                onChange={(e) =>
+                  setForm({ ...form, description: e.target.value })
+                }
+                className="min-h-24 rounded-xl border p-3 font-normal"
+              />
+            </label>
+            <label className="grid gap-1 font-bold">
+              Starts
+              <input
+                type="date"
+                value={form.starts_at}
+                onChange={(e) =>
+                  setForm({ ...form, starts_at: e.target.value })
+                }
+                className="rounded-xl border p-3 font-normal"
+              />
+            </label>
+            <label className="grid gap-1 font-bold">
+              Ends
+              <input
+                type="date"
+                min={form.starts_at}
+                value={form.ends_at}
+                onChange={(e) => setForm({ ...form, ends_at: e.target.value })}
+                className="rounded-xl border p-3 font-normal"
+              />
+            </label>
+            <label className="grid gap-1 font-bold">
+              Requested placement
+              <select
+                value={form.requested_placement}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    requested_placement: e.target.value as OfferPlacement,
+                  })
+                }
+                className="rounded-xl border p-3 font-normal"
+              >
+                {["standard", "premium", "featured", "hero"].map((value) => (
+                  <option key={value} value={value} className="capitalize">
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1 font-bold">
+              Destination URL
+              <input
+                value={form.destination_url}
+                onChange={(e) =>
+                  setForm({ ...form, destination_url: e.target.value })
+                }
+                className="rounded-xl border p-3 font-normal"
+                placeholder="https://..."
+              />
+            </label>
+            <label className="grid gap-1 font-bold md:col-span-2">
+              Offer image
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => upload(e.target.files?.[0])}
+                className="rounded-xl border p-3 font-normal"
+              />
+              {form.image_url && (
+                <img
+                  src={form.image_url}
+                  alt="Offer preview"
+                  className="mt-2 h-40 w-full rounded-xl object-cover"
+                />
+              )}
+            </label>
+          </div>
+        </section>
+        {loading ? (
+          <div className="mt-8 rounded-2xl bg-white/10 p-8">
+            Loading offers...
+          </div>
+        ) : (
+          <div className="mt-8 grid gap-5">
+            {offers.map((offer) => (
+              <article
+                key={offer.id}
+                className="rounded-3xl bg-white p-6 text-slate-950"
+              >
+                <div className="flex flex-col gap-4 lg:flex-row lg:justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase text-pink-600">
+                      {offer.local_businesses?.name ||
+                        offer.advertiser_name ||
+                        "Standalone advertiser"}
+                    </p>
+                    <h2 className="mt-1 text-2xl font-black">{offer.title}</h2>
+                    <p className="mt-2 max-w-3xl text-slate-600">
+                      {offer.description || "No description"}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs font-black">
+                      <span className="rounded-full bg-pink-50 px-3 py-1 capitalize">
+                        Requested: {offer.requested_placement}
+                      </span>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 capitalize">
+                        Status: {offer.status.replaceAll("_", " ")}
+                      </span>
+                      {offer.quoted_price_cents != null && (
+                        <span className="rounded-full bg-emerald-50 px-3 py-1">
+                          Quote: ${(offer.quoted_price_cents / 100).toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      disabled={saving || offer.status !== "pending"}
+                      onClick={() =>
+                        approveForPayment(offer.id, offer.requested_placement)
+                      }
+                      className="rounded-xl bg-green-600 px-4 py-3 font-black text-white disabled:opacity-40"
+                    >
+                      Approve & Request Payment
+                    </button>
+                    <button
+                      disabled={
+                        saving || offer.status !== "approved_pending_payment"
+                      }
+                      onClick={() =>
+                        confirmPayment(
+                          offer.id,
+                          offer.payment_reference || undefined,
+                        )
+                      }
+                      className="rounded-xl bg-blue-600 px-4 py-3 font-black text-white disabled:opacity-40"
+                    >
+                      Confirm Paid & Activate
+                    </button>
+                    <button
+                      disabled={saving}
+                      onClick={() =>
+                        moderate(offer.id, {
+                          status: "rejected",
+                          is_premium: false,
+                          is_featured: false,
+                          is_homepage_hero: false,
+                        })
+                      }
+                      className="rounded-xl bg-red-600 px-4 py-3 font-black text-white"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+                {offer.image_url && (
+                  <img
+                    src={offer.image_url}
+                    alt=""
+                    className="mt-5 h-52 w-full rounded-2xl border object-cover lg:w-96"
+                  />
+                )}
+                <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <label className="grid gap-1 text-sm font-bold md:col-span-2">
+                    Payment link
+                    <input
+                      defaultValue={offer.payment_link || ""}
+                      onBlur={(e) =>
+                        moderate(offer.id, {
+                          payment_link: e.target.value || null,
+                        })
+                      }
+                      className="rounded-xl border p-3 font-normal"
+                      placeholder="Stripe/payment checkout URL"
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm font-bold">
+                    Payment reference
+                    <input
+                      defaultValue={offer.payment_reference || ""}
+                      onBlur={(e) =>
+                        moderate(offer.id, {
+                          payment_reference: e.target.value || null,
+                        })
+                      }
+                      className="rounded-xl border p-3 font-normal"
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm font-bold">
+                    Payment status
+                    <select
+                      value={offer.payment_status}
+                      onChange={(e) =>
+                        moderate(offer.id, { payment_status: e.target.value })
+                      }
+                      className="rounded-xl border p-3 font-normal"
+                    >
+                      {["unpaid", "pending", "paid", "waived", "refunded"].map(
+                        (status) => (
+                          <option key={status}>{status}</option>
+                        ),
+                      )}
+                    </select>
+                  </label>
+                  <label className="rounded-xl border p-4 font-bold">
+                    <input
+                      type="checkbox"
+                      checked={offer.is_premium}
+                      onChange={(e) =>
+                        moderate(offer.id, { is_premium: e.target.checked })
+                      }
+                      className="mr-2"
+                    />
+                    Premium
+                  </label>
+                  <label className="rounded-xl border p-4 font-bold">
+                    <input
+                      type="checkbox"
+                      checked={offer.is_featured}
+                      onChange={(e) =>
+                        moderate(offer.id, { is_featured: e.target.checked })
+                      }
+                      className="mr-2"
+                    />
+                    Featured
+                  </label>
+                  <label className="rounded-xl border p-4 font-bold">
+                    <input
+                      type="checkbox"
+                      checked={offer.is_homepage_hero}
+                      onChange={(e) =>
+                        moderate(offer.id, {
+                          is_homepage_hero: e.target.checked,
+                        })
+                      }
+                      className="mr-2"
+                    />
+                    Homepage hero
+                  </label>
+                  <div className="rounded-xl bg-slate-50 p-4 text-sm">
+                    <b>Advertiser email:</b>
+                    <br />
+                    {offer.advertiser_email || "Directory business"}
+                  </div>
+                </div>
+              </article>
+            ))}
+            {offers.length === 0 && (
+              <div className="rounded-2xl bg-white/10 p-8">
+                No offers found.
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
