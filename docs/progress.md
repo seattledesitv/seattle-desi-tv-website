@@ -477,3 +477,12 @@ Safety:
 - Added admin-triggered email reminders for individual incomplete installments.
 - Added Studio payment verification and automatic homepage contributor activation after acceptance, first payment, or full payment according to the agreement.
 - The migration `20260804150000_add_sponsor_onboarding.sql` must be applied before testing this workflow.
+
+### Sponsor portal and marketplace entitlements
+
+- Added My Sponsorships to My Hub for agreement text, signer details, benefits, dates, installments, and confirmation uploads.
+- Admins can inspect the exact signed agreement snapshot; only unsigned drafts remain editable.
+- Sponsorship activation automatically creates the homepage contributor and enables premium placement for the linked business.
+- Offer approval checks active sponsorship entitlements: Bronze includes Premium, Silver includes Premium and Featured, and Gold/Platinum include Premium, Featured, and Homepage Hero.
+- Included placements remain approval-first but bypass payment with an auditable sponsorship waiver.
+- Apply `20260804170000_integrate_sponsor_portal_entitlements.sql` after the base sponsor onboarding migration.
