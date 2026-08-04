@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import SiteHeader from "../components/SiteHeader";
 import SiteFooter from "../components/SiteFooter";
 import SafeImage from "../components/SafeImage";
 import { isPubliclyHidden, loadHiddenUsers } from "../lib/publicVisibility";
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "");
+import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+const supabase = getSupabaseBrowserClient();
 
 type TeamMember = { id: string; name: string; title: string; image: string; email?: string | null; user_id?: string | null; profile_photo_url?: string | null; id_badge_url?: string | null; admin_role?: string | null; coverage_score?: number; managed_section?: string | null; managed_order?: number | null };
 type Spotlight = { key: string; name: string; email: string; count: number; photo?: string };

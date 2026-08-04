@@ -1,22 +1,11 @@
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import StudioHeader from "../../components/StudioHeader";
 import { firstError, requireText, validateImageFile, validateOptionalUrl } from "../../lib/validation";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-  {
-    auth: {
-      storageKey: "sdtv-auth-token-v2",
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
-  },
-);
+import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+const supabase = getSupabaseBrowserClient();
 
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
 const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";

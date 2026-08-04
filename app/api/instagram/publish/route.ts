@@ -91,14 +91,22 @@ export async function POST(request: Request) {
     if (!isAdminRole(resolvedRole)) return NextResponse.json({ error: `Studio admin access required. Resolved role: ${resolvedRole}.` }, { status: 403 });
 
     const body = await request.json().catch(() => ({}));
-    const imageUrl = String(body.imageUrl || "").trim();
+    const publicationId = String(body.publicationId || "").trim();
+    if (publicationId) {
+      const { data: publication, error: publicationError } = await sessionClient.from("publications").select("status").eq("id", publicationId).single();
+      if (publicationError) return NextResponse.json({ error: publicationError.message }, { status: 400 });
+      if (!["approved", "scheduled", "published"].includes(String(publication?.status))) return NextResponse.json({ error: "Approve this publication before posting it to Instagram." }, { status: 409 });
+    }
+    const requestedUrls = Array.isArray(body.imageUrls) ? body.imageUrls : [body.imageUrl];
+    const imageUrls = requestedUrls.map((value: unknown) => String(value || "").trim()).filter(Boolean);
     const collaborators = parseCollaborators(body.collaborators);
     const collaboratorText = collaborators.length ? `\n\n${collaborators.join(" ")}` : "";
     const caption = `${String(body.caption || "").trim()}${collaboratorText}`.trim();
 
-    if (!imageUrl || !/^https:\/\//i.test(imageUrl)) {
-      return NextResponse.json({ error: "A public HTTPS image URL is required for Instagram publishing." }, { status: 400 });
+    if (!imageUrls.length || imageUrls.some((url: string) => !/^https:\/\//i.test(url))) {
+      return NextResponse.json({ error: "Public HTTPS image URLs are required for Instagram publishing." }, { status: 400 });
     }
+    if (imageUrls.length > 10) return NextResponse.json({ error: "Instagram carousels support no more than 10 images." }, { status: 400 });
     if (!caption) return NextResponse.json({ error: "Caption is required." }, { status: 400 });
 
     const { accessToken, instagramBusinessAccountId, isInstagramLoginToken, graphBase, actorId } = getInstagramConfig();
@@ -107,13 +115,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "INSTAGRAM_BUSINESS_ACCOUNT_ID is required for Facebook Graph tokens." }, { status: 500 });
     }
 
-    const createContainerUrl = new URL(`${graphBase}/${actorId}/media`);
-    createContainerUrl.searchParams.set("image_url", imageUrl);
-    createContainerUrl.searchParams.set("caption", caption);
-    createContainerUrl.searchParams.set("access_token", accessToken);
-
-    const container = await graphRequest(createContainerUrl, "POST");
-    const creationId = container?.id;
+    let creationId = "";
+    if (imageUrls.length === 1) {
+      const createContainerUrl = new URL(`${graphBase}/${actorId}/media`);
+      createContainerUrl.searchParams.set("image_url", imageUrls[0]);
+      createContainerUrl.searchParams.set("caption", caption);
+      createContainerUrl.searchParams.set("access_token", accessToken);
+      const container = await graphRequest(createContainerUrl, "POST");
+      creationId = container?.id || "";
+    } else {
+      const children: string[] = [];
+      for (const imageUrl of imageUrls) {
+        const childUrl = new URL(`${graphBase}/${actorId}/media`);
+        childUrl.searchParams.set("image_url", imageUrl);
+        childUrl.searchParams.set("is_carousel_item", "true");
+        childUrl.searchParams.set("access_token", accessToken);
+        const child = await graphRequest(childUrl, "POST");
+        if (!child?.id) throw new Error("Instagram did not return a carousel item ID.");
+        await waitForContainer(graphBase, child.id, accessToken);
+        children.push(child.id);
+      }
+      const carouselUrl = new URL(`${graphBase}/${actorId}/media`);
+      carouselUrl.searchParams.set("media_type", "CAROUSEL");
+      carouselUrl.searchParams.set("children", children.join(","));
+      carouselUrl.searchParams.set("caption", caption);
+      carouselUrl.searchParams.set("access_token", accessToken);
+      const container = await graphRequest(carouselUrl, "POST");
+      creationId = container?.id || "";
+    }
     if (!creationId) throw new Error("Instagram did not return a media creation ID.");
 
     const processing = await waitForContainer(graphBase, creationId, accessToken);
@@ -146,8 +175,9 @@ export async function POST(request: Request) {
       mediaId,
       permalink,
       collaborators,
+      imageCount: imageUrls.length,
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Instagram publish failed." }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Instagram publish failed." }, { status: 500 });
   }
 }
