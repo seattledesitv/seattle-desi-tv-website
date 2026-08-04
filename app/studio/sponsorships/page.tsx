@@ -204,6 +204,15 @@ export default function SponsorshipsPage() {
       setNotice(e instanceof Error ? e.message : "Could not update payment.");
     }
   }
+  async function remindPayment(id: string) {
+    try {
+      await api("/api/studio/sponsorships/remind", { installmentId: id });
+      setNotice("Payment reminder emailed.");
+      await refresh();
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "Could not send reminder.");
+    }
+  }
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <StudioHeader />
@@ -456,6 +465,7 @@ export default function SponsorshipsPage() {
               agreements={agreements}
               send={sendAgreement}
               decidePayment={decidePayment}
+              remindPayment={remindPayment}
             />
           </div>
         )}
@@ -577,10 +587,12 @@ function AgreementList({
   agreements,
   send,
   decidePayment,
+  remindPayment,
 }: {
   agreements: SponsorshipAgreement[];
   send: (id: string) => void;
   decidePayment: (id: string, d: "verify" | "reject") => void;
+  remindPayment: (id: string) => void;
 }) {
   return (
     <section>
@@ -656,6 +668,17 @@ function AgreementList({
                       </button>
                     </span>
                   )}
+                  {item.id &&
+                    ["scheduled", "due", "overdue", "rejected"].includes(
+                      item.status,
+                    ) && (
+                      <button
+                        onClick={() => remindPayment(item.id!)}
+                        className="font-bold text-pink-700"
+                      >
+                        Send reminder
+                      </button>
+                    )}
                 </div>
               ))}
             </div>
