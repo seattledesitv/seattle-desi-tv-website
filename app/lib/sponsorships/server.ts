@@ -112,6 +112,20 @@ export async function activateAgreementIfReady(
         end_date: agreement.end_date,
       })
       .eq("id", homepageSponsorId);
+  if (agreement.business_id) {
+    await db
+      .from("local_businesses")
+      .update({
+        is_premium: true,
+        premium_starts_at: agreement.start_date,
+        premium_ends_at: agreement.end_date,
+        premium_label: `${agreement.tier.charAt(0).toUpperCase()}${agreement.tier.slice(1)} Sponsor`,
+        premium_payment_reference: agreement.agreement_number,
+        premium_notes: `Included with active sponsorship ${agreement.agreement_number}.`,
+        premium_updated_at: new Date().toISOString(),
+      })
+      .eq("id", agreement.business_id);
+  }
   await db
     .from("sponsorship_agreements")
     .update({
@@ -120,12 +134,10 @@ export async function activateAgreementIfReady(
       updated_at: new Date().toISOString(),
     })
     .eq("id", agreementId);
-  await db
-    .from("sponsorship_agreement_events")
-    .insert({
-      agreement_id: agreementId,
-      event_type: "activated",
-      details: { activation_condition: agreement.activation_condition },
-    });
+  await db.from("sponsorship_agreement_events").insert({
+    agreement_id: agreementId,
+    event_type: "activated",
+    details: { activation_condition: agreement.activation_condition },
+  });
   return true;
 }

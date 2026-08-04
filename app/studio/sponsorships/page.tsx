@@ -38,6 +38,7 @@ export default function SponsorshipsPage() {
     error,
     create,
     updatePackage,
+    updateAgreement,
     refresh,
   } = useSponsorships();
   const [tab, setTab] = useState<"agreements" | "packages">("agreements");
@@ -211,6 +212,19 @@ export default function SponsorshipsPage() {
       await refresh();
     } catch (e) {
       setNotice(e instanceof Error ? e.message : "Could not send reminder.");
+    }
+  }
+  async function editDraftAgreement(row: SponsorshipAgreement) {
+    const content = window.prompt(
+      "Edit the draft agreement text",
+      row.agreement_content,
+    );
+    if (content === null || content === row.agreement_content) return;
+    try {
+      await updateAgreement(row.id, { agreement_content: content });
+      setNotice("Draft agreement text updated.");
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "Could not update draft.");
     }
   }
   return (
@@ -466,6 +480,7 @@ export default function SponsorshipsPage() {
               send={sendAgreement}
               decidePayment={decidePayment}
               remindPayment={remindPayment}
+              editDraft={editDraftAgreement}
             />
           </div>
         )}
@@ -588,11 +603,13 @@ function AgreementList({
   send,
   decidePayment,
   remindPayment,
+  editDraft,
 }: {
   agreements: SponsorshipAgreement[];
   send: (id: string) => void;
   decidePayment: (id: string, d: "verify" | "reject") => void;
   remindPayment: (id: string) => void;
+  editDraft: (agreement: SponsorshipAgreement) => void;
 }) {
   return (
     <section>
@@ -634,6 +651,27 @@ function AgreementList({
                 {new Date(row.accepted_at).toLocaleDateString()}
               </p>
             )}
+            <details className="mt-4 rounded-xl border border-slate-200 p-4">
+              <summary className="cursor-pointer font-black">
+                View {row.accepted_at ? "signed" : "current"} agreement text
+              </summary>
+              <div className="mt-4 whitespace-pre-wrap border-t pt-4 text-sm leading-6">
+                {row.agreement_content}
+              </div>
+              {row.status === "draft" && (
+                <button
+                  onClick={() => editDraft(row)}
+                  className="mt-4 rounded-xl bg-slate-950 px-4 py-2 font-bold text-white"
+                >
+                  Edit draft text
+                </button>
+              )}
+              {row.accepted_at && (
+                <p className="mt-4 text-sm font-bold text-emerald-700">
+                  This signed text is preserved and cannot be edited.
+                </p>
+              )}
+            </details>
             <div className="mt-4 space-y-2">
               {row.installments?.map((item) => (
                 <div

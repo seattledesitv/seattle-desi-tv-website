@@ -78,6 +78,19 @@ export function useSponsorships() {
       setSaving(false);
     }
   }
+  async function updateAgreement(id: string, changes: Record<string, unknown>) {
+    setSaving(true);
+    setError("");
+    try {
+      await SponsorshipService.update(id, changes);
+      await refresh();
+    } catch (nextError) {
+      setError(message(nextError));
+      throw nextError;
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return {
     packages,
@@ -89,5 +102,6 @@ export function useSponsorships() {
     refresh,
     create,
     updatePackage,
+    updateAgreement,
   };
 }
