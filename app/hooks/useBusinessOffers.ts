@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { BusinessOfferService } from "../lib/businessOffers/services/businessOfferService";
-import type { BusinessOffer, BusinessOfferInput, OfferBusiness } from "../lib/businessOffers/types";
+import type { BusinessOffer, BusinessOfferInput, OfferBusiness, OfferPlacement } from "../lib/businessOffers/types";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../lib/roles";
 
@@ -38,6 +38,8 @@ export function useBusinessOffers(mode: "public" | "owner" | "admin") {
 
   async function create(input: BusinessOfferInput) { if (!userId) throw new Error("Please log in first."); setSaving(true); setError(""); try { await BusinessOfferService.create(input, userId); await refresh(); } catch (cause: unknown) { setError(errorMessage(cause, "Could not create offer.")); throw cause; } finally { setSaving(false); } }
   async function moderate(id: string, changes: Record<string, unknown>) { setSaving(true); setError(""); try { await BusinessOfferService.moderate(id, changes); await refresh(); } catch (cause: unknown) { setError(errorMessage(cause, "Could not update offer.")); } finally { setSaving(false); } }
+  async function approveForPayment(id: string, placement: OfferPlacement) { setSaving(true); setError(""); try { await BusinessOfferService.approveForPayment(id, placement); await refresh(); } catch (cause: unknown) { setError(errorMessage(cause, "Could not approve the offer.")); } finally { setSaving(false); } }
+  async function confirmPayment(id: string, reference?: string) { setSaving(true); setError(""); try { await BusinessOfferService.confirmPaymentAndActivate(id, reference); await refresh(); } catch (cause: unknown) { setError(errorMessage(cause, "Could not activate the offer.")); } finally { setSaving(false); } }
   async function remove(id: string) { setSaving(true); setError(""); try { await BusinessOfferService.remove(id); await refresh(); } catch (cause: unknown) { setError(errorMessage(cause, "Could not delete offer.")); } finally { setSaving(false); } }
-  return { offers, businesses, loading, saving, error, refresh, create, moderate, remove };
+  return { offers, businesses, loading, saving, error, refresh, create, moderate, approveForPayment, confirmPayment, remove };
 }

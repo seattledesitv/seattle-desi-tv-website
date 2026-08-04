@@ -169,3 +169,6 @@ Direct module-level `createClient` calls in browser pages should not be introduc
 2. Manual publication-item edits are recorded in both editable columns and `manual_content`, with `is_manually_edited` preserving editorial intent.
 3. AI generation must merge with manual edits instead of overwriting them.
 4. Multi-channel preview and publishing must consume the same canonical publication and item services rather than build channel-specific data silos.
+### Business offer pricing and payment workflow
+
+Offer placement pricing is stored in `business_offer_pricing` and managed through Studio. Submission does not activate an offer: editorial approval snapshots the current tier price onto the offer, paid tiers enter `approved_pending_payment`, and activation occurs only after payment confirmation. Payment links are provider-neutral so Stripe or another checkout adapter can be connected without changing the offer domain model. Offers normally reference `local_businesses`, while authenticated users and administrators may submit accountable standalone offers using advertiser identity fields.

@@ -455,3 +455,10 @@ Safety:
 - Successful discovery refreshes remove stale mixed records while preserving manually edited items.
 - Cleanup is skipped when a relevant feed fails, protecting publications during temporary API outages.
 - Targeted ESLint, full TypeScript checking, and the production build passed.
+### Marketplace follow-up — configurable pricing and approval-first payment
+
+- Added Studio offer-pricing management for standard, premium, featured, and homepage hero tiers.
+- Added standalone advertiser offers while retaining business-linked offers as the preferred path.
+- Added approval → frozen quote → payment link → payment confirmation → activation workflow.
+- Added owner-facing current prices and payment-link handoff.
+- Payment-provider automation remains a follow-up; Studio supports manual secure checkout links and confirmation now.
