@@ -192,3 +192,7 @@ Claims never grant access at submission time. An administrator must approve them
 ## Community Classifieds
 
 Classifieds are separate from business offers because they represent community person-to-person listings with distinct safety, expiration, reporting, and privacy requirements. The module follows Components → Hooks → Services → Repositories → Supabase. Listings are approval-first, time-bound, and publicly readable only while active. Standard, featured, and homepage placement pricing is configurable. Free approvals activate immediately; paid approvals wait for a server-confirmed payment workflow. Reports and moderation actions remain auditable, and removal uses status changes rather than destructive deletion.
+
+## Swirepay webhook verification
+
+Swirepay webhooks enter through a server-only endpoint that reads the exact raw body before JSON parsing. The endpoint verifies the Base64 `x-swirepay-signature` using HMAC-SHA256 and `SWIREPAY_WEBHOOK_SECRET`, compares signatures in constant time, and rejects unverified deliveries. Verified events are deduplicated by provider event ID when available and otherwise by a SHA-256 body hash. The initial implementation is capture-only: it stores verified payloads for restricted Studio inspection but cannot activate an offer or classified until captured-event fields are mapped and tested.

@@ -505,3 +505,10 @@ Safety:
 - Added Studio moderation and configurable Standard, Featured, and Homepage pricing/durations.
 - Added RLS, transactional review, activity history, report moderation plumbing, and safe non-destructive status transitions.
 - Swirepay checkout creation and captured-payment activation remain intentionally server-side follow-up work pending the confirmed provider API/header/payload contract.
+
+## Swirepay verified webhook capture
+
+- Added `POST /api/webhooks/swirepay` with raw-body HMAC-SHA256 verification using the Base64 `x-swirepay-signature` header.
+- Added constant-time comparison, duplicate-delivery protection, server-only secrets, and capture-only persistence.
+- Added a restricted Studio payload inspector at System → Swirepay Webhooks.
+- No payment or listing activation occurs yet. The first verified test Captured payload must be reviewed and mapped before processing is enabled.
