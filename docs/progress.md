@@ -496,3 +496,12 @@ Safety:
 - Approved removals hide listings; they do not permanently delete records.
 - Added guarded RLS policies, review indexes, and duplicate open-request protection.
 - Production build and TypeScript validation pass. The migration must be applied before live testing.
+
+## Community Classifieds — Initial end-to-end release
+
+- Added public classified browsing, search, category filtering, detail pages, image galleries, advertiser contact choices, and reporting.
+- Added authenticated submission with configurable placement pricing, up to five images, moderation, payment states, and expiration dates.
+- Added My Classifieds for status tracking, approval amounts, payment handoff, and sold/filled closure.
+- Added Studio moderation and configurable Standard, Featured, and Homepage pricing/durations.
+- Added RLS, transactional review, activity history, report moderation plumbing, and safe non-destructive status transitions.
+- Swirepay checkout creation and captured-payment activation remain intentionally server-side follow-up work pending the confirmed provider API/header/payload contract.
