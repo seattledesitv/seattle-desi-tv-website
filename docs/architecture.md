@@ -182,3 +182,9 @@ Raw agreement access tokens are emailed but never stored; only SHA-256 hashes ar
 Authenticated sponsors can also read agreements through My Sponsorships when their login email matches the agreement or they actively manage its linked business. Signed agreement text is immutable; Studio may edit draft text but presents the accepted snapshot read-only afterward.
 
 Active sponsorships provide marketplace entitlements without bypassing editorial approval. Offer approval resolves the linked business's current active agreement, checks the requested placement against the tier matrix, and snapshots both the agreement ID and waiver tier onto the offer. Sponsorship activation also updates the linked business's premium directory dates so public placement expires with the agreement.
+
+## Public listing ownership and accuracy
+
+Events, influencer profiles, and community groups share a moderated listing-management workflow. Public components link to a single request experience, the React hook owns request state, the service validates and coordinates decisions, and the repository performs Supabase access. `listing_management_requests` stores claim, correction, and removal requests. `listing_managers` records verified access without creating separate claim implementations for every directory.
+
+Claims never grant access at submission time. An administrator must approve them in Studio; approval records verified manager access and connects the listing to the approved user so existing owner tools continue to work. Removal requests also require approval and hide the record instead of deleting it. Correction requests are applied by an administrator in the existing editor and require a confirmation note before being marked approved.

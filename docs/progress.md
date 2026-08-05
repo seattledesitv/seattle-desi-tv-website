@@ -487,3 +487,12 @@ Safety:
 - Included placements remain approval-first but bypass payment with an auditable sponsorship waiver.
 - Apply `20260804170000_integrate_sponsor_portal_entitlements.sql` after the base sponsor onboarding migration.
 - Added admin offer creation for approved directory businesses and independent one-off advertisers; new records enter the same approval, entitlement, and payment workflow.
+
+## Directory ownership expansion — Events, Influencers, and Groups
+
+- Added a shared claim, correction, and removal request flow for public events, influencer profiles, and community groups.
+- Added user request history and a Studio moderation queue.
+- Approved claims create verified manager access and connect the existing listing to the approved user.
+- Approved removals hide listings; they do not permanently delete records.
+- Added guarded RLS policies, review indexes, and duplicate open-request protection.
+- Production build and TypeScript validation pass. The migration must be applied before live testing.
