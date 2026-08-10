@@ -56,22 +56,27 @@ export default function RadioPlayer() {
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) audio.src = STREAM_URL;
-    loadMetadata();
+    const initial = window.setTimeout(() => void loadMetadata(), 0);
     const timer = window.setInterval(loadMetadata, 30000);
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearTimeout(initial);
+      window.clearInterval(timer);
+    };
   }, []);
 
-  return <div className="relative w-full max-w-full sm:max-w-xl mx-auto rounded-[1.5rem] border border-white/15 bg-slate-950 p-4 sm:p-5 shadow-2xl text-white overflow-hidden">
-    <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_28%,rgba(219,39,119,0.42),transparent_14rem),radial-gradient(circle_at_8%_10%,rgba(244,114,182,0.18),transparent_12rem)]" />
-    <div className="relative flex flex-col sm:flex-row gap-4 sm:gap-5 items-center min-w-0">
-      <SafeImage src={thumbnail} alt="Now playing" className="w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 shrink-0 rounded-2xl object-cover border border-white/15 bg-white p-1 shadow-[0_0_24px_rgba(236,72,153,.45)]" fallbackClassName="w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 shrink-0 rounded-2xl border border-white/15 bg-white/10 text-white grid place-items-center font-black text-sm" fallbackLabel="SDTV" />
-      <div className="flex-1 overflow-hidden w-full text-center sm:text-left min-w-0">
+  return <div className="relative mx-auto w-full max-w-2xl overflow-hidden rounded-3xl border border-white/15 bg-slate-950 p-4 text-white shadow-2xl sm:p-5">
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_88%_20%,rgba(219,39,119,0.38),transparent_13rem),radial-gradient(circle_at_8%_10%,rgba(244,114,182,0.14),transparent_10rem)]" />
+    <div className="relative grid min-w-0 items-center gap-4 sm:grid-cols-[6rem_minmax(0,1fr)_4.5rem] sm:gap-5">
+      <div className="mx-auto h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-white p-1 shadow-[0_0_22px_rgba(236,72,153,.38)]">
+        <SafeImage src={thumbnail} alt="Now playing" className="h-full w-full rounded-xl object-cover" fallbackClassName="grid h-full w-full place-items-center rounded-xl bg-white/10 text-xs font-black text-white" fallbackLabel="SDTV" enableFullPreview={false} widthHint={240} />
+      </div>
+      <div className="min-w-0 overflow-hidden text-center sm:text-left">
         <span className="inline-flex items-center gap-2 rounded-full bg-pink-600 px-3 py-1 text-[10px] font-black text-white shadow-lg shadow-pink-600/30">● LIVE</span>
         <h2 className="text-white text-xl sm:text-3xl font-black mt-3 m-0 break-words">Seattle Desi Radio</h2>
         <div className="overflow-hidden whitespace-nowrap mt-3 max-w-full rounded-full bg-white/5 px-3 py-2 border border-white/10"><div key={trackText} className="inline-block pl-full text-sm text-slate-200 animate-[sdtvScroll_12s_linear_infinite]">{trackText}</div></div>
         {error && <p className="mt-3 text-sm font-bold text-amber-300">{error}</p>}
       </div>
-      <button onClick={togglePlay} disabled={loading} className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 rounded-full border border-pink-300/30 bg-pink-600 text-white text-sm sm:text-base cursor-pointer shadow-[0_0_28px_rgba(236,72,153,.65)] font-black hover:bg-pink-500 transition disabled:cursor-wait disabled:opacity-70" aria-label={playing ? "Pause radio" : "Play radio"}>{loading ? "Loading" : playing ? "Pause" : "Play"}</button>
+      <button onClick={togglePlay} disabled={loading} className="mx-auto h-16 w-16 shrink-0 rounded-full border border-pink-300/30 bg-pink-600 text-sm font-black text-white shadow-[0_0_24px_rgba(236,72,153,.55)] transition hover:bg-pink-500 disabled:cursor-wait disabled:opacity-70 sm:h-[4.5rem] sm:w-[4.5rem]" aria-label={playing ? "Pause radio" : "Play radio"}>{loading ? "Wait" : playing ? "Pause" : "Play"}</button>
     </div>
     <audio ref={audioRef} onPlay={() => { setPlaying(true); setLoading(false); }} onPause={() => setPlaying(false)} onWaiting={() => setLoading(true)} onCanPlay={() => setLoading(false)} onError={() => { setPlaying(false); setLoading(false); setError("The live stream could not be loaded. Please try again."); }} preload="none" />
   </div>;
