@@ -529,3 +529,12 @@ Safety:
 - Fulfillment requires a unique payment-link match, exact frozen quote, exact paid/received amounts, USD, and `SUCCEEDED`; unmatched or ambiguous payments remain inactive for Studio review.
 - Classified activation applies the configured placement duration. Business-offer activation preserves the placement flags established during editorial approval.
 - Sponsorship and Zelle proof workflows are unchanged.
+
+### Embedded Swirepay checkout pilot for classifieds
+
+- Added an SDTV-branded classified payment page that opens Swirepay's secure card modal without navigating customers away from SDTV.
+- Added authenticated, owner-bound, 24-hour payment intents with a frozen approved amount and non-guessable public reference.
+- Replaced the primary My Classifieds payment action with `Pay securely on SDTV`; existing provider links remain available as a fallback.
+- Browser callbacks cannot activate a classified. The signed `SUCCEEDED` webhook must match the intent, owner, target state, USD amount, paid amount, and received amount before transactional activation.
+- Added pending, verification, provider-error, expiration, and confirmed-payment states.
+- Requires `20260810153000_add_embedded_classified_checkout.sql`, `SWIREPAY_PUBLIC_KEY`, and the provider-supplied `SWIREPAY_CHECKOUT_URL`. Keep `SWIREPAY_MODE=test` until the complete pilot passes.

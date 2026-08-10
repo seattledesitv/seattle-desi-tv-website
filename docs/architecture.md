@@ -179,6 +179,10 @@ Swirepay may deliver a payment-session entity directly rather than an event enve
 
 Succeeded payment fulfillment uses the unique `paymentlink-*` identifier extracted from the admin-approved checkout URL. A database function locks the candidate, requires a frozen-quote match, exact paid and received amounts, USD currency, and an approved-pending-payment state, then writes an idempotent fulfillment ledger and activates the target in one transaction. A payment link or session can fulfill only once. Unmatched or ambiguous payments remain visible in Studio and do not activate content.
 
+Classifieds also support an embedded-checkout pilot. The owner requests a server-created, 24-hour payment intent tied to the exact classified, owner, approved state, and frozen quote. The SDTV payment page loads Swirepay's provider-hosted Web Component as a modal, so raw card data never reaches React, Next.js, or Supabase. The intent token is carried in the provider description; the browser callback is informational only. Activation still requires a signature-verified `SUCCEEDED` webhook whose amount, paid amount, received amount, currency, intent, owner, and classified state all match inside one database transaction.
+
+Embedded checkout configuration is server-read and returned only to an authenticated intent owner: `SWIREPAY_PUBLIC_KEY` (or `NEXT_PUBLIC_SWIREPAY_PUBLIC_KEY`), `SWIREPAY_CHECKOUT_URL`, and `SWIREPAY_MODE`. Test is the safe default unless mode is explicitly `live` (or legacy `SWIREPAY_TEST_MODE=false`). The public key and component URL are intentionally non-secret; provider secret keys remain server-only and are not used by browser checkout.
+
 ### Sponsor onboarding
 
 Sponsor packages are reusable configuration, while each `sponsorship_agreements` row is a dated and priced snapshot. Studio uses `useSponsorships` through the sponsorship service and repository layers. Secure send, acceptance, payment-proof, and verification operations use server routes because they require email delivery, service-role access, and audit logging.

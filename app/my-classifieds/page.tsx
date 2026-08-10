@@ -1,10 +1,30 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import SiteHeader from "../components/SiteHeader";
 import SiteFooter from "../components/SiteFooter";
 import { useClassifieds } from "../hooks/useClassifieds";
+import { createClassifiedCheckout } from "../lib/swirepay/services/classifiedCheckoutService";
 export default function MyClassifieds() {
   const { ads, loading, saving, error, update } = useClassifieds("owner");
+  const router = useRouter();
+  const [paymentLoading, setPaymentLoading] = useState("");
+  const [paymentError, setPaymentError] = useState("");
+
+  async function beginPayment(id: string) {
+    setPaymentLoading(id);
+    setPaymentError("");
+    try {
+      const intent = await createClassifiedCheckout(id);
+      router.push(`/payments/classifieds/${intent.token}`);
+    } catch (cause) {
+      setPaymentError(
+        cause instanceof Error ? cause.message : "Could not open checkout.",
+      );
+      setPaymentLoading("");
+    }
+  }
   return (
     <main className="min-h-screen bg-slate-50">
       <SiteHeader />
@@ -22,6 +42,11 @@ export default function MyClassifieds() {
           </Link>
         </div>
         {error && <p className="mt-5 rounded-xl bg-red-50 p-4">{error}</p>}
+        {paymentError && (
+          <p className="mt-5 rounded-xl bg-red-50 p-4 font-bold text-red-800">
+            {paymentError}
+          </p>
+        )}
         {loading ? (
           <p className="mt-8">Loading...</p>
         ) : (
@@ -72,19 +97,28 @@ export default function MyClassifieds() {
                         </button>
                       </>
                     )}
-                    {a.status === "approved_pending_payment" &&
-                      (a.payment_link ? (
-                        <a
-                          href={a.payment_link}
-                          className="rounded-xl bg-pink-600 px-4 py-2 font-bold text-white"
+                    {a.status === "approved_pending_payment" && (
+                      <>
+                        <button
+                          type="button"
+                          disabled={paymentLoading === a.id}
+                          onClick={() => void beginPayment(a.id)}
+                          className="rounded-xl bg-pink-600 px-4 py-2 font-bold text-white disabled:opacity-50"
                         >
-                          Pay now
-                        </a>
-                      ) : (
-                        <span className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold">
-                          Payment button pending provider checkout
-                        </span>
-                      ))}
+                          {paymentLoading === a.id
+                            ? "Opening secure checkout..."
+                            : "Pay securely on SDTV"}
+                        </button>
+                        {a.payment_link && (
+                          <a
+                            href={a.payment_link}
+                            className="rounded-xl border px-4 py-2 text-sm font-bold"
+                          >
+                            External payment fallback
+                          </a>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
               </article>

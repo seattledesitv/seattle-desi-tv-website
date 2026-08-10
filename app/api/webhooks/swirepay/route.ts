@@ -61,6 +61,7 @@ export async function POST(request: Request) {
     eventType,
     paymentGid,
     paymentLinkGid,
+    classifiedIntentToken,
     providerStatus,
     amountCents,
     paidAmountCents,
@@ -98,25 +99,34 @@ export async function POST(request: Request) {
     eventType === "payment.captured" &&
     providerStatus?.toUpperCase() === "SUCCEEDED" &&
     paymentGid &&
-    paymentLinkGid &&
+    (paymentLinkGid || classifiedIntentToken) &&
     amountCents !== null &&
     paidAmountCents !== null &&
     amountReceivedCents !== null &&
     currency
   ) {
-    const { data: fulfillment, error: fulfillmentError } = await db.rpc(
-      "fulfill_swirepay_payment",
-      {
-        p_webhook_event_id: recorded.id,
-        p_payment_session_gid: paymentGid,
-        p_payment_link_gid: paymentLinkGid,
-        p_provider_status: providerStatus,
-        p_amount_cents: amountCents,
-        p_paid_amount_cents: paidAmountCents,
-        p_amount_received_cents: amountReceivedCents,
-        p_currency_code: currency,
-      },
-    );
+    const request = classifiedIntentToken
+      ? db.rpc("fulfill_swirepay_embedded_classified_payment", {
+          p_webhook_event_id: recorded.id,
+          p_payment_session_gid: paymentGid,
+          p_intent_token: classifiedIntentToken,
+          p_provider_status: providerStatus,
+          p_amount_cents: amountCents,
+          p_paid_amount_cents: paidAmountCents,
+          p_amount_received_cents: amountReceivedCents,
+          p_currency_code: currency,
+        })
+      : db.rpc("fulfill_swirepay_payment", {
+          p_webhook_event_id: recorded.id,
+          p_payment_session_gid: paymentGid,
+          p_payment_link_gid: paymentLinkGid,
+          p_provider_status: providerStatus,
+          p_amount_cents: amountCents,
+          p_paid_amount_cents: paidAmountCents,
+          p_amount_received_cents: amountReceivedCents,
+          p_currency_code: currency,
+        });
+    const { data: fulfillment, error: fulfillmentError } = await request;
     if (fulfillmentError)
       return NextResponse.json(
         { error: "Verified payment could not be fulfilled." },

@@ -77,6 +77,10 @@ export function mapSwirepayWebhookPayload(payload: unknown) {
     text(payload.eventType) ||
     text(payload.event_type);
   const status = text(entity.status);
+  const description = text(entity.description);
+  const intentMatch = description?.match(
+    /^SDTV-CLASSIFIED:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i,
+  );
   const currency = isRecord(entity.currency)
     ? text(entity.currency.name)
     : text(entity.currency);
@@ -94,6 +98,7 @@ export function mapSwirepayWebhookPayload(payload: unknown) {
       (text(entity.spObjectType)?.toUpperCase() === "PAYMENT_LINK"
         ? text(entity.spObjectGid)
         : null),
+    classifiedIntentToken: intentMatch?.[1] || null,
     providerStatus: status,
     amountCents: integer(entity.amount),
     paidAmountCents: integer(entity.paidAmount),
