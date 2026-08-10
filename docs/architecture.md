@@ -177,6 +177,8 @@ Offer placement pricing is stored in `business_offer_pricing` and managed throug
 
 Swirepay may deliver a payment-session entity directly rather than an event envelope. The webhook payload service maps the top-level payment `gid`, normalizes `REQUIRE_CAPTURE` as `payment.authorized`, and reserves `payment.captured` for provider statuses such as `CAPTURED`, `SUCCESS`, or `SUCCEEDED`. Authorized events never activate paid features. Raw-body signature verification and hashing occur before mapping, while customer, card, receipt, client-secret, and authorization fields are removed before persistence.
 
+Succeeded payment fulfillment uses the unique `paymentlink-*` identifier extracted from the admin-approved checkout URL. A database function locks the candidate, requires a frozen-quote match, exact paid and received amounts, USD currency, and an approved-pending-payment state, then writes an idempotent fulfillment ledger and activates the target in one transaction. A payment link or session can fulfill only once. Unmatched or ambiguous payments remain visible in Studio and do not activate content.
+
 ### Sponsor onboarding
 
 Sponsor packages are reusable configuration, while each `sponsorship_agreements` row is a dated and priced snapshot. Studio uses `useSponsorships` through the sponsorship service and repository layers. Secure send, acceptance, payment-proof, and verification operations use server routes because they require email delivery, service-role access, and audit logging.

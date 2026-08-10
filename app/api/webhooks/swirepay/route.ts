@@ -56,12 +56,22 @@ export async function POST(request: Request) {
   const payloadHash = createHash("sha256")
     .update(rawBody, "utf8")
     .digest("hex");
-  const { providerEventId, eventType, paymentGid, sanitizedPayload } =
-    mapSwirepayWebhookPayload(payload);
+  const {
+    providerEventId,
+    eventType,
+    paymentGid,
+    paymentLinkGid,
+    providerStatus,
+    amountCents,
+    paidAmountCents,
+    amountReceivedCents,
+    currency,
+    sanitizedPayload,
+  } = mapSwirepayWebhookPayload(payload);
   const db = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false },
   });
-  const { error } = await db
+  const { data: recorded, error } = await db
     .from("swirepay_webhook_events")
     .insert({
       provider_event_id: providerEventId,
@@ -72,7 +82,9 @@ export async function POST(request: Request) {
       signature,
       signature_verified: true,
       processing_status: "captured",
-    });
+    })
+    .select("id")
+    .single();
   if (error) {
     if (error.code === "23505")
       return NextResponse.json({ ok: true, duplicate: true });
@@ -81,5 +93,52 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-  return NextResponse.json({ ok: true, captured: true });
+
+  if (
+    eventType === "payment.captured" &&
+    providerStatus?.toUpperCase() === "SUCCEEDED" &&
+    paymentGid &&
+    paymentLinkGid &&
+    amountCents !== null &&
+    paidAmountCents !== null &&
+    amountReceivedCents !== null &&
+    currency
+  ) {
+    const { data: fulfillment, error: fulfillmentError } = await db.rpc(
+      "fulfill_swirepay_payment",
+      {
+        p_webhook_event_id: recorded.id,
+        p_payment_session_gid: paymentGid,
+        p_payment_link_gid: paymentLinkGid,
+        p_provider_status: providerStatus,
+        p_amount_cents: amountCents,
+        p_paid_amount_cents: paidAmountCents,
+        p_amount_received_cents: amountReceivedCents,
+        p_currency_code: currency,
+      },
+    );
+    if (fulfillmentError)
+      return NextResponse.json(
+        { error: "Verified payment could not be fulfilled." },
+        { status: 500 },
+      );
+
+    const result = fulfillment as { status?: string } | null;
+    const fulfilled = ["fulfilled", "duplicate"].includes(
+      result?.status || "",
+    );
+    await db
+      .from("swirepay_webhook_events")
+      .update({
+        processing_status: fulfilled ? "processed" : "mapped",
+        processing_notes: fulfilled
+          ? "Verified succeeded payment applied to its unique approved target."
+          : "Verified succeeded payment stored, but no unique approved payment target matched its payment-link identifier and frozen quote.",
+        processed_at: fulfilled ? new Date().toISOString() : null,
+      })
+      .eq("id", recorded.id);
+    return NextResponse.json({ ok: true, captured: true, fulfillment: result });
+  }
+
+  return NextResponse.json({ ok: true, captured: true, fulfillment: null });
 }

@@ -20,6 +20,12 @@ function text(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function integer(value: unknown) {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0
+    ? value
+    : null;
+}
+
 function paymentEntity(payload: JsonRecord) {
   if (isRecord(payload.entity)) return payload.entity;
   if (isRecord(payload.data) && isRecord(payload.data.entity))
@@ -71,6 +77,9 @@ export function mapSwirepayWebhookPayload(payload: unknown) {
     text(payload.eventType) ||
     text(payload.event_type);
   const status = text(entity.status);
+  const currency = isRecord(entity.currency)
+    ? text(entity.currency.name)
+    : text(entity.currency);
 
   return {
     providerEventId,
@@ -80,6 +89,16 @@ export function mapSwirepayWebhookPayload(payload: unknown) {
       text(entity.paymentGid) ||
       text(entity.payment_gid) ||
       text(entity.paymentSessionGid),
+    paymentLinkGid:
+      text(entity.paymentLinkGid) ||
+      (text(entity.spObjectType)?.toUpperCase() === "PAYMENT_LINK"
+        ? text(entity.spObjectGid)
+        : null),
+    providerStatus: status,
+    amountCents: integer(entity.amount),
+    paidAmountCents: integer(entity.paidAmount),
+    amountReceivedCents: integer(entity.amountReceived),
+    currency,
     sanitizedPayload:
       entity === payload
         ? sanitizeSwirepayPayload(payload)

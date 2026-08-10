@@ -7,6 +7,14 @@ export default function SwirepayWebhooksPage() {
     useSwirepayWebhookEvents();
   const [open, setOpen] = useState(""),
     [notes, setNotes] = useState<Record<string, string>>({});
+  const statusLabel = (status: string) =>
+    ({
+      captured: "Webhook stored",
+      mapped: "Verified - needs matching",
+      processed: "Payment applied",
+      ignored: "Ignored",
+      failed: "Processing failed",
+    })[status] || status;
   return (
     <main className="min-h-screen bg-slate-100 text-slate-950">
       <StudioHeader />
@@ -49,8 +57,13 @@ export default function SwirepayWebhooksPage() {
                     </h2>
                     <p className="mt-1 text-sm text-slate-500">
                       Received {new Date(event.received_at).toLocaleString()} ·{" "}
-                      {event.processing_status}
+                      {statusLabel(event.processing_status)}
                     </p>
+                    {event.processing_notes && (
+                      <p className="mt-2 max-w-3xl text-sm text-slate-600">
+                        {event.processing_notes}
+                      </p>
+                    )}
                   </div>
                   <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-black text-green-700">
                     Signature verified

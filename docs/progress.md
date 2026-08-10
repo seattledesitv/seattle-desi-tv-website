@@ -520,3 +520,12 @@ Safety:
 - Added pre-persistence redaction for customer, card/payment-method, receipt, client-secret, authorization, and redirect fields.
 - Added a migration that maps and redacts already captured diagnostic rows.
 - Automatic offer, classified, and sponsorship fulfillment remains disabled until a true `CAPTURED`, `SUCCESS`, or `SUCCEEDED` payload is received and verified.
+
+### Swirepay succeeded-payment fulfillment
+
+- Verified a signed `SUCCEEDED` test payload with matching amount, paid amount, received amount, USD currency, zero uncaptured amount, payment-session ID, and payment-link ID.
+- Added automatic payment-link ID extraction when Studio stores a Swirepay checkout URL.
+- Added an idempotent fulfillment ledger and transactional activation for approved-pending-payment business offers and classifieds.
+- Fulfillment requires a unique payment-link match, exact frozen quote, exact paid/received amounts, USD, and `SUCCEEDED`; unmatched or ambiguous payments remain inactive for Studio review.
+- Classified activation applies the configured placement duration. Business-offer activation preserves the placement flags established during editorial approval.
+- Sponsorship and Zelle proof workflows are unchanged.
