@@ -173,6 +173,16 @@ Direct module-level `createClient` calls in browser pages should not be introduc
 
 Offer placement pricing is stored in `business_offer_pricing` and managed through Studio. Submission does not activate an offer: editorial approval snapshots the current tier price onto the offer, paid tiers enter `approved_pending_payment`, and activation occurs only after payment confirmation. Payment links are provider-neutral so Stripe or another checkout adapter can be connected without changing the offer domain model. Offers normally reference `local_businesses`, while authenticated users and administrators may submit accountable standalone offers using advertiser identity fields.
 
+### Swirepay webhook normalization
+
+Swirepay may deliver a payment-session entity directly rather than an event envelope. The webhook payload service maps the top-level payment `gid`, normalizes `REQUIRE_CAPTURE` as `payment.authorized`, and reserves `payment.captured` for provider statuses such as `CAPTURED`, `SUCCESS`, or `SUCCEEDED`. Authorized events never activate paid features. Raw-body signature verification and hashing occur before mapping, while customer, card, receipt, client-secret, and authorization fields are removed before persistence.
+
+Succeeded payment fulfillment uses the unique `paymentlink-*` identifier extracted from the admin-approved checkout URL. A database function locks the candidate, requires a frozen-quote match, exact paid and received amounts, USD currency, and an approved-pending-payment state, then writes an idempotent fulfillment ledger and activates the target in one transaction. A payment link or session can fulfill only once. Unmatched or ambiguous payments remain visible in Studio and do not activate content.
+
+Classifieds also support an embedded-checkout pilot. The owner requests a server-created, 24-hour payment intent tied to the exact classified, owner, approved state, and frozen quote. The SDTV payment page loads Swirepay's provider-hosted Web Component as a modal, so raw card data never reaches React, Next.js, or Supabase. The intent token is carried in the provider description; the browser callback is informational only. Activation still requires a signature-verified `SUCCEEDED` webhook whose amount, paid amount, received amount, currency, intent, owner, and classified state all match inside one database transaction.
+
+Embedded checkout configuration is server-read and returned only to an authenticated intent owner: `SWIREPAY_PUBLIC_KEY` (or `NEXT_PUBLIC_SWIREPAY_PUBLIC_KEY`), `SWIREPAY_CHECKOUT_URL`, and `SWIREPAY_MODE`. Test is the safe default unless mode is explicitly `live` (or legacy `SWIREPAY_TEST_MODE=false`). The public key and component URL are intentionally non-secret; provider secret keys remain server-only and are not used by browser checkout.
+
 ### Sponsor onboarding
 
 Sponsor packages are reusable configuration, while each `sponsorship_agreements` row is a dated and priced snapshot. Studio uses `useSponsorships` through the sponsorship service and repository layers. Secure send, acceptance, payment-proof, and verification operations use server routes because they require email delivery, service-role access, and audit logging.
@@ -182,3 +192,24 @@ Raw agreement access tokens are emailed but never stored; only SHA-256 hashes ar
 Authenticated sponsors can also read agreements through My Sponsorships when their login email matches the agreement or they actively manage its linked business. Signed agreement text is immutable; Studio may edit draft text but presents the accepted snapshot read-only afterward.
 
 Active sponsorships provide marketplace entitlements without bypassing editorial approval. Offer approval resolves the linked business's current active agreement, checks the requested placement against the tier matrix, and snapshots both the agreement ID and waiver tier onto the offer. Sponsorship activation also updates the linked business's premium directory dates so public placement expires with the agreement.
+
+## Public listing ownership and accuracy
+
+Events, influencer profiles, and community groups share a moderated listing-management workflow. Public components link to a single request experience, the React hook owns request state, the service validates and coordinates decisions, and the repository performs Supabase access. `listing_management_requests` stores claim, correction, and removal requests. `listing_managers` records verified access without creating separate claim implementations for every directory.
+
+Claims never grant access at submission time. An administrator must approve them in Studio; approval records verified manager access and connects the listing to the approved user so existing owner tools continue to work. Removal requests also require approval and hide the record instead of deleting it. Correction requests are applied by an administrator in the existing editor and require a confirmation note before being marked approved.
+
+## Community Classifieds
+
+Classifieds are separate from business offers because they represent community person-to-person listings with distinct safety, expiration, reporting, and privacy requirements. The module follows Components → Hooks → Services → Repositories → Supabase. Listings are approval-first, time-bound, and publicly readable only while active. Standard, featured, and homepage placement pricing is configurable. Free approvals activate immediately; paid approvals wait for a server-confirmed payment workflow. Reports and moderation actions remain auditable, and removal uses status changes rather than destructive deletion.
+
+## Swirepay webhook verification
+
+Swirepay webhooks enter through a server-only endpoint that reads the exact raw body before JSON parsing. The endpoint verifies the Base64 `x-swirepay-signature` using HMAC-SHA256 and `SWIREPAY_WEBHOOK_SECRET`, compares signatures in constant time, and rejects unverified deliveries. Verified events are deduplicated by provider event ID when available and otherwise by a SHA-256 body hash. The initial implementation is capture-only: it stores verified payloads for restricted Studio inspection but cannot activate an offer or classified until captured-event fields are mapped and tested.
+## Radio schedule
+
+Radio programming follows the standard Components → Hooks → Services → Repositories → Supabase layering. `radio_programs` stores either a dated `one_time` broadcast or a `daily`/`weekly` recurring program using Pacific-time schedule fields. Public reads expose only published, non-expired dated shows and currently effective recurring programs. Studio admins manage the schedule at `/studio/radio-schedule`; the public radio page consumes the same service.
+
+Programs use an editorial status of `draft`, `published`, `on_hold`, or `archived`. Only `published` records cross the public RLS boundary. Overnight recurring programs are represented by an end time earlier than the start time, such as 10 PM–6 AM.
+
+`GET /api/radio/schedule` is the read-only, CORS-enabled integration contract for SDTV applications. It returns `{ generatedAt, timezone, upcoming, recurring }`, is cached for five minutes at the edge, and never exposes unpublished programs.

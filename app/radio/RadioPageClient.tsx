@@ -5,6 +5,7 @@ import SiteHeader from "../components/SiteHeader";
 import SiteFooter from "../components/SiteFooter";
 import SafeImage from "../components/SafeImage";
 import RadioPlayer from "../components/radio/RadioPlayer";
+import RadioSchedule from "../components/radio/RadioSchedule";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isPubliclyHidden, loadHiddenUsers } from "../lib/publicVisibility";
 
@@ -73,15 +74,20 @@ export default function RadioPageClient() {
     </section>
 
     <section id="listen" className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 py-7 sm:py-10 md:py-12 overflow-hidden">
-      <div className="bg-white border rounded-3xl p-4 sm:p-6 md:p-10 shadow-sm grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 md:gap-8 items-center overflow-hidden min-w-0">
+      <div className="bg-white border rounded-3xl p-5 sm:p-7 md:p-8 shadow-sm grid lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] gap-7 md:gap-10 items-center overflow-hidden min-w-0">
         <div className="min-w-0">
           <p className="text-pink-600 font-black uppercase tracking-wide text-sm sm:text-base">On Air</p>
-          <h2 className="text-2xl sm:text-4xl md:text-5xl font-black mt-2 break-words">Seattle Desi Radio</h2>
+          <h2 className="text-2xl sm:text-4xl font-black mt-2 break-words">Seattle Desi Radio</h2>
           <p className="text-gray-600 mt-4 text-base sm:text-lg">Tune in for SDTV Radio programming, community interviews, cultural conversations, and music curated for the Seattle Desi community.</p>
           <p className="mt-5 text-sm font-bold text-slate-500">Press Play to listen directly on Seattle Desi TV.</p>
         </div>
         <div className="min-w-0 w-full"><RadioPlayer /></div>
       </div>
+    </section>
+
+    <section id="schedule" className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 py-8 sm:py-10 md:py-12 overflow-hidden">
+      <div className="mb-6"><p className="text-pink-600 font-black uppercase tracking-wide">Programming</p><h2 className="text-3xl md:text-4xl font-black">Radio Schedule</h2><p className="text-gray-600 mt-1">Upcoming broadcasts and regular Seattle Desi Radio programming.</p></div>
+      <RadioSchedule />
     </section>
 
     <section id="hosts" className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 py-8 sm:py-10 md:py-12 overflow-hidden">
