@@ -1,6 +1,7 @@
 import { createHmac, createHash, timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { mapSwirepayWebhookPayload } from "../../../lib/swirepay/services/swirepayWebhookPayloadService";
 
 export const runtime = "nodejs";
 
@@ -23,19 +24,6 @@ function safeEqualBase64(expected: string, supplied: string) {
   } catch {
     return false;
   }
-}
-
-function textAt(payload: unknown, paths: string[][]) {
-  for (const path of paths) {
-    let value: unknown = payload;
-    for (const key of path)
-      value =
-        value && typeof value === "object"
-          ? (value as Record<string, unknown>)[key]
-          : undefined;
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-  return null;
 }
 
 export async function POST(request: Request) {
@@ -68,30 +56,8 @@ export async function POST(request: Request) {
   const payloadHash = createHash("sha256")
     .update(rawBody, "utf8")
     .digest("hex");
-  const providerEventId = textAt(payload, [
-    ["id"],
-    ["eventId"],
-    ["event_id"],
-    ["entity", "eventId"],
-    ["entity", "event_id"],
-  ]);
-  const eventType = textAt(payload, [
-    ["type"],
-    ["event"],
-    ["eventType"],
-    ["event_type"],
-    ["name"],
-    ["entity", "eventType"],
-    ["entity", "status"],
-  ]);
-  const paymentGid = textAt(payload, [
-    ["paymentGid"],
-    ["payment_gid"],
-    ["paymentSessionGid"],
-    ["entity", "gid"],
-    ["entity", "paymentGid"],
-    ["data", "entity", "gid"],
-  ]);
+  const { providerEventId, eventType, paymentGid, sanitizedPayload } =
+    mapSwirepayWebhookPayload(payload);
   const db = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false },
   });
@@ -101,7 +67,7 @@ export async function POST(request: Request) {
       provider_event_id: providerEventId,
       event_type: eventType,
       payment_gid: paymentGid,
-      payload,
+      payload: sanitizedPayload,
       payload_sha256: payloadHash,
       signature,
       signature_verified: true,

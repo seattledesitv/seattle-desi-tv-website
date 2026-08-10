@@ -512,3 +512,11 @@ Safety:
 - Added constant-time comparison, duplicate-delivery protection, server-only secrets, and capture-only persistence.
 - Added a restricted Studio payload inspector at System → Swirepay Webhooks.
 - No payment or listing activation occurs yet. The first verified test Captured payload must be reviewed and mapped before processing is enabled.
+
+### Swirepay authorized-payload mapping and redaction
+
+- Verified the first live-shaped test webhook and mapped its top-level payment-session `gid`.
+- Normalized `REQUIRE_CAPTURE` as `payment.authorized`; the observed payload had zero paid and received amounts and is not treated as captured.
+- Added pre-persistence redaction for customer, card/payment-method, receipt, client-secret, authorization, and redirect fields.
+- Added a migration that maps and redacts already captured diagnostic rows.
+- Automatic offer, classified, and sponsorship fulfillment remains disabled until a true `CAPTURED`, `SUCCESS`, or `SUCCEEDED` payload is received and verified.

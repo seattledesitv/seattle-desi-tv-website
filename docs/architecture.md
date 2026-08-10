@@ -173,6 +173,10 @@ Direct module-level `createClient` calls in browser pages should not be introduc
 
 Offer placement pricing is stored in `business_offer_pricing` and managed through Studio. Submission does not activate an offer: editorial approval snapshots the current tier price onto the offer, paid tiers enter `approved_pending_payment`, and activation occurs only after payment confirmation. Payment links are provider-neutral so Stripe or another checkout adapter can be connected without changing the offer domain model. Offers normally reference `local_businesses`, while authenticated users and administrators may submit accountable standalone offers using advertiser identity fields.
 
+### Swirepay webhook normalization
+
+Swirepay may deliver a payment-session entity directly rather than an event envelope. The webhook payload service maps the top-level payment `gid`, normalizes `REQUIRE_CAPTURE` as `payment.authorized`, and reserves `payment.captured` for provider statuses such as `CAPTURED`, `SUCCESS`, or `SUCCEEDED`. Authorized events never activate paid features. Raw-body signature verification and hashing occur before mapping, while customer, card, receipt, client-secret, and authorization fields are removed before persistence.
+
 ### Sponsor onboarding
 
 Sponsor packages are reusable configuration, while each `sponsorship_agreements` row is a dated and priced snapshot. Studio uses `useSponsorships` through the sponsorship service and repository layers. Secure send, acceptance, payment-proof, and verification operations use server routes because they require email delivery, service-role access, and audit logging.
