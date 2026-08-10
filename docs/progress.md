@@ -545,3 +545,5 @@ Safety:
 - Added a responsive public Radio Schedule section with future-only dated shows, active recurring programming, and a coming-soon empty state.
 - Added `GET /api/radio/schedule`, a public read-only CORS endpoint for mobile/application consumers.
 - Database migration required: `20260810210000_add_radio_program_schedule.sql`.
+- Added Draft, Published, On Hold, and Archived workflow statuses; only Published programs appear publicly.
+- Added the supplied weekday, Saturday, and Sunday programming as idempotent seed data, including overnight Night Lounge blocks. Additional migration required: `20260810223000_add_radio_program_status_and_seed_schedule.sql`.

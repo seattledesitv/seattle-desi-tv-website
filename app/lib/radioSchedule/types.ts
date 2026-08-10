@@ -1,4 +1,5 @@
 export type RadioScheduleType = "one_time" | "daily" | "weekly";
+export type RadioProgramStatus = "draft" | "published" | "on_hold" | "archived";
 
 export type RadioProgram = {
   id: string;
@@ -16,6 +17,7 @@ export type RadioProgram = {
   effective_from: string | null;
   effective_until: string | null;
   is_published: boolean;
+  status: RadioProgramStatus;
   display_order: number;
   created_at: string;
   updated_at: string;

@@ -210,4 +210,6 @@ Swirepay webhooks enter through a server-only endpoint that reads the exact raw 
 
 Radio programming follows the standard Components → Hooks → Services → Repositories → Supabase layering. `radio_programs` stores either a dated `one_time` broadcast or a `daily`/`weekly` recurring program using Pacific-time schedule fields. Public reads expose only published, non-expired dated shows and currently effective recurring programs. Studio admins manage the schedule at `/studio/radio-schedule`; the public radio page consumes the same service.
 
+Programs use an editorial status of `draft`, `published`, `on_hold`, or `archived`. Only `published` records cross the public RLS boundary. Overnight recurring programs are represented by an end time earlier than the start time, such as 10 PM–6 AM.
+
 `GET /api/radio/schedule` is the read-only, CORS-enabled integration contract for SDTV applications. It returns `{ generatedAt, timezone, upcoming, recurring }`, is cached for five minutes at the edge, and never exposes unpublished programs.

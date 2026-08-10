@@ -2,15 +2,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "../../supabaseBrowser";
 import type { RadioProgram, RadioProgramInput } from "../types";
 
-const fields = "id,title,description,host_id,host_name,schedule_type,starts_at,ends_at,days_of_week,start_time,end_time,timezone,effective_from,effective_until,is_published,display_order,created_at,updated_at,host:radio_team_members(id,name,image)";
+const fields = "id,title,description,host_id,host_name,schedule_type,starts_at,ends_at,days_of_week,start_time,end_time,timezone,effective_from,effective_until,is_published,status,display_order,created_at,updated_at,host:radio_team_members(id,name,image)";
 const client = (db?: SupabaseClient) => db || getSupabaseBrowserClient();
 
 export async function listPublic(db?: SupabaseClient) {
   const now = new Date().toISOString();
   const today = now.slice(0, 10);
   const [dated, recurring] = await Promise.all([
-    client(db).from("radio_programs").select(fields).eq("is_published", true).eq("schedule_type", "one_time").gt("ends_at", now).order("starts_at"),
-    client(db).from("radio_programs").select(fields).eq("is_published", true).in("schedule_type", ["daily", "weekly"]).or(`effective_from.is.null,effective_from.lte.${today}`).or(`effective_until.is.null,effective_until.gte.${today}`).order("display_order").order("start_time"),
+    client(db).from("radio_programs").select(fields).eq("status", "published").eq("schedule_type", "one_time").gt("ends_at", now).order("starts_at"),
+    client(db).from("radio_programs").select(fields).eq("status", "published").in("schedule_type", ["daily", "weekly"]).or(`effective_from.is.null,effective_from.lte.${today}`).or(`effective_until.is.null,effective_until.gte.${today}`).order("display_order").order("start_time"),
   ]);
   if (dated.error) throw dated.error;
   if (recurring.error) throw recurring.error;

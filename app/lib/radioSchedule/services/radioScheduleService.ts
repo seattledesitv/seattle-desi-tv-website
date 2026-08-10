@@ -7,7 +7,7 @@ function normalize(input: RadioProgramInput): RadioProgramInput {
   if (title.length < 2) throw new Error("Program title is required.");
   if (input.schedule_type === "one_time") {
     if (!input.starts_at || !input.ends_at || new Date(input.ends_at) <= new Date(input.starts_at)) throw new Error("Choose a valid future start and end time.");
-  } else if (!input.start_time || !input.end_time || input.end_time <= input.start_time) throw new Error("Choose a valid recurring start and end time.");
+  } else if (!input.start_time || !input.end_time || input.end_time === input.start_time) throw new Error("Choose different recurring start and end times.");
   if (input.schedule_type === "weekly" && input.days_of_week.length === 0) throw new Error("Choose at least one weekday.");
   return {
     ...input,
@@ -15,6 +15,7 @@ function normalize(input: RadioProgramInput): RadioProgramInput {
     description: input.description?.trim() || null,
     host_name: input.host_name?.trim() || null,
     host_id: input.host_id || null,
+    is_published: input.status === "published",
     starts_at: input.schedule_type === "one_time" ? input.starts_at : null,
     ends_at: input.schedule_type === "one_time" ? input.ends_at : null,
     days_of_week: input.schedule_type === "weekly" ? [...new Set(input.days_of_week)].sort() : [],
