@@ -487,3 +487,63 @@ Safety:
 - Included placements remain approval-first but bypass payment with an auditable sponsorship waiver.
 - Apply `20260804170000_integrate_sponsor_portal_entitlements.sql` after the base sponsor onboarding migration.
 - Added admin offer creation for approved directory businesses and independent one-off advertisers; new records enter the same approval, entitlement, and payment workflow.
+
+## Directory ownership expansion — Events, Influencers, and Groups
+
+- Added a shared claim, correction, and removal request flow for public events, influencer profiles, and community groups.
+- Added user request history and a Studio moderation queue.
+- Approved claims create verified manager access and connect the existing listing to the approved user.
+- Approved removals hide listings; they do not permanently delete records.
+- Added guarded RLS policies, review indexes, and duplicate open-request protection.
+- Production build and TypeScript validation pass. The migration must be applied before live testing.
+
+## Community Classifieds — Initial end-to-end release
+
+- Added public classified browsing, search, category filtering, detail pages, image galleries, advertiser contact choices, and reporting.
+- Added authenticated submission with configurable placement pricing, up to five images, moderation, payment states, and expiration dates.
+- Added My Classifieds for status tracking, approval amounts, payment handoff, and sold/filled closure.
+- Added Studio moderation and configurable Standard, Featured, and Homepage pricing/durations.
+- Added RLS, transactional review, activity history, report moderation plumbing, and safe non-destructive status transitions.
+- Swirepay checkout creation and captured-payment activation remain intentionally server-side follow-up work pending the confirmed provider API/header/payload contract.
+
+## Swirepay verified webhook capture
+
+- Added `POST /api/webhooks/swirepay` with raw-body HMAC-SHA256 verification using the Base64 `x-swirepay-signature` header.
+- Added constant-time comparison, duplicate-delivery protection, server-only secrets, and capture-only persistence.
+- Added a restricted Studio payload inspector at System → Swirepay Webhooks.
+- No payment or listing activation occurs yet. The first verified test Captured payload must be reviewed and mapped before processing is enabled.
+
+### Swirepay authorized-payload mapping and redaction
+
+- Verified the first live-shaped test webhook and mapped its top-level payment-session `gid`.
+- Normalized `REQUIRE_CAPTURE` as `payment.authorized`; the observed payload had zero paid and received amounts and is not treated as captured.
+- Added pre-persistence redaction for customer, card/payment-method, receipt, client-secret, authorization, and redirect fields.
+- Added a migration that maps and redacts already captured diagnostic rows.
+- Automatic offer, classified, and sponsorship fulfillment remains disabled until a true `CAPTURED`, `SUCCESS`, or `SUCCEEDED` payload is received and verified.
+
+### Swirepay succeeded-payment fulfillment
+
+- Verified a signed `SUCCEEDED` test payload with matching amount, paid amount, received amount, USD currency, zero uncaptured amount, payment-session ID, and payment-link ID.
+- Added automatic payment-link ID extraction when Studio stores a Swirepay checkout URL.
+- Added an idempotent fulfillment ledger and transactional activation for approved-pending-payment business offers and classifieds.
+- Fulfillment requires a unique payment-link match, exact frozen quote, exact paid/received amounts, USD, and `SUCCEEDED`; unmatched or ambiguous payments remain inactive for Studio review.
+- Classified activation applies the configured placement duration. Business-offer activation preserves the placement flags established during editorial approval.
+- Sponsorship and Zelle proof workflows are unchanged.
+
+### Embedded Swirepay checkout pilot for classifieds
+
+- Added an SDTV-branded classified payment page that opens Swirepay's secure card modal without navigating customers away from SDTV.
+- Added authenticated, owner-bound, 24-hour payment intents with a frozen approved amount and non-guessable public reference.
+- Replaced the primary My Classifieds payment action with `Pay securely on SDTV`; existing provider links remain available as a fallback.
+- Browser callbacks cannot activate a classified. The signed `SUCCEEDED` webhook must match the intent, owner, target state, USD amount, paid amount, and received amount before transactional activation.
+- Added pending, verification, provider-error, expiration, and confirmed-payment states.
+- Requires `20260810153000_add_embedded_classified_checkout.sql`, `SWIREPAY_PUBLIC_KEY`, and the provider-supplied `SWIREPAY_CHECKOUT_URL`. Keep `SWIREPAY_MODE=test` until the complete pilot passes.
+## Radio schedule management and public API
+
+- Added Studio management for one-time broadcasts, daily programming, and selected-weekday recurring programs.
+- Added program title, description, host, Pacific-time timing, optional effective dates, public visibility, editing, and deletion.
+- Added a responsive public Radio Schedule section with future-only dated shows, active recurring programming, and a coming-soon empty state.
+- Added `GET /api/radio/schedule`, a public read-only CORS endpoint for mobile/application consumers.
+- Database migration required: `20260810210000_add_radio_program_schedule.sql`.
+- Added Draft, Published, On Hold, and Archived workflow statuses; only Published programs appear publicly.
+- Added the supplied weekday, Saturday, and Sunday programming as idempotent seed data, including overnight Night Lounge blocks. Additional migration required: `20260810223000_add_radio_program_status_and_seed_schedule.sql`.

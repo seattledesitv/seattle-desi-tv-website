@@ -66,6 +66,7 @@ export default function SiteFooter() {
             <Link href="/publications">Publications</Link>
             <Link href="/businesses">Businesses</Link>
             <Link href="/offers">Business Offers</Link>
+            <Link href="/classifieds">Community Classifieds</Link>
             <Link href="/community-groups">Groups</Link>
             <Link href="/community-organizations">Organizations</Link>
             <Link href="/influencers">Influencers</Link>
@@ -79,6 +80,7 @@ export default function SiteFooter() {
           <h3 className="font-black mb-3">My SDTV</h3>
           <div className="grid gap-2 text-sm text-slate-300">
             {loggedIn && <a href="/my-hub">My Hub</a>}
+            {loggedIn && <a href="/my-classifieds">My Classifieds</a>}
             {team && <a href="/my-coverage">Coverage Opportunities</a>}
             {team && <a href="/my-assignments">My Assignments</a>}
             {team && <a href="/my-availability">My Availability</a>}
