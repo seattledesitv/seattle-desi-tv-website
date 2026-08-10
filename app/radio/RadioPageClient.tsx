@@ -5,6 +5,7 @@ import SiteHeader from "../components/SiteHeader";
 import SiteFooter from "../components/SiteFooter";
 import SafeImage from "../components/SafeImage";
 import RadioPlayer from "../components/radio/RadioPlayer";
+import RadioSchedule from "../components/radio/RadioSchedule";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isPubliclyHidden, loadHiddenUsers } from "../lib/publicVisibility";
 
@@ -82,6 +83,11 @@ export default function RadioPageClient() {
         </div>
         <div className="min-w-0 w-full"><RadioPlayer /></div>
       </div>
+    </section>
+
+    <section id="schedule" className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 py-8 sm:py-10 md:py-12 overflow-hidden">
+      <div className="mb-6"><p className="text-pink-600 font-black uppercase tracking-wide">Programming</p><h2 className="text-3xl md:text-4xl font-black">Radio Schedule</h2><p className="text-gray-600 mt-1">Upcoming broadcasts and regular Seattle Desi Radio programming.</p></div>
+      <RadioSchedule />
     </section>
 
     <section id="hosts" className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 py-8 sm:py-10 md:py-12 overflow-hidden">

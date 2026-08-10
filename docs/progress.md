@@ -538,3 +538,10 @@ Safety:
 - Browser callbacks cannot activate a classified. The signed `SUCCEEDED` webhook must match the intent, owner, target state, USD amount, paid amount, and received amount before transactional activation.
 - Added pending, verification, provider-error, expiration, and confirmed-payment states.
 - Requires `20260810153000_add_embedded_classified_checkout.sql`, `SWIREPAY_PUBLIC_KEY`, and the provider-supplied `SWIREPAY_CHECKOUT_URL`. Keep `SWIREPAY_MODE=test` until the complete pilot passes.
+## Radio schedule management and public API
+
+- Added Studio management for one-time broadcasts, daily programming, and selected-weekday recurring programs.
+- Added program title, description, host, Pacific-time timing, optional effective dates, public visibility, editing, and deletion.
+- Added a responsive public Radio Schedule section with future-only dated shows, active recurring programming, and a coming-soon empty state.
+- Added `GET /api/radio/schedule`, a public read-only CORS endpoint for mobile/application consumers.
+- Database migration required: `20260810210000_add_radio_program_schedule.sql`.

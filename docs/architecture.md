@@ -206,3 +206,8 @@ Classifieds are separate from business offers because they represent community p
 ## Swirepay webhook verification
 
 Swirepay webhooks enter through a server-only endpoint that reads the exact raw body before JSON parsing. The endpoint verifies the Base64 `x-swirepay-signature` using HMAC-SHA256 and `SWIREPAY_WEBHOOK_SECRET`, compares signatures in constant time, and rejects unverified deliveries. Verified events are deduplicated by provider event ID when available and otherwise by a SHA-256 body hash. The initial implementation is capture-only: it stores verified payloads for restricted Studio inspection but cannot activate an offer or classified until captured-event fields are mapped and tested.
+## Radio schedule
+
+Radio programming follows the standard Components → Hooks → Services → Repositories → Supabase layering. `radio_programs` stores either a dated `one_time` broadcast or a `daily`/`weekly` recurring program using Pacific-time schedule fields. Public reads expose only published, non-expired dated shows and currently effective recurring programs. Studio admins manage the schedule at `/studio/radio-schedule`; the public radio page consumes the same service.
+
+`GET /api/radio/schedule` is the read-only, CORS-enabled integration contract for SDTV applications. It returns `{ generatedAt, timezone, upcoming, recurring }`, is cached for five minutes at the edge, and never exposes unpublished programs.
