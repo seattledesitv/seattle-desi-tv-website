@@ -547,3 +547,13 @@ Safety:
 - Database migration required: `20260810210000_add_radio_program_schedule.sql`.
 - Added Draft, Published, On Hold, and Archived workflow statuses; only Published programs appear publicly.
 - Added the supplied weekday, Saturday, and Sunday programming as idempotent seed data, including overnight Night Lounge blocks. Additional migration required: `20260810223000_add_radio_program_status_and_seed_schedule.sql`.
+
+## Matrimony — Initial moderated release
+
+- Added authenticated profile submission with consent, private image upload, draft/update handling, and admin approval, changes-requested, hold, reject, and archive states.
+- Added restricted profile browsing that requires a reviewed, paid, active, unexpired entitlement.
+- Separated private contact details from directory profile data; approved viewers cannot read direct contact information.
+- Added access-purpose requests, configurable pricing, individual quote overrides, payment handoff, manual verified-payment activation, expiration, renewal, rejection, and revocation.
+- Added Community navigation, public entry page, Studio management, sitemap coverage, legal disclosures, and database backup/import coverage.
+- Database migration required: `20260810233000_add_matrimony_module.sql`.
+- Swirepay automation remains provider-neutral while SDTV waits for the confirmed embedded checkout/API configuration.

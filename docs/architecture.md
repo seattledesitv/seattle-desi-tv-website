@@ -213,3 +213,11 @@ Radio programming follows the standard Components → Hooks → Services → Rep
 Programs use an editorial status of `draft`, `published`, `on_hold`, or `archived`. Only `published` records cross the public RLS boundary. Overnight recurring programs are represented by an end time earlier than the start time, such as 10 PM–6 AM.
 
 `GET /api/radio/schedule` is the read-only, CORS-enabled integration contract for SDTV applications. It returns `{ generatedAt, timezone, upcoming, recurring }`, is cached for five minutes at the edge, and never exposes unpublished programs.
+
+## Matrimony
+
+The matrimony module follows Components → Hooks → Services → Repositories → Supabase. Profiles and viewer access are separate approval workflows. A profile can be submitted without buying directory access, and buying access never publishes a profile.
+
+`matrimony_profiles` stores approved-view information. Direct contact details are separated into `matrimony_profile_contacts`, whose RLS limits reads to the profile owner and administrators. Profile photos use the private `matrimony-profile-images` bucket; signed URLs are available only to owners, administrators, and users with active unexpired access. Approved viewers can read only approved profiles and never receive the contact table.
+
+`matrimony_access_requests` records the stated purpose, editorial decision, frozen quote, payment state, and time-limited entitlement. Pricing is configurable through `matrimony_access_pricing`. Activation is approval-first and payment-second. The payment boundary is provider-neutral until the Swirepay embedded-checkout contract is confirmed; administrators may provide a secure payment URL and record a verified payment reference without changing the domain model.
