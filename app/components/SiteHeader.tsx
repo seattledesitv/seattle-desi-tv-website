@@ -128,6 +128,7 @@ export default function SiteHeader() {
     { label: "Groups", href: "/community-groups", show: true },
     { label: "Organizations", href: "/community-organizations", show: true },
     { label: "Classifieds", href: "/classifieds", show: true },
+    { label: "Matrimony", href: "/matrimony", show: true },
   ];
   const links: HeaderLink[] = [
     { label: "Home", href: "/", show: true },

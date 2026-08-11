@@ -6,7 +6,7 @@ export default function TermsPage() {
       eyebrow="Legal"
       title="Terms & Conditions"
       summary="These terms govern access to and use of the Seattle Desi TV website, accounts, listings, submissions, media, community tools, and related services."
-      updated="July 26, 2026"
+      updated="August 10, 2026"
       sections={[
         {
           title: "Acceptance of terms",
@@ -38,6 +38,17 @@ export default function TermsPage() {
         {
           title: "Events, listings, and community information",
           paragraphs: ["Event, business, organization, contributor, influencer, volunteer, and other community information may be supplied by third parties. Seattle Desi TV may review submissions but does not guarantee that every detail is complete, current, accurate, available, safe, endorsed, or suitable for a particular purpose. Users should independently verify important information."],
+        },
+        {
+          title: "Matrimony service",
+          paragraphs: ["The matrimony service is a moderated profile-access service, not a matchmaking guarantee, background-check service, dating agency, legal adviser, or endorsement of any person. Users are responsible for their own decisions, communications, meetings, identity verification, and personal safety."],
+          bullets: [
+            "Only adults may submit a profile or request profile access.",
+            "Users must provide truthful information and have authority and consent for every submitted detail and image.",
+            "Restricted profiles, images, and information may not be copied, downloaded, redistributed, scraped, published, or used for solicitation.",
+            "Seattle Desi TV may deny, suspend, expire, or revoke access to protect privacy, safety, or platform integrity.",
+            "Fees purchase time-limited access only and do not guarantee contact, an introduction, compatibility, or any result.",
+          ],
         },
         {
           title: "Prohibited conduct",

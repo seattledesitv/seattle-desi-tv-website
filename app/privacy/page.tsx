@@ -6,7 +6,7 @@ export default function PrivacyPage() {
       eyebrow="Legal"
       title="Privacy Policy"
       summary="This policy explains how Seattle Desi TV may collect, use, store, and protect information when people use our website, accounts, submissions, listings, media, and community services."
-      updated="July 26, 2026"
+      updated="August 10, 2026"
       sections={[
         {
           title: "Information we may collect",
@@ -31,6 +31,16 @@ export default function PrivacyPage() {
         {
           title: "Public information",
           paragraphs: ["Information submitted for public profiles, listings, events, contributor recognition, team pages, interviews, or media coverage may be displayed publicly after review. Do not submit confidential information for public publication."],
+        },
+        {
+          title: "Matrimony privacy",
+          paragraphs: ["Matrimony information is sensitive and is handled through a restricted, moderated service. Approved profile details and photos are available only to the profile owner, authorized administrators, and authenticated users with current approved access. Private contact details are not disclosed to profile viewers and remain limited to the profile owner and authorized administrators."],
+          bullets: [
+            "Profile owners control what they submit and must confirm consent before review.",
+            "Every profile and viewer-access request is reviewed before approval.",
+            "Payment does not guarantee a match, response, introduction, or outcome.",
+            "Access may be suspended or revoked for misuse, sharing, harassment, scraping, or safety concerns.",
+          ],
         },
         {
           title: "Service providers and sharing",
