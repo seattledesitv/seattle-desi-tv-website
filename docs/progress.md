@@ -498,6 +498,14 @@ Safety:
 - Added an Add Classified shortcut in Studio that reuses the existing moderated classified submission workflow.
 - Database migration required: `20260811003000_allow_admin_influencer_creation.sql`.
 
+### Studio-created groups and organizations
+
+- Added responsive Add Group and Add Organization forms directly to their Studio management pages.
+- Administrators may create a pending record or approve and publish it immediately.
+- Created records retain the existing public, claim, correction, organization-verification, and moderation workflows.
+- Added shared hook/service/repository validation without replacing the established management tools.
+- Database migration required: `20260811013000_allow_admin_community_creation.sql`.
+
 - Added a shared claim, correction, and removal request flow for public events, influencer profiles, and community groups.
 - Added user request history and a Studio moderation queue.
 - Approved claims create verified manager access and connect the existing listing to the approved user.

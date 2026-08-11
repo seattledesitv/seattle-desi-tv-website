@@ -201,6 +201,8 @@ Claims never grant access at submission time. An administrator must approve them
 
 Studio administrators may create unclaimed influencer directory records through the influencer service and repository. These records use the same public directory, moderation states, and shared listing-management claim workflow as influencer self-submissions. Admin creation does not silently assign ownership; an approved claim connects `user_id` only after verification.
 
+Community groups and organizations use a shared Studio creation form backed by a hook, service, and repository. Administrators may create pending records or approved public records. Studio creation records the administrator as the submitter for audit purposes but does not establish external ownership; group claims use the shared listing workflow and organization representatives continue through the organization-management verification workflow.
+
 ## Community Classifieds
 
 Classifieds are separate from business offers because they represent community person-to-person listings with distinct safety, expiration, reporting, and privacy requirements. The module follows Components → Hooks → Services → Repositories → Supabase. Listings are approval-first, time-bound, and publicly readable only while active. Standard, featured, and homepage placement pricing is configurable. Free approvals activate immediately; paid approvals wait for a server-confirmed payment workflow. Reports and moderation actions remain auditable, and removal uses status changes rather than destructive deletion.

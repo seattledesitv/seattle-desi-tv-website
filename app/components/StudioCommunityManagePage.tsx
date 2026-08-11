@@ -5,6 +5,8 @@ import StudioHeader from "./StudioHeader";
 import CheckedExternalLink from "./CheckedExternalLink";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../lib/roles";
+import CommunityAdminCreateForm from "./community/CommunityAdminCreateForm";
+import { useCommunityAdminCreation } from "../hooks/useCommunityAdminCreation";
 
 const supabase = getSupabaseBrowserClient();
 type Kind = "groups" | "organizations";
@@ -37,6 +39,7 @@ export default function StudioCommunityManagePage({ kind }: { kind: Kind }) {
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const canAccess = Boolean(user && isAdminRole(role));
+  const creation = useCommunityAdminCreation(kind, user, async () => { await loadItems(); setMessage(`${kind === "groups" ? "Group" : "Organization"} created.`); });
 
   const filtered = useMemo(() => { const q = norm(searchText); return items.filter((item) => { if (statusFilter !== "all" && item.status !== statusFilter) return false; if (!q) return true; return norm(`${item.name || ""} ${item.category || ""} ${item.location || ""} ${item.submitted_email || ""} ${item[config.typeField] || ""}`).includes(q); }); }, [items, searchText, statusFilter, config.typeField]);
   const counts = useMemo(() => ({ total: items.length, pending: items.filter((i) => i.status === "pending" || !i.status).length, approved: items.filter((i) => i.status === "approved").length, rejected: items.filter((i) => i.status === "rejected").length }), [items]);
@@ -117,6 +120,7 @@ export default function StudioCommunityManagePage({ kind }: { kind: Kind }) {
 
   return <main className="min-h-screen bg-slate-950 text-white"><StudioHeader/><section className="mx-auto max-w-7xl px-6 py-10">
     <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><a href="/studio" className="font-black text-pink-300">← Back to Studio</a><h1 className="mt-3 text-4xl font-black md:text-5xl">{config.title}</h1><p className="mt-2 text-slate-300">Review, research, enrich, approve, hold, reject, or delete public community listings.</p></div><div className="flex gap-3"><a href={config.publicHref} className="rounded-xl bg-white/10 px-5 py-3 font-black">Public Page</a><button onClick={init} className="rounded-xl bg-white px-5 py-3 font-black text-slate-950">Refresh</button></div></div>
+    {!loading && canAccess && <div className="mb-6"><CommunityAdminCreateForm kind={kind} saving={creation.saving} error={creation.error} onCreate={creation.create}/></div>}
     {loading && <div className="rounded-3xl bg-white/10 p-6">{message}</div>}
     {!loading && !canAccess && <div className="rounded-3xl bg-white p-8 text-slate-950">{message}</div>}
     {!loading && canAccess && <div className="grid gap-6 lg:grid-cols-[420px_1fr]">{message && <div className="lg:col-span-2 rounded-2xl bg-yellow-100 p-4 font-bold text-yellow-900">{message}</div>}
