@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import StudioHeader from "../../components/StudioHeader";
 import { useClassifieds } from "../../hooks/useClassifieds";
 import type { ClassifiedPlacement } from "../../lib/classifieds/types";
@@ -18,7 +19,7 @@ export default function ClassifiedAdmin() {
         <p className="font-black uppercase text-pink-600">
           Community moderation
         </p>
-        <h1 className="text-4xl font-black">Classifieds</h1>
+        <div className="flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-4xl font-black">Classifieds</h1><p className="mt-2 text-slate-600">Admins may submit one-off classifieds through the same moderated creation workflow.</p></div><Link href="/classifieds/new" className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white">Add Classified</Link></div>
         {error && <p className="mt-4 rounded-xl bg-red-50 p-4">{error}</p>}
         <section className="mt-6 rounded-3xl bg-white p-6">
           <h2 className="text-2xl font-black">Configurable pricing</h2>

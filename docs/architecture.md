@@ -199,6 +199,8 @@ Events, influencer profiles, and community groups share a moderated listing-mana
 
 Claims never grant access at submission time. An administrator must approve them in Studio; approval records verified manager access and connects the listing to the approved user so existing owner tools continue to work. Removal requests also require approval and hide the record instead of deleting it. Correction requests are applied by an administrator in the existing editor and require a confirmation note before being marked approved.
 
+Studio administrators may create unclaimed influencer directory records through the influencer service and repository. These records use the same public directory, moderation states, and shared listing-management claim workflow as influencer self-submissions. Admin creation does not silently assign ownership; an approved claim connects `user_id` only after verification.
+
 ## Community Classifieds
 
 Classifieds are separate from business offers because they represent community person-to-person listings with distinct safety, expiration, reporting, and privacy requirements. The module follows Components → Hooks → Services → Repositories → Supabase. Listings are approval-first, time-bound, and publicly readable only while active. Standard, featured, and homepage placement pricing is configurable. Free approvals activate immediately; paid approvals wait for a server-confirmed payment workflow. Reports and moderation actions remain auditable, and removal uses status changes rather than destructive deletion.

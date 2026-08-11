@@ -490,6 +490,14 @@ Safety:
 
 ## Directory ownership expansion — Events, Influencers, and Groups
 
+### Studio-created influencer listings
+
+- Added a complete Studio form for administrators to create pending or immediately approved influencer directory profiles.
+- Studio-created profiles are visibly marked unclaimed and remain compatible with the existing claim, correction, and removal workflow.
+- Added service/repository/hook layering for influencer Studio management and validation for contact email and social channels.
+- Added an Add Classified shortcut in Studio that reuses the existing moderated classified submission workflow.
+- Database migration required: `20260811003000_allow_admin_influencer_creation.sql`.
+
 - Added a shared claim, correction, and removal request flow for public events, influencer profiles, and community groups.
 - Added user request history and a Studio moderation queue.
 - Approved claims create verified manager access and connect the existing listing to the approved user.
