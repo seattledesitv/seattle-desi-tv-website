@@ -565,6 +565,13 @@ Safety:
 - Added Draft, Published, On Hold, and Archived workflow statuses; only Published programs appear publicly.
 - Added the supplied weekday, Saturday, and Sunday programming as idempotent seed data, including overnight Night Lounge blocks. Additional migration required: `20260810223000_add_radio_program_status_and_seed_schedule.sql`.
 
+## Public mobile directory API
+
+- Added versioned, read-only endpoints for approved events, businesses, organizations, community groups, and public influencer profiles.
+- Added a discoverable `GET /api/mobile/v1` endpoint plus bounded `limit` and `offset` pagination.
+- Responses contain public presentation fields only, apply influencer privacy opt-outs, support cross-origin mobile clients, and cache for five minutes.
+- No migration or API credential is required; existing public RLS remains the database security boundary.
+
 ## Matrimony — Initial moderated release
 
 - Added authenticated profile submission with consent, private image upload, draft/update handling, and admin approval, changes-requested, hold, reject, and archive states.

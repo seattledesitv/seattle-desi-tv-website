@@ -218,6 +218,12 @@ Programs use an editorial status of `draft`, `published`, `on_hold`, or `archive
 
 `GET /api/radio/schedule` is the read-only, CORS-enabled integration contract for SDTV applications. It returns `{ generatedAt, timezone, upcoming, recurring }`, is cached for five minutes at the edge, and never exposes unpublished programs.
 
+## Public mobile directory API
+
+The versioned, read-only mobile contract is rooted at `GET /api/mobile/v1`. Separate resource endpoints expose approved events, businesses, organizations, community groups, and public influencer profiles. API routes delegate filtering and response normalization through `PublicDirectoryService` and its repository, preserving the platform service/repository boundary.
+
+The endpoints use the Supabase anonymous client and existing RLS rather than a service-role credential. Responses exclude contact details, submitter/owner identity, internal workflow fields, payment data, claim records, and unpublished rows. Influencer visibility opt-outs are also enforced. Public CORS, bounded `limit`/`offset` pagination, and five-minute edge caching support mobile clients without permitting writes.
+
 ## Matrimony
 
 The matrimony module follows Components → Hooks → Services → Repositories → Supabase. Profiles and viewer access are separate approval workflows. A profile can be submitted without buying directory access, and buying access never publishes a profile.
