@@ -554,6 +554,7 @@ Safety:
 - Browser callbacks cannot activate a classified. The signed `SUCCEEDED` webhook must match the intent, owner, target state, USD amount, paid amount, and received amount before transactional activation.
 - Added pending, verification, provider-error, expiration, and confirmed-payment states.
 - Requires `20260810153000_add_embedded_classified_checkout.sql`, `SWIREPAY_PUBLIC_KEY`, and the provider-supplied `SWIREPAY_CHECKOUT_URL`. Keep `SWIREPAY_MODE=test` until the complete pilot passes.
+- Added customer-visible, secret-safe diagnostics for configuration, script download, custom-element registration, checkout readiness/opening, provider errors, and webhook-verification handoff.
 ## Radio schedule management and public API
 
 - Added Studio management for one-time broadcasts, daily programming, and selected-weekday recurring programs.
