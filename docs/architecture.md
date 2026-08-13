@@ -224,6 +224,12 @@ The versioned, read-only mobile contract is rooted at `GET /api/mobile/v1`. Sepa
 
 The endpoints use the Supabase anonymous client and existing RLS rather than a service-role credential. Responses exclude contact details, submitter/owner identity, internal workflow fields, payment data, claim records, and unpublished rows. Influencer visibility opt-outs are also enforced. Public CORS, bounded `limit`/`offset` pagination, and five-minute edge caching support mobile clients without permitting writes.
 
+## Daily administrator activity digest
+
+Vercel invokes `GET /api/cron/daily-admin-digest` once daily. The secured route requires Vercel's `CRON_SECRET`, uses the server-only Supabase service credential to read new Authentication users and new `volunteer`/`team_member` role requests from the prior 24 hours, and delegates collection and rendering to the admin-digest repository and service.
+
+The digest is delivered through the existing Resend integration to `ADMIN_DIGEST_EMAIL` (defaulting to `seattledesitv@gmail.com`). A date-scoped Resend idempotency key prevents duplicate delivery when the same day's invocation is retried. The endpoint never exposes digest content in its response and cannot be triggered without the cron secret.
+
 ## Matrimony
 
 The matrimony module follows Components → Hooks → Services → Repositories → Supabase. Profiles and viewer access are separate approval workflows. A profile can be submitted without buying directory access, and buying access never publishes a profile.

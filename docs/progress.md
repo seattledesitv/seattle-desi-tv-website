@@ -572,6 +572,14 @@ Safety:
 - Responses contain public presentation fields only, apply influencer privacy opt-outs, support cross-origin mobile clients, and cache for five minutes.
 - No migration or API credential is required; existing public RLS remains the database security boundary.
 
+## Daily registration and role-request digest
+
+- Added a daily email to `seattledesitv@gmail.com` summarizing registrations, volunteer requests, and team-member requests from the previous 24 hours.
+- Added a protected Vercel cron route, server-side Supabase collection, professional HTML summary, Studio review link, and retry-safe Resend idempotency.
+- Scheduled the report for `16:00 UTC` daily, approximately 8:00 AM Pacific with a one-hour daylight-saving shift.
+- Required Vercel variables: `CRON_SECRET`, `RESEND_API_KEY`, and a server Supabase key. `RESEND_FROM_EMAIL`, `ADMIN_DIGEST_EMAIL`, and `NEXT_PUBLIC_SITE_URL` are optional overrides.
+- No database migration is required.
+
 ## Matrimony — Initial moderated release
 
 - Added authenticated profile submission with consent, private image upload, draft/update handling, and admin approval, changes-requested, hold, reject, and archive states.
