@@ -582,6 +582,7 @@ Safety:
 - The delivery archive requires a database migration.
 - Added Communications → Daily Digest Archive with metadata-only delivery history, failure visibility, aggregate totals, and an admin-only test-send action.
 - Apply `20260812120000_add_admin_digest_archive.sql` before scheduled or test delivery; the archive is intentionally required so emails cannot be sent without an audit record.
+- Added an admin-only live activity viewer with inclusive From/To date selection, per-module results, status details, and direct Studio links. Reports query source tables on demand and are not stored.
 
 ## Matrimony — Initial moderated release
 

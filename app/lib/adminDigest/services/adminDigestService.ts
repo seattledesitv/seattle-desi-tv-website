@@ -33,9 +33,9 @@ export const AdminDigestService = {
   listDeliveries: repository.listDeliveries,
   async build(db: SupabaseClient, from: Date, to: Date): Promise<DailyAdminDigest> {
     const [users, requests, submissions] = await Promise.all([
-      repository.listNewUsers(db.auth.admin, from.toISOString()),
-      repository.listNewRoleRequests(db, from.toISOString()),
-      repository.listNewSubmissions(db, from.toISOString()),
+      repository.listNewUsers(db.auth.admin, from.toISOString(), to.toISOString()),
+      repository.listNewRoleRequests(db, from.toISOString(), to.toISOString()),
+      repository.listNewSubmissions(db, from.toISOString(), to.toISOString()),
     ]);
     return {
       from: from.toISOString(),

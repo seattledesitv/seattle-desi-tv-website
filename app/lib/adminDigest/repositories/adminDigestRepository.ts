@@ -4,14 +4,14 @@ import type { AdminDigestDelivery, DigestRoleRequest, DigestSubmissionSection, D
 
 type AuthAdminClient = SupabaseClient["auth"]["admin"];
 
-export async function listNewUsers(authAdmin: AuthAdminClient, since: string): Promise<DigestUser[]> {
+export async function listNewUsers(authAdmin: AuthAdminClient, since: string, until: string): Promise<DigestUser[]> {
   const users: DigestUser[] = [];
   for (let page = 1; page <= 100; page += 1) {
     const { data, error } = await authAdmin.listUsers({ page, perPage: 1000 });
     if (error) throw error;
     const batch = data.users || [];
     for (const user of batch) {
-      if (user.created_at < since) continue;
+      if (user.created_at < since || user.created_at >= until) continue;
       users.push({
         id: user.id,
         email: user.email || "Email unavailable",
@@ -24,12 +24,13 @@ export async function listNewUsers(authAdmin: AuthAdminClient, since: string): P
   return users.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
-export async function listNewRoleRequests(db: SupabaseClient, since: string): Promise<DigestRoleRequest[]> {
+export async function listNewRoleRequests(db: SupabaseClient, since: string, until: string): Promise<DigestRoleRequest[]> {
   const { data, error } = await db
     .from("user_role_requests")
     .select("id,user_id,email,requested_role,status,created_at")
     .in("requested_role", ["volunteer", "team_member"])
     .gte("created_at", since)
+    .lt("created_at", until)
     .order("created_at", { ascending: true });
   if (error) throw error;
   return (data || []).map((row) => ({
@@ -54,12 +55,13 @@ const submissionSources = [
   { key: "business_offers", label: "Business offers", table: "business_offers", title: "title", studioPath: "/studio/businesses/offers" },
 ] as const;
 
-export async function listNewSubmissions(db: SupabaseClient, since: string): Promise<DigestSubmissionSection[]> {
+export async function listNewSubmissions(db: SupabaseClient, since: string, until: string): Promise<DigestSubmissionSection[]> {
   return Promise.all(submissionSources.map(async (source) => {
     const { data, error } = await db
       .from(source.table)
       .select(`id,${source.title},status,created_at`)
       .gte("created_at", since)
+      .lt("created_at", until)
       .order("created_at", { ascending: true });
     if (error) return { key: source.key, label: source.label, studioPath: source.studioPath, items: [], error: error.message };
     const rows = (data || []) as unknown as Record<string, unknown>[];

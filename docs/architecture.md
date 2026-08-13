@@ -232,6 +232,8 @@ The digest is delivered through the existing Resend integration to `ADMIN_DIGEST
 
 Delivery metadata is archived in `admin_digest_deliveries`. The archive records the reporting window, recipient, subject, aggregate counts, delivery type/status, provider identifier, trigger identity, and failure message without retaining rendered email bodies. Admins access it through Communications → Daily Digest Archive and may send an independently identified test digest through an authenticated server route.
 
+The same Studio area provides an on-demand activity report for an administrator-selected inclusive date range. Its authenticated server route queries the authoritative Authentication and platform tables at request time, returns the same privacy-limited sections used by the digest, sets `private, no-store`, and limits requests to 366 days. Report results are not persisted.
+
 ## Matrimony
 
 The matrimony module follows Components → Hooks → Services → Repositories → Supabase. Profiles and viewer access are separate approval workflows. A profile can be submitted without buying directory access, and buying access never publishes a profile.
