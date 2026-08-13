@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { DigestRoleRequest, DigestSubmissionSection, DigestUser } from "../types";
+import { getSupabaseBrowserClient } from "../../supabaseBrowser";
+import type { AdminDigestDelivery, DigestRoleRequest, DigestSubmissionSection, DigestUser } from "../types";
 
 type AuthAdminClient = SupabaseClient["auth"]["admin"];
 
@@ -70,4 +71,10 @@ export async function listNewSubmissions(db: SupabaseClient, since: string): Pro
       error: null,
     };
   }));
+}
+
+export async function listDeliveries(): Promise<AdminDigestDelivery[]> {
+  const { data, error } = await getSupabaseBrowserClient().from("admin_digest_deliveries").select("id,delivery_type,status,recipient,subject,report_from,report_to,counts,provider_email_id,error_message,triggered_by,created_at,sent_at").order("created_at", { ascending: false }).limit(100);
+  if (error) throw error;
+  return (data || []) as AdminDigestDelivery[];
 }

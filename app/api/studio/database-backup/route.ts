@@ -10,6 +10,7 @@ const vercelGitBranch = process.env.VERCEL_GIT_COMMIT_REF || "";
 const vercelEnv = process.env.VERCEL_ENV || "";
 
 const BACKUP_TABLES = [
+  "admin_digest_deliveries",
   "admins",
   "community_groups",
   "community_organizations",

@@ -579,7 +579,9 @@ Safety:
 - Added a protected Vercel cron route, server-side Supabase collection, professional HTML summary, Studio review link, and retry-safe Resend idempotency.
 - Scheduled the report for `16:00 UTC` daily, approximately 8:00 AM Pacific with a one-hour daylight-saving shift.
 - Required Vercel variables: `CRON_SECRET`, `RESEND_API_KEY`, and a server Supabase key. `RESEND_FROM_EMAIL`, `ADMIN_DIGEST_EMAIL`, and `NEXT_PUBLIC_SITE_URL` are optional overrides.
-- No database migration is required.
+- The delivery archive requires a database migration.
+- Added Communications → Daily Digest Archive with metadata-only delivery history, failure visibility, aggregate totals, and an admin-only test-send action.
+- Apply `20260812120000_add_admin_digest_archive.sql` before scheduled or test delivery; the archive is intentionally required so emails cannot be sent without an audit record.
 
 ## Matrimony — Initial moderated release
 

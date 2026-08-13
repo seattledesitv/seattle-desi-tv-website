@@ -37,3 +37,19 @@ export type DailyAdminDigest = {
   teamMemberRequests: DigestRoleRequest[];
   submissions: DigestSubmissionSection[];
 };
+
+export type AdminDigestDelivery = {
+  id: string;
+  delivery_type: "scheduled" | "test";
+  status: "processing" | "sent" | "failed";
+  recipient: string;
+  subject: string;
+  report_from: string;
+  report_to: string;
+  counts: Record<string, unknown>;
+  provider_email_id: string | null;
+  error_message: string | null;
+  triggered_by: string | null;
+  created_at: string;
+  sent_at: string | null;
+};

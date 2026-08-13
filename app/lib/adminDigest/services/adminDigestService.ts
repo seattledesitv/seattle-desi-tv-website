@@ -30,6 +30,7 @@ function table(title: string, headings: string[], rows: string, count: number) {
 }
 
 export const AdminDigestService = {
+  listDeliveries: repository.listDeliveries,
   async build(db: SupabaseClient, from: Date, to: Date): Promise<DailyAdminDigest> {
     const [users, requests, submissions] = await Promise.all([
       repository.listNewUsers(db.auth.admin, from.toISOString()),

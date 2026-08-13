@@ -230,6 +230,8 @@ Vercel invokes `GET /api/cron/daily-admin-digest` once daily. The secured route 
 
 The digest is delivered through the existing Resend integration to `ADMIN_DIGEST_EMAIL` (defaulting to `seattledesitv@gmail.com`). It includes review statuses and Studio links but excludes private profile details, contact data, request reasons, and payment information. A date-scoped Resend idempotency key prevents duplicate delivery when the same day's invocation is retried. The endpoint never exposes digest content in its response and cannot be triggered without the cron secret.
 
+Delivery metadata is archived in `admin_digest_deliveries`. The archive records the reporting window, recipient, subject, aggregate counts, delivery type/status, provider identifier, trigger identity, and failure message without retaining rendered email bodies. Admins access it through Communications → Daily Digest Archive and may send an independently identified test digest through an authenticated server route.
+
 ## Matrimony
 
 The matrimony module follows Components → Hooks → Services → Repositories → Supabase. Profiles and viewer access are separate approval workflows. A profile can be submitted without buying directory access, and buying access never publishes a profile.
