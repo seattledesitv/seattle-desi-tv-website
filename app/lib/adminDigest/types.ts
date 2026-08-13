@@ -14,10 +14,26 @@ export type DigestRoleRequest = {
   createdAt: string;
 };
 
+export type DigestSubmission = {
+  id: string;
+  title: string;
+  status: string;
+  createdAt: string;
+};
+
+export type DigestSubmissionSection = {
+  key: string;
+  label: string;
+  studioPath: string;
+  items: DigestSubmission[];
+  error: string | null;
+};
+
 export type DailyAdminDigest = {
   from: string;
   to: string;
   users: DigestUser[];
   volunteerRequests: DigestRoleRequest[];
   teamMemberRequests: DigestRoleRequest[];
+  submissions: DigestSubmissionSection[];
 };

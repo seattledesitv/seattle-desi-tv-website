@@ -226,9 +226,9 @@ The endpoints use the Supabase anonymous client and existing RLS rather than a s
 
 ## Daily administrator activity digest
 
-Vercel invokes `GET /api/cron/daily-admin-digest` once daily. The secured route requires Vercel's `CRON_SECRET`, uses the server-only Supabase service credential to read new Authentication users and new `volunteer`/`team_member` role requests from the prior 24 hours, and delegates collection and rendering to the admin-digest repository and service.
+Vercel invokes `GET /api/cron/daily-admin-digest` once daily. The secured route requires Vercel's `CRON_SECRET`, uses the server-only Supabase service credential to read new Authentication users, new `volunteer`/`team_member` role requests, and new submissions from the prior 24 hours, and delegates collection and rendering to the admin-digest repository and service. Submission sections cover events, businesses, organizations, community groups, influencers, classifieds, matrimony profiles, matrimony access requests, and business offers.
 
-The digest is delivered through the existing Resend integration to `ADMIN_DIGEST_EMAIL` (defaulting to `seattledesitv@gmail.com`). A date-scoped Resend idempotency key prevents duplicate delivery when the same day's invocation is retried. The endpoint never exposes digest content in its response and cannot be triggered without the cron secret.
+The digest is delivered through the existing Resend integration to `ADMIN_DIGEST_EMAIL` (defaulting to `seattledesitv@gmail.com`). It includes review statuses and Studio links but excludes private profile details, contact data, request reasons, and payment information. A date-scoped Resend idempotency key prevents duplicate delivery when the same day's invocation is retried. The endpoint never exposes digest content in its response and cannot be triggered without the cron secret.
 
 ## Matrimony
 

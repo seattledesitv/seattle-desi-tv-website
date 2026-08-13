@@ -574,7 +574,8 @@ Safety:
 
 ## Daily registration and role-request digest
 
-- Added a daily email to `seattledesitv@gmail.com` summarizing registrations, volunteer requests, and team-member requests from the previous 24 hours.
+- Added a daily email to `seattledesitv@gmail.com` summarizing registrations, volunteer requests, team-member requests, events, businesses, organizations, groups, influencers, classifieds, matrimony profiles/access requests, and business offers from the previous 24 hours.
+- Added per-module status summaries and direct Studio review links while excluding sensitive matrimonial, contact, and payment details.
 - Added a protected Vercel cron route, server-side Supabase collection, professional HTML summary, Studio review link, and retry-safe Resend idempotency.
 - Scheduled the report for `16:00 UTC` daily, approximately 8:00 AM Pacific with a one-hour daylight-saving shift.
 - Required Vercel variables: `CRON_SECRET`, `RESEND_API_KEY`, and a server Supabase key. `RESEND_FROM_EMAIL`, `ADMIN_DIGEST_EMAIL`, and `NEXT_PUBLIC_SITE_URL` are optional overrides.

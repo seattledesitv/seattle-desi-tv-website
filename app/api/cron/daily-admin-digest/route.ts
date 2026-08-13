@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       html: AdminDigestService.html(digest, `${siteUrl}/studio`),
     }, { idempotencyKey: `sdtv-daily-admin-digest-${to.toISOString().slice(0, 10)}` });
     if (sent.error) throw new Error(sent.error.message);
-    return NextResponse.json({ ok: true, emailId: sent.data?.id || null, counts: { registrations: digest.users.length, volunteerRequests: digest.volunteerRequests.length, teamMemberRequests: digest.teamMemberRequests.length } });
+    return NextResponse.json({ ok: true, emailId: sent.data?.id || null, counts: { registrations: digest.users.length, volunteerRequests: digest.volunteerRequests.length, teamMemberRequests: digest.teamMemberRequests.length, submissions: Object.fromEntries(digest.submissions.map((section) => [section.key, section.items.length])) } });
   } catch (error: unknown) {
     console.error("Daily administrator digest failed", error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "Daily administrator digest failed." }, { status: 500 });
