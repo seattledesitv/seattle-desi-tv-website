@@ -11,6 +11,41 @@ type SwirepayElement = HTMLElement & {
   onError: (callback: (error: unknown) => void) => void;
 };
 
+const providerErrorFields = [
+  "name",
+  "type",
+  "code",
+  "errorCode",
+  "status",
+  "statusCode",
+  "message",
+  "description",
+  "errorDescription",
+] as const;
+
+function safeProviderError(cause: unknown) {
+  if (typeof cause === "string") return { message: cause.slice(0, 500) };
+  if (cause instanceof Error) {
+    return { name: cause.name, message: cause.message.slice(0, 500) };
+  }
+  if (!cause || typeof cause !== "object") {
+    return { message: "Swirepay returned an unspecified payment error." };
+  }
+
+  const source = cause as Record<string, unknown>;
+  const safe: Record<string, string | number | boolean> = {};
+  for (const field of providerErrorFields) {
+    const value = source[field];
+    if (typeof value === "string") safe[field] = value.slice(0, 500);
+    else if (typeof value === "number" || typeof value === "boolean") {
+      safe[field] = value;
+    }
+  }
+  return Object.keys(safe).length
+    ? safe
+    : { message: "Swirepay returned an unrecognized payment error shape." };
+}
+
 export default function SwirepayEmbeddedCheckout({
   intent,
   onSubmitted,
@@ -88,9 +123,18 @@ export default function SwirepayEmbeddedCheckout({
       element.onError((cause) => {
         if (!active) return;
         setProcessing(false);
-        const providerMessage = typeof cause === "string" ? cause : cause instanceof Error ? cause.message : "Payment could not be processed. Please try again.";
-        setError(providerMessage);
-        record("provider", "error", providerMessage.slice(0, 300));
+        const safeError = safeProviderError(cause);
+        const reference = `SP-${Date.now().toString(36).toUpperCase()}`;
+        const providerMessage = typeof safeError.message === "string"
+          ? safeError.message
+          : "Payment could not be processed. Please try again.";
+        setError(`${providerMessage} Reference: ${reference}`);
+        record(
+          "provider",
+          "error",
+          `${reference}: ${JSON.stringify(safeError)}`.slice(0, 1000),
+        );
+        console.error("Swirepay checkout failure", { reference, ...safeError });
       });
       hostNode.replaceChildren(element);
       checkout.current = element;
