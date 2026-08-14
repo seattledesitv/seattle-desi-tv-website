@@ -12,8 +12,15 @@ export type ClassifiedCheckoutIntent = {
     title: string;
     placement: string;
     contactName: string;
+    contactEmail: string | null;
+    contactPhone: string | null;
   };
-  checkout: { publicKey: string; checkoutUrl: string; mode: "test" | "live" };
+  checkout: {
+    publicKey: string;
+    checkoutUrl: string;
+    mode: "test" | "live";
+    debug: boolean;
+  };
 };
 
 async function accessToken() {

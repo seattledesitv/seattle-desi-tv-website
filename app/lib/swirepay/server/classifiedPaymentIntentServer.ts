@@ -106,7 +106,9 @@ export async function getClassifiedPaymentIntent(token: string, userId: string) 
 
   const { data: classified, error: classifiedError } = await db
     .from("classified_ads")
-    .select("id,title,requested_placement,status,payment_status,contact_name")
+    .select(
+      "id,title,requested_placement,status,payment_status,contact_name,contact_email,contact_phone",
+    )
     .eq("id", intent.target_id)
     .maybeSingle();
   if (classifiedError) throw classifiedError;
@@ -145,7 +147,14 @@ export async function getClassifiedPaymentIntent(token: string, userId: string) 
       title: classified.title as string,
       placement: classified.requested_placement as string,
       contactName: classified.contact_name as string,
+      contactEmail: classified.contact_email as string | null,
+      contactPhone: classified.contact_phone as string | null,
     },
-    checkout: { publicKey, checkoutUrl, mode },
+    checkout: {
+      publicKey,
+      checkoutUrl,
+      mode,
+      debug: process.env.SWIREPAY_CHECKOUT_DEBUG?.toLowerCase() === "true",
+    },
   };
 }
