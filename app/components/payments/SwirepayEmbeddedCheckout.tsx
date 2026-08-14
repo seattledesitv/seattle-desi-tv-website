@@ -46,6 +46,109 @@ function safeProviderError(cause: unknown) {
     : { message: "Swirepay returned an unrecognized payment error shape." };
 }
 
+function swirepayEndpoint(value: string | URL) {
+  try {
+    const url = new URL(String(value), window.location.origin);
+    return url.hostname === "swirepay.com" || url.hostname.endsWith(".swirepay.com")
+      ? `${url.origin}${url.pathname}`
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function safeResponseSummary(text: string) {
+  if (!text) return { response: "empty" };
+  try {
+    const body = JSON.parse(text) as unknown;
+    if (typeof body === "string") return { message: body.slice(0, 500) };
+    if (!body || typeof body !== "object") return { responseType: typeof body };
+
+    const source = body as Record<string, unknown>;
+    const safe: Record<string, string | number | boolean> = {};
+    for (const field of providerErrorFields) {
+      const value = source[field];
+      if (typeof value === "string") safe[field] = value.slice(0, 500);
+      else if (typeof value === "number" || typeof value === "boolean") {
+        safe[field] = value;
+      }
+    }
+    return Object.keys(safe).length
+      ? safe
+      : { response: "JSON received without recognized safe error fields" };
+  } catch {
+    return { response: "non-JSON response", responseLength: text.length };
+  }
+}
+
+function installSwirepayNetworkDiagnostics(
+  record: (stage: DiagnosticStage, status: DiagnosticEntry["status"], message: string) => void,
+) {
+  const originalFetch = window.fetch;
+  const diagnosticFetch: typeof window.fetch = async (...args) => {
+    const response = await originalFetch(...args);
+    const endpoint = swirepayEndpoint(
+      typeof args[0] === "string" || args[0] instanceof URL
+        ? args[0]
+        : args[0].url,
+    );
+    if (endpoint && !response.ok) {
+      void response.clone().text().then((body) => {
+        record(
+          "provider",
+          "error",
+          `Swirepay request failed: ${response.status} ${response.statusText || "HTTP error"} at ${endpoint}. ${JSON.stringify(safeResponseSummary(body))}`.slice(0, 1200),
+        );
+      });
+    }
+    return response;
+  };
+  window.fetch = diagnosticFetch;
+
+  const requestUrls = new WeakMap<XMLHttpRequest, string>();
+  const originalOpen = XMLHttpRequest.prototype.open;
+  const originalSend = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.open = function (
+    method: string,
+    url: string | URL,
+    async = true,
+    username?: string | null,
+    password?: string | null,
+  ) {
+    const endpoint = swirepayEndpoint(url);
+    if (endpoint) requestUrls.set(this, endpoint);
+    return originalOpen.call(this, method, url, async, username, password);
+  };
+  XMLHttpRequest.prototype.send = function (body?: Document | XMLHttpRequestBodyInit | null) {
+    const endpoint = requestUrls.get(this);
+    if (endpoint) {
+      this.addEventListener(
+        "loadend",
+        () => {
+          if (this.status >= 400 || this.status === 0) {
+            const responseText = typeof this.responseText === "string"
+              ? this.responseText
+              : "";
+            record(
+              "provider",
+              "error",
+              `Swirepay request failed: ${this.status || "network error"} ${this.statusText || ""} at ${endpoint}. ${JSON.stringify(safeResponseSummary(responseText))}`.slice(0, 1200),
+            );
+          }
+        },
+        { once: true },
+      );
+    }
+    return originalSend.call(this, body);
+  };
+
+  return () => {
+    if (window.fetch === diagnosticFetch) window.fetch = originalFetch;
+    XMLHttpRequest.prototype.open = originalOpen;
+    XMLHttpRequest.prototype.send = originalSend;
+  };
+}
+
 export default function SwirepayEmbeddedCheckout({
   intent,
   onSubmitted,
@@ -61,7 +164,7 @@ export default function SwirepayEmbeddedCheckout({
   const [diagnostics, setDiagnostics] = useState<DiagnosticEntry[]>([]);
 
   const record = (stage: DiagnosticStage, status: DiagnosticEntry["status"], message: string) => {
-    setDiagnostics((current) => [...current.slice(-11), { at: new Date().toLocaleTimeString(), stage, status, message }]);
+    setDiagnostics((current) => [...current.slice(-19), { at: new Date().toLocaleTimeString(), stage, status, message }]);
   };
 
   useEffect(() => {
@@ -72,6 +175,9 @@ export default function SwirepayEmbeddedCheckout({
       return;
     }
     let active = true;
+    const stopNetworkDiagnostics = intent.checkout.debug
+      ? installSwirepayNetworkDiagnostics(record)
+      : () => undefined;
     const hostNode = host.current;
     let script = document.querySelector<HTMLScriptElement>(
       `script[data-sdtv-swirepay="${intent.checkout.checkoutUrl}"]`,
@@ -171,6 +277,7 @@ export default function SwirepayEmbeddedCheckout({
 
     return () => {
       active = false;
+      stopNetworkDiagnostics();
       checkout.current = null;
       hostNode?.replaceChildren();
     };
