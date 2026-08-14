@@ -1,0 +1,23 @@
+/* eslint-disable @next/next/no-img-element -- user-uploaded public media can use multiple configured hosts */
+import Link from "next/link";
+import type { PressRelease } from "../../lib/pressReleases/types";
+
+function date(value: string) {
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`));
+}
+
+export default function PressReleaseCard({ release }: { release: PressRelease }) {
+  const image = release.image_urls[0];
+  return <Link href={`/press-releases/${release.id}`} className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-pink-200 hover:shadow-xl">
+    <div className="aspect-[16/9] overflow-hidden bg-gradient-to-br from-slate-950 to-pink-900">
+      {image ? <img src={image} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center px-6 text-center text-2xl font-black text-white">Seattle Desi TV<br/>Press Release</div>}
+    </div>
+    <div className="p-6">
+      <p className="text-xs font-black uppercase tracking-widest text-pink-600">{date(release.release_date)}{release.location ? ` · ${release.location}` : ""}</p>
+      <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">{release.title}</h2>
+      {release.organization_name && <p className="mt-2 font-bold text-slate-500">{release.organization_name}</p>}
+      <p className="mt-3 line-clamp-3 leading-7 text-slate-600">{release.summary}</p>
+      <span className="mt-5 inline-flex font-black text-pink-600">Read press release →</span>
+    </div>
+  </Link>;
+}
