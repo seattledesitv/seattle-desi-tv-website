@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "node:crypto";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -124,10 +125,26 @@ export async function getClassifiedPaymentIntent(token: string, userId: string) 
       .eq("status", "pending");
   }
 
-  const publicKey =
+  const publicKeySource = process.env.SWIREPAY_PUBLIC_KEY
+    ? "SWIREPAY_PUBLIC_KEY"
+    : process.env.NEXT_PUBLIC_SWIREPAY_PUBLIC_KEY
+      ? "NEXT_PUBLIC_SWIREPAY_PUBLIC_KEY"
+      : "not configured";
+  const rawPublicKey =
     process.env.SWIREPAY_PUBLIC_KEY ||
     process.env.NEXT_PUBLIC_SWIREPAY_PUBLIC_KEY ||
     "";
+  const publicKey = rawPublicKey.trim();
+  const publicKeyKind = publicKey.startsWith("pk_test")
+    ? "pk_test"
+    : publicKey.startsWith("pk_live")
+      ? "pk_live"
+      : publicKey
+        ? "unrecognized"
+        : "missing";
+  const publicKeyFingerprint = publicKey
+    ? createHash("sha256").update(publicKey).digest("hex").slice(0, 12)
+    : "missing";
   const checkoutUrl = process.env.SWIREPAY_CHECKOUT_URL || "";
   const mode =
     process.env.SWIREPAY_MODE?.toLowerCase() === "live" ||
@@ -155,6 +172,11 @@ export async function getClassifiedPaymentIntent(token: string, userId: string) 
       checkoutUrl,
       mode,
       debug: process.env.SWIREPAY_CHECKOUT_DEBUG?.toLowerCase() === "true",
+      publicKeySource,
+      publicKeyKind,
+      publicKeyLength: publicKey.length,
+      publicKeyFingerprint,
+      publicKeyWhitespaceTrimmed: rawPublicKey !== publicKey,
     },
   };
 }

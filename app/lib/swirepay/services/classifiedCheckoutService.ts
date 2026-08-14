@@ -20,6 +20,11 @@ export type ClassifiedCheckoutIntent = {
     checkoutUrl: string;
     mode: "test" | "live";
     debug: boolean;
+    publicKeySource: string;
+    publicKeyKind: string;
+    publicKeyLength: number;
+    publicKeyFingerprint: string;
+    publicKeyWhitespaceTrimmed: boolean;
   };
 };
 

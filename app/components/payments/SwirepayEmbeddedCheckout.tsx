@@ -77,7 +77,11 @@ export default function SwirepayEmbeddedCheckout({
       `script[data-sdtv-swirepay="${intent.checkout.checkoutUrl}"]`,
     );
 
-    record("configuration", "success", `Configuration received (${intent.checkout.mode} mode, ${intent.currency}, ${intent.amountCents} cents).`);
+    record(
+      "configuration",
+      "success",
+      `Configuration received (${intent.checkout.mode} mode, ${intent.currency}, ${intent.amountCents} cents). Public key: ${intent.checkout.publicKeyKind}, ${intent.checkout.publicKeyLength} characters, fingerprint ${intent.checkout.publicKeyFingerprint}, source ${intent.checkout.publicKeySource}${intent.checkout.publicKeyWhitespaceTrimmed ? "; surrounding whitespace was removed" : ""}.`,
+    );
 
     const configure = async () => {
       record("component", "info", "Waiting for the swirepay-checkout component to register.");
