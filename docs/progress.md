@@ -595,3 +595,13 @@ Safety:
 - Added Community navigation, public entry page, Studio management, sitemap coverage, legal disclosures, and database backup/import coverage.
 - Database migration required: `20260810233000_add_matrimony_module.sql`.
 - Swirepay automation remains provider-neutral while SDTV waits for the confirmed embedded checkout/API configuration.
+
+## Community Press Releases — Initial moderated release
+
+- Added a public Community press-release directory using the platform's established card language, plus responsive release detail pages optimized for long-form reading.
+- Added an authenticated submission workflow with title, summary, full release text, organization/byline details, release date, source link, and up to twelve images.
+- Added My Press Releases for submitters to track pending, changes-requested, approved, rejected, and archived records.
+- Added Studio creation and moderation with immediate publishing for administrators, approval, requested changes, rejection, archival, and reviewer notes.
+- Added public, owner, and administrator RLS policies plus a transactional moderation function and review indexes.
+- Added Community, footer, My Hub, Studio, and sitemap navigation.
+- Database migration required: `20260814133000_add_community_press_releases.sql`.

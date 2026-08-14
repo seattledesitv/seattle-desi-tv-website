@@ -241,3 +241,11 @@ The matrimony module follows Components → Hooks → Services → Repositories 
 `matrimony_profiles` stores approved-view information. Direct contact details are separated into `matrimony_profile_contacts`, whose RLS limits reads to the profile owner and administrators. Profile photos use the private `matrimony-profile-images` bucket; signed URLs are available only to owners, administrators, and users with active unexpired access. Approved viewers can read only approved profiles and never receive the contact table.
 
 `matrimony_access_requests` records the stated purpose, editorial decision, frozen quote, payment state, and time-limited entitlement. Pricing is configurable through `matrimony_access_pricing`. Activation is approval-first and payment-second. The payment boundary is provider-neutral until the Swirepay embedded-checkout contract is confirmed; administrators may provide a secure payment URL and record a verified payment reference without changing the domain model.
+
+## Community press releases
+
+Press releases follow the standard Components → Hooks → Services → Repositories → Supabase boundary. Authenticated community members submit announcements into an approval queue, while Studio administrators can either queue an SDTV-authored release or publish it immediately. Only approved releases cross the public RLS boundary.
+
+Each release stores its editorial text and an ordered set of up to twelve image URLs. Images reuse the established `event-posters` storage bucket under a dedicated `press-releases/{userId}` prefix. The public detail experience keeps long-form text primary and presents the gallery separately so a selected image can expand without obscuring or replacing the release body.
+
+Moderation uses the `review_press_release` database function for approve, request-changes, reject, and archive transitions. Owners can see their own non-public submissions without gaining a path to self-approve. Administrative reads and writes remain protected by the existing `is_admin()` authorization pattern.

@@ -8,6 +8,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "",
     "/events",
     "/businesses",
+    "/press-releases",
     "/matrimony",
     "/radio",
     "/radio-team",

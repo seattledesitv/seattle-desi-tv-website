@@ -188,6 +188,13 @@ export default function MyHubPage() {
       show: true,
     },
     {
+      title: "My Press Releases",
+      note: "Submit official announcements and track SDTV review status.",
+      href: "/my-press-releases",
+      value: "Manage",
+      show: true,
+    },
+    {
       title: "Influencer Profile",
       note: "Join the SDTV Influencer Network and choose whether to appear publicly.",
       href: "/my-influencer-profile",
