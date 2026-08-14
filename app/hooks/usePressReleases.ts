@@ -41,6 +41,6 @@ export function usePressReleases(mode: "public" | "owner" | "admin") {
     create: (input: PressReleaseInput, status?: PressReleaseStatus) => run(() => PressReleaseService.create(input, userId, status)),
     update: (id: string, input: PressReleaseInput) => run(() => PressReleaseService.updateOwner(id, input)),
     review: (id: string, decision: string, notes: string) => run(() => PressReleaseService.review(id, decision, notes)),
-    upload: (file: File) => PressReleaseService.uploadImage(file, userId),
+    upload: (file: File) => PressReleaseService.uploadFile(file, userId),
   };
 }

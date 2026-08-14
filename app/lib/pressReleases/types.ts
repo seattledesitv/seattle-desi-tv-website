@@ -5,6 +5,13 @@ export type PressReleaseStatus =
   | "rejected"
   | "archived";
 
+export type PressReleaseDocument = {
+  url: string;
+  name: string;
+  mime_type: string;
+  size_bytes: number;
+};
+
 export type PressRelease = {
   id: string;
   created_by: string;
@@ -15,6 +22,7 @@ export type PressRelease = {
   location: string | null;
   release_date: string;
   image_urls: string[];
+  documents: PressReleaseDocument[];
   contact_name: string | null;
   contact_email: string | null;
   source_url: string | null;
@@ -35,6 +43,7 @@ export type PressReleaseInput = Pick<
   | "location"
   | "release_date"
   | "image_urls"
+  | "documents"
   | "contact_name"
   | "contact_email"
   | "source_url"

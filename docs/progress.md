@@ -605,3 +605,4 @@ Safety:
 - Added public, owner, and administrator RLS policies plus a transactional moderation function and review indexes.
 - Added Community, footer, My Hub, Studio, and sitemap navigation.
 - Database migration required: `20260814133000_add_community_press_releases.sql`.
+- Added up to six PDF, DOC, or DOCX attachments per release with upload validation, Studio inspection, inline PDF viewing, Word web preview, and original-file download. Additional migration required: `20260814143000_add_press_release_documents.sql`.

@@ -2,7 +2,7 @@ import { getSupabaseBrowserClient } from "../../supabaseBrowser";
 import type { PressRelease, PressReleaseInput, PressReleaseStatus } from "../types";
 
 const db = getSupabaseBrowserClient();
-const fields = "id,created_by,title,summary,body,organization_name,location,release_date,image_urls,contact_name,contact_email,source_url,status,admin_notes,approved_at,published_at,created_at,updated_at";
+const fields = "id,created_by,title,summary,body,organization_name,location,release_date,image_urls,documents,contact_name,contact_email,source_url,status,admin_notes,approved_at,published_at,created_at,updated_at";
 
 export async function listPublic() {
   const { data, error } = await db.from("press_releases").select(fields)
@@ -57,7 +57,7 @@ export async function review(id: string, decision: string, notes: string) {
   if (error) throw error;
 }
 
-export async function uploadImage(file: File, userId: string) {
+export async function uploadFile(file: File, userId: string) {
   const safe = file.name.replace(/[^a-z0-9._-]/gi, "-");
   const path = `press-releases/${userId}/${crypto.randomUUID()}-${safe}`;
   const result = await db.storage.from("event-posters").upload(path, file, {

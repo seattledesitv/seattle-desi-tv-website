@@ -248,4 +248,6 @@ Press releases follow the standard Components → Hooks → Services → Reposit
 
 Each release stores its editorial text and an ordered set of up to twelve image URLs. Images reuse the established `event-posters` storage bucket under a dedicated `press-releases/{userId}` prefix. The public detail experience keeps long-form text primary and presents the gallery separately so a selected image can expand without obscuring or replacing the release body.
 
+Releases may also carry up to six structured PDF or Word attachments, limited to 20 MB each by the service. PDFs use the browser's inline viewer. Public Word documents use Microsoft Office's web viewer with an original-file fallback because browsers do not natively render DOC/DOCX consistently. Attachment metadata is stored separately from images so existing releases remain backward compatible.
+
 Moderation uses the `review_press_release` database function for approve, request-changes, reject, and archive transitions. Owners can see their own non-public submissions without gaining a path to self-approve. Administrative reads and writes remain protected by the existing `is_admin()` authorization pattern.
