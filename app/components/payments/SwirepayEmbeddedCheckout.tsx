@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ClassifiedCheckoutIntent } from "../../lib/swirepay/services/classifiedCheckoutService";
 
-type DiagnosticStage = "configuration" | "script" | "component" | "checkout" | "provider";
+type DiagnosticStage = "configuration" | "script" | "component" | "render" | "checkout" | "provider";
 type DiagnosticEntry = { at: string; stage: DiagnosticStage; status: "info" | "success" | "error"; message: string };
 
 type SwirepayElement = HTMLElement & {
@@ -88,6 +88,23 @@ export default function SwirepayEmbeddedCheckout({
       checkout.current = element;
       setReady(true);
       record("checkout", "success", "Checkout configured and ready to open.");
+
+      window.requestAnimationFrame(() => {
+        if (!active) return;
+        const bounds = element.getBoundingClientRect();
+        const shadowChildCount = element.shadowRoot?.childElementCount;
+        const iframeCount = element.querySelectorAll("iframe").length
+          + (element.shadowRoot?.querySelectorAll("iframe").length ?? 0);
+        const hasVisibleSurface = bounds.width > 0 && bounds.height > 0;
+
+        record(
+          "render",
+          hasVisibleSurface ? "success" : "info",
+          hasVisibleSurface
+            ? `Swirepay rendered an inline surface (${Math.round(bounds.width)} x ${Math.round(bounds.height)} px${iframeCount ? `, ${iframeCount} iframe${iframeCount === 1 ? "" : "s"}` : ""}).`
+            : `The registered component did not render visible inline content${shadowChildCount === undefined ? "; its shadow DOM is private" : ` (${shadowChildCount} shadow child${shadowChildCount === 1 ? "" : "ren"})`}.`,
+        );
+      });
     };
 
     if (!script) {
@@ -133,12 +150,31 @@ export default function SwirepayEmbeddedCheckout({
         inputBg: "#ffffff",
         placeholder: "#64748b",
       },
-    }); } catch (cause) { const message=cause instanceof Error?cause.message:"Swirepay checkout could not open.";setError(message);record("checkout","error",message); }
+    });
+      window.setTimeout(() => {
+        const iframeCount = document.querySelectorAll("iframe").length;
+        const dialogCount = document.querySelectorAll("dialog, [role='dialog']").length;
+        const presentation = dialogCount
+          ? `${dialogCount} in-page dialog${dialogCount === 1 ? "" : "s"}`
+          : iframeCount
+            ? `${iframeCount} iframe${iframeCount === 1 ? "" : "s"}`
+            : "no detectable iframe or in-page dialog";
+        record("render", dialogCount || iframeCount ? "success" : "info", `After open(): ${presentation}.`);
+      }, 500);
+    } catch (cause) { const message=cause instanceof Error?cause.message:"Swirepay checkout could not open.";setError(message);record("checkout","error",message); }
   };
 
   return (
     <div>
-      <div ref={host} className="hidden" aria-hidden="true" />
+      <section className="mb-4 rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby="swirepay-inline-heading">
+        <p id="swirepay-inline-heading" className="text-sm font-black text-slate-900">
+          Secure payment details
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          If Swirepay supports inline checkout, its secure card fields will appear below.
+        </p>
+        <div ref={host} className="mt-3 min-h-1" />
+      </section>
       {error && (
         <p className="mb-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-800">
           {error}
