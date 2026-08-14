@@ -160,7 +160,7 @@ export default function SwirepayEmbeddedCheckout({
 
   return (
     <div>
-      <div ref={host} className="hidden" aria-hidden="true" />
+      <div ref={host} className="h-0" />
       {error && (
         <p className="mb-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-800">
           {error}
