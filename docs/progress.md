@@ -606,3 +606,15 @@ Safety:
 - Added Community, footer, My Hub, Studio, and sitemap navigation.
 - Database migration required: `20260814133000_add_community_press_releases.sql`.
 - Added up to six PDF, DOC, or DOCX attachments per release with upload validation, Studio inspection, inline PDF viewing, Word web preview, and original-file download. Additional migration required: `20260814143000_add_press_release_documents.sql`.
+
+## Technical SEO and AI discoverability foundation
+
+- Added consistent metadata and canonical URLs across the major public landing pages.
+- Added live, record-specific metadata and social sharing cards for events, classifieds, community organizations, press releases, and publications.
+- Added server-rendered schema.org structured data for the site, nonprofit organization, events, organizations, classified offers, press releases, and publications.
+- Expanded the sitemap with public landing pages and live public records using authoritative update dates.
+- Hardened crawler boundaries for Studio, account, payment, API, owner-workspace, and diagnostic routes, including response-header `noindex` protection.
+- Added `/llms.txt` as supplemental machine-readable site and attribution guidance.
+- Removed the global homepage canonical that could incorrectly identify unrelated pages as duplicates of the homepage.
+- No database migration or new dependency is required.
+- Focused lint, TypeScript validation, and the complete Next.js production build pass.

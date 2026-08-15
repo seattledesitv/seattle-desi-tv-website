@@ -1,16 +1,19 @@
 import type { MetadataRoute } from "next";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seattle-desi-tv-website.vercel.app";
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://seattledesitv.com").replace(/\/$/, "");
+const privateRoutes = [
+  "/api/", "/studio/", "/my-", "/account/", "/payments/", "/debug-",
+  "/login", "/onboarding", "/notifications", "/update-password", "/unsubscribe",
+  "/manage-listing", "/sponsorship/review", "/business-response",
+];
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
-      {
-        userAgent: "*",
-        allow: "/",
-        disallow: ["/studio", "/studio/", "/studio/*", "/my-hub", "/my-hub/", "/my-hub/*", "/login"],
-      },
+      { userAgent: "*", allow: "/", disallow: privateRoutes },
+      { userAgent: ["OAI-SearchBot", "ChatGPT-User", "GPTBot"], allow: "/", disallow: privateRoutes },
     ],
     sitemap: `${siteUrl}/sitemap.xml`,
+    host: siteUrl,
   };
 }

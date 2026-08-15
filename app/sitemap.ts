@@ -1,14 +1,19 @@
 import type { MetadataRoute } from "next";
+import { listSitemapEntries, SITE_URL } from "./lib/seo/service";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seattle-desi-tv-website.vercel.app";
-
-export default function sitemap(): MetadataRoute.Sitemap {
-  const now = new Date();
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const publicRoutes = [
     "",
+    "/about",
     "/events",
     "/businesses",
+    "/offers",
+    "/classifieds",
+    "/community-groups",
+    "/community-organizations",
+    "/influencers",
     "/press-releases",
+    "/publications",
     "/matrimony",
     "/radio",
     "/radio-team",
@@ -16,13 +21,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/recognition",
     "/marketing-packages",
     "/contact",
-    "/portal",
+    "/share-with-sdtv",
+    "/submit-content",
+    "/tv",
+    "/mobile-app",
+    "/privacy",
+    "/terms",
   ];
 
-  return publicRoutes.map((route) => ({
-    url: `${siteUrl}${route}`,
-    lastModified: now,
+  const staticEntries: MetadataRoute.Sitemap = publicRoutes.map((route) => ({
+    url: `${SITE_URL}${route}`,
     changeFrequency: route === "" ? "daily" : "weekly",
-    priority: route === "" ? 1 : 0.8,
+    priority: route === "" ? 1 : route === "/events" || route === "/businesses" || route === "/publications" ? 0.9 : 0.7,
   }));
+  const dynamicEntries = await listSitemapEntries();
+  return [...staticEntries, ...dynamicEntries.map((entry) => ({
+    url: `${SITE_URL}${entry.path}`,
+    lastModified: entry.modifiedAt ? new Date(entry.modifiedAt) : undefined,
+    changeFrequency: "weekly" as const,
+    priority: 0.8,
+  }))];
 }

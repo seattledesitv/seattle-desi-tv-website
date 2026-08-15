@@ -251,3 +251,11 @@ Each release stores its editorial text and an ordered set of up to twelve image 
 Releases may also carry up to six structured PDF or Word attachments, limited to 20 MB each by the service. PDFs use the browser's inline viewer. Public Word documents use Microsoft Office's web viewer with an original-file fallback because browsers do not natively render DOC/DOCX consistently. Attachment metadata is stored separately from images so existing releases remain backward compatible.
 
 Moderation uses the `review_press_release` database function for approve, request-changes, reject, and archive transitions. Owners can see their own non-public submissions without gaining a path to self-approve. Administrative reads and writes remain protected by the existing `is_admin()` authorization pattern.
+
+## Search and AI discoverability
+
+Public discovery follows a server-rendered SEO boundary. Route layouts call the SEO service, which obtains public records through a read-only repository using the Supabase anonymous client and existing RLS. Components do not query Supabase. Dynamic event, classified, organization, press-release, and publication pages produce record-specific titles, descriptions, canonical URLs, social cards, and schema.org JSON-LD. Missing or inaccessible records emit `noindex` metadata rather than misleading generic metadata.
+
+The dynamic sitemap combines curated public landing pages with current public entity URLs and their authoritative modification dates. `robots.txt` advertises the production sitemap and excludes Studio, account, payment, API, diagnostic, and owner-workspace routes. Those private surfaces also receive an `X-Robots-Tag: noindex, nofollow, noarchive` response header as defense in depth.
+
+The root layout exposes Organization and WebSite structured data, including Seattle Desi TV's nonprofit identity and official social profiles. `/llms.txt` provides a concise, supplemental map of canonical public sections and attribution guidance for machine readers. It does not replace normal crawling, structured data, content quality, or search-engine indexing controls and does not guarantee inclusion in any AI answer.
