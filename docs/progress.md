@@ -618,3 +618,12 @@ Safety:
 - Removed the global homepage canonical that could incorrectly identify unrelated pages as duplicates of the homepage.
 - No database migration or new dependency is required.
 - Focused lint, TypeScript validation, and the complete Next.js production build pass.
+
+## Event Operations image upload
+
+- Added multi-image upload to the Event Operations editor so administrators can supply a missing flyer before approval.
+- Reused the existing Cloudinary `seattle-desi-tv/events` folder and public upload configuration.
+- Added service validation for image files, a 5 MB per-file limit, and a maximum of ten event images.
+- Uploaded images remain an editable preview until the administrator saves the event; the first image remains the primary public image.
+- Existing image URL entry and removal remain available as fallbacks.
+- No database migration or new dependency is required.
