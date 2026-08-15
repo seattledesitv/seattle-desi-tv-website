@@ -627,3 +627,10 @@ Safety:
 - Uploaded images remain an editable preview until the administrator saves the event; the first image remains the primary public image.
 - Existing image URL entry and removal remain available as fallbacks.
 - No database migration or new dependency is required.
+
+## Public newsletter subscription page
+
+- Added `/subscribe` as a dedicated, responsive public signup experience.
+- Reused the existing newsletter form, subscribe API, subscriber table, validation, source tracking, and unsubscribe workflow.
+- Added footer entry points plus sitemap and machine-readable discovery coverage.
+- No database migration or new dependency is required.

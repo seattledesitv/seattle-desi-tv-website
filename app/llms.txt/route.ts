@@ -20,6 +20,7 @@ Seattle Desi TV publishes community events, cultural stories, interviews, radio 
 - [Community Groups](${SITE_URL}/community-groups): Approved community groups.
 - [Press Releases](${SITE_URL}/press-releases): Moderated community announcements and press releases.
 - [Publications](${SITE_URL}/publications): Seattle Desi TV editorial publications.
+- [Subscribe](${SITE_URL}/subscribe): Join the Seattle Desi TV community email list.
 - [Radio](${SITE_URL}/radio): Seattle Desi Radio player and public programming schedule.
 - [Recognition](${SITE_URL}/recognition): Community and volunteer recognition.
 - [Contact](${SITE_URL}/contact): Official Seattle Desi TV contact options.

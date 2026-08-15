@@ -35,6 +35,7 @@ export default function SiteFooter() {
             <p className="text-sm font-black uppercase tracking-wide text-pink-300">Subscribe to SDTV</p>
             <h2 className="mt-2 text-2xl md:text-3xl font-black">Hear from us</h2>
             <p className="mt-3 text-sm leading-6 text-slate-300">Get Seattle Desi TV community updates, events, interviews, TV, radio, local business highlights, and special announcements.</p>
+            <Link href="/subscribe" className="mt-3 inline-flex text-sm font-black text-pink-300 underline">Open the full Subscribe page</Link>
           </div>
           <NewsletterSubscribeForm source="footer" compact />
         </div>
@@ -64,6 +65,7 @@ export default function SiteFooter() {
             <Link href="/radio">Radio</Link>
             <Link href="/events">Events</Link>
             <Link href="/publications">Publications</Link>
+            <Link href="/subscribe">Subscribe</Link>
             <Link href="/businesses">Businesses</Link>
             <Link href="/offers">Business Offers</Link>
             <Link href="/classifieds">Community Classifieds</Link>
