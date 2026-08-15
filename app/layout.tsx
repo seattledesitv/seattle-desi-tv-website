@@ -1,7 +1,6 @@
 import "./globals.css";
 import "./mobile-hero-polish.css";
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import AccessibilityFixes from "./components/AccessibilityFixes";
 import BusinessDirectoryOfferClamp from "./components/BusinessDirectoryOfferClamp";
 import BusinessOwnershipActions from "./components/BusinessOwnershipActions";
@@ -15,8 +14,9 @@ import HomepageHeroBridgeV2 from "./components/home/HomepageHeroBridgeV2";
 import PremiumBusinessCardPolish from "./components/PremiumBusinessCardPolish";
 import PremiumOrganizationCardPolish from "./components/PremiumOrganizationCardPolish";
 import { FloatingWhatsAppButton } from "./components/SdtvContactLinks";
+import { safeJsonLd, SITE_URL } from "./lib/seo/service";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seattledesitv.com";
+const siteUrl = SITE_URL;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -26,7 +26,6 @@ export const metadata: Metadata = {
   applicationName: "Seattle Desi TV",
   keywords: ["Seattle Desi TV", "Seattle Indian events", "Seattle South Asian community", "Seattle Desi Radio", "Indian community Seattle", "South Asian businesses Seattle", "Pacific Northwest Desi events"],
   authors: [{ name: "Seattle Desi TV" }], creator: "Seattle Desi TV", publisher: "Seattle Desi TV",
-  alternates: { canonical: "/" },
   robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 } },
   appleWebApp: { capable: true, title: "Seattle Desi TV", statusBarStyle: "black-translucent" },
   icons: { icon: "/icons/icon-512.png", shortcut: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
@@ -38,7 +37,7 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, maxi
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return <html lang="en"><body>
-    <Script id="ld-org" type="application/ld+json" strategy="afterInteractive">{JSON.stringify({ "@context": "https://schema.org", "@type": "Organization", name: "Seattle Desi TV", url: siteUrl, logo: `${siteUrl}/sdtv-logo.png`, sameAs: ["https://www.youtube.com/@SeattleDesiTV", "https://instagram.com/seattledesitv", "https://facebook.com/seattledesitv"] })}</Script>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd({ "@context": "https://schema.org", "@graph": [{ "@type": "Organization", "@id": `${siteUrl}/#organization`, name: "Seattle Desi TV", alternateName: "SDTV", url: siteUrl, logo: { "@type": "ImageObject", url: `${siteUrl}/sdtv-logo.png` }, description: "A 501(c)(3) nonprofit community media organization serving the South Asian and Desi community in Seattle and the Pacific Northwest.", nonprofitStatus: "Nonprofit501c3", areaServed: ["Seattle", "Washington", "Pacific Northwest"], sameAs: ["https://www.youtube.com/@SeattleDesiTV", "https://instagram.com/seattledesitv", "https://facebook.com/seattledesitv"] }, { "@type": "WebSite", "@id": `${siteUrl}/#website`, url: siteUrl, name: "Seattle Desi TV", publisher: { "@id": `${siteUrl}/#organization` }, inLanguage: "en-US" }] }) }} />
     <EngagementTracker />
     <AccessibilityFixes />
     <BusinessDirectoryOfferClamp />
