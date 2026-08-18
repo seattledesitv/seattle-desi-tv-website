@@ -6,6 +6,7 @@ import SiteHeader from "../../components/SiteHeader";
 import SiteFooter from "../../components/SiteFooter";
 import CheckedExternalLink from "../../components/CheckedExternalLink";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { entityIdFromParam } from "../../lib/seo/urls";
 
 const supabase = getSupabaseBrowserClient();
 function dateText(value?: string) { if (!value) return ""; const d = new Date(`${String(value).split("T")[0]}T00:00:00`); return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" }); }
@@ -14,7 +15,7 @@ function initials(value?: string | null) { return String(value || "SDTV").split(
 
 export default function CommunityOrganizationProfilePage() {
   const params = useParams();
-  const organizationId = String(Array.isArray(params?.id) ? params.id[0] : params?.id || "");
+  const organizationId = entityIdFromParam(Array.isArray(params?.id) ? params.id[0] : params?.id);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [organization, setOrganization] = useState<any>(null);

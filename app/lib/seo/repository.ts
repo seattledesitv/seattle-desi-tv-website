@@ -10,6 +10,7 @@ function client() {
 
 const entityColumns: Record<SeoEntityKind, string> = {
   event: "id,title,description,date,location,image,image_urls,created_at",
+  business: "id,name,address,website,category,discount,offer,image,image_urls,created_at",
   classified: "id,title,description,location,image_urls,price_cents,updated_at,created_at,starts_at",
   organization: "id,name,description,location,image,updated_at,created_at",
   press_release: "id,title,summary,organization_name,location,release_date,image_urls,published_at,updated_at",
@@ -18,6 +19,7 @@ const entityColumns: Record<SeoEntityKind, string> = {
 
 const entityTables: Record<SeoEntityKind, string> = {
   event: "events",
+  business: "local_businesses",
   classified: "classified_ads",
   organization: "community_organizations",
   press_release: "press_releases",
@@ -29,6 +31,7 @@ export async function getPublicEntity(kind: SeoEntityKind, id: string) {
   if (!db || !id) return null;
   let query = db.from(entityTables[kind]).select(entityColumns[kind]).eq("id", id);
   if (kind === "event") query = query.or("approved.eq.true,status.eq.approved");
+  if (kind === "business") query = query.eq("status", "approved");
   const { data, error } = await query.maybeSingle();
   if (error) return null;
   return data as unknown as Record<string, unknown> | null;
@@ -39,17 +42,19 @@ async function list(table: string, columns: string) {
   if (!db) return [];
   let query = db.from(table).select(columns).limit(5000);
   if (table === "events") query = query.or("approved.eq.true,status.eq.approved");
+  if (table === "local_businesses") query = query.eq("status", "approved");
   const { data, error } = await query;
   return error ? [] : (data || []) as unknown as Array<Record<string, unknown>>;
 }
 
 export async function listPublicEntities() {
-  const [events, classifieds, organizations, releases, publications] = await Promise.all([
-    list("events", "id,created_at"),
-    list("classified_ads", "id,updated_at"),
-    list("community_organizations", "id,updated_at"),
-    list("press_releases", "id,updated_at"),
-    list("publications", "id,updated_at"),
+  const [events, businesses, classifieds, organizations, releases, publications] = await Promise.all([
+    list("events", "id,title,created_at"),
+    list("local_businesses", "id,name,created_at"),
+    list("classified_ads", "id,title,updated_at"),
+    list("community_organizations", "id,name,updated_at"),
+    list("press_releases", "id,title,updated_at"),
+    list("publications", "id,name,updated_at"),
   ]);
-  return { events, classifieds, organizations, releases, publications };
+  return { events, businesses, classifieds, organizations, releases, publications };
 }

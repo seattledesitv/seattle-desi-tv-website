@@ -2,6 +2,8 @@
 
 ## Current status
 
+- SEO-friendly canonical public URLs now use readable titles plus stable IDs for events, businesses, organizations, classifieds, press releases, and publications; legacy UUID-only links remain compatible.
+
 - Active branch: `feature/publishing-platform-v2`
 - Publishing Platform Sprints 1–4: complete
 - Publishing Platform Sprint 5A: complete

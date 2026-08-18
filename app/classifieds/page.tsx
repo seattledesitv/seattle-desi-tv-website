@@ -4,6 +4,7 @@ import Link from "next/link";
 import SiteHeader from "../components/SiteHeader";
 import SiteFooter from "../components/SiteFooter";
 import { useClassifieds } from "../hooks/useClassifieds";
+import { seoEntityPath } from "../lib/seo/urls";
 const names: Record<string, string> = {
   items: "Items for Sale",
   housing: "Housing & Rentals",
@@ -95,7 +96,7 @@ export default function ClassifiedsPage() {
           <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {visible.map((ad) => (
               <a
-                href={`/classifieds/${ad.id}`}
+                href={seoEntityPath("classifieds", ad.title, ad.id)}
                 key={ad.id}
                 className="overflow-hidden rounded-3xl border bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
               >

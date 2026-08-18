@@ -6,6 +6,7 @@ import SiteHeader from "../../components/SiteHeader";
 import SiteFooter from "../../components/SiteFooter";
 import CheckedExternalLink from "../../components/CheckedExternalLink";
 import { formatEventTime } from "../../lib/eventTime";
+import { entityIdFromParam, seoEntityPath } from "../../lib/seo/urls";
 
 import { AUTH_STORAGE_KEY, getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 const supabase = getSupabaseBrowserClient();
@@ -28,7 +29,7 @@ function countdownLabel(value?: string) { const target = eventDate(value); if (!
 export default function EventDetailPage() {
   const params = useParams();
   const rawEventId = Array.isArray(params?.id) ? params.id[0] : params?.id;
-  const eventId = String(rawEventId || "");
+  const eventId = entityIdFromParam(rawEventId);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading event...");
   const [actionMessage, setActionMessage] = useState("");
@@ -52,7 +53,7 @@ export default function EventDetailPage() {
   const canAdmin = Boolean(user && isAdminRole(role));
   const images = getImages(event);
   const activeImage = images[selectedDocument] || images[0] || null;
-  const eventUrl = `${siteOrigin()}/events/${eventId}`;
+  const eventUrl = `${siteOrigin()}${seoEntityPath("events", event?.title, eventId)}`;
   const tags = useMemo(() => deriveTags(event), [event]);
   const countdown = countdownLabel(event?.date);
   const eventEnded = countdown === "Event ended";

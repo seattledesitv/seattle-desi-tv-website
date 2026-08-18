@@ -7,13 +7,14 @@ import SiteHeader from "../../components/SiteHeader";
 import SiteFooter from "../../components/SiteFooter";
 import PressReleaseDocuments from "../../components/pressReleases/PressReleaseDocuments";
 import { usePressReleaseDetail } from "../../hooks/usePressReleaseDetail";
+import { entityIdFromParam } from "../../lib/seo/urls";
 
 function date(value: string) {
   return new Intl.DateTimeFormat("en-US", { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`));
 }
 
 export default function PressReleaseDetailPage() {
-  const id = String(useParams<{ id: string }>().id || "");
+  const id = entityIdFromParam(useParams<{ id: string }>().id);
   const { release, loading, error } = usePressReleaseDetail(id);
   const [selected, setSelected] = useState<string | null>(null);
   return <main className="min-h-screen bg-slate-50 text-slate-950"><SiteHeader/>

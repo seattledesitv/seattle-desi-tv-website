@@ -6,6 +6,7 @@ import SiteFooter from "../../components/SiteFooter";
 import { ClassifiedService } from "../../lib/classifieds/services/classifiedService";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import type { ClassifiedAd } from "../../lib/classifieds/types";
+import { entityIdFromParam } from "../../lib/seo/urls";
 export default function ClassifiedDetail() {
   const [id, setId] = useState(""),
     [ad, setAd] = useState<ClassifiedAd | null>(null),
@@ -15,7 +16,7 @@ export default function ClassifiedDetail() {
     [details, setDetails] = useState("");
   // The route identifier is synchronized after hydration.
   useEffect(() => {
-    const value = location.pathname.split("/").pop() || "";
+    const value = entityIdFromParam(location.pathname.split("/").pop());
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setId(value);
     void ClassifiedService.getPublic(value)
