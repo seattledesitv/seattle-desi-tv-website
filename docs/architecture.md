@@ -246,11 +246,13 @@ The matrimony module follows Components → Hooks → Services → Repositories 
 
 Press releases follow the standard Components → Hooks → Services → Repositories → Supabase boundary. Authenticated community members submit announcements into an approval queue, while Studio administrators can either queue an SDTV-authored release or publish it immediately. Only approved releases cross the public RLS boundary.
 
-Each release stores its editorial text and an ordered set of up to twelve image URLs. Images reuse the established `event-posters` storage bucket under a dedicated `press-releases/{userId}` prefix. The public detail experience keeps long-form text primary and presents the gallery separately so a selected image can expand without obscuring or replacing the release body.
+Each release stores its editorial text and an ordered set of up to twelve image URLs. The first URL is the primary directory-card image; saved display mode, focal position, and zoom fields provide the same non-destructive card-image framing used by the business directory. Images reuse the established `event-posters` storage bucket under a dedicated `press-releases/{userId}` prefix. The public detail experience keeps long-form text primary and presents the gallery separately so a selected image can expand without obscuring or replacing the release body.
 
 Releases may also carry up to six structured PDF or Word attachments, limited to 20 MB each by the service. PDFs use the browser's inline viewer. Public Word documents use Microsoft Office's web viewer with an original-file fallback because browsers do not natively render DOC/DOCX consistently. Attachment metadata is stored separately from images so existing releases remain backward compatible.
 
 Moderation uses the `review_press_release` database function for approve, request-changes, reject, and archive transitions. Owners can see their own non-public submissions without gaining a path to self-approve. Administrative reads and writes remain protected by the existing `is_admin()` authorization pattern.
+
+Submitters can edit any non-archived release they own. Owner changes always reset the release to `pending`, including edits to an approved release, so changed content cannot bypass moderation. Studio administrators can edit any release without changing its current workflow status, then use the explicit moderation controls independently.
 
 ## Search and AI discoverability
 

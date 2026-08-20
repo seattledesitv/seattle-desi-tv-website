@@ -22,6 +22,10 @@ export type PressRelease = {
   location: string | null;
   release_date: string;
   image_urls: string[];
+  image_position_x: number;
+  image_position_y: number;
+  image_zoom: number;
+  image_display_mode: "cover" | "contain" | "blur";
   documents: PressReleaseDocument[];
   contact_name: string | null;
   contact_email: string | null;
@@ -43,6 +47,10 @@ export type PressReleaseInput = Pick<
   | "location"
   | "release_date"
   | "image_urls"
+  | "image_position_x"
+  | "image_position_y"
+  | "image_zoom"
+  | "image_display_mode"
   | "documents"
   | "contact_name"
   | "contact_email"

@@ -22,6 +22,7 @@ export const PressReleaseService = {
   listAdmin: repo.listAdmin,
   create: (input: PressReleaseInput, userId: string, status?: PressReleaseStatus) => repo.create(normalize(input), userId, status),
   updateOwner: (id: string, input: PressReleaseInput) => repo.updateOwner(id, normalize(input)),
+  updateAdmin: (id: string, input: PressReleaseInput) => repo.updateAdmin(id, normalize(input)),
   review: repo.review,
   uploadFile(file: File, userId: string) {
     const allowed = [

@@ -9,9 +9,12 @@ function date(value: string) {
 
 export default function PressReleaseCard({ release }: { release: PressRelease }) {
   const image = release.image_urls[0];
+  const mode = release.image_display_mode || "cover";
+  const imageClass = mode === "cover" ? "h-full w-full object-cover transition duration-300 group-hover:scale-105" : "relative z-10 h-full w-full object-contain p-4";
+  const imageStyle = mode === "cover" ? { objectPosition: `${release.image_position_x ?? 50}% ${release.image_position_y ?? 50}%`, transform: `scale(${release.image_zoom ?? 1})`, transformOrigin: `${release.image_position_x ?? 50}% ${release.image_position_y ?? 50}%` } : undefined;
   return <Link href={seoEntityPath("press-releases", release.title, release.id)} className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-pink-200 hover:shadow-xl">
-    <div className="aspect-[16/9] overflow-hidden bg-gradient-to-br from-slate-950 to-pink-900">
-      {image ? <img src={image} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center px-6 text-center text-2xl font-black text-white">Seattle Desi TV<br/>Press Release</div>}
+    <div className="relative aspect-[16/9] overflow-hidden bg-gradient-to-br from-slate-950 to-pink-900">
+      {image ? <>{mode === "blur" && <img src={image} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-55 blur-xl" />}<img src={image} alt="" className={imageClass} style={imageStyle} /></> : <div className="flex h-full items-center justify-center px-6 text-center text-2xl font-black text-white">Seattle Desi TV<br/>Press Release</div>}
     </div>
     <div className="p-6">
       <p className="text-xs font-black uppercase tracking-widest text-pink-600">{date(release.release_date)}{release.location ? ` · ${release.location}` : ""}</p>

@@ -2,7 +2,7 @@ import { getSupabaseBrowserClient } from "../../supabaseBrowser";
 import type { PressRelease, PressReleaseInput, PressReleaseStatus } from "../types";
 
 const db = getSupabaseBrowserClient();
-const fields = "id,created_by,title,summary,body,organization_name,location,release_date,image_urls,documents,contact_name,contact_email,source_url,status,admin_notes,approved_at,published_at,created_at,updated_at";
+const fields = "id,created_by,title,summary,body,organization_name,location,release_date,image_urls,image_position_x,image_position_y,image_zoom,image_display_mode,documents,contact_name,contact_email,source_url,status,admin_notes,approved_at,published_at,created_at,updated_at";
 
 export async function listPublic() {
   const { data, error } = await db.from("press_releases").select(fields)
@@ -45,7 +45,15 @@ export async function create(input: PressReleaseInput, userId: string, status: P
 
 export async function updateOwner(id: string, changes: Partial<PressReleaseInput>) {
   const { error } = await db.from("press_releases").update({
-    ...changes, status: "pending", updated_at: new Date().toISOString(),
+    ...changes, status: "pending", admin_notes: null, approved_by: null,
+    approved_at: null, published_at: null, updated_at: new Date().toISOString(),
+  }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateAdmin(id: string, changes: Partial<PressReleaseInput>) {
+  const { error } = await db.from("press_releases").update({
+    ...changes, updated_at: new Date().toISOString(),
   }).eq("id", id);
   if (error) throw error;
 }

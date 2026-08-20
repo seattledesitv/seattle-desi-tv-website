@@ -39,7 +39,7 @@ export function usePressReleases(mode: "public" | "owner" | "admin") {
   }
   return { releases, userId, loading, saving, error, refresh,
     create: (input: PressReleaseInput, status?: PressReleaseStatus) => run(() => PressReleaseService.create(input, userId, status)),
-    update: (id: string, input: PressReleaseInput) => run(() => PressReleaseService.updateOwner(id, input)),
+    update: (id: string, input: PressReleaseInput) => run(() => mode === "admin" ? PressReleaseService.updateAdmin(id, input) : PressReleaseService.updateOwner(id, input)),
     review: (id: string, decision: string, notes: string) => run(() => PressReleaseService.review(id, decision, notes)),
     upload: (file: File) => PressReleaseService.uploadFile(file, userId),
   };

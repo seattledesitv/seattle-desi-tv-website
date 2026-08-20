@@ -2,6 +2,8 @@
 
 ## Current status
 
+- Press-release submitters can edit their own non-archived releases, while Studio administrators can edit every release. The shared editor supports text, metadata, documents, image additions/removals, primary-image selection, and business-style card framing. Owner edits return to moderation; administrator edits preserve status. Migration required: `20260819110000_add_press_release_image_editing.sql`.
+
 - SEO-friendly canonical public URLs now use readable titles plus stable IDs for events, businesses, organizations, classifieds, press releases, and publications; legacy UUID-only links remain compatible.
 
 - Active branch: `feature/publishing-platform-v2`
