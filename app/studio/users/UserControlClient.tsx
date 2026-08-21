@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useRegisteredUsers } from "../../hooks/useRegisteredUsers";
+import type { RegisteredUser } from "../../lib/userAdmin/types";
 
 const supabase = getSupabaseBrowserClient();
 const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
@@ -11,63 +13,932 @@ const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 const roleOptions = ["general_public", "team_member", "volunteer", "video_editor", "admin", "super_admin"];
 const connectedKinds = ["team", "radio", "volunteer", "influencer"];
 type Tab = "profile" | "images" | "connected" | "roles" | "privacy" | "sources";
-type Person = { key: string; user_id?: string | null; email?: string | null; full_name?: string | null; preferred_name?: string | null; phone?: string | null; city?: string | null; state?: string | null; role?: string | null; roles: string[]; sources: string[]; profile_photo_url?: string | null; id_badge_url?: string | null; image?: string | null; public_visibility_disabled?: boolean; show_name_publicly?: boolean; allow_social_credit?: boolean; allow_sdtv_contact?: boolean; keep_profile_private?: boolean; short_bio?: string | null };
+type Person = {
+  key: string;
+  user_id?: string | null;
+  email?: string | null;
+  full_name?: string | null;
+  preferred_name?: string | null;
+  phone?: string | null;
+  city?: string | null;
+  state?: string | null;
+  role?: string | null;
+  roles: string[];
+  sources: string[];
+  profile_photo_url?: string | null;
+  id_badge_url?: string | null;
+  image?: string | null;
+  public_visibility_disabled?: boolean;
+  show_name_publicly?: boolean;
+  allow_social_credit?: boolean;
+  allow_sdtv_contact?: boolean;
+  keep_profile_private?: boolean;
+  short_bio?: string | null;
+};
 
-function cleanEmail(v?: string | null) { return String(v || "").trim().toLowerCase(); }
-function norm(v?: string | null) { return String(v || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " "); }
-function label(v?: string | null) { return String(v || "general_public").replaceAll("_", " "); }
-function addUnique(list: string[], v?: string | null) { const x = String(v || "").trim(); if (x && !list.includes(x)) list.push(x); }
-function imageField(kind: string) { return kind === "team" || kind === "radio" ? "image" : "photo_url"; }
-function tableFor(kind: string) { return ({ team: "team_members", radio: "radio_team_members", volunteer: "volunteer_onboarding_submissions", influencer: "influencer_profiles" } as any)[kind]; }
-function nameField(kind: string) { return kind === "team" || kind === "radio" ? "name" : "full_name"; }
-function editableFields(kind: string) { return ({ team: ["name", "title", "image"], radio: ["name", "title", "segment_name", "image"], volunteer: ["full_name", "phone", "city", "interests", "availability", "experience", "photo_url"], influencer: ["full_name", "city", "bio", "niche", "follower_count", "instagram_url", "tiktok_url", "youtube_url", "website_url", "photo_url"] } as any)[kind] || [imageField(kind)]; }
-function blank(row?: Person | null) { return { user_id: row?.user_id || "", email: row?.email || "", full_name: row?.full_name || "", preferred_name: row?.preferred_name || "", phone: row?.phone || "", city: row?.city || "", state: row?.state || "", role: row?.role || "general_public", roles: row?.roles || [], sources: row?.sources || [], short_bio: row?.short_bio || "", profile_photo_url: row?.profile_photo_url || "", id_badge_url: row?.id_badge_url || "", public_visibility_disabled: Boolean(row?.public_visibility_disabled), show_name_publicly: Boolean(row?.show_name_publicly), allow_social_credit: row?.allow_social_credit !== false, allow_sdtv_contact: row?.allow_sdtv_contact !== false, keep_profile_private: row?.keep_profile_private !== false }; }
-function avatar(row: Person) { return String(row.full_name || row.preferred_name || row.email || "U").slice(0,1).toUpperCase(); }
-function formatValue(value: any) { if (value === null || value === undefined || value === "") return "—"; if (Array.isArray(value)) return value.join(", "); if (typeof value === "boolean") return value ? "Yes" : "No"; if (typeof value === "object") return JSON.stringify(value, null, 2); return String(value); }
-function fmtDate(value: any) { if (!value) return "—"; const d = new Date(value); return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString(); }
-function readOnly(labelText: string, value: any) { return <div className="rounded-2xl bg-slate-100 p-4 text-slate-700"><p className="text-xs font-black uppercase tracking-wide text-slate-500">{label(labelText)}</p><p className="mt-1 break-words text-sm font-bold">{formatValue(value)}</p></div>; }
-function connectedMetadata(row: any) { const keys = ["id", "user_id", "linked_user", "email", "user_email", "created_at", "updated_at", "created_by", "status", "approved_at", "approved_by", "agreement_acknowledged", "agreement_acknowledged_at", "show_on_public_team", "show_on_public_radio"]; return keys.filter((k) => row && row[k] !== undefined && row[k] !== null && row[k] !== "").map((k) => [k, k.includes("_at") || k.endsWith("_at") || k === "created_at" || k === "updated_at" ? fmtDate(row[k]) : row[k]] as const); }
-function Field({ label: title, children }: { label: string; children: any }) { return <label className="grid gap-1 text-sm font-black text-slate-800"><span>{title}</span>{children}</label>; }
-function ImagePreview({ title, src }: { title: string; src?: string | null }) { return <div className="rounded-3xl border bg-slate-50 p-4"><p className="text-lg font-black">{title}</p>{src ? <img src={src} alt={title} className="mt-4 h-56 w-full rounded-2xl border bg-white object-contain" /> : <div className="mt-4 grid h-56 place-items-center rounded-2xl bg-white text-slate-400">No image yet</div>}</div>; }
-function ConnectedInput({ field, value, onChange }: { field: string; value: any; onChange: (v: string) => void }) { const isLong = ["bio", "interests", "availability", "experience"].includes(field); return <label className={`grid gap-1 text-sm font-black text-slate-800 ${isLong ? "md:col-span-2" : ""}`}><span>{label(field)}</span>{isLong ? <textarea value={value || ""} onChange={(e) => onChange(e.target.value)} className="min-h-24 rounded-xl border p-3 font-normal" /> : <input value={value || ""} onChange={(e) => onChange(e.target.value)} className="rounded-xl border p-3 font-normal" />}</label>; }
+function cleanEmail(v?: string | null) {
+  return String(v || "")
+    .trim()
+    .toLowerCase();
+}
+function norm(v?: string | null) {
+  return String(v || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ");
+}
+function label(v?: string | null) {
+  return String(v || "general_public").replaceAll("_", " ");
+}
+function addUnique(list: string[], v?: string | null) {
+  const x = String(v || "").trim();
+  if (x && !list.includes(x)) list.push(x);
+}
+function imageField(kind: string) {
+  return kind === "team" || kind === "radio" ? "image" : "photo_url";
+}
+function tableFor(kind: string) {
+  return (
+    {
+      team: "team_members",
+      radio: "radio_team_members",
+      volunteer: "volunteer_onboarding_submissions",
+      influencer: "influencer_profiles",
+    } as any
+  )[kind];
+}
+function nameField(kind: string) {
+  return kind === "team" || kind === "radio" ? "name" : "full_name";
+}
+function editableFields(kind: string) {
+  return (
+    (
+      {
+        team: ["name", "title", "image"],
+        radio: ["name", "title", "segment_name", "image"],
+        volunteer: ["full_name", "phone", "city", "interests", "availability", "experience", "photo_url"],
+        influencer: ["full_name", "city", "bio", "niche", "follower_count", "instagram_url", "tiktok_url", "youtube_url", "website_url", "photo_url"],
+      } as any
+    )[kind] || [imageField(kind)]
+  );
+}
+function blank(row?: Person | null) {
+  return {
+    user_id: row?.user_id || "",
+    email: row?.email || "",
+    full_name: row?.full_name || "",
+    preferred_name: row?.preferred_name || "",
+    phone: row?.phone || "",
+    city: row?.city || "",
+    state: row?.state || "",
+    role: row?.role || "general_public",
+    roles: row?.roles || [],
+    sources: row?.sources || [],
+    short_bio: row?.short_bio || "",
+    profile_photo_url: row?.profile_photo_url || "",
+    id_badge_url: row?.id_badge_url || "",
+    public_visibility_disabled: Boolean(row?.public_visibility_disabled),
+    show_name_publicly: Boolean(row?.show_name_publicly),
+    allow_social_credit: row?.allow_social_credit !== false,
+    allow_sdtv_contact: row?.allow_sdtv_contact !== false,
+    keep_profile_private: row?.keep_profile_private !== false,
+  };
+}
+function avatar(row: Person) {
+  return String(row.full_name || row.preferred_name || row.email || "U")
+    .slice(0, 1)
+    .toUpperCase();
+}
+function formatValue(value: any) {
+  if (value === null || value === undefined || value === "") return "—";
+  if (Array.isArray(value)) return value.join(", ");
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "object") return JSON.stringify(value, null, 2);
+  return String(value);
+}
+function fmtDate(value: any) {
+  if (!value) return "—";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString();
+}
+function readOnly(labelText: string, value: any) {
+  return (
+    <div className="rounded-2xl bg-slate-100 p-4 text-slate-700">
+      <p className="text-xs font-black uppercase tracking-wide text-slate-500">{label(labelText)}</p>
+      <p className="mt-1 break-words text-sm font-bold">{formatValue(value)}</p>
+    </div>
+  );
+}
+function connectedMetadata(row: any) {
+  const keys = ["id", "user_id", "linked_user", "email", "user_email", "created_at", "updated_at", "created_by", "status", "approved_at", "approved_by", "agreement_acknowledged", "agreement_acknowledged_at", "show_on_public_team", "show_on_public_radio"];
+  return keys.filter((k) => row && row[k] !== undefined && row[k] !== null && row[k] !== "").map((k) => [k, k.includes("_at") || k.endsWith("_at") || k === "created_at" || k === "updated_at" ? fmtDate(row[k]) : row[k]] as const);
+}
+function Field({ label: title, children }: { label: string; children: any }) {
+  return (
+    <label className="grid gap-1 text-sm font-black text-slate-800">
+      <span>{title}</span>
+      {children}
+    </label>
+  );
+}
+function ImagePreview({ title, src }: { title: string; src?: string | null }) {
+  return (
+    <div className="rounded-3xl border bg-slate-50 p-4">
+      <p className="text-lg font-black">{title}</p>
+      {src ? <img src={src} alt={title} className="mt-4 h-56 w-full rounded-2xl border bg-white object-contain" /> : <div className="mt-4 grid h-56 place-items-center rounded-2xl bg-white text-slate-400">No image yet</div>}
+    </div>
+  );
+}
+function ConnectedInput({ field, value, onChange }: { field: string; value: any; onChange: (v: string) => void }) {
+  const isLong = ["bio", "interests", "availability", "experience"].includes(field);
+  return (
+    <label className={`grid gap-1 text-sm font-black text-slate-800 ${isLong ? "md:col-span-2" : ""}`}>
+      <span>{label(field)}</span>
+      {isLong ? <textarea value={value || ""} onChange={(e) => onChange(e.target.value)} className="min-h-24 rounded-xl border p-3 font-normal" /> : <input value={value || ""} onChange={(e) => onChange(e.target.value)} className="rounded-xl border p-3 font-normal" />}
+    </label>
+  );
+}
 
 export default function UserControlClient() {
-  const [loading, setLoading] = useState(true); const [uploading, setUploading] = useState(false); const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("Checking access..."); const [actionMessage, setActionMessage] = useState(""); const [user, setUser] = useState<any>(null); const [role, setRole] = useState("");
-  const [rows, setRows] = useState<Person[]>([]); const [selectedKey, setSelectedKey] = useState(""); const [searchText, setSearchText] = useState(""); const [roleFilter, setRoleFilter] = useState("all"); const [visibilityFilter, setVisibilityFilter] = useState("all"); const [activeTab, setActiveTab] = useState<Tab>("profile");
-  const [editForm, setEditForm] = useState<any>(blank()); const [connectedProfiles, setConnectedProfiles] = useState<any[]>([]); const [selectedConnected, setSelectedConnected] = useState<any>(null); const [connectedEdit, setConnectedEdit] = useState<any>({}); const [agreementOpen, setAgreementOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("Checking access...");
+  const [actionMessage, setActionMessage] = useState("");
+  const [user, setUser] = useState<any>(null);
+  const [role, setRole] = useState("");
+  const [rows, setRows] = useState<Person[]>([]);
+  const [selectedKey, setSelectedKey] = useState("");
+  const [searchText, setSearchText] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [visibilityFilter, setVisibilityFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState<Tab>("profile");
+  const [editForm, setEditForm] = useState<any>(blank());
+  const [connectedProfiles, setConnectedProfiles] = useState<any[]>([]);
+  const [selectedConnected, setSelectedConnected] = useState<any>(null);
+  const [connectedEdit, setConnectedEdit] = useState<any>({});
+  const [agreementOpen, setAgreementOpen] = useState(false);
   const canAccess = Boolean(user && isAdminRole(role));
+  const registered = useRegisteredUsers(canAccess);
   const selectedRow = rows.find((r) => r.key === selectedKey) || null;
   const tabs: Tab[] = ["profile", "images", "connected", "roles", "privacy", "sources"];
 
-  const filteredRows = useMemo(() => { const q = norm(searchText); return rows.filter((r) => { if (roleFilter !== "all" && !r.roles.includes(roleFilter) && r.role !== roleFilter) return false; if (visibilityFilter === "private" && !r.keep_profile_private) return false; if (visibilityFilter === "public" && r.keep_profile_private) return false; if (!q) return true; return norm(`${r.full_name || ""} ${r.email || ""} ${r.phone || ""} ${r.city || ""} ${r.role || ""}`).includes(q); }); }, [rows, searchText, roleFilter, visibilityFilter]);
-  const analytics = useMemo(() => ({ total: rows.length, publicCount: rows.filter((r) => !r.keep_profile_private).length, privateCount: rows.filter((r) => r.keep_profile_private).length, hiddenCount: rows.filter((r) => r.public_visibility_disabled).length, roleCounts: roleOptions.map((r) => [r, rows.filter((x) => x.roles.includes(r) || x.role === r).length] as const), sourceCounts: ["Profile", "Admin", "Team", "Radio", "Volunteer", "Influencer", "Content Submitter"].map((s) => [s, rows.filter((x) => x.sources.includes(s)).length] as const) }), [rows]);
+  const filteredRows = useMemo(() => {
+    const q = norm(searchText);
+    return rows.filter((r) => {
+      if (roleFilter !== "all" && !r.roles.includes(roleFilter) && r.role !== roleFilter) return false;
+      if (visibilityFilter === "private" && !r.keep_profile_private) return false;
+      if (visibilityFilter === "public" && r.keep_profile_private) return false;
+      if (!q) return true;
+      return norm(`${r.full_name || ""} ${r.email || ""} ${r.phone || ""} ${r.city || ""} ${r.role || ""}`).includes(q);
+    });
+  }, [rows, searchText, roleFilter, visibilityFilter]);
+  const analytics = useMemo(
+    () => ({
+      total: rows.length,
+      publicCount: rows.filter((r) => !r.keep_profile_private).length,
+      privateCount: rows.filter((r) => r.keep_profile_private).length,
+      hiddenCount: rows.filter((r) => r.public_visibility_disabled).length,
+      roleCounts: roleOptions.map((r) => [r, rows.filter((x) => x.roles.includes(r) || x.role === r).length] as const),
+      sourceCounts: ["Profile", "Admin", "Team", "Radio", "Volunteer", "Influencer", "Content Submitter"].map((s) => [s, rows.filter((x) => x.sources.includes(s)).length] as const),
+    }),
+    [rows],
+  );
 
-  function merge(map: Map<string, Person>, incoming: any, source: string, sourceRole?: string) { const email = cleanEmail(incoming.email || incoming.user_email); const userId = incoming.user_id || incoming.linked_user || null; const incomingName = incoming.full_name || incoming.name || incoming.user_name || incoming.submitter_name || ""; const existingByName = norm(incomingName) ? Array.from(map.values()).find((r) => norm(r.full_name) === norm(incomingName)) : null; const key = email || String(userId || existingByName?.key || incoming.id || `${source}-${map.size}`); const row: Person = map.get(key) || existingByName || { key, email, user_id: userId, roles: [], sources: [] }; row.email = row.email || email; row.user_id = row.user_id || userId; row.full_name = row.full_name || incoming.full_name || incoming.name || incoming.user_name || null; row.preferred_name = row.preferred_name || incoming.preferred_name || null; row.phone = row.phone || incoming.phone || null; row.city = row.city || incoming.city || null; row.state = row.state || incoming.state || null; if (source === "Profile") row.profile_photo_url = incoming.profile_photo_url || null; row.id_badge_url = row.id_badge_url || incoming.id_badge_url || null; row.image = row.image || incoming.image || incoming.photo_url || incoming.photo || null; row.short_bio = row.short_bio || incoming.short_bio || incoming.bio || null; row.role = row.role || incoming.role || sourceRole || "general_public"; row.public_visibility_disabled = Boolean(row.public_visibility_disabled || incoming.public_visibility_disabled); row.keep_profile_private = incoming.keep_profile_private ?? row.keep_profile_private; row.show_name_publicly = incoming.show_name_publicly ?? row.show_name_publicly; row.allow_social_credit = incoming.allow_social_credit ?? row.allow_social_credit; row.allow_sdtv_contact = incoming.allow_sdtv_contact ?? row.allow_sdtv_contact; addUnique(row.roles, incoming.role || sourceRole || "general_public"); addUnique(row.sources, source); map.set(row.key || key, row); }
-  async function safe(q: any) { const r = await q; if (r.error) setActionMessage((c) => c || `Some sources could not be loaded: ${r.error.message}`); return r.error ? [] : (r.data || []); }
-  async function loadRows() { setActionMessage(""); const [profiles, admins, team, radio, volunteers, influencers, content] = await Promise.all([safe(supabase.from("user_profiles").select("*").limit(1000)), safe(supabase.from("admins").select("user_id,email,name,role,created_at").limit(500)), safe(supabase.from("team_members").select("*").limit(1000)), safe(supabase.from("radio_team_members").select("*").limit(1000)), safe(supabase.from("volunteer_onboarding_submissions").select("*").limit(1000)), safe(supabase.from("influencer_profiles").select("*").limit(1000)), safe(supabase.from("public_content_requests").select("*").limit(1000))]); const map = new Map<string, Person>(); profiles.forEach((r: any) => merge(map, r, "Profile", r.role || "general_public")); admins.forEach((r: any) => merge(map, { ...r, full_name: r.name }, "Admin", r.role || "admin")); team.forEach((r: any) => merge(map, r, "Team", "team_member")); radio.forEach((r: any) => merge(map, r, "Radio", "radio")); volunteers.forEach((r: any) => merge(map, r, "Volunteer", "volunteer")); influencers.forEach((r: any) => merge(map, r, "Influencer", "influencer")); content.forEach((r: any) => merge(map, { user_id: r.submitter_user_id, email: r.submitter_email, full_name: r.submitter_name, phone: r.submitter_phone, city: r.submitter_city }, "Content Submitter", "general_public")); const next = Array.from(map.values()).sort((a,b) => String(a.full_name || a.email || "").localeCompare(String(b.full_name || b.email || ""))); setRows(next); const current = next.find((r) => r.key === selectedKey); if (current) { setEditForm(blank(current)); await loadConnectedFor(current); } }
-  async function init() { setLoading(true); const { data } = await supabase.auth.getUser(); const current = data?.user || null; setUser(current); const nextRole = current ? await resolveUserRole(supabase, current) : ""; setRole(nextRole); if (!current || !isAdminRole(nextRole)) { setMessage("Admin access required."); setLoading(false); return; } await loadRows(); setMessage(""); setLoading(false); }
+  function merge(map: Map<string, Person>, incoming: any, source: string, sourceRole?: string) {
+    const email = cleanEmail(incoming.email || incoming.user_email);
+    const userId = incoming.user_id || incoming.linked_user || null;
+    const incomingName = incoming.full_name || incoming.name || incoming.user_name || incoming.submitter_name || "";
+    const existingByName = norm(incomingName) ? Array.from(map.values()).find((r) => norm(r.full_name) === norm(incomingName)) : null;
+    const key = email || String(userId || existingByName?.key || incoming.id || `${source}-${map.size}`);
+    const row: Person = map.get(key) || existingByName || { key, email, user_id: userId, roles: [], sources: [] };
+    row.email = row.email || email;
+    row.user_id = row.user_id || userId;
+    row.full_name = row.full_name || incoming.full_name || incoming.name || incoming.user_name || null;
+    row.preferred_name = row.preferred_name || incoming.preferred_name || null;
+    row.phone = row.phone || incoming.phone || null;
+    row.city = row.city || incoming.city || null;
+    row.state = row.state || incoming.state || null;
+    if (source === "Profile") row.profile_photo_url = incoming.profile_photo_url || null;
+    row.id_badge_url = row.id_badge_url || incoming.id_badge_url || null;
+    row.image = row.image || incoming.image || incoming.photo_url || incoming.photo || null;
+    row.short_bio = row.short_bio || incoming.short_bio || incoming.bio || null;
+    row.role = row.role || incoming.role || sourceRole || "general_public";
+    row.public_visibility_disabled = Boolean(row.public_visibility_disabled || incoming.public_visibility_disabled);
+    row.keep_profile_private = incoming.keep_profile_private ?? row.keep_profile_private;
+    row.show_name_publicly = incoming.show_name_publicly ?? row.show_name_publicly;
+    row.allow_social_credit = incoming.allow_social_credit ?? row.allow_social_credit;
+    row.allow_sdtv_contact = incoming.allow_sdtv_contact ?? row.allow_sdtv_contact;
+    addUnique(row.roles, incoming.role || sourceRole || "general_public");
+    addUnique(row.sources, source);
+    map.set(row.key || key, row);
+  }
+  async function safe(q: any) {
+    const r = await q;
+    if (r.error) setActionMessage((c) => c || `Some sources could not be loaded: ${r.error.message}`);
+    return r.error ? [] : r.data || [];
+  }
+  async function loadRows() {
+    setActionMessage("");
+    const [profiles, admins, team, radio, volunteers, influencers, content] = await Promise.all([safe(supabase.from("user_profiles").select("*").limit(1000)), safe(supabase.from("admins").select("user_id,email,name,role,created_at").limit(500)), safe(supabase.from("team_members").select("*").limit(1000)), safe(supabase.from("radio_team_members").select("*").limit(1000)), safe(supabase.from("volunteer_onboarding_submissions").select("*").limit(1000)), safe(supabase.from("influencer_profiles").select("*").limit(1000)), safe(supabase.from("public_content_requests").select("*").limit(1000))]);
+    const map = new Map<string, Person>();
+    profiles.forEach((r: any) => merge(map, r, "Profile", r.role || "general_public"));
+    admins.forEach((r: any) => merge(map, { ...r, full_name: r.name }, "Admin", r.role || "admin"));
+    team.forEach((r: any) => merge(map, r, "Team", "team_member"));
+    radio.forEach((r: any) => merge(map, r, "Radio", "radio"));
+    volunteers.forEach((r: any) => merge(map, r, "Volunteer", "volunteer"));
+    influencers.forEach((r: any) => merge(map, r, "Influencer", "influencer"));
+    content.forEach((r: any) =>
+      merge(
+        map,
+        {
+          user_id: r.submitter_user_id,
+          email: r.submitter_email,
+          full_name: r.submitter_name,
+          phone: r.submitter_phone,
+          city: r.submitter_city,
+        },
+        "Content Submitter",
+        "general_public",
+      ),
+    );
+    const next = Array.from(map.values()).sort((a, b) => String(a.full_name || a.email || "").localeCompare(String(b.full_name || b.email || "")));
+    setRows(next);
+    const current = next.find((r) => r.key === selectedKey);
+    if (current) {
+      setEditForm(blank(current));
+      await loadConnectedFor(current);
+    }
+  }
+  async function init() {
+    setLoading(true);
+    const { data } = await supabase.auth.getUser();
+    const current = data?.user || null;
+    setUser(current);
+    const nextRole = current ? await resolveUserRole(supabase, current) : "";
+    setRole(nextRole);
+    if (!current || !isAdminRole(nextRole)) {
+      setMessage("Admin access required.");
+      setLoading(false);
+      return;
+    }
+    await loadRows();
+    setMessage("");
+    setLoading(false);
+  }
 
-  function scoreConnected(row: Person, item: any, kind: string) { let score = 0; const rowIds = [row.user_id].filter(Boolean).map(String); const itemIds = [item.user_id, item.linked_user].filter(Boolean).map(String); if (rowIds.some((id) => itemIds.includes(id))) score += 100; const rowEmails = [row.email].filter(Boolean).map(cleanEmail); const itemEmails = [item.email, item.user_email].filter(Boolean).map(cleanEmail); if (rowEmails.some((e) => itemEmails.includes(e))) score += 80; const rn = norm(row.full_name || row.preferred_name); const inn = norm(item[nameField(kind)] || item.full_name || item.name); if (rn && inn && rn === inn) score += 50; else if (rn && inn && (rn.includes(inn) || inn.includes(rn))) score += 25; return score; }
-  async function findConnected(row: Person, kind: string, title: string, table: string, statusField = "status") { const result = await supabase.from(table).select("*").limit(1000); if (result.error) { setActionMessage((c) => c || `Could not load ${title}: ${result.error.message}`); return null; } const best = (result.data || []).map((item: any) => ({ item, score: scoreConnected(row, item, kind) })).filter((x: any) => x.score > 0).sort((a: any, b: any) => b.score - a.score)[0]; return best ? { kind, title, table, row: best.item, status: best.item[statusField] || best.item.role || best.item.title || "active" } : null; }
-  async function loadConnectedFor(row: Person) { setConnectedProfiles([]); setSelectedConnected(null); setConnectedEdit({}); setAgreementOpen(false); const items = await Promise.all([findConnected(row, "team", "Team Profile", "team_members", "title"), findConnected(row, "radio", "Radio Profile", "radio_team_members", "segment_name"), findConnected(row, "volunteer", "Volunteer Onboarding", "volunteer_onboarding_submissions", "status"), findConnected(row, "influencer", "Influencer Profile", "influencer_profiles", "status")]); setConnectedProfiles(items.filter(Boolean)); }
-  async function choose(row: Person) { if (selectedKey === row.key) { setSelectedKey(""); setEditForm(blank()); setConnectedProfiles([]); setSelectedConnected(null); setAgreementOpen(false); return; } setSelectedKey(row.key); setEditForm(blank(row)); setActiveTab("profile"); await loadConnectedFor(row); }
-  function updateEdit(k: string, v: any) { setEditForm((c: any) => ({ ...c, [k]: v })); }
-  function updateConnected(k: string, v: any) { setConnectedEdit((c: any) => ({ ...c, [k]: v })); }
-  async function uploadAsset(file: File | undefined, field: string, target: "base" | "connected" = "base") { setActionMessage(""); if (!file) return; if (!file.type.startsWith("image/")) { setActionMessage("Please upload an image file."); return; } if (!cloudName || !uploadPreset) { setActionMessage("Cloudinary is not configured. Paste a public image URL instead."); return; } setUploading(true); const body = new FormData(); body.append("file", file); body.append("upload_preset", uploadPreset); body.append("folder", target === "base" ? "sdtv/user-profiles" : "sdtv/connected-profiles"); try { const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: "POST", body }); const out = await res.json(); if (!res.ok || !out.secure_url) throw new Error(out.error?.message || "Upload failed"); target === "base" ? updateEdit(field, out.secure_url) : updateConnected(field, out.secure_url); setActionMessage("Image uploaded. Save changes to keep it."); } catch (e: any) { setActionMessage(e.message || "Upload failed."); } finally { setUploading(false); } }
-  async function uploadConnectedImage(item: any, file: File | undefined) { setActionMessage(""); if (!file) return; if (!file.type.startsWith("image/")) { setActionMessage("Please upload an image file."); return; } if (!cloudName || !uploadPreset) { setActionMessage("Cloudinary is not configured. Paste a public image URL instead."); return; } setUploading(true); const body = new FormData(); body.append("file", file); body.append("upload_preset", uploadPreset); body.append("folder", "sdtv/connected-profiles"); try { const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: "POST", body }); const out = await res.json(); if (!res.ok || !out.secure_url) throw new Error(out.error?.message || "Upload failed"); await saveConnectedImage(item, out.secure_url); } catch (e: any) { setActionMessage(e.message || "Upload failed."); } finally { setUploading(false); } }
-  async function saveUserProfile() { if (!editForm.user_id && !editForm.email) { setActionMessage("User ID or email is required."); return; } setSaving(true); const payload = { user_id: editForm.user_id || null, email: cleanEmail(editForm.email) || null, full_name: editForm.full_name || null, preferred_name: editForm.preferred_name || null, phone: editForm.phone || null, city: editForm.city || null, state: editForm.state || null, role: editForm.role || "general_public", short_bio: editForm.short_bio || null, profile_photo_url: editForm.profile_photo_url || null, id_badge_url: editForm.id_badge_url || null, show_name_publicly: Boolean(editForm.show_name_publicly), allow_social_credit: Boolean(editForm.allow_social_credit), allow_sdtv_contact: Boolean(editForm.allow_sdtv_contact), keep_profile_private: Boolean(editForm.keep_profile_private), updated_at: new Date().toISOString() }; const { error } = await supabase.from("user_profiles").upsert(payload, { onConflict: editForm.user_id ? "user_id" : "email" }); setActionMessage(error ? `Could not save user profile: ${error.message}` : "User profile saved."); await loadRows(); setSaving(false); }
-  async function saveConnectedProfile() { if (!selectedConnected) return; const payload: any = { updated_at: new Date().toISOString() }; editableFields(selectedConnected.kind).forEach((k: string) => { if (connectedEdit[k] !== undefined) payload[k] = connectedEdit[k] || null; }); setSaving(true); const { error } = await supabase.from(selectedConnected.table).update(payload).eq("id", selectedConnected.row.id); setActionMessage(error ? `Could not save connected profile: ${error.message}` : "Connected profile saved."); if (selectedRow) await loadConnectedFor(selectedRow); setSaving(false); }
-  async function saveConnectedImage(item: any, nextImage?: string) { const field = imageField(item.kind); setSaving(true); const { error } = await supabase.from(item.table).update({ [field]: nextImage ?? item.row[field] ?? "", updated_at: new Date().toISOString() }).eq("id", item.row.id); setActionMessage(error ? `Could not save ${item.title} image: ${error.message}` : `${item.title} image saved.`); if (selectedRow) await loadConnectedFor(selectedRow); setSaving(false); }
-  async function useBaseAll() { if (!editForm.profile_photo_url) { setActionMessage("Add a base profile photo first."); return; } const targets = connectedProfiles.filter((i) => connectedKinds.includes(i.kind)); const ok = window.confirm("Apply Base Profile Photo to all connected profiles? This immediately overwrites connected profile images."); if (!ok) return; setSaving(true); const results = await Promise.all(targets.map((i) => supabase.from(i.table).update({ [imageField(i.kind)]: editForm.profile_photo_url, updated_at: new Date().toISOString() }).eq("id", i.row.id))); const fail = results.find((r: any) => r.error); setActionMessage(fail ? `Some updates failed: ${fail.error.message}` : `Base profile photo applied to ${targets.length} connected profile(s).`); if (selectedRow) await loadConnectedFor(selectedRow); setSaving(false); }
-  function useBaseHere() { if (!editForm.profile_photo_url || !selectedConnected) return; const ok = window.confirm(`Use Base Photo for ${selectedConnected.title}? Click Save Connected Profile after this to keep the change.`); if (!ok) return; updateConnected(imageField(selectedConnected.kind), editForm.profile_photo_url); setActionMessage("Base photo copied here. Save Connected Profile to keep it."); }
-  function togglePublicVisibility() { const disabled = !editForm.public_visibility_disabled; updateEdit("public_visibility_disabled", disabled); setActionMessage(disabled ? "Public visibility disabled locally. Save User Profile to keep related preferences." : "Public visibility enabled locally. Save User Profile to keep related preferences."); }
-  useEffect(() => { init(); }, []);
+  async function removeRegisteredUser(account: RegisteredUser) {
+    if (account.id === user?.id) {
+      setActionMessage("You cannot delete the account you are currently using.");
+      return;
+    }
+    const confirmation = window.prompt(`Delete login access for ${account.email}? Their independently submitted platform content will be preserved.\n\nType the complete email address to confirm.`);
+    if (confirmation === null) return;
+    try {
+      await registered.remove(account.id, confirmation);
+      setActionMessage(`The login account for ${account.email} was deleted and its linked platform content was preserved.`);
+      if (selectedRow?.user_id === account.id) {
+        setSelectedKey("");
+        setEditForm(blank());
+      }
+      await loadRows();
+    } catch {}
+  }
 
-  if (loading) return <main className="min-h-screen bg-slate-950 text-white"><StudioHeader /><section className="mx-auto max-w-7xl px-6 py-10"><div className="rounded-3xl bg-white/10 p-6">{message}</div></section></main>;
-  if (!canAccess) return <main className="min-h-screen bg-slate-950 text-white"><StudioHeader /><section className="mx-auto max-w-7xl px-6 py-10"><div className="rounded-3xl bg-white p-8 text-slate-950">{message}</div></section></main>;
+  function scoreConnected(row: Person, item: any, kind: string) {
+    let score = 0;
+    const rowIds = [row.user_id].filter(Boolean).map(String);
+    const itemIds = [item.user_id, item.linked_user].filter(Boolean).map(String);
+    if (rowIds.some((id) => itemIds.includes(id))) score += 100;
+    const rowEmails = [row.email].filter(Boolean).map(cleanEmail);
+    const itemEmails = [item.email, item.user_email].filter(Boolean).map(cleanEmail);
+    if (rowEmails.some((e) => itemEmails.includes(e))) score += 80;
+    const rn = norm(row.full_name || row.preferred_name);
+    const inn = norm(item[nameField(kind)] || item.full_name || item.name);
+    if (rn && inn && rn === inn) score += 50;
+    else if (rn && inn && (rn.includes(inn) || inn.includes(rn))) score += 25;
+    return score;
+  }
+  async function findConnected(row: Person, kind: string, title: string, table: string, statusField = "status") {
+    const result = await supabase.from(table).select("*").limit(1000);
+    if (result.error) {
+      setActionMessage((c) => c || `Could not load ${title}: ${result.error.message}`);
+      return null;
+    }
+    const best = (result.data || [])
+      .map((item: any) => ({ item, score: scoreConnected(row, item, kind) }))
+      .filter((x: any) => x.score > 0)
+      .sort((a: any, b: any) => b.score - a.score)[0];
+    return best
+      ? {
+          kind,
+          title,
+          table,
+          row: best.item,
+          status: best.item[statusField] || best.item.role || best.item.title || "active",
+        }
+      : null;
+  }
+  async function loadConnectedFor(row: Person) {
+    setConnectedProfiles([]);
+    setSelectedConnected(null);
+    setConnectedEdit({});
+    setAgreementOpen(false);
+    const items = await Promise.all([findConnected(row, "team", "Team Profile", "team_members", "title"), findConnected(row, "radio", "Radio Profile", "radio_team_members", "segment_name"), findConnected(row, "volunteer", "Volunteer Onboarding", "volunteer_onboarding_submissions", "status"), findConnected(row, "influencer", "Influencer Profile", "influencer_profiles", "status")]);
+    setConnectedProfiles(items.filter(Boolean));
+  }
+  async function choose(row: Person) {
+    if (selectedKey === row.key) {
+      setSelectedKey("");
+      setEditForm(blank());
+      setConnectedProfiles([]);
+      setSelectedConnected(null);
+      setAgreementOpen(false);
+      return;
+    }
+    setSelectedKey(row.key);
+    setEditForm(blank(row));
+    setActiveTab("profile");
+    await loadConnectedFor(row);
+  }
+  function updateEdit(k: string, v: any) {
+    setEditForm((c: any) => ({ ...c, [k]: v }));
+  }
+  function updateConnected(k: string, v: any) {
+    setConnectedEdit((c: any) => ({ ...c, [k]: v }));
+  }
+  async function uploadAsset(file: File | undefined, field: string, target: "base" | "connected" = "base") {
+    setActionMessage("");
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setActionMessage("Please upload an image file.");
+      return;
+    }
+    if (!cloudName || !uploadPreset) {
+      setActionMessage("Cloudinary is not configured. Paste a public image URL instead.");
+      return;
+    }
+    setUploading(true);
+    const body = new FormData();
+    body.append("file", file);
+    body.append("upload_preset", uploadPreset);
+    body.append("folder", target === "base" ? "sdtv/user-profiles" : "sdtv/connected-profiles");
+    try {
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: "POST", body });
+      const out = await res.json();
+      if (!res.ok || !out.secure_url) throw new Error(out.error?.message || "Upload failed");
+      target === "base" ? updateEdit(field, out.secure_url) : updateConnected(field, out.secure_url);
+      setActionMessage("Image uploaded. Save changes to keep it.");
+    } catch (e: any) {
+      setActionMessage(e.message || "Upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  }
+  async function uploadConnectedImage(item: any, file: File | undefined) {
+    setActionMessage("");
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setActionMessage("Please upload an image file.");
+      return;
+    }
+    if (!cloudName || !uploadPreset) {
+      setActionMessage("Cloudinary is not configured. Paste a public image URL instead.");
+      return;
+    }
+    setUploading(true);
+    const body = new FormData();
+    body.append("file", file);
+    body.append("upload_preset", uploadPreset);
+    body.append("folder", "sdtv/connected-profiles");
+    try {
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: "POST", body });
+      const out = await res.json();
+      if (!res.ok || !out.secure_url) throw new Error(out.error?.message || "Upload failed");
+      await saveConnectedImage(item, out.secure_url);
+    } catch (e: any) {
+      setActionMessage(e.message || "Upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  }
+  async function saveUserProfile() {
+    if (!editForm.user_id && !editForm.email) {
+      setActionMessage("User ID or email is required.");
+      return;
+    }
+    setSaving(true);
+    const payload = {
+      user_id: editForm.user_id || null,
+      email: cleanEmail(editForm.email) || null,
+      full_name: editForm.full_name || null,
+      preferred_name: editForm.preferred_name || null,
+      phone: editForm.phone || null,
+      city: editForm.city || null,
+      state: editForm.state || null,
+      role: editForm.role || "general_public",
+      short_bio: editForm.short_bio || null,
+      profile_photo_url: editForm.profile_photo_url || null,
+      id_badge_url: editForm.id_badge_url || null,
+      show_name_publicly: Boolean(editForm.show_name_publicly),
+      allow_social_credit: Boolean(editForm.allow_social_credit),
+      allow_sdtv_contact: Boolean(editForm.allow_sdtv_contact),
+      keep_profile_private: Boolean(editForm.keep_profile_private),
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from("user_profiles").upsert(payload, { onConflict: editForm.user_id ? "user_id" : "email" });
+    setActionMessage(error ? `Could not save user profile: ${error.message}` : "User profile saved.");
+    await loadRows();
+    setSaving(false);
+  }
+  async function saveConnectedProfile() {
+    if (!selectedConnected) return;
+    const payload: any = { updated_at: new Date().toISOString() };
+    editableFields(selectedConnected.kind).forEach((k: string) => {
+      if (connectedEdit[k] !== undefined) payload[k] = connectedEdit[k] || null;
+    });
+    setSaving(true);
+    const { error } = await supabase.from(selectedConnected.table).update(payload).eq("id", selectedConnected.row.id);
+    setActionMessage(error ? `Could not save connected profile: ${error.message}` : "Connected profile saved.");
+    if (selectedRow) await loadConnectedFor(selectedRow);
+    setSaving(false);
+  }
+  async function saveConnectedImage(item: any, nextImage?: string) {
+    const field = imageField(item.kind);
+    setSaving(true);
+    const { error } = await supabase
+      .from(item.table)
+      .update({
+        [field]: nextImage ?? item.row[field] ?? "",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", item.row.id);
+    setActionMessage(error ? `Could not save ${item.title} image: ${error.message}` : `${item.title} image saved.`);
+    if (selectedRow) await loadConnectedFor(selectedRow);
+    setSaving(false);
+  }
+  async function useBaseAll() {
+    if (!editForm.profile_photo_url) {
+      setActionMessage("Add a base profile photo first.");
+      return;
+    }
+    const targets = connectedProfiles.filter((i) => connectedKinds.includes(i.kind));
+    const ok = window.confirm("Apply Base Profile Photo to all connected profiles? This immediately overwrites connected profile images.");
+    if (!ok) return;
+    setSaving(true);
+    const results = await Promise.all(
+      targets.map((i) =>
+        supabase
+          .from(i.table)
+          .update({
+            [imageField(i.kind)]: editForm.profile_photo_url,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", i.row.id),
+      ),
+    );
+    const fail = results.find((r: any) => r.error);
+    setActionMessage(fail ? `Some updates failed: ${fail.error.message}` : `Base profile photo applied to ${targets.length} connected profile(s).`);
+    if (selectedRow) await loadConnectedFor(selectedRow);
+    setSaving(false);
+  }
+  function useBaseHere() {
+    if (!editForm.profile_photo_url || !selectedConnected) return;
+    const ok = window.confirm(`Use Base Photo for ${selectedConnected.title}? Click Save Connected Profile after this to keep the change.`);
+    if (!ok) return;
+    updateConnected(imageField(selectedConnected.kind), editForm.profile_photo_url);
+    setActionMessage("Base photo copied here. Save Connected Profile to keep it.");
+  }
+  function togglePublicVisibility() {
+    const disabled = !editForm.public_visibility_disabled;
+    updateEdit("public_visibility_disabled", disabled);
+    setActionMessage(disabled ? "Public visibility disabled locally. Save User Profile to keep related preferences." : "Public visibility enabled locally. Save User Profile to keep related preferences.");
+  }
+  useEffect(() => {
+    init();
+  }, []);
 
-  const Dashboard = <div className="rounded-[2rem] bg-white p-8"><h1 className="text-4xl font-black">User Control Analytics</h1><p className="mt-2 text-slate-600">Select a user from the left to manage profile, images, connected profiles, roles, privacy, and sources.</p><div className="mt-6 grid gap-4 md:grid-cols-4"><div className="rounded-3xl bg-slate-50 p-5"><p className="text-xs font-black uppercase text-slate-500">Total people</p><p className="mt-2 text-4xl font-black">{analytics.total}</p></div><div className="rounded-3xl bg-green-50 p-5"><p className="text-xs font-black uppercase text-green-700">Public</p><p className="mt-2 text-4xl font-black">{analytics.publicCount}</p></div><div className="rounded-3xl bg-slate-50 p-5"><p className="text-xs font-black uppercase text-slate-500">Private</p><p className="mt-2 text-4xl font-black">{analytics.privateCount}</p></div><div className="rounded-3xl bg-red-50 p-5"><p className="text-xs font-black uppercase text-red-700">Hidden</p><p className="mt-2 text-4xl font-black">{analytics.hiddenCount}</p></div></div><div className="mt-6 grid gap-5 lg:grid-cols-2"><div className="rounded-3xl border p-5"><h2 className="text-xl font-black">By Role</h2><div className="mt-4 grid gap-2">{analytics.roleCounts.map(([r,c]) => <div key={r} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3"><span className="font-bold capitalize">{label(r)}</span><span className="font-black">{c}</span></div>)}</div></div><div className="rounded-3xl border p-5"><h2 className="text-xl font-black">By Source</h2><div className="mt-4 grid gap-2">{analytics.sourceCounts.map(([s,c]) => <div key={s} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3"><span className="font-bold">{s}</span><span className="font-black">{c}</span></div>)}</div></div></div></div>;
+  if (loading)
+    return (
+      <main className="min-h-screen bg-slate-950 text-white">
+        <StudioHeader />
+        <section className="mx-auto max-w-7xl px-6 py-10">
+          <div className="rounded-3xl bg-white/10 p-6">{message}</div>
+        </section>
+      </main>
+    );
+  if (!canAccess)
+    return (
+      <main className="min-h-screen bg-slate-950 text-white">
+        <StudioHeader />
+        <section className="mx-auto max-w-7xl px-6 py-10">
+          <div className="rounded-3xl bg-white p-8 text-slate-950">{message}</div>
+        </section>
+      </main>
+    );
 
-  return <main className="min-h-screen bg-slate-950 text-white"><StudioHeader /><section className="mx-auto max-w-7xl px-4 py-8"><div className="grid gap-5 lg:grid-cols-[360px_1fr]"><aside className="rounded-[2rem] bg-white p-5 text-slate-950"><h2 className="text-2xl font-black">People</h2><p className="text-xs text-slate-500">Click a user to manage. Click again to return to analytics.</p><input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Search name, email, phone, city, role..." className="mt-4 w-full rounded-xl border p-3" /><div className="mt-3 grid grid-cols-2 gap-2"><select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="rounded-xl border p-3 text-sm font-bold"><option value="all">All roles</option>{roleOptions.map((r) => <option key={r} value={r}>{label(r)}</option>)}</select><select value={visibilityFilter} onChange={(e) => setVisibilityFilter(e.target.value)} className="rounded-xl border p-3 text-sm font-bold"><option value="all">All visibility</option><option value="public">Public</option><option value="private">Private</option></select></div><div className="mt-4 grid max-h-[720px] gap-3 overflow-y-auto pr-1">{filteredRows.map((row) => <button key={row.key} onClick={() => choose(row)} className={`rounded-2xl border p-4 text-left ${selectedKey === row.key ? "border-pink-500 bg-pink-50" : "bg-white"}`}><div className="flex gap-3"><div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full bg-slate-100 font-black text-pink-600">{row.profile_photo_url || row.image ? <img src={row.profile_photo_url || row.image || ""} alt={row.full_name || row.email || "profile"} className="h-full w-full object-cover" /> : avatar(row)}</div><div className="min-w-0 flex-1"><p className="truncate font-black">{row.full_name || row.preferred_name || row.email || "Unnamed User"}</p><p className="truncate text-xs text-slate-500">{row.email || "No email linked"}</p><div className="mt-2 flex flex-wrap gap-1">{row.roles.slice(0, 3).map((r) => <span key={r} className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">{label(r)}</span>)}</div></div></div></button>)}</div></aside><section className="text-slate-950">{actionMessage && <div className="mb-4 rounded-2xl bg-yellow-100 p-4 font-bold text-yellow-900">{actionMessage}</div>}{!selectedRow ? Dashboard : <div className="space-y-4"><div className="rounded-[2rem] bg-white p-5"><div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"><div className="flex gap-4"><div className="grid h-20 w-20 place-items-center overflow-hidden rounded-full bg-slate-100 text-2xl font-black text-pink-600">{editForm.profile_photo_url ? <img src={editForm.profile_photo_url} alt="profile" className="h-full w-full object-cover" /> : avatar(selectedRow)}</div><div><p className="text-xs font-black uppercase tracking-wide text-pink-600">Selected User</p><h1 className="text-3xl font-black">{editForm.full_name || editForm.email}</h1><p className="text-sm font-bold text-slate-500">{editForm.email}</p><div className="mt-2 flex flex-wrap gap-2">{editForm.roles?.map((r: string) => <span key={r} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{label(r)}</span>)}</div></div></div><div className="flex gap-2"><button onClick={() => setSelectedKey("")} className="rounded-xl bg-slate-100 px-4 py-3 font-black text-slate-700">Back to Analytics</button><button onClick={togglePublicVisibility} className="rounded-xl bg-red-600 px-4 py-3 font-black text-white">{editForm.public_visibility_disabled ? "Enable Public Visibility" : "Disable Public Visibility"}</button></div></div></div><div className="rounded-[2rem] bg-white p-4"><div className="flex gap-2 overflow-x-auto">{tabs.map((t) => <button key={t} onClick={() => setActiveTab(t)} className={`whitespace-nowrap rounded-xl px-4 py-2 font-black capitalize ${activeTab === t ? "bg-pink-600 text-white" : "bg-slate-100 text-slate-700"}`}>{t}</button>)}</div></div><div className="rounded-[2rem] bg-white p-6">{activeTab === "profile" && <div><h2 className="text-2xl font-black">Profile</h2><div className="mt-5 grid gap-4 md:grid-cols-2"><Field label="Full name"><input value={editForm.full_name || ""} onChange={(e) => updateEdit("full_name", e.target.value)} className="rounded-xl border p-3 font-normal" /></Field><Field label="Preferred name"><input value={editForm.preferred_name || ""} onChange={(e) => updateEdit("preferred_name", e.target.value)} className="rounded-xl border p-3 font-normal" /></Field><Field label="Email"><input value={editForm.email || ""} onChange={(e) => updateEdit("email", e.target.value)} className="rounded-xl border p-3 font-normal" /></Field><Field label="Phone"><input value={editForm.phone || ""} onChange={(e) => updateEdit("phone", e.target.value)} className="rounded-xl border p-3 font-normal" /></Field><Field label="City"><input value={editForm.city || ""} onChange={(e) => updateEdit("city", e.target.value)} className="rounded-xl border p-3 font-normal" /></Field><Field label="State"><input value={editForm.state || ""} onChange={(e) => updateEdit("state", e.target.value)} className="rounded-xl border p-3 font-normal" /></Field><label className="grid gap-1 text-sm font-black text-slate-800 md:col-span-2"><span>Bio</span><textarea value={editForm.short_bio || ""} onChange={(e) => updateEdit("short_bio", e.target.value)} className="min-h-28 rounded-xl border p-3 font-normal" /></label></div><button onClick={saveUserProfile} disabled={saving || uploading} className="mt-6 rounded-xl bg-pink-600 px-5 py-3 font-black text-white disabled:opacity-60">Save User Profile</button></div>}{activeTab === "images" && <div><h2 className="text-2xl font-black">Images & Usage</h2><div className="mt-5 grid gap-4 md:grid-cols-2"><div><ImagePreview title="Base Profile Photo" src={editForm.profile_photo_url} /><input type="file" accept="image/*" disabled={uploading} onChange={(e) => uploadAsset(e.target.files?.[0], "profile_photo_url", "base")} className="mt-3 w-full rounded-xl border bg-white p-3" /><input value={editForm.profile_photo_url || ""} onChange={(e) => updateEdit("profile_photo_url", e.target.value)} placeholder="Or paste base photo URL" className="mt-3 w-full rounded-xl border bg-white p-3" /></div><div><ImagePreview title="ID Badge Image" src={editForm.id_badge_url} /><input type="file" accept="image/*" disabled={uploading} onChange={(e) => uploadAsset(e.target.files?.[0], "id_badge_url", "base")} className="mt-3 w-full rounded-xl border bg-white p-3" /><input value={editForm.id_badge_url || ""} onChange={(e) => updateEdit("id_badge_url", e.target.value)} placeholder="Or paste ID badge URL" className="mt-3 w-full rounded-xl border bg-white p-3" /></div></div><div className="mt-5 flex flex-wrap gap-3"><button onClick={useBaseAll} className="rounded-xl bg-slate-950 px-5 py-3 font-black text-white">Use Base Profile Photo for All Connected Profiles</button><button onClick={saveUserProfile} disabled={saving || uploading} className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white disabled:opacity-60">Save User Profile</button></div><div className="mt-7 border-t pt-5"><h3 className="text-xl font-black">Connected Profile Images</h3>{connectedProfiles.length === 0 && <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500">No connected profiles found yet for this user. The matcher checks linked user, user ID, email, and name.</p>}<div className="mt-4 grid gap-4 md:grid-cols-2">{connectedProfiles.map((item) => <article key={item.kind} className="rounded-3xl border bg-slate-50 p-4"><p className="font-black">{item.title}</p><p className="text-xs font-bold text-slate-500">Status: {label(item.status)}</p><ImagePreview title={`${item.title} image`} src={item.row[imageField(item.kind)]} /><input type="file" accept="image/*" disabled={uploading || saving} onChange={(e) => uploadConnectedImage(item, e.target.files?.[0])} className="mt-3 w-full rounded-xl border bg-white p-3" /><input defaultValue={item.row[imageField(item.kind)] || ""} onBlur={(e) => saveConnectedImage(item, e.target.value)} placeholder="Paste image URL, then click outside" className="mt-3 w-full rounded-xl border bg-white p-3" /><div className="mt-3 grid gap-2"><button onClick={() => saveConnectedImage(item, editForm.profile_photo_url)} disabled={!editForm.profile_photo_url || saving} className="rounded-xl bg-slate-950 px-4 py-3 font-black text-white disabled:opacity-50">Apply Base Photo Now</button><button onClick={() => { setSelectedConnected(item); setConnectedEdit(item.row); setActiveTab("connected"); setAgreementOpen(false); }} className="rounded-xl bg-pink-500 px-4 py-3 font-black text-white">Open Connected Editor</button></div></article>)}</div></div></div>}{activeTab === "connected" && <div><h2 className="text-2xl font-black">Connected SDTV Profiles</h2>{connectedProfiles.length === 0 && <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500">No connected profiles found yet for this user. The matcher checks linked user, user ID, email, and name.</p>}<div className="mt-5 grid gap-3 md:grid-cols-2">{connectedProfiles.map((item) => <button key={item.kind} onClick={() => { setSelectedConnected(item); setConnectedEdit(item.row); setAgreementOpen(false); }} className={`rounded-2xl border p-4 text-left ${selectedConnected?.kind === item.kind ? "border-pink-500 bg-pink-50" : "bg-white"}`}><p className="font-black">{item.title}</p><p className="text-sm text-slate-500">Status: {label(item.status)}</p></button>)}</div>{selectedConnected && <div className="mt-6 rounded-3xl border p-5"><h3 className="text-xl font-black">{selectedConnected.title}</h3><div className="mt-4 rounded-2xl bg-slate-50 p-4"><p className="font-black">Connected-profile image</p><ImagePreview title="Current / edited image" src={connectedEdit[imageField(selectedConnected.kind)] || selectedConnected.row[imageField(selectedConnected.kind)]} /><div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]"><input type="file" accept="image/*" disabled={uploading} onChange={(e) => uploadAsset(e.target.files?.[0], imageField(selectedConnected.kind), "connected")} className="rounded-xl border bg-white p-3" /><button onClick={useBaseHere} className="rounded-xl bg-pink-500 px-4 py-3 font-black text-white">Use Base Photo</button></div><input value={connectedEdit[imageField(selectedConnected.kind)] || ""} onChange={(e) => updateConnected(imageField(selectedConnected.kind), e.target.value)} placeholder="Or paste image URL" className="mt-3 w-full rounded-xl border bg-white p-3" /></div><div className="mt-5 grid gap-4 md:grid-cols-2">{editableFields(selectedConnected.kind).filter((f: string) => f !== imageField(selectedConnected.kind)).map((field: string) => <ConnectedInput key={field} field={field} value={connectedEdit[field]} onChange={(v) => updateConnected(field, v)} />)}</div><div className="mt-5 border-t pt-5"><h4 className="text-lg font-black">Record Details</h4><div className="mt-3 grid gap-3 md:grid-cols-3">{connectedMetadata(selectedConnected.row).map(([k, v]) => <div key={k}>{readOnly(k, v)}</div>)}</div></div>{selectedConnected.kind === "volunteer" && <div className="mt-5 rounded-2xl border bg-slate-50 p-4"><button onClick={() => setAgreementOpen(!agreementOpen)} className="rounded-xl bg-slate-950 px-4 py-3 text-sm font-black text-white">{agreementOpen ? "Hide Agreement Details" : "Expand Agreement Details"}</button>{agreementOpen && <div className="mt-4 grid gap-3 text-sm font-bold text-slate-700"><p>Agreement acknowledged: {selectedConnected.row.agreement_acknowledged ? "Yes" : "No"}</p><p>Acknowledged at: {fmtDate(selectedConnected.row.agreement_acknowledged_at)}</p><p className="rounded-xl bg-white p-4 text-slate-600">Volunteer confirmed the SDTV volunteer agreement during onboarding. This expandable section verifies the signed onboarding agreement status from the onboarding record.</p></div>}</div>}<button onClick={saveConnectedProfile} disabled={saving || uploading} className="mt-5 rounded-xl bg-slate-950 px-5 py-3 font-black text-white disabled:opacity-60">Save Connected Profile</button></div>}</div>}{activeTab === "roles" && <div><h2 className="text-2xl font-black">Roles</h2><select value={editForm.role || "general_public"} onChange={(e) => updateEdit("role", e.target.value)} className="mt-5 rounded-xl border p-3 font-bold">{roleOptions.map((r) => <option key={r} value={r}>{label(r)}</option>)}</select><p className="mt-3 text-sm font-bold text-slate-500">Role changes are saved to user profile here. Admin table role workflows remain on the role request pages.</p><button onClick={saveUserProfile} className="mt-5 rounded-xl bg-pink-600 px-5 py-3 font-black text-white">Save Role Label</button></div>}{activeTab === "privacy" && <div><h2 className="text-2xl font-black">Privacy</h2><div className="mt-5 grid gap-3"><label><input type="checkbox" checked={Boolean(editForm.show_name_publicly)} onChange={(e) => updateEdit("show_name_publicly", e.target.checked)} /> Show name publicly</label><label><input type="checkbox" checked={Boolean(editForm.allow_social_credit)} onChange={(e) => updateEdit("allow_social_credit", e.target.checked)} /> Allow SDTV social credit</label><label><input type="checkbox" checked={Boolean(editForm.allow_sdtv_contact)} onChange={(e) => updateEdit("allow_sdtv_contact", e.target.checked)} /> Allow SDTV contact</label><label><input type="checkbox" checked={Boolean(editForm.keep_profile_private)} onChange={(e) => updateEdit("keep_profile_private", e.target.checked)} /> Keep profile private by default</label></div><button onClick={saveUserProfile} className="mt-5 rounded-xl bg-pink-600 px-5 py-3 font-black text-white">Save Privacy</button></div>}{activeTab === "sources" && <div><h2 className="text-2xl font-black">Sources</h2><div className="mt-5 flex flex-wrap gap-2">{editForm.sources?.map((s: string) => <span key={s} className="rounded-full bg-slate-100 px-3 py-2 text-sm font-black text-slate-700">{s}</span>)}</div></div>}</div></div>}</section></div></section></main>;
+  const Dashboard = (
+    <div className="space-y-6">
+      <div className="rounded-[2rem] bg-white p-8">
+        <h1 className="text-4xl font-black">User Control Analytics</h1>
+        <p className="mt-2 text-slate-600">Registered accounts are actual website logins. Platform people also include profiles and submissions that may not have a login.</p>
+        <div className="mt-6 grid gap-4 md:grid-cols-4">
+          <div className="rounded-3xl bg-pink-50 p-5">
+            <p className="text-xs font-black uppercase text-pink-700">Registered accounts</p>
+            <p className="mt-2 text-4xl font-black">{registered.loading ? "…" : registered.total}</p>
+          </div>
+          <div className="rounded-3xl bg-green-50 p-5">
+            <p className="text-xs font-black uppercase text-green-700">Email confirmed</p>
+            <p className="mt-2 text-4xl font-black">{registered.loading ? "…" : registered.confirmed}</p>
+          </div>
+          <div className="rounded-3xl bg-blue-50 p-5">
+            <p className="text-xs font-black uppercase text-blue-700">Have signed in</p>
+            <p className="mt-2 text-4xl font-black">{registered.loading ? "…" : registered.signedIn}</p>
+          </div>
+          <div className="rounded-3xl bg-slate-50 p-5">
+            <p className="text-xs font-black uppercase text-slate-500">Platform people</p>
+            <p className="mt-2 text-4xl font-black">{analytics.total}</p>
+          </div>
+        </div>
+        {registered.error && <p className="mt-5 rounded-xl bg-red-50 p-4 font-bold text-red-900">{registered.error}</p>}
+        <div className="mt-6 grid gap-5 lg:grid-cols-2">
+          <div className="rounded-3xl border p-5">
+            <h2 className="text-xl font-black">By Role</h2>
+            <div className="mt-4 grid gap-2">
+              {analytics.roleCounts.map(([r, c]) => (
+                <div key={r} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                  <span className="font-bold capitalize">{label(r)}</span>
+                  <span className="font-black">{c}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-3xl border p-5">
+            <h2 className="text-xl font-black">By Source</h2>
+            <div className="mt-4 grid gap-2">
+              {analytics.sourceCounts.map(([s, c]) => (
+                <div key={s} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                  <span className="font-bold">{s}</span>
+                  <span className="font-black">{c}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-[2rem] bg-white p-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-black">Registered Login Accounts</h2>
+            <p className="mt-1 text-sm text-slate-500">Registration date, confirmation, and last sign-in come directly from Supabase Authentication.</p>
+          </div>
+          <button type="button" disabled={registered.loading} onClick={() => void registered.refresh()} className="rounded-xl border px-4 py-2 font-black disabled:opacity-50">
+            Refresh Accounts
+          </button>
+        </div>
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[820px] text-left text-sm">
+            <thead>
+              <tr className="border-b text-xs uppercase text-slate-500">
+                <th className="p-3">User</th>
+                <th className="p-3">Registered</th>
+                <th className="p-3">Email</th>
+                <th className="p-3">Last sign-in</th>
+                <th className="p-3">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {registered.users.map((account) => (
+                <tr key={account.id} className="border-b last:border-0">
+                  <td className="p-3">
+                    <p className="font-black">{account.fullName || "Name not provided"}</p>
+                    <p className="text-xs text-slate-500">{account.email}</p>
+                    {account.isAdmin && <span className="mt-1 inline-flex rounded-full bg-purple-50 px-2 py-1 text-[10px] font-black uppercase text-purple-700">Administrator</span>}
+                  </td>
+                  <td className="p-3 font-bold">{fmtDate(account.createdAt)}</td>
+                  <td className="p-3">
+                    <span className={`rounded-full px-2 py-1 text-xs font-black ${account.emailConfirmedAt ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"}`}>{account.emailConfirmedAt ? "Confirmed" : "Unconfirmed"}</span>
+                  </td>
+                  <td className="p-3 font-bold">{fmtDate(account.lastSignInAt)}</td>
+                  <td className="p-3">
+                    <button type="button" disabled={registered.deleting || account.id === user?.id || (account.isAdmin && !role.toLowerCase().includes("super_admin"))} onClick={() => void removeRegisteredUser(account)} className="rounded-xl bg-red-700 px-3 py-2 font-black text-white disabled:cursor-not-allowed disabled:opacity-40">
+                      {account.id === user?.id ? "Current account" : "Delete account"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!registered.loading && !registered.users.length && !registered.error && <p className="p-6 text-center text-slate-500">No registered accounts found.</p>}
+        </div>
+        <p className="mt-4 rounded-xl bg-amber-50 p-4 text-xs font-bold leading-5 text-amber-900">Deleting a login account removes its authentication identity and login access while preserving linked platform content. This action cannot be undone from Studio.</p>
+      </div>
+    </div>
+  );
+
+  return (
+    <main className="min-h-screen bg-slate-950 text-white">
+      <StudioHeader />
+      <section className="mx-auto max-w-7xl px-4 py-8">
+        <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
+          <aside className="rounded-[2rem] bg-white p-5 text-slate-950">
+            <h2 className="text-2xl font-black">People</h2>
+            <p className="text-xs text-slate-500">Click a user to manage. Click again to return to analytics.</p>
+            <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Search name, email, phone, city, role..." className="mt-4 w-full rounded-xl border p-3" />
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="rounded-xl border p-3 text-sm font-bold">
+                <option value="all">All roles</option>
+                {roleOptions.map((r) => (
+                  <option key={r} value={r}>
+                    {label(r)}
+                  </option>
+                ))}
+              </select>
+              <select value={visibilityFilter} onChange={(e) => setVisibilityFilter(e.target.value)} className="rounded-xl border p-3 text-sm font-bold">
+                <option value="all">All visibility</option>
+                <option value="public">Public</option>
+                <option value="private">Private</option>
+              </select>
+            </div>
+            <div className="mt-4 grid max-h-[720px] gap-3 overflow-y-auto pr-1">
+              {filteredRows.map((row) => (
+                <button key={row.key} onClick={() => choose(row)} className={`rounded-2xl border p-4 text-left ${selectedKey === row.key ? "border-pink-500 bg-pink-50" : "bg-white"}`}>
+                  <div className="flex gap-3">
+                    <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full bg-slate-100 font-black text-pink-600">{row.profile_photo_url || row.image ? <img src={row.profile_photo_url || row.image || ""} alt={row.full_name || row.email || "profile"} className="h-full w-full object-cover" /> : avatar(row)}</div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-black">{row.full_name || row.preferred_name || row.email || "Unnamed User"}</p>
+                      <p className="truncate text-xs text-slate-500">{row.email || "No email linked"}</p>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {row.roles.slice(0, 3).map((r) => (
+                          <span key={r} className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">
+                            {label(r)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </aside>
+          <section className="text-slate-950">
+            {actionMessage && <div className="mb-4 rounded-2xl bg-yellow-100 p-4 font-bold text-yellow-900">{actionMessage}</div>}
+            {!selectedRow ? (
+              Dashboard
+            ) : (
+              <div className="space-y-4">
+                <div className="rounded-[2rem] bg-white p-5">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="flex gap-4">
+                      <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-full bg-slate-100 text-2xl font-black text-pink-600">{editForm.profile_photo_url ? <img src={editForm.profile_photo_url} alt="profile" className="h-full w-full object-cover" /> : avatar(selectedRow)}</div>
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-wide text-pink-600">Selected User</p>
+                        <h1 className="text-3xl font-black">{editForm.full_name || editForm.email}</h1>
+                        <p className="text-sm font-bold text-slate-500">{editForm.email}</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {editForm.roles?.map((r: string) => (
+                            <span key={r} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
+                              {label(r)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => setSelectedKey("")} className="rounded-xl bg-slate-100 px-4 py-3 font-black text-slate-700">
+                        Back to Analytics
+                      </button>
+                      <button onClick={togglePublicVisibility} className="rounded-xl bg-red-600 px-4 py-3 font-black text-white">
+                        {editForm.public_visibility_disabled ? "Enable Public Visibility" : "Disable Public Visibility"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-[2rem] bg-white p-4">
+                  <div className="flex gap-2 overflow-x-auto">
+                    {tabs.map((t) => (
+                      <button key={t} onClick={() => setActiveTab(t)} className={`whitespace-nowrap rounded-xl px-4 py-2 font-black capitalize ${activeTab === t ? "bg-pink-600 text-white" : "bg-slate-100 text-slate-700"}`}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-[2rem] bg-white p-6">
+                  {activeTab === "profile" && (
+                    <div>
+                      <h2 className="text-2xl font-black">Profile</h2>
+                      <div className="mt-5 grid gap-4 md:grid-cols-2">
+                        <Field label="Full name">
+                          <input value={editForm.full_name || ""} onChange={(e) => updateEdit("full_name", e.target.value)} className="rounded-xl border p-3 font-normal" />
+                        </Field>
+                        <Field label="Preferred name">
+                          <input value={editForm.preferred_name || ""} onChange={(e) => updateEdit("preferred_name", e.target.value)} className="rounded-xl border p-3 font-normal" />
+                        </Field>
+                        <Field label="Email">
+                          <input value={editForm.email || ""} onChange={(e) => updateEdit("email", e.target.value)} className="rounded-xl border p-3 font-normal" />
+                        </Field>
+                        <Field label="Phone">
+                          <input value={editForm.phone || ""} onChange={(e) => updateEdit("phone", e.target.value)} className="rounded-xl border p-3 font-normal" />
+                        </Field>
+                        <Field label="City">
+                          <input value={editForm.city || ""} onChange={(e) => updateEdit("city", e.target.value)} className="rounded-xl border p-3 font-normal" />
+                        </Field>
+                        <Field label="State">
+                          <input value={editForm.state || ""} onChange={(e) => updateEdit("state", e.target.value)} className="rounded-xl border p-3 font-normal" />
+                        </Field>
+                        <label className="grid gap-1 text-sm font-black text-slate-800 md:col-span-2">
+                          <span>Bio</span>
+                          <textarea value={editForm.short_bio || ""} onChange={(e) => updateEdit("short_bio", e.target.value)} className="min-h-28 rounded-xl border p-3 font-normal" />
+                        </label>
+                      </div>
+                      <button onClick={saveUserProfile} disabled={saving || uploading} className="mt-6 rounded-xl bg-pink-600 px-5 py-3 font-black text-white disabled:opacity-60">
+                        Save User Profile
+                      </button>
+                    </div>
+                  )}
+                  {activeTab === "images" && (
+                    <div>
+                      <h2 className="text-2xl font-black">Images & Usage</h2>
+                      <div className="mt-5 grid gap-4 md:grid-cols-2">
+                        <div>
+                          <ImagePreview title="Base Profile Photo" src={editForm.profile_photo_url} />
+                          <input type="file" accept="image/*" disabled={uploading} onChange={(e) => uploadAsset(e.target.files?.[0], "profile_photo_url", "base")} className="mt-3 w-full rounded-xl border bg-white p-3" />
+                          <input value={editForm.profile_photo_url || ""} onChange={(e) => updateEdit("profile_photo_url", e.target.value)} placeholder="Or paste base photo URL" className="mt-3 w-full rounded-xl border bg-white p-3" />
+                        </div>
+                        <div>
+                          <ImagePreview title="ID Badge Image" src={editForm.id_badge_url} />
+                          <input type="file" accept="image/*" disabled={uploading} onChange={(e) => uploadAsset(e.target.files?.[0], "id_badge_url", "base")} className="mt-3 w-full rounded-xl border bg-white p-3" />
+                          <input value={editForm.id_badge_url || ""} onChange={(e) => updateEdit("id_badge_url", e.target.value)} placeholder="Or paste ID badge URL" className="mt-3 w-full rounded-xl border bg-white p-3" />
+                        </div>
+                      </div>
+                      <div className="mt-5 flex flex-wrap gap-3">
+                        <button onClick={useBaseAll} className="rounded-xl bg-slate-950 px-5 py-3 font-black text-white">
+                          Use Base Profile Photo for All Connected Profiles
+                        </button>
+                        <button onClick={saveUserProfile} disabled={saving || uploading} className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white disabled:opacity-60">
+                          Save User Profile
+                        </button>
+                      </div>
+                      <div className="mt-7 border-t pt-5">
+                        <h3 className="text-xl font-black">Connected Profile Images</h3>
+                        {connectedProfiles.length === 0 && <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500">No connected profiles found yet for this user. The matcher checks linked user, user ID, email, and name.</p>}
+                        <div className="mt-4 grid gap-4 md:grid-cols-2">
+                          {connectedProfiles.map((item) => (
+                            <article key={item.kind} className="rounded-3xl border bg-slate-50 p-4">
+                              <p className="font-black">{item.title}</p>
+                              <p className="text-xs font-bold text-slate-500">Status: {label(item.status)}</p>
+                              <ImagePreview title={`${item.title} image`} src={item.row[imageField(item.kind)]} />
+                              <input type="file" accept="image/*" disabled={uploading || saving} onChange={(e) => uploadConnectedImage(item, e.target.files?.[0])} className="mt-3 w-full rounded-xl border bg-white p-3" />
+                              <input defaultValue={item.row[imageField(item.kind)] || ""} onBlur={(e) => saveConnectedImage(item, e.target.value)} placeholder="Paste image URL, then click outside" className="mt-3 w-full rounded-xl border bg-white p-3" />
+                              <div className="mt-3 grid gap-2">
+                                <button onClick={() => saveConnectedImage(item, editForm.profile_photo_url)} disabled={!editForm.profile_photo_url || saving} className="rounded-xl bg-slate-950 px-4 py-3 font-black text-white disabled:opacity-50">
+                                  Apply Base Photo Now
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setSelectedConnected(item);
+                                    setConnectedEdit(item.row);
+                                    setActiveTab("connected");
+                                    setAgreementOpen(false);
+                                  }}
+                                  className="rounded-xl bg-pink-500 px-4 py-3 font-black text-white"
+                                >
+                                  Open Connected Editor
+                                </button>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {activeTab === "connected" && (
+                    <div>
+                      <h2 className="text-2xl font-black">Connected SDTV Profiles</h2>
+                      {connectedProfiles.length === 0 && <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500">No connected profiles found yet for this user. The matcher checks linked user, user ID, email, and name.</p>}
+                      <div className="mt-5 grid gap-3 md:grid-cols-2">
+                        {connectedProfiles.map((item) => (
+                          <button
+                            key={item.kind}
+                            onClick={() => {
+                              setSelectedConnected(item);
+                              setConnectedEdit(item.row);
+                              setAgreementOpen(false);
+                            }}
+                            className={`rounded-2xl border p-4 text-left ${selectedConnected?.kind === item.kind ? "border-pink-500 bg-pink-50" : "bg-white"}`}
+                          >
+                            <p className="font-black">{item.title}</p>
+                            <p className="text-sm text-slate-500">Status: {label(item.status)}</p>
+                          </button>
+                        ))}
+                      </div>
+                      {selectedConnected && (
+                        <div className="mt-6 rounded-3xl border p-5">
+                          <h3 className="text-xl font-black">{selectedConnected.title}</h3>
+                          <div className="mt-4 rounded-2xl bg-slate-50 p-4">
+                            <p className="font-black">Connected-profile image</p>
+                            <ImagePreview title="Current / edited image" src={connectedEdit[imageField(selectedConnected.kind)] || selectedConnected.row[imageField(selectedConnected.kind)]} />
+                            <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
+                              <input type="file" accept="image/*" disabled={uploading} onChange={(e) => uploadAsset(e.target.files?.[0], imageField(selectedConnected.kind), "connected")} className="rounded-xl border bg-white p-3" />
+                              <button onClick={useBaseHere} className="rounded-xl bg-pink-500 px-4 py-3 font-black text-white">
+                                Use Base Photo
+                              </button>
+                            </div>
+                            <input value={connectedEdit[imageField(selectedConnected.kind)] || ""} onChange={(e) => updateConnected(imageField(selectedConnected.kind), e.target.value)} placeholder="Or paste image URL" className="mt-3 w-full rounded-xl border bg-white p-3" />
+                          </div>
+                          <div className="mt-5 grid gap-4 md:grid-cols-2">
+                            {editableFields(selectedConnected.kind)
+                              .filter((f: string) => f !== imageField(selectedConnected.kind))
+                              .map((field: string) => (
+                                <ConnectedInput key={field} field={field} value={connectedEdit[field]} onChange={(v) => updateConnected(field, v)} />
+                              ))}
+                          </div>
+                          <div className="mt-5 border-t pt-5">
+                            <h4 className="text-lg font-black">Record Details</h4>
+                            <div className="mt-3 grid gap-3 md:grid-cols-3">
+                              {connectedMetadata(selectedConnected.row).map(([k, v]) => (
+                                <div key={k}>{readOnly(k, v)}</div>
+                              ))}
+                            </div>
+                          </div>
+                          {selectedConnected.kind === "volunteer" && (
+                            <div className="mt-5 rounded-2xl border bg-slate-50 p-4">
+                              <button onClick={() => setAgreementOpen(!agreementOpen)} className="rounded-xl bg-slate-950 px-4 py-3 text-sm font-black text-white">
+                                {agreementOpen ? "Hide Agreement Details" : "Expand Agreement Details"}
+                              </button>
+                              {agreementOpen && (
+                                <div className="mt-4 grid gap-3 text-sm font-bold text-slate-700">
+                                  <p>Agreement acknowledged: {selectedConnected.row.agreement_acknowledged ? "Yes" : "No"}</p>
+                                  <p>Acknowledged at: {fmtDate(selectedConnected.row.agreement_acknowledged_at)}</p>
+                                  <p className="rounded-xl bg-white p-4 text-slate-600">Volunteer confirmed the SDTV volunteer agreement during onboarding. This expandable section verifies the signed onboarding agreement status from the onboarding record.</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <button onClick={saveConnectedProfile} disabled={saving || uploading} className="mt-5 rounded-xl bg-slate-950 px-5 py-3 font-black text-white disabled:opacity-60">
+                            Save Connected Profile
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {activeTab === "roles" && (
+                    <div>
+                      <h2 className="text-2xl font-black">Roles</h2>
+                      <select value={editForm.role || "general_public"} onChange={(e) => updateEdit("role", e.target.value)} className="mt-5 rounded-xl border p-3 font-bold">
+                        {roleOptions.map((r) => (
+                          <option key={r} value={r}>
+                            {label(r)}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-3 text-sm font-bold text-slate-500">Role changes are saved to user profile here. Admin table role workflows remain on the role request pages.</p>
+                      <button onClick={saveUserProfile} className="mt-5 rounded-xl bg-pink-600 px-5 py-3 font-black text-white">
+                        Save Role Label
+                      </button>
+                    </div>
+                  )}
+                  {activeTab === "privacy" && (
+                    <div>
+                      <h2 className="text-2xl font-black">Privacy</h2>
+                      <div className="mt-5 grid gap-3">
+                        <label>
+                          <input type="checkbox" checked={Boolean(editForm.show_name_publicly)} onChange={(e) => updateEdit("show_name_publicly", e.target.checked)} /> Show name publicly
+                        </label>
+                        <label>
+                          <input type="checkbox" checked={Boolean(editForm.allow_social_credit)} onChange={(e) => updateEdit("allow_social_credit", e.target.checked)} /> Allow SDTV social credit
+                        </label>
+                        <label>
+                          <input type="checkbox" checked={Boolean(editForm.allow_sdtv_contact)} onChange={(e) => updateEdit("allow_sdtv_contact", e.target.checked)} /> Allow SDTV contact
+                        </label>
+                        <label>
+                          <input type="checkbox" checked={Boolean(editForm.keep_profile_private)} onChange={(e) => updateEdit("keep_profile_private", e.target.checked)} /> Keep profile private by default
+                        </label>
+                      </div>
+                      <button onClick={saveUserProfile} className="mt-5 rounded-xl bg-pink-600 px-5 py-3 font-black text-white">
+                        Save Privacy
+                      </button>
+                    </div>
+                  )}
+                  {activeTab === "sources" && (
+                    <div>
+                      <h2 className="text-2xl font-black">Sources</h2>
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        {editForm.sources?.map((s: string) => (
+                          <span key={s} className="rounded-full bg-slate-100 px-3 py-2 text-sm font-black text-slate-700">
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+      </section>
+    </main>
+  );
 }

@@ -224,6 +224,12 @@ The versioned, read-only mobile contract is rooted at `GET /api/mobile/v1`. Sepa
 
 The endpoints use the Supabase anonymous client and existing RLS rather than a service-role credential. Responses exclude contact details, submitter/owner identity, internal workflow fields, payment data, claim records, and unpublished rows. Influencer visibility opt-outs are also enforced. Public CORS, bounded `limit`/`offset` pagination, and five-minute edge caching support mobile clients without permitting writes.
 
+## Registered user administration
+
+Studio User Control distinguishes real Supabase Authentication accounts from the broader set of platform people assembled from profiles, contributors, submissions, and connected modules. The browser hook calls an authenticated Studio API; the API verifies the caller's administrator role before a server-only repository uses the Supabase service credential to list or delete Authentication users. The service credential is never sent to the browser.
+
+Account deletion requires the administrator to type the target email address, blocks self-deletion, and restricts deletion of administrator accounts to super administrators. It uses Supabase soft deletion to remove and anonymize the Authentication identity while preserving linked platform records. Deleted identities are excluded from Studio counts and listings.
+
 ## Daily administrator activity digest
 
 Vercel invokes `GET /api/cron/daily-admin-digest` once daily. The secured route requires Vercel's `CRON_SECRET`, uses the server-only Supabase service credential to read new Authentication users, new `volunteer`/`team_member` role requests, and new submissions from the prior 24 hours, and delegates collection and rendering to the admin-digest repository and service. Submission sections cover events, businesses, organizations, community groups, influencers, classifieds, matrimony profiles, matrimony access requests, and business offers.

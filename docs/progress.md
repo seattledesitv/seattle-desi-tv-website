@@ -2,6 +2,8 @@
 
 ## Current status
 
+- Studio User Control now shows authoritative Supabase Authentication account totals, confirmation and sign-in counts, registration dates, last sign-in dates, and a complete registered-account table. Admins can delete non-self login access with typed-email confirmation while preserving linked platform records; administrator deletion is super-admin-only. No SQL migration is required; the existing server-only Supabase service credential is required.
+
 - Press-release submitters can edit their own non-archived releases, while Studio administrators can edit every release. The shared editor supports text, metadata, documents, image additions/removals, primary-image selection, and business-style card framing. Owner edits return to moderation; administrator edits preserve status. Migration required: `20260819110000_add_press_release_image_editing.sql`.
 
 - SEO-friendly canonical public URLs now use readable titles plus stable IDs for events, businesses, organizations, classifieds, press releases, and publications; legacy UUID-only links remain compatible.
