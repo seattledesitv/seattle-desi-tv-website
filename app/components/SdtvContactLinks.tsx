@@ -1,6 +1,6 @@
-export const SDTV_PHONE_DISPLAY = "+1 (425) 439-SDTV";
-export const SDTV_PHONE_TEL = "+14254397838";
-export const SDTV_WHATSAPP_CHAT = "https://wa.me/14254397838?text=Hi%20Seattle%20Desi%20TV!%20I%20would%20like%20to%20know%20more.";
+export const SDTV_PHONE_DISPLAY = "+1 (425) 439-7388";
+export const SDTV_PHONE_TEL = "+14254397388";
+export const SDTV_WHATSAPP_CHAT = "https://wa.me/14254397388?text=Hi%20Seattle%20Desi%20TV!%20I%20would%20like%20to%20know%20more.";
 export const SDTV_WHATSAPP_GROUP = "https://chat.whatsapp.com/JLcTwKowPeDFySvoNv5sXm";
 
 const links = [
