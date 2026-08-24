@@ -170,6 +170,23 @@ export async function POST(request: Request) {
       permalink = media?.permalink || "";
     } catch {}
 
+    let recordingWarning = "";
+    if (pressReleaseId) {
+      const { error: recordingError } = await sessionClient
+        .from("press_releases")
+        .update({
+          instagram_permalink: permalink || null,
+          instagram_media_id: mediaId,
+          instagram_published_at: new Date().toISOString(),
+          instagram_published_by: user.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", pressReleaseId);
+      if (recordingError) {
+        recordingWarning = `Instagram published successfully, but the permalink could not be saved: ${recordingError.message}`;
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       message: "Published to Instagram.",
@@ -180,6 +197,7 @@ export async function POST(request: Request) {
       processingElapsedMs: processing.elapsedMs,
       mediaId,
       permalink,
+      recordingWarning,
       collaborators,
       imageCount: imageUrls.length,
     });

@@ -615,6 +615,8 @@ Safety:
 - Added Community, footer, My Hub, Studio, and sitemap navigation.
 - Database migration required: `20260814133000_add_community_press_releases.sql`.
 - Added up to six PDF, DOC, or DOCX attachments per release with upload validation, Studio inspection, inline PDF viewing, Word web preview, and original-file download. Additional migration required: `20260814143000_add_press_release_documents.sql`.
+- Added administrator-controlled Instagram publishing for approved releases, including image selection, an editable caption, and explicit final confirmation.
+- Saved successful Instagram media identifiers and permalinks and exposed “View on Instagram” links on public release cards and detail pages. Additional migration required: `20260824120000_add_press_release_instagram_publication.sql`.
 
 ## Technical SEO and AI discoverability foundation
 

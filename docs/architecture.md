@@ -262,6 +262,8 @@ Submitters can edit any non-archived release they own. Owner changes always rese
 
 Approved releases expose a Studio-only Instagram publishing panel. The component manages image selection, caption editing, preview, and explicit final approval; a press-release service builds the default caption and invokes the shared Instagram publishing service. The protected Instagram API independently verifies both the administrator session and the release's approved status before sending up to ten public HTTPS images to Meta. No UI component receives or handles Instagram credentials.
 
+After Meta confirms publication, the API records the returned media identifier, permalink, timestamp, and publishing administrator on the press release. Public cards and detail pages expose the saved Instagram link. Recording is deliberately non-transactional with the external publish: if Meta succeeds but the database update fails, the API reports a warning instead of inviting an accidental duplicate post.
+
 ## Search and AI discoverability
 
 Public discovery follows a server-rendered SEO boundary. Route layouts call the SEO service, which obtains public records through a read-only repository using the Supabase anonymous client and existing RLS. Components do not query Supabase. Dynamic event, classified, organization, press-release, and publication pages produce record-specific titles, descriptions, canonical URLs, social cards, and schema.org JSON-LD. Missing or inaccessible records emit `noindex` metadata rather than misleading generic metadata.

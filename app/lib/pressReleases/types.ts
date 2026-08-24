@@ -34,6 +34,10 @@ export type PressRelease = {
   admin_notes: string | null;
   approved_at: string | null;
   published_at: string | null;
+  instagram_permalink: string | null;
+  instagram_media_id: string | null;
+  instagram_published_at: string | null;
+  instagram_published_by: string | null;
   created_at: string;
   updated_at: string;
 };

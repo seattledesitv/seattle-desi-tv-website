@@ -42,7 +42,10 @@ export default function PressReleaseInstagramPublisher({ release }: { release: P
         selectedImages,
         caption,
       );
-      setMessage(result.permalink ? `Published successfully: ${result.permalink}` : result.message);
+      setMessage(
+        result.recordingWarning ||
+          (result.permalink ? "Published successfully. The Instagram link is now available on the public press release." : result.message),
+      );
       setApprovedSignature("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not publish this press release to Instagram.");
@@ -54,6 +57,16 @@ export default function PressReleaseInstagramPublisher({ release }: { release: P
   return (
     <details className="mt-4 rounded-2xl border border-pink-200 bg-pink-50/50 p-4">
       <summary className="cursor-pointer font-black text-pink-800">Publish to Instagram</summary>
+      {release.instagram_permalink && (
+        <a
+          href={release.instagram_permalink}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 inline-flex rounded-xl border border-pink-300 bg-white px-4 py-2 text-sm font-black text-pink-700"
+        >
+          View published Instagram post ↗
+        </a>
+      )}
       {!availableImages.length ? (
         <p className="mt-4 rounded-xl bg-amber-100 p-3 text-sm font-bold text-amber-900">
           Add at least one public press release image before publishing to Instagram.

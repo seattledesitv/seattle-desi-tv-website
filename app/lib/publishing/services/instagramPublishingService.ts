@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export type InstagramPublishResult = { mediaId: string; permalink?: string; message: string };
+export type InstagramPublishResult = { mediaId: string; permalink?: string; message: string; recordingWarning?: string };
 
 export type InstagramPublishInput = {
   publicationId?: string;

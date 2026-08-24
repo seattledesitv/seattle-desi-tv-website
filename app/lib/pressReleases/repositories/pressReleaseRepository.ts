@@ -2,7 +2,7 @@ import { getSupabaseBrowserClient } from "../../supabaseBrowser";
 import type { PressRelease, PressReleaseInput, PressReleaseStatus } from "../types";
 
 const db = getSupabaseBrowserClient();
-const fields = "id,created_by,title,summary,body,organization_name,location,release_date,image_urls,image_position_x,image_position_y,image_zoom,image_display_mode,documents,contact_name,contact_email,source_url,status,admin_notes,approved_at,published_at,created_at,updated_at";
+const fields = "id,created_by,title,summary,body,organization_name,location,release_date,image_urls,image_position_x,image_position_y,image_zoom,image_display_mode,documents,contact_name,contact_email,source_url,status,admin_notes,approved_at,published_at,instagram_permalink,instagram_media_id,instagram_published_at,instagram_published_by,created_at,updated_at";
 
 export async function listPublic() {
   const { data, error } = await db.from("press_releases").select(fields)
