@@ -92,10 +92,16 @@ export async function POST(request: Request) {
 
     const body = await request.json().catch(() => ({}));
     const publicationId = String(body.publicationId || "").trim();
+    const pressReleaseId = String(body.pressReleaseId || "").trim();
     if (publicationId) {
       const { data: publication, error: publicationError } = await sessionClient.from("publications").select("status").eq("id", publicationId).single();
       if (publicationError) return NextResponse.json({ error: publicationError.message }, { status: 400 });
       if (!["approved", "scheduled", "published"].includes(String(publication?.status))) return NextResponse.json({ error: "Approve this publication before posting it to Instagram." }, { status: 409 });
+    }
+    if (pressReleaseId) {
+      const { data: pressRelease, error: pressReleaseError } = await sessionClient.from("press_releases").select("status").eq("id", pressReleaseId).single();
+      if (pressReleaseError) return NextResponse.json({ error: pressReleaseError.message }, { status: 400 });
+      if (String(pressRelease?.status) !== "approved") return NextResponse.json({ error: "Approve this press release before posting it to Instagram." }, { status: 409 });
     }
     const requestedUrls = Array.isArray(body.imageUrls) ? body.imageUrls : [body.imageUrl];
     const imageUrls = requestedUrls.map((value: unknown) => String(value || "").trim()).filter(Boolean);

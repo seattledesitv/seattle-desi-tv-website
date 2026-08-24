@@ -2,6 +2,7 @@
 
 ## Current status
 
+- Approved press releases can now be published to Instagram from Studio using selected release images, an editable generated caption, a preview, and a mandatory final approval step. The workflow reuses the protected shared Instagram API and credentials.
 - Public Team member cards now prefer the user profile/volunteer photo, fall back to the team-member image, and use the SDTV ID badge only as the final image fallback.
 - The public Events page now defaults to upcoming approved events and includes a compact Previous Events switch. Previous events retain their detail and map links but suppress expired registration, coverage, and influencer actions.
 - Studio User Control now shows authoritative Supabase Authentication account totals, confirmation and sign-in counts, registration dates, last sign-in dates, and a complete registered-account table. Admins can delete non-self login access with typed-email confirmation while preserving linked platform records; administrator deletion is super-admin-only. No SQL migration is required; the existing server-only Supabase service credential is required.

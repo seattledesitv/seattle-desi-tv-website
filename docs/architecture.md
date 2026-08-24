@@ -260,6 +260,8 @@ Moderation uses the `review_press_release` database function for approve, reques
 
 Submitters can edit any non-archived release they own. Owner changes always reset the release to `pending`, including edits to an approved release, so changed content cannot bypass moderation. Studio administrators can edit any release without changing its current workflow status, then use the explicit moderation controls independently.
 
+Approved releases expose a Studio-only Instagram publishing panel. The component manages image selection, caption editing, preview, and explicit final approval; a press-release service builds the default caption and invokes the shared Instagram publishing service. The protected Instagram API independently verifies both the administrator session and the release's approved status before sending up to ten public HTTPS images to Meta. No UI component receives or handles Instagram credentials.
+
 ## Search and AI discoverability
 
 Public discovery follows a server-rendered SEO boundary. Route layouts call the SEO service, which obtains public records through a read-only repository using the Supabase anonymous client and existing RLS. Components do not query Supabase. Dynamic event, classified, organization, press-release, and publication pages produce record-specific titles, descriptions, canonical URLs, social cards, and schema.org JSON-LD. Missing or inaccessible records emit `noindex` metadata rather than misleading generic metadata.
