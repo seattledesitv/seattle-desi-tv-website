@@ -189,7 +189,9 @@ Sponsor packages are reusable configuration, while each `sponsorship_agreements`
 
 Raw agreement access tokens are emailed but never stored; only SHA-256 hashes are persisted. Public token reads return a restricted agreement view and cannot expose internal notes or administrative fields. Acceptance records signer name, title, timestamp, IP, and user agent. Installment verification is intentionally separate from proof submission, and activation creates a homepage contributor only when the agreement's activation condition is satisfied.
 
-Authenticated sponsors can also read agreements through My Sponsorships when their login email matches the agreement or they actively manage its linked business. Signed agreement text is immutable; Studio may edit draft text but presents the accepted snapshot read-only afterward.
+Authenticated sponsors can also read and accept eligible sent agreements through My Sponsorships when their login email matches the agreement, they created the linked business, or they actively manage it. Acceptance uses a protected server endpoint, repeats ownership checks with the service-role client, requires explicit signer confirmation, records the authenticated actor, and reuses the normal activation rules. Signed agreement text is immutable; Studio may edit draft text but presents the accepted snapshot read-only afterward.
+
+Agreement and payment-reminder emails append immutable delivery events to the existing sponsorship audit ledger. Each delivery event stores the recipient, subject, readable and HTML bodies, provider reference, delivery status, and provider error when available. Event RLS remains administrator-only, and Studio renders the readable body as text rather than injecting stored HTML.
 
 Active sponsorships provide marketplace entitlements without bypassing editorial approval. Offer approval resolves the linked business's current active agreement, checks the requested placement against the tier matrix, and snapshots both the agreement ID and waiver tier onto the offer. Sponsorship activation also updates the linked business's premium directory dates so public placement expires with the agreement.
 

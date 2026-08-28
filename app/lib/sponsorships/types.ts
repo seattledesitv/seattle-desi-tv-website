@@ -47,6 +47,14 @@ export type SponsorshipInstallment = {
   verified_at?: string | null;
   rejection_reason?: string | null;
 };
+export type SponsorshipAgreementEvent = {
+  id: string;
+  agreement_id: string;
+  event_type: string;
+  actor_email?: string | null;
+  details?: Record<string, unknown> | null;
+  created_at: string;
+};
 export type SponsorshipAgreement = {
   id: string;
   agreement_number: string;
@@ -77,6 +85,7 @@ export type SponsorshipAgreement = {
   internal_notes?: string | null;
   created_at: string;
   installments?: SponsorshipInstallment[];
+  events?: SponsorshipAgreementEvent[];
   local_businesses?: { id: string; name: string } | null;
 };
 export type SponsorshipAgreementInput = Omit<
@@ -86,6 +95,7 @@ export type SponsorshipAgreementInput = Omit<
   | "status"
   | "created_at"
   | "installments"
+  | "events"
   | "local_businesses"
   | "sent_at"
   | "viewed_at"

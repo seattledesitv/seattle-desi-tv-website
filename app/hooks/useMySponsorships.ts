@@ -58,5 +58,40 @@ export function useMySponsorships() {
       setSaving(false);
     }
   }
-  return { agreements, loading, saving, error, refresh, submitProof };
+  async function acceptAgreement(
+    agreementId: string,
+    signerName: string,
+    signerTitle: string,
+  ) {
+    setSaving(true);
+    setError("");
+    try {
+      const { data } = await getSupabaseBrowserClient().auth.getSession();
+      const response = await fetch("/api/sponsorships/my-agreement", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${data.session?.access_token || ""}`,
+        },
+        body: JSON.stringify({ agreementId, signerName, signerTitle }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      await refresh();
+    } catch (cause) {
+      setError(text(cause));
+      throw cause;
+    } finally {
+      setSaving(false);
+    }
+  }
+  return {
+    agreements,
+    loading,
+    saving,
+    error,
+    refresh,
+    submitProof,
+    acceptAgreement,
+  };
 }

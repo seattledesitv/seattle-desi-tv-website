@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import MyHubHeader from "../components/MyHubHeader";
 import SiteFooter from "../components/SiteFooter";
 import { useMySponsorships } from "../hooks/useMySponsorships";
@@ -8,8 +9,18 @@ const money = (cents: number) =>
     cents / 100,
   );
 export default function MySponsorshipsPage() {
-  const { agreements, loading, saving, error, refresh, submitProof } =
-    useMySponsorships();
+  const {
+    agreements,
+    loading,
+    saving,
+    error,
+    refresh,
+    submitProof,
+    acceptAgreement,
+  } = useMySponsorships();
+  const [signers, setSigners] = useState<
+    Record<string, { name: string; title: string; confirmed: boolean }>
+  >({});
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <MyHubHeader />
@@ -85,6 +96,85 @@ export default function MySponsorshipsPage() {
                   )}
                 </header>
                 <div className="p-6">
+                  {["sent", "viewed"].includes(agreement.status) && (
+                    <section className="mb-6 rounded-2xl bg-slate-950 p-5 text-white">
+                      <h3 className="text-xl font-black">Accept agreement</h3>
+                      <p className="mt-1 text-sm text-slate-300">
+                        Confirm that you are authorized to sign for the sponsor.
+                      </p>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <input
+                          value={signers[agreement.id]?.name || ""}
+                          onChange={(event) =>
+                            setSigners((current) => ({
+                              ...current,
+                              [agreement.id]: {
+                                name: event.target.value,
+                                title: current[agreement.id]?.title || "",
+                                confirmed:
+                                  current[agreement.id]?.confirmed || false,
+                              },
+                            }))
+                          }
+                          placeholder="Authorized signer name"
+                          className="rounded-xl p-3 text-slate-950"
+                        />
+                        <input
+                          value={signers[agreement.id]?.title || ""}
+                          onChange={(event) =>
+                            setSigners((current) => ({
+                              ...current,
+                              [agreement.id]: {
+                                name: current[agreement.id]?.name || "",
+                                title: event.target.value,
+                                confirmed:
+                                  current[agreement.id]?.confirmed || false,
+                              },
+                            }))
+                          }
+                          placeholder="Signer title"
+                          className="rounded-xl p-3 text-slate-950"
+                        />
+                      </div>
+                      <label className="mt-4 flex items-start gap-3 text-sm font-semibold">
+                        <input
+                          type="checkbox"
+                          checked={signers[agreement.id]?.confirmed || false}
+                          onChange={(event) =>
+                            setSigners((current) => ({
+                              ...current,
+                              [agreement.id]: {
+                                name: current[agreement.id]?.name || "",
+                                title: current[agreement.id]?.title || "",
+                                confirmed: event.target.checked,
+                              },
+                            }))
+                          }
+                          className="mt-1"
+                        />
+                        I have reviewed the agreement and am authorized to
+                        accept it for the sponsor.
+                      </label>
+                      <button
+                        type="button"
+                        disabled={
+                          saving ||
+                          !signers[agreement.id]?.name.trim() ||
+                          !signers[agreement.id]?.confirmed
+                        }
+                        onClick={() =>
+                          void acceptAgreement(
+                            agreement.id,
+                            signers[agreement.id]?.name || "",
+                            signers[agreement.id]?.title || "",
+                          ).catch(() => undefined)
+                        }
+                        className="mt-4 rounded-xl bg-pink-600 px-5 py-3 font-black disabled:opacity-40"
+                      >
+                        {saving ? "Accepting…" : "I agree and accept"}
+                      </button>
+                    </section>
+                  )}
                   <details className="rounded-2xl border p-5">
                     <summary className="cursor-pointer text-xl font-black">
                       View exact agreement text

@@ -9,6 +9,14 @@ const money = (cents: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
     cents / 100,
   );
+function escapeHtml(value: unknown) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
 
 export async function POST(request: Request) {
   try {
@@ -44,13 +52,39 @@ export async function POST(request: Request) {
       );
     const agreement = installment.sponsorship_agreements;
     const resend = new Resend(process.env.RESEND_API_KEY);
+    const recipient = agreement.sponsor_email;
+    const subject = `Payment reminder for SDTV sponsorship ${agreement.agreement_number}`;
+    const greeting = agreement.sponsor_contact_name || agreement.sponsor_name;
+    const bodyText = `Hello ${greeting},\n\nThis is a friendly reminder that payment ${installment.installment_number} for ${money(installment.amount_cents)} is due on ${installment.due_date}.\n\nPlease send the payment by Zelle to info@seattledesitv.com, then use your secure agreement link to upload the confirmation.\n\nIf payment has already been sent, thank you and please disregard this reminder.`;
+    const html = `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;line-height:1.6"><h2>Seattle Desi TV sponsorship payment reminder</h2><p>Hello ${escapeHtml(greeting)},</p><p>This is a friendly reminder that payment ${installment.installment_number} for <strong>${money(installment.amount_cents)}</strong> is due on <strong>${escapeHtml(installment.due_date)}</strong>.</p><p>Please send the payment by Zelle to <strong>info@seattledesitv.com</strong>, then use your secure agreement link to upload the confirmation.</p><p>If payment has already been sent, thank you and please disregard this reminder.</p></div>`;
     const sent = await resend.emails.send({
       from:
         process.env.RESEND_FROM_EMAIL ||
         "Seattle Desi TV <updates@seattledesitv.com>",
-      to: agreement.sponsor_email,
-      subject: `Payment reminder for SDTV sponsorship ${agreement.agreement_number}`,
-      html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;line-height:1.6"><h2>Seattle Desi TV sponsorship payment reminder</h2><p>Hello ${agreement.sponsor_contact_name || agreement.sponsor_name},</p><p>This is a friendly reminder that payment ${installment.installment_number} for <strong>${money(installment.amount_cents)}</strong> is due on <strong>${installment.due_date}</strong>.</p><p>Please send the payment by Zelle to <strong>info@seattledesitv.com</strong>, then use your secure agreement link to upload the confirmation.</p><p>If payment has already been sent, thank you and please disregard this reminder.</p></div>`,
+      to: recipient,
+      subject,
+      html,
+      text: bodyText,
+    });
+    await db.from("sponsorship_agreement_events").insert({
+      agreement_id: agreement.id,
+      event_type: sent.error
+        ? "payment_reminder_email_failed"
+        : "payment_reminder_email_sent",
+      actor_user_id: user.id,
+      actor_email: user.email,
+      details: {
+        kind: "payment_reminder",
+        installment_id: installment.id,
+        installment_number: installment.installment_number,
+        recipient,
+        subject,
+        body_text: bodyText,
+        body_html: html,
+        delivery_status: sent.error ? "failed" : "sent",
+        provider_email_id: sent.data?.id || null,
+        error_message: sent.error?.message || null,
+      },
     });
     if (sent.error) throw new Error(sent.error.message);
     const now = new Date().toISOString();
@@ -62,15 +96,13 @@ export async function POST(request: Request) {
         updated_at: now,
       })
       .eq("id", installment.id);
-    await db
-      .from("sponsorship_agreement_events")
-      .insert({
-        agreement_id: agreement.id,
-        event_type: "payment_reminder_sent",
-        actor_user_id: user.id,
-        actor_email: user.email,
-        details: { installment_number: installment.installment_number },
-      });
+    await db.from("sponsorship_agreement_events").insert({
+      agreement_id: agreement.id,
+      event_type: "payment_reminder_sent",
+      actor_user_id: user.id,
+      actor_email: user.email,
+      details: { installment_number: installment.installment_number },
+    });
     return NextResponse.json({ ok: true });
   } catch (error: unknown) {
     return NextResponse.json(

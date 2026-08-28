@@ -7,7 +7,7 @@ import type {
 } from "../types";
 const supabase = getSupabaseBrowserClient();
 const AGREEMENT_SELECT =
-  "*,local_businesses(id,name),sponsorship_payment_installments(*)";
+  "*,local_businesses(id,name),sponsorship_payment_installments(*),sponsorship_agreement_events(*)";
 export async function listPackages() {
   const { data, error } = await supabase
     .from("sponsorship_package_templates")
@@ -47,6 +47,7 @@ export async function listAgreements() {
   return (data || []).map((row: Record<string, unknown>) => ({
     ...row,
     installments: row.sponsorship_payment_installments || [],
+    events: row.sponsorship_agreement_events || [],
   })) as unknown as SponsorshipAgreement[];
 }
 export async function createAgreement(

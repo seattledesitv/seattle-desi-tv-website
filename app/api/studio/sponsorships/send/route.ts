@@ -6,6 +6,15 @@ import {
   sponsorshipDb,
 } from "../../../../lib/sponsorships/server";
 
+function escapeHtml(value: unknown) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 export async function POST(request: Request) {
   try {
     const user = await requireSponsorshipAdmin(request);
@@ -20,11 +29,11 @@ export async function POST(request: Request) {
       .from("sponsorship_agreements")
       .select("*")
       .eq("id", agreementId)
-      .eq("status", "draft")
+      .in("status", ["draft", "sent", "viewed"])
       .single();
     if (error || !agreement)
       return NextResponse.json(
-        { error: error?.message || "Draft agreement not found." },
+        { error: error?.message || "Sendable agreement not found." },
         { status: 404 },
       );
     const token = randomBytes(32).toString("hex"),
@@ -49,27 +58,52 @@ export async function POST(request: Request) {
       process.env.NEXT_PUBLIC_SITE_URL || "https://www.seattledesitv.com"
     ).replace(/\/$/, "");
     const reviewUrl = `${site}/sponsorship/review?token=${token}`;
+    const recipient = agreement.sponsor_email;
+    const subject = `Seattle Desi TV sponsorship agreement ${agreement.agreement_number}`;
+    const greeting = agreement.sponsor_contact_name || agreement.sponsor_name;
+    const bodyText = `Hello ${greeting},\n\nYour Seattle Desi TV sponsorship agreement is ready to review and accept.\n\nReview agreement: ${reviewUrl}\n\nThis secure link expires in 45 days.`;
+    const html = `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;line-height:1.6"><h2>Seattle Desi TV Sponsorship Agreement</h2><p>Hello ${escapeHtml(greeting)},</p><p>Your sponsorship agreement is ready to review.</p><p><a style="display:inline-block;background:#c93678;color:white;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold" href="${reviewUrl}">Review and accept agreement</a></p><p>This secure link expires in 45 days.</p></div>`;
     if (process.env.RESEND_API_KEY) {
       const resend = new Resend(process.env.RESEND_API_KEY);
       const sent = await resend.emails.send({
         from:
           process.env.RESEND_FROM_EMAIL ||
           "Seattle Desi TV <updates@seattledesitv.com>",
-        to: agreement.sponsor_email,
-        subject: `Seattle Desi TV sponsorship agreement ${agreement.agreement_number}`,
-        html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;line-height:1.6"><h2>Seattle Desi TV Sponsorship Agreement</h2><p>Hello ${agreement.sponsor_contact_name || agreement.sponsor_name},</p><p>Your sponsorship agreement is ready to review.</p><p><a style="display:inline-block;background:#c93678;color:white;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold" href="${reviewUrl}">Review and accept agreement</a></p><p>This secure link expires in 45 days.</p></div>`,
+        to: recipient,
+        subject,
+        html,
+        text: bodyText,
+      });
+      await db.from("sponsorship_agreement_events").insert({
+        agreement_id: agreement.id,
+        event_type: sent.error
+          ? "agreement_email_failed"
+          : "agreement_email_sent",
+        actor_user_id: user.id,
+        actor_email: user.email,
+        details: {
+          kind: "agreement",
+          recipient,
+          subject,
+          body_text: bodyText,
+          body_html: html,
+          delivery_status: sent.error ? "failed" : "sent",
+          provider_email_id: sent.data?.id || null,
+          error_message: sent.error?.message || null,
+        },
       });
       if (sent.error) throw new Error(sent.error.message);
     }
-    await db
-      .from("sponsorship_agreement_events")
-      .insert({
-        agreement_id: agreement.id,
-        event_type: "sent",
-        actor_user_id: user.id,
-        actor_email: user.email,
-        details: { email: agreement.sponsor_email },
-      });
+    await db.from("sponsorship_agreement_events").insert({
+      agreement_id: agreement.id,
+      event_type: "sent",
+      actor_user_id: user.id,
+      actor_email: user.email,
+      details: {
+        email: agreement.sponsor_email,
+        email_configured: Boolean(process.env.RESEND_API_KEY),
+      },
+    });
     return NextResponse.json({
       ok: true,
       emailConfigured: Boolean(process.env.RESEND_API_KEY),

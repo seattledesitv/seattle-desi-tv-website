@@ -496,6 +496,9 @@ Safety:
 - Included placements remain approval-first but bypass payment with an auditable sponsorship waiver.
 - Apply `20260804170000_integrate_sponsor_portal_entitlements.sql` after the base sponsor onboarding migration.
 - Added admin offer creation for approved directory businesses and independent one-off advertisers; new records enter the same approval, entitlement, and payment workflow.
+- Added direct agreement acceptance in My Sponsorships for the matching sponsor account or an authorized linked-business owner/manager, with signer confirmation and the existing activation rules.
+- Added an administrator-only email history to each Studio sponsorship agreement. New agreement and payment-reminder deliveries archive recipient, subject, readable content, provider reference, status, and errors in the existing sponsorship audit ledger.
+- Historical emails sent before this enhancement do not have archived message bodies. No new migration or dependency is required.
 
 ## Directory ownership expansion — Events, Influencers, and Groups
 

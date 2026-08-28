@@ -598,6 +598,64 @@ function PackageSettings({
     </div>
   );
 }
+function EmailHistory({ agreement }: { agreement: SponsorshipAgreement }) {
+  const deliveries = (agreement.events || [])
+    .filter((event) => event.event_type.includes("email_"))
+    .sort(
+      (left, right) =>
+        new Date(right.created_at).getTime() -
+        new Date(left.created_at).getTime(),
+    );
+  return (
+    <details className="mt-4 rounded-xl border border-slate-200 p-4">
+      <summary className="cursor-pointer font-black">
+        Email history ({deliveries.length})
+      </summary>
+      {deliveries.length === 0 ? (
+        <p className="mt-3 text-sm text-slate-500">
+          No archived email content is available for this agreement yet.
+        </p>
+      ) : (
+        <div className="mt-4 space-y-3 border-t pt-4">
+          {deliveries.map((delivery) => {
+            const details = delivery.details || {};
+            const status = String(details.delivery_status || "recorded");
+            return (
+              <details
+                key={delivery.id}
+                className="rounded-xl bg-slate-100 p-4"
+              >
+                <summary className="cursor-pointer font-bold">
+                  {String(details.subject || delivery.event_type)} · {status} ·{" "}
+                  {new Date(delivery.created_at).toLocaleString()}
+                </summary>
+                <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="font-black">Recipient</dt>
+                    <dd>{String(details.recipient || "—")}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-black">Provider reference</dt>
+                    <dd>{String(details.provider_email_id || "—")}</dd>
+                  </div>
+                </dl>
+                {details.error_message ? (
+                  <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm font-bold text-red-700">
+                    {String(details.error_message)}
+                  </p>
+                ) : null}
+                <div className="mt-3 whitespace-pre-wrap rounded-lg bg-white p-4 text-sm leading-6">
+                  {String(details.body_text || "Email content unavailable.")}
+                </div>
+              </details>
+            );
+          })}
+        </div>
+      )}
+    </details>
+  );
+}
+
 function AgreementList({
   agreements,
   send,
@@ -636,12 +694,14 @@ function AgreementList({
                   {row.start_date} to {row.end_date}
                 </p>
               </div>
-              {row.status === "draft" && (
+              {["draft", "sent", "viewed"].includes(row.status) && (
                 <button
                   onClick={() => send(row.id)}
                   className="rounded-xl bg-pink-600 px-4 py-2 font-bold text-white"
                 >
-                  Send for approval
+                  {row.status === "draft"
+                    ? "Send for approval"
+                    : "Resend agreement email"}
                 </button>
               )}
             </div>
@@ -672,6 +732,7 @@ function AgreementList({
                 </p>
               )}
             </details>
+            <EmailHistory agreement={row} />
             <div className="mt-4 space-y-2">
               {row.installments?.map((item) => (
                 <div
