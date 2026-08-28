@@ -499,6 +499,7 @@ Safety:
 - Added direct agreement acceptance in My Sponsorships for the matching sponsor account or an authorized linked-business owner/manager, with signer confirmation and the existing activation rules.
 - Added an administrator-only email history to each Studio sponsorship agreement. New agreement and payment-reminder deliveries archive recipient, subject, readable content, provider reference, status, and errors in the existing sponsorship audit ledger.
 - Historical emails sent before this enhancement do not have archived message bodies. No new migration or dependency is required.
+- Added a Studio action to correct a sponsor email before acceptance. Corrections to sent or viewed agreements invalidate the old secure link, reset the agreement to draft, require a resend, and preserve the address change in the audit history.
 
 ## Directory ownership expansion — Events, Influencers, and Groups
 

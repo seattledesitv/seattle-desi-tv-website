@@ -191,6 +191,39 @@ export default function SponsorshipsPage() {
       setNotice(e instanceof Error ? e.message : "Could not send agreement.");
     }
   }
+  async function correctSponsorEmail(row: SponsorshipAgreement) {
+    const sponsorEmail = window.prompt(
+      "Correct the sponsor email address",
+      row.sponsor_email,
+    );
+    if (sponsorEmail === null || sponsorEmail.trim() === row.sponsor_email)
+      return;
+    if (
+      ["sent", "viewed"].includes(row.status) &&
+      !window.confirm(
+        "This will invalidate the previous review link and return the agreement to draft. You must send the agreement again. Continue?",
+      )
+    )
+      return;
+    try {
+      const result = await api("/api/studio/sponsorships/recipient", {
+        agreementId: row.id,
+        sponsorEmail,
+      });
+      setNotice(
+        result.requiresResend
+          ? "Sponsor email corrected. The old review link is invalid. Send the agreement again."
+          : "Sponsor email corrected.",
+      );
+      await refresh();
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Could not correct sponsor email.",
+      );
+    }
+  }
   async function decidePayment(id: string, decision: "verify" | "reject") {
     try {
       await api("/api/studio/sponsorships/payment", {
@@ -481,6 +514,7 @@ export default function SponsorshipsPage() {
               decidePayment={decidePayment}
               remindPayment={remindPayment}
               editDraft={editDraftAgreement}
+              correctEmail={correctSponsorEmail}
             />
           </div>
         )}
@@ -662,12 +696,14 @@ function AgreementList({
   decidePayment,
   remindPayment,
   editDraft,
+  correctEmail,
 }: {
   agreements: SponsorshipAgreement[];
   send: (id: string) => void;
   decidePayment: (id: string, d: "verify" | "reject") => void;
   remindPayment: (id: string) => void;
   editDraft: (agreement: SponsorshipAgreement) => void;
+  correctEmail: (agreement: SponsorshipAgreement) => void;
 }) {
   return (
     <section>
@@ -693,16 +729,27 @@ function AgreementList({
                   {row.tier} · {money(row.final_amount_cents)} ·{" "}
                   {row.start_date} to {row.end_date}
                 </p>
+                <p className="mt-1 text-sm text-slate-600">
+                  Sponsor email: <b>{row.sponsor_email}</b>
+                </p>
               </div>
               {["draft", "sent", "viewed"].includes(row.status) && (
-                <button
-                  onClick={() => send(row.id)}
-                  className="rounded-xl bg-pink-600 px-4 py-2 font-bold text-white"
-                >
-                  {row.status === "draft"
-                    ? "Send for approval"
-                    : "Resend agreement email"}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => correctEmail(row)}
+                    className="rounded-xl border border-pink-300 px-4 py-2 font-bold text-pink-700"
+                  >
+                    Correct sponsor email
+                  </button>
+                  <button
+                    onClick={() => send(row.id)}
+                    className="rounded-xl bg-pink-600 px-4 py-2 font-bold text-white"
+                  >
+                    {row.status === "draft"
+                      ? "Send for approval"
+                      : "Resend agreement email"}
+                  </button>
+                </div>
               )}
             </div>
             {row.accepted_at && (

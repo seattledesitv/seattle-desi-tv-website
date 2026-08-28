@@ -193,6 +193,8 @@ Authenticated sponsors can also read and accept eligible sent agreements through
 
 Agreement and payment-reminder emails append immutable delivery events to the existing sponsorship audit ledger. Each delivery event stores the recipient, subject, readable and HTML bodies, provider reference, delivery status, and provider error when available. Event RLS remains administrator-only, and Studio renders the readable body as text rather than injecting stored HTML.
 
+Studio may correct the sponsor email while an agreement is draft, sent, or viewed. Correcting a previously sent agreement returns it to draft, clears the hashed review token and its expiry, and requires a deliberate resend; this immediately invalidates the link delivered to the incorrect address. The previous and corrected addresses are retained in the administrator-only audit ledger. Accepted and active agreement identities require a separate controlled process and cannot use this correction action.
+
 Active sponsorships provide marketplace entitlements without bypassing editorial approval. Offer approval resolves the linked business's current active agreement, checks the requested placement against the tier matrix, and snapshots both the agreement ID and waiver tier onto the offer. Sponsorship activation also updates the linked business's premium directory dates so public placement expires with the agreement.
 
 ## Public listing ownership and accuracy
