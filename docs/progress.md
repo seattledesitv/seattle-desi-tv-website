@@ -645,3 +645,11 @@ Safety:
 - Reused the existing newsletter form, subscribe API, subscriber table, validation, source tracking, and unsubscribe workflow.
 - Added footer entry points plus sitemap and machine-readable discovery coverage.
 - No database migration or new dependency is required.
+
+## Finance record editing
+
+- Added an Edit action for expense and mileage records in Studio Finance Management.
+- Reused the existing finance form for editing dates, vendor or traveler, expense amount or mileage calculation, category, payment method, reimbursement status, notes, and optional receipt replacement.
+- Existing private receipts remain attached unless an administrator selects a replacement file.
+- Server-side validation and mileage recalculation are applied to edits, and updater audit fields continue to be recorded.
+- No database migration or new dependency is required.

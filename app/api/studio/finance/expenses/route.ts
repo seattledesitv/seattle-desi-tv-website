@@ -12,36 +12,83 @@ const r2SecretAccessKey = process.env.R2_SECRET_ACCESS_KEY || "";
 const r2BucketName = process.env.R2_BUCKET_NAME || "sdtv-private";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
-const ALLOWED_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
+const ALLOWED_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
 
-function isSuperAdmin(role?: string | null) { return cleanRole(role) === "super_admin"; }
-function jsonError(error: string, status = 400) { return NextResponse.json({ error }, { status }); }
+function isSuperAdmin(role?: string | null) {
+  return cleanRole(role) === "super_admin";
+}
+function jsonError(error: string, status = 400) {
+  return NextResponse.json({ error }, { status });
+}
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 function safeFileName(name: string) {
-  const base = String(name || "receipt").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 90);
+  const base = String(name || "receipt")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 90);
   return base || "receipt";
 }
 function nextMonthStart(month: string) {
   const [yearText, monthText] = month.split("-");
   const year = Number(yearText);
   const monthIndex = Number(monthText);
-  if (!Number.isFinite(year) || !Number.isFinite(monthIndex) || monthIndex < 1 || monthIndex > 12) return "";
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(monthIndex) ||
+    monthIndex < 1 ||
+    monthIndex > 12
+  )
+    return "";
   const next = new Date(Date.UTC(year, monthIndex, 1));
   return next.toISOString().slice(0, 10);
 }
 function r2Client() {
-  if (!r2Endpoint || !r2AccessKeyId || !r2SecretAccessKey) throw new Error("R2 is not configured. Add R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET_NAME in Vercel.");
-  return new S3Client({ region: "auto", endpoint: r2Endpoint, credentials: { accessKeyId: r2AccessKeyId, secretAccessKey: r2SecretAccessKey } });
+  if (!r2Endpoint || !r2AccessKeyId || !r2SecretAccessKey)
+    throw new Error(
+      "R2 is not configured. Add R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET_NAME in Vercel.",
+    );
+  return new S3Client({
+    region: "auto",
+    endpoint: r2Endpoint,
+    credentials: {
+      accessKeyId: r2AccessKeyId,
+      secretAccessKey: r2SecretAccessKey,
+    },
+  });
 }
 async function requireSuperAdmin(request: Request) {
-  if (!supabaseUrl || !anonKey) return { error: jsonError("Supabase is not configured.", 500) };
+  if (!supabaseUrl || !anonKey)
+    return { error: jsonError("Supabase is not configured.", 500) };
   const authHeader = request.headers.get("authorization") || "";
-  const sessionClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
-  const { data: userData, error: userError } = await sessionClient.auth.getUser();
+  const sessionClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data: userData, error: userError } =
+    await sessionClient.auth.getUser();
   const user = userData?.user || null;
   if (userError || !user) return { error: jsonError("Login required.", 401) };
   const role = await resolveUserRole(sessionClient, user);
-  if (!isSuperAdmin(role)) return { error: jsonError(`Super admin access required. Resolved role: ${role}.`, 403) };
-  if (!serviceKey) return { error: jsonError("SUPABASE_SERVICE_ROLE_KEY is required for finance management.", 500) };
+  if (!isSuperAdmin(role))
+    return {
+      error: jsonError(
+        `Super admin access required. Resolved role: ${role}.`,
+        403,
+      ),
+    };
+  if (!serviceKey)
+    return {
+      error: jsonError(
+        "SUPABASE_SERVICE_ROLE_KEY is required for finance management.",
+        500,
+      ),
+    };
   return { user, role, db: createClient(supabaseUrl, serviceKey) };
 }
 
@@ -52,18 +99,29 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const month = String(searchParams.get("month") || "").trim();
     const category = String(searchParams.get("category") || "").trim();
-    let query = auth.db.from("finance_expenses").select("*").order("expense_date", { ascending: false }).order("created_at", { ascending: false }).limit(500);
+    let query = auth.db
+      .from("finance_expenses")
+      .select("*")
+      .order("expense_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(500);
     if (month && /^\d{4}-\d{2}$/.test(month)) {
       const startDate = `${month}-01`;
       const endDate = nextMonthStart(month);
-      if (endDate) query = query.gte("expense_date", startDate).lt("expense_date", endDate);
+      if (endDate)
+        query = query
+          .gte("expense_date", startDate)
+          .lt("expense_date", endDate);
     }
     if (category && category !== "all") query = query.eq("category", category);
     const { data, error } = await query;
     if (error) return jsonError(error.message, 500);
     return NextResponse.json({ ok: true, rows: data || [] });
-  } catch (error: any) {
-    return jsonError(error?.message || "Could not load finance expenses.", 500);
+  } catch (error: unknown) {
+    return jsonError(
+      errorMessage(error, "Could not load finance expenses."),
+      500,
+    );
   }
 }
 
@@ -72,25 +130,50 @@ export async function POST(request: Request) {
     const auth = await requireSuperAdmin(request);
     if (auth.error) return auth.error;
     const formData = await request.formData();
-    const expenseType = String(formData.get("expense_type") || "expense").trim() === "mileage" ? "mileage" : "expense";
+    const expenseType =
+      String(formData.get("expense_type") || "expense").trim() === "mileage"
+        ? "mileage"
+        : "expense";
     const expenseDate = String(formData.get("expense_date") || "").trim();
     const vendorName = String(formData.get("vendor_name") || "").trim();
-    const category = expenseType === "mileage" ? "mileage" : String(formData.get("category") || "other").trim() || "other";
+    const category =
+      expenseType === "mileage"
+        ? "mileage"
+        : String(formData.get("category") || "other").trim() || "other";
     const mileageMiles = Number(formData.get("mileage_miles") || 0);
     const mileageRate = Number(formData.get("mileage_rate") || 0);
     const enteredAmount = Number(formData.get("amount") || 0);
-    const amount = expenseType === "mileage" ? Number((mileageMiles * mileageRate).toFixed(2)) : enteredAmount;
+    const amount =
+      expenseType === "mileage"
+        ? Number((mileageMiles * mileageRate).toFixed(2))
+        : enteredAmount;
     const paymentMethod = String(formData.get("payment_method") || "").trim();
-    const reimbursementStatus = String(formData.get("reimbursement_status") || "submitted").trim() || "submitted";
+    const reimbursementStatus =
+      String(formData.get("reimbursement_status") || "submitted").trim() ||
+      "submitted";
     const reimbursedTo = String(formData.get("reimbursed_to") || "").trim();
     const description = String(formData.get("description") || "").trim();
     const file = formData.get("bill_file");
 
     if (!expenseDate) return jsonError("Expense date is required.");
-    if (!vendorName) return jsonError(expenseType === "mileage" ? "Traveler/person name is required." : "Vendor name is required.");
-    if (expenseType === "mileage" && (!Number.isFinite(mileageMiles) || mileageMiles <= 0)) return jsonError("Mileage miles must be greater than zero.");
-    if (expenseType === "mileage" && (!Number.isFinite(mileageRate) || mileageRate <= 0)) return jsonError("Mileage rate must be greater than zero.");
-    if (!Number.isFinite(amount) || amount <= 0) return jsonError("Amount must be greater than zero.");
+    if (!vendorName)
+      return jsonError(
+        expenseType === "mileage"
+          ? "Traveler/person name is required."
+          : "Vendor name is required.",
+      );
+    if (
+      expenseType === "mileage" &&
+      (!Number.isFinite(mileageMiles) || mileageMiles <= 0)
+    )
+      return jsonError("Mileage miles must be greater than zero.");
+    if (
+      expenseType === "mileage" &&
+      (!Number.isFinite(mileageRate) || mileageRate <= 0)
+    )
+      return jsonError("Mileage rate must be greater than zero.");
+    if (!Number.isFinite(amount) || amount <= 0)
+      return jsonError("Amount must be greater than zero.");
 
     const id = crypto.randomUUID();
     let billFilePath: string | null = null;
@@ -99,8 +182,10 @@ export async function POST(request: Request) {
     let billFileSize: number | null = null;
 
     if (file instanceof File && file.size > 0) {
-      if (file.size > MAX_FILE_SIZE) return jsonError("Bill file must be 5 MB or smaller.");
-      if (!ALLOWED_TYPES.has(file.type)) return jsonError("Bill file must be PDF, JPG, PNG, or WebP.");
+      if (file.size > MAX_FILE_SIZE)
+        return jsonError("Bill file must be 5 MB or smaller.");
+      if (!ALLOWED_TYPES.has(file.type))
+        return jsonError("Bill file must be PDF, JPG, PNG, or WebP.");
       const yyyy = expenseDate.slice(0, 4);
       const mm = expenseDate.slice(5, 7) || "00";
       billFileName = safeFileName(file.name);
@@ -108,7 +193,15 @@ export async function POST(request: Request) {
       billFileSize = file.size;
       billFilePath = `finance/${yyyy}/${mm}/${id}-${billFileName}`;
       const body = Buffer.from(await file.arrayBuffer());
-      await r2Client().send(new PutObjectCommand({ Bucket: r2BucketName, Key: billFilePath, Body: body, ContentType: file.type, Metadata: { uploadedBy: auth.user.email || "super-admin" } }));
+      await r2Client().send(
+        new PutObjectCommand({
+          Bucket: r2BucketName,
+          Key: billFilePath,
+          Body: body,
+          ContentType: file.type,
+          Metadata: { uploadedBy: auth.user.email || "super-admin" },
+        }),
+      );
     }
 
     const payload = {
@@ -133,11 +226,18 @@ export async function POST(request: Request) {
       updated_by: auth.user.id,
       updated_by_email: auth.user.email || null,
     };
-    const { data, error } = await auth.db.from("finance_expenses").insert(payload).select("*").single();
+    const { data, error } = await auth.db
+      .from("finance_expenses")
+      .insert(payload)
+      .select("*")
+      .single();
     if (error) return jsonError(error.message, 500);
     return NextResponse.json({ ok: true, row: data });
-  } catch (error: any) {
-    return jsonError(error?.message || "Could not create finance expense.", 500);
+  } catch (error: unknown) {
+    return jsonError(
+      errorMessage(error, "Could not create finance expense."),
+      500,
+    );
   }
 }
 
@@ -145,22 +245,159 @@ export async function PATCH(request: Request) {
   try {
     const auth = await requireSuperAdmin(request);
     if (auth.error) return auth.error;
+
+    if (
+      (request.headers.get("content-type") || "").includes(
+        "multipart/form-data",
+      )
+    ) {
+      const formData = await request.formData();
+      const id = String(formData.get("id") || "").trim();
+      const expenseType =
+        String(formData.get("expense_type") || "expense").trim() === "mileage"
+          ? "mileage"
+          : "expense";
+      const expenseDate = String(formData.get("expense_date") || "").trim();
+      const vendorName = String(formData.get("vendor_name") || "").trim();
+      const category =
+        expenseType === "mileage"
+          ? "mileage"
+          : String(formData.get("category") || "other").trim() || "other";
+      const mileageMiles = Number(formData.get("mileage_miles") || 0);
+      const mileageRate = Number(formData.get("mileage_rate") || 0);
+      const enteredAmount = Number(formData.get("amount") || 0);
+      const amount =
+        expenseType === "mileage"
+          ? Number((mileageMiles * mileageRate).toFixed(2))
+          : enteredAmount;
+      const paymentMethod = String(formData.get("payment_method") || "").trim();
+      const reimbursementStatus = String(
+        formData.get("reimbursement_status") || "submitted",
+      ).trim();
+      const reimbursedTo = String(formData.get("reimbursed_to") || "").trim();
+      const description = String(formData.get("description") || "").trim();
+      const file = formData.get("bill_file");
+
+      if (!id) return jsonError("Expense id is required.");
+      if (!expenseDate) return jsonError("Expense date is required.");
+      if (!vendorName)
+        return jsonError(
+          expenseType === "mileage"
+            ? "Traveler/person name is required."
+            : "Vendor name is required.",
+        );
+      if (
+        expenseType === "mileage" &&
+        (!Number.isFinite(mileageMiles) || mileageMiles <= 0)
+      )
+        return jsonError("Mileage miles must be greater than zero.");
+      if (
+        expenseType === "mileage" &&
+        (!Number.isFinite(mileageRate) || mileageRate <= 0)
+      )
+        return jsonError("Mileage rate must be greater than zero.");
+      if (!Number.isFinite(amount) || amount <= 0)
+        return jsonError("Amount must be greater than zero.");
+      if (
+        !["submitted", "approved", "paid", "rejected"].includes(
+          reimbursementStatus,
+        )
+      )
+        return jsonError("Invalid reimbursement status.");
+
+      const { data: existing, error: existingError } = await auth.db
+        .from("finance_expenses")
+        .select("id,paid_at")
+        .eq("id", id)
+        .maybeSingle();
+      if (existingError) return jsonError(existingError.message, 500);
+      if (!existing) return jsonError("Finance item not found.", 404);
+
+      const patch: Record<string, unknown> = {
+        expense_type: expenseType,
+        expense_date: expenseDate,
+        vendor_name: vendorName,
+        category,
+        amount,
+        payment_method: paymentMethod || null,
+        reimbursement_status: reimbursementStatus,
+        reimbursed_to: reimbursedTo || null,
+        mileage_miles: expenseType === "mileage" ? mileageMiles : null,
+        mileage_rate: expenseType === "mileage" ? mileageRate : null,
+        description: description || null,
+        paid_at:
+          reimbursementStatus === "paid"
+            ? existing.paid_at || new Date().toISOString()
+            : null,
+        updated_by: auth.user.id,
+        updated_by_email: auth.user.email || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (file instanceof File && file.size > 0) {
+        if (file.size > MAX_FILE_SIZE)
+          return jsonError("Bill file must be 5 MB or smaller.");
+        if (!ALLOWED_TYPES.has(file.type))
+          return jsonError("Bill file must be PDF, JPG, PNG, or WebP.");
+        const yyyy = expenseDate.slice(0, 4);
+        const mm = expenseDate.slice(5, 7) || "00";
+        const billFileName = safeFileName(file.name);
+        const billFilePath = `finance/${yyyy}/${mm}/${id}-${Date.now()}-${billFileName}`;
+        await r2Client().send(
+          new PutObjectCommand({
+            Bucket: r2BucketName,
+            Key: billFilePath,
+            Body: Buffer.from(await file.arrayBuffer()),
+            ContentType: file.type,
+            Metadata: { uploadedBy: auth.user.email || "super-admin" },
+          }),
+        );
+        patch.bill_file_path = billFilePath;
+        patch.bill_file_name = billFileName;
+        patch.bill_mime_type = file.type;
+        patch.bill_file_size = file.size;
+      }
+
+      const { data, error } = await auth.db
+        .from("finance_expenses")
+        .update(patch)
+        .eq("id", id)
+        .select("*")
+        .single();
+      if (error) return jsonError(error.message, 500);
+      return NextResponse.json({ ok: true, row: data });
+    }
+
     const body = await request.json();
     const id = String(body.id || "").trim();
     const reimbursementStatus = String(body.reimbursement_status || "").trim();
     if (!id) return jsonError("Expense id is required.");
-    if (!["submitted", "approved", "paid", "rejected"].includes(reimbursementStatus)) return jsonError("Invalid reimbursement status.");
-    const patch: any = {
+    if (
+      !["submitted", "approved", "paid", "rejected"].includes(
+        reimbursementStatus,
+      )
+    )
+      return jsonError("Invalid reimbursement status.");
+    const patch: Record<string, unknown> = {
       reimbursement_status: reimbursementStatus,
       updated_by: auth.user.id,
       updated_by_email: auth.user.email || null,
       updated_at: new Date().toISOString(),
     };
-    if (reimbursementStatus === "paid") patch.paid_at = new Date().toISOString();
-    const { data, error } = await auth.db.from("finance_expenses").update(patch).eq("id", id).select("*").single();
+    patch.paid_at =
+      reimbursementStatus === "paid" ? new Date().toISOString() : null;
+    const { data, error } = await auth.db
+      .from("finance_expenses")
+      .update(patch)
+      .eq("id", id)
+      .select("*")
+      .single();
     if (error) return jsonError(error.message, 500);
     return NextResponse.json({ ok: true, row: data });
-  } catch (error: any) {
-    return jsonError(error?.message || "Could not update finance expense.", 500);
+  } catch (error: unknown) {
+    return jsonError(
+      errorMessage(error, "Could not update finance expense."),
+      500,
+    );
   }
 }

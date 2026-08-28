@@ -264,6 +264,10 @@ Approved releases expose a Studio-only Instagram publishing panel. The component
 
 After Meta confirms publication, the API records the returned media identifier, permalink, timestamp, and publishing administrator on the press release. Public cards and detail pages expose the saved Instagram link. Recording is deliberately non-transactional with the external publish: if Meta succeeds but the database update fails, the API reports a warning instead of inviting an accidental duplicate post.
 
+## Finance management
+
+Finance records remain restricted to super administrators and private receipt files remain in Cloudflare R2. The Finance editor uses the authenticated server API for both creation and updates. Editing supports expense and mileage fields, recalculates mileage reimbursement server-side, records the updating administrator, and preserves the existing receipt unless a validated replacement is explicitly uploaded.
+
 ## Search and AI discoverability
 
 Public discovery follows a server-rendered SEO boundary. Route layouts call the SEO service, which obtains public records through a read-only repository using the Supabase anonymous client and existing RLS. Components do not query Supabase. Dynamic event, classified, organization, press-release, and publication pages produce record-specific titles, descriptions, canonical URLs, social cards, and schema.org JSON-LD. Missing or inaccessible records emit `noindex` metadata rather than misleading generic metadata.
