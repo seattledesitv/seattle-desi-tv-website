@@ -2,6 +2,7 @@ import { resolveCurrentSite } from "../../lib/sites/siteResolver";
 
 const sourceLabel = {
   domain: "Matched domain",
+  preview: "Preview override",
   default: "Default market",
   fallback: "Built-in fallback",
 } as const;

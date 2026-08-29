@@ -1,5 +1,5 @@
 export type SiteStatus = "planned" | "active" | "on_hold" | "archived";
-export type SiteResolutionSource = "domain" | "default" | "fallback";
+export type SiteResolutionSource = "domain" | "preview" | "default" | "fallback";
 
 export type SiteSettings = {
   contact_email?: string;

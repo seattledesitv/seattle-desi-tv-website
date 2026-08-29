@@ -687,3 +687,10 @@ Safety:
 - Added market/status/name and market/premium/rank indexes.
 - Requires `20260829150000_add_business_site_ownership.sql`.
 - TypeScript, whitespace validation, and the complete Next.js production build pass.
+
+## Multi-city preview market switch
+
+- Added a preview-only site switch for testing Seattle, SFO, and Dallas through one Vercel preview deployment.
+- Uses a secure HTTP-only cookie that expires after one hour; production and custom domains return 404 for the switch endpoint.
+- Studio labels the selected context as `Preview override` so administrators can confirm which market is active.
+- TypeScript, focused lint, whitespace validation, and the complete Next.js production build pass.

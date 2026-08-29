@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { SiteConfig, SiteSettings, SiteStatus } from "./types";
 
 type SiteRow = {
@@ -145,9 +145,38 @@ export async function resolveSiteForHostname(hostnameValue: string | null) {
   return { ...FALLBACK_SITE, hostname } satisfies SiteConfig;
 }
 
+export async function resolveSiteForCode(siteCode: string, hostnameValue: string | null) {
+  const hostname = normalizedHostname(hostnameValue);
+  const db = configuredClient();
+  if (!db) return { ...FALLBACK_SITE, hostname } satisfies SiteConfig;
+  try {
+    const code = siteCode.trim().toLowerCase();
+    const { data } = await db
+      .from("sites")
+      .select("id,code,slug,name,short_name,city,state_code,timezone,status,settings")
+      .eq("code", code)
+      .in("status", ["planned", "active"])
+      .maybeSingle();
+    if (data) {
+      const primary = (await primaryHostname(db, data.id)) || hostname;
+      return configFromRow(data as SiteRow, hostname, primary, "preview");
+    }
+  } catch {
+    // Preview overrides must fail closed to the normal hostname resolver.
+  }
+  return resolveSiteForHostname(hostname);
+}
+
+export function previewSiteOverrideAllowed(hostname: string) {
+  return process.env.VERCEL_ENV === "preview" && normalizedHostname(hostname).endsWith(".vercel.app");
+}
+
 export async function resolveCurrentSite() {
   const requestHeaders = await headers();
-  return resolveSiteForHostname(
-    requestHeaders.get("x-forwarded-host") || requestHeaders.get("host"),
-  );
+  const hostname = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "";
+  if (previewSiteOverrideAllowed(hostname)) {
+    const siteCode = (await cookies()).get("sdtv_preview_site")?.value || "";
+    if (/^[a-z0-9_]+$/.test(siteCode)) return resolveSiteForCode(siteCode, hostname);
+  }
+  return resolveSiteForHostname(hostname);
 }
