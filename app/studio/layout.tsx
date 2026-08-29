@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import StudioEnhancements from "../components/StudioEnhancements";
+import SiteResolutionDiagnostic from "../components/studio/SiteResolutionDiagnostic";
 
 export const metadata: Metadata = {
   title: "Studio",
@@ -11,5 +12,5 @@ export const metadata: Metadata = {
 };
 
 export default function StudioLayout({ children }: { children: React.ReactNode }) {
-  return <><StudioEnhancements />{children}</>;
+  return <><StudioEnhancements /><SiteResolutionDiagnostic />{children}</>;
 }

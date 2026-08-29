@@ -658,3 +658,12 @@ Safety:
 - Server-side validation and mileage recalculation are applied to edits, and updater audit fields continue to be recorded.
 - No database migration or new dependency is required.
 - Replaced the legacy browser-key Swirepay classified checkout with the provider's v2 server-minted checkout-session flow, pinned SDK 2.0.6, inline secure component, session-to-intent reconciliation ledger, and signed-webhook-only activation. Requires `20260828150000_add_swirepay_checkout_sessions.sql`, `SWIREPAY_SECRET_KEY`, and `SWIREPAY_ACCOUNT_GID` before deployment.
+
+## Multi-city foundation — hostname resolution
+
+- Added a central server-only resolver for `sites` and `site_domains` with normalized forwarded-host handling.
+- Known domains resolve to their active site; unmapped Vercel previews safely default to Seattle through `DEFAULT_SITE_CODE`.
+- Added a built-in Seattle fallback so missing database configuration cannot make Studio unavailable.
+- Added a temporary Studio diagnostic banner showing the resolved site, request hostname, resolution source, primary domain, and timezone.
+- This phase intentionally makes no public branding or content-filtering changes. Existing Seattle behavior remains unchanged while tables are migrated one module at a time.
+- TypeScript, focused ESLint, whitespace validation, and the complete Next.js production build pass.
