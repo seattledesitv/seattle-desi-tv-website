@@ -47,6 +47,9 @@ export default function StudioDashboardPage() {
   const canAccessStudio = Boolean(user && isAdminRole(role));
 
   async function loadCounts() {
+    const siteEventIdsResult = await forSite(supabase.from("events").select("id"), site.id);
+    const siteEventIds = (siteEventIdsResult.data || []).map((event: any) => event.id);
+    const eventScope = siteEventIds.length ? siteEventIds : ["00000000-0000-0000-0000-000000000000"];
     const [eventsResult, pendingEventsResult, approvedEventsResult, onHoldEventsResult, rejectedEventsResult, businessesResult, pendingBusinessesResult, crewResult, pendingCrewResult, volunteersResult, pendingVolunteersResult, teamResult, radioTeamResult, roleRequestsResult, coverageRequestsResult, coverageCompletedResult, coverageCompletedThisMonthResult, videoWorkflowsResult, videoAdminApprovalsResult, videoCrewReviewsResult, videoPublishingReadyResult] = await Promise.all([
       forSite(supabase.from("events").select("id", { count: "exact", head: true }), site.id),
       forSite(supabase.from("events").select("id", { count: "exact", head: true }), site.id).or("status.is.null,status.eq.pending"),
@@ -55,20 +58,20 @@ export default function StudioDashboardPage() {
       forSite(supabase.from("events").select("id", { count: "exact", head: true }), site.id).eq("status", "rejected"),
       forSite(supabase.from("local_businesses").select("id", { count: "exact", head: true }), site.id),
       forSite(supabase.from("local_businesses").select("id", { count: "exact", head: true }), site.id).or("status.is.null,status.eq.pending"),
-      supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }),
-      supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).or("status.is.null,status.eq.pending"),
+      supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).in("event_id", eventScope),
+      supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).in("event_id", eventScope).or("status.is.null,status.eq.pending"),
       supabase.from("user_role_requests").select("id", { count: "exact", head: true }).eq("requested_role", "volunteer"),
       supabase.from("user_role_requests").select("id", { count: "exact", head: true }).eq("requested_role", "volunteer").in("status", ["awaiting_orientation", "awaiting_onboarding", "awaiting_team_role_access", "pending"]),
       supabase.from("team_members").select("id", { count: "exact", head: true }),
       supabase.from("radio_team_members").select("id", { count: "exact", head: true }),
       supabase.from("user_role_requests").select("id", { count: "exact", head: true }).neq("requested_role", "volunteer").or("status.is.null,status.eq.pending"),
-      supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).eq("assignment_type", "owner_coverage_request").or("status.is.null,status.eq.pending"),
-      supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).eq("coverage_completed", true),
-      supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).eq("coverage_completed", true).gte("completed_at", monthStartIso()),
-      supabase.from("event_video_workflows").select("id", { count: "exact", head: true }),
-      supabase.from("event_video_workflows").select("id", { count: "exact", head: true }).eq("status", "awaiting_admin_approval"),
-      supabase.from("event_video_workflows").select("id", { count: "exact", head: true }).eq("status", "awaiting_crew_review"),
-      supabase.from("event_video_workflows").select("id", { count: "exact", head: true }).eq("status", "approved_for_publishing"),
+      supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).in("event_id", eventScope).eq("assignment_type", "owner_coverage_request").or("status.is.null,status.eq.pending"),
+      supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).in("event_id", eventScope).eq("coverage_completed", true),
+      supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).in("event_id", eventScope).eq("coverage_completed", true).gte("completed_at", monthStartIso()),
+      supabase.from("event_video_workflows").select("id", { count: "exact", head: true }).in("event_id", eventScope),
+      supabase.from("event_video_workflows").select("id", { count: "exact", head: true }).in("event_id", eventScope).eq("status", "awaiting_admin_approval"),
+      supabase.from("event_video_workflows").select("id", { count: "exact", head: true }).in("event_id", eventScope).eq("status", "awaiting_crew_review"),
+      supabase.from("event_video_workflows").select("id", { count: "exact", head: true }).in("event_id", eventScope).eq("status", "approved_for_publishing"),
     ]);
     const errors = [eventsResult.error, pendingEventsResult.error, approvedEventsResult.error, onHoldEventsResult.error, rejectedEventsResult.error, businessesResult.error, pendingBusinessesResult.error, crewResult.error, pendingCrewResult.error, volunteersResult.error, pendingVolunteersResult.error, teamResult.error, radioTeamResult.error, roleRequestsResult.error, coverageRequestsResult.error, coverageCompletedResult.error, coverageCompletedThisMonthResult.error, videoWorkflowsResult.error, videoAdminApprovalsResult.error, videoCrewReviewsResult.error, videoPublishingReadyResult.error].filter(Boolean);
     if (errors.length) setActionMessage(`Some dashboard counts could not load: ${errors.map((error: any) => error.message).join(" | ")}`);
