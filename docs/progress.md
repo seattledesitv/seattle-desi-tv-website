@@ -678,3 +678,12 @@ Safety:
 - Specialized event operations remain cross-market temporarily; they will receive an explicit market selector before additional cities are activated.
 - Requires `20260829120000_add_event_site_ownership.sql`.
 - TypeScript and the complete Next.js production build pass.
+
+## Multi-city Business ownership
+
+- Added required `local_businesses.site_id` ownership and assigned every existing listing to Seattle.
+- Scoped the public business directory, premium listings, homepage business feed/count, business SEO/detail lookup, sitemap, mobile Businesses API, and primary Studio business list/editor to the resolved site.
+- New business submissions retain the resolved market and remain approval-first.
+- Added market/status/name and market/premium/rank indexes.
+- Requires `20260829150000_add_business_site_ownership.sql`.
+- TypeScript, whitespace validation, and the complete Next.js production build pass.

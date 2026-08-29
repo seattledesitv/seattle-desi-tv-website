@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import SafeImage from "./SafeImage";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const MAX_FEATURED = 10;
@@ -76,6 +78,7 @@ function Impact({ value, label }: { value: string; label: string }) {
 }
 
 export default function PremiumBusinessSection({ businesses: fallbackBusinesses }: { businesses: BusinessRow[] }) {
+  const site = useCurrentSite();
   const [businesses, setBusinesses] = useState<BusinessRow[]>(fallbackBusinesses);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
@@ -83,9 +86,9 @@ export default function PremiumBusinessSection({ businesses: fallbackBusinesses 
     async function loadFeaturedBusinesses() {
       const premiumSelect = "id,name,category,offer,discount,image,image_urls,is_premium,premium_rank,premium_starts_at,premium_ends_at,premium_label";
       const standardSelect = "id,name,category,offer,discount,image,image_urls";
-      const premiumResult = await supabase.from("local_businesses").select(premiumSelect).eq("status", "approved");
+      const premiumResult = await forSite(supabase.from("local_businesses").select(premiumSelect), site.id).eq("status", "approved");
       const businessRows = premiumResult.error
-        ? ((await supabase.from("local_businesses").select(standardSelect).eq("status", "approved")).data || []) as BusinessRow[]
+        ? ((await forSite(supabase.from("local_businesses").select(standardSelect), site.id).eq("status", "approved")).data || []) as BusinessRow[]
         : (premiumResult.data || []) as BusinessRow[];
 
       const reviewResult = await supabase.from("business_reviews").select("business_id,rating").eq("status", "approved");
@@ -105,7 +108,7 @@ export default function PremiumBusinessSection({ businesses: fallbackBusinesses 
       }));
     }
     loadFeaturedBusinesses();
-  }, []);
+  }, [site.id]);
 
   const featured = useMemo(() => {
     const premium = businesses.filter(premiumIsActive).sort((a, b) => Number(a.premium_rank || 100) - Number(b.premium_rank || 100));

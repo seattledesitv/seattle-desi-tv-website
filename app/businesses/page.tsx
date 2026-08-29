@@ -9,6 +9,8 @@ import SafeImage from "../components/SafeImage";
 import ExpandableBusinessOffer from "../components/ExpandableBusinessOffer";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { seoEntityPath } from "../lib/seo/urls";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 import {
   canRequestCrew as roleCanRequestCrew,
   resolveUserRole,
@@ -160,6 +162,7 @@ async function uploadFileToCloudinary(file: File) {
 }
 
 export default function BusinessesPage() {
+  const site = useCurrentSite();
   const [businesses, setBusinesses] = useState<BusinessRow[]>([]);
   const [message, setMessage] = useState("Loading approved businesses...");
   const [user, setUser] = useState<any>(null);
@@ -197,9 +200,10 @@ export default function BusinessesPage() {
     const standardSelect =
       "id,name,address,website,category,discount,offer,image,image_urls,status,created_at";
 
-    const premiumResult = await supabase
-      .from("local_businesses")
-      .select(premiumSelect)
+    const premiumResult = await forSite(
+      supabase.from("local_businesses").select(premiumSelect),
+      site.id,
+    )
       .eq("status", "approved")
       .order("created_at", { ascending: false });
     let rows: BusinessRow[] = [];
@@ -209,9 +213,10 @@ export default function BusinessesPage() {
       premiumResult.error &&
       /is_premium|premium_/i.test(premiumResult.error.message || "")
     ) {
-      const standardResult = await supabase
-        .from("local_businesses")
-        .select(standardSelect)
+      const standardResult = await forSite(
+        supabase.from("local_businesses").select(standardSelect),
+        site.id,
+      )
         .eq("status", "approved")
         .order("created_at", { ascending: false });
       loadError = standardResult.error;
@@ -383,6 +388,7 @@ export default function BusinessesPage() {
         status: "pending",
         approved: false,
       };
+      if (site.id) payload.site_id = site.id;
       const { data, error } = await supabase
         .from("local_businesses")
         .insert(payload)
@@ -439,7 +445,7 @@ export default function BusinessesPage() {
       },
     );
     return () => listener.subscription.unsubscribe();
-  }, []);
+  }, [site.id]);
 
   const categories = useMemo(
     () =>

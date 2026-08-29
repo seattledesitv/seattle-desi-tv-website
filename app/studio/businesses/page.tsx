@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import CheckedExternalLink from "../../components/CheckedExternalLink";
 import { AUTH_STORAGE_KEY, getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -29,6 +31,7 @@ function ImageThumb({ src, label }: { src?: string; label: string }) {
 }
 
 export default function StudioBusinessesPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [actionMessage, setActionMessage] = useState("");
@@ -58,8 +61,10 @@ export default function StudioBusinessesPage() {
   }
 
   async function loadBusinesses() {
-    const { data, error } = await supabase.from("local_businesses")
-      .select("id,name,address,website,category,poc_name,poc_email,poc_phone,contact_email,image,image_urls,status,approved,created_at,source_name,source_url,import_batch,review_notes,outreach_status,outreach_sent_at,outreach_response_due_at,outreach_recipient,outreach_send_count,last_outreach_sent_at,opted_out_at,owner_response_notes,logo_rights_status")
+    const { data, error } = await forSite(
+      supabase.from("local_businesses").select("id,name,address,website,category,poc_name,poc_email,poc_phone,contact_email,image,image_urls,status,approved,created_at,source_name,source_url,import_batch,review_notes,outreach_status,outreach_sent_at,outreach_response_due_at,outreach_recipient,outreach_send_count,last_outreach_sent_at,opted_out_at,owner_response_notes,logo_rights_status"),
+      site.id,
+    )
       .order("created_at", { ascending: false });
     if (error) { setActionMessage(`Could not load businesses: ${error.message}`); return; }
     const rows = data || [];
@@ -88,7 +93,7 @@ export default function StudioBusinessesPage() {
     if (!roleContainsAdmin(nextRole)) { setMessage("This account does not have admin access."); setLoading(false); return; }
     await loadBusinesses(); setMessage(""); setLoading(false);
   }
-  useEffect(() => { const q = new URLSearchParams(window.location.search).get("search"); if (q) { setSearch(q); setStatusFilter("all"); } init(); }, []);
+  useEffect(() => { const q = new URLSearchParams(window.location.search).get("search"); if (q) { setSearch(q); setStatusFilter("all"); } init(); }, [site.id]);
 
   async function discoverContact(b: any, mode: "website" | "email" | "phone") {
     setBusyAction(b.id, `find-${mode}`); setBusinessMessage(b.id, `Checking available sources for ${mode}...`);
@@ -151,7 +156,7 @@ export default function StudioBusinessesPage() {
     const imageUrls = draft.imageUrl ? Array.from(new Set([draft.imageUrl, ...(b.image_urls || [])])) : (b.image_urls || []);
     const payload: any = { website: website || null, contact_email: draft.email.trim().toLowerCase() || null, poc_phone: draft.phone.trim() || null, image: draft.imageUrl || null, image_urls: imageUrls, logo_rights_status: draft.logoRights };
     if (draft.imageUrl && draft.imageUrl !== getImage(b)) { payload.logo_source_url = draft.imageUrl; payload.logo_reviewed_at = null; payload.logo_reviewed_by = null; }
-    const { error } = await supabase.from("local_businesses").update(payload).eq("id", b.id);
+    const { error } = await forSite(supabase.from("local_businesses").update(payload), site.id).eq("id", b.id);
     setBusyAction(b.id, "");
     if (error) return setBusinessMessage(b.id, error.message, "error");
     await supabase.from("business_activity_log").insert({ business_id: b.id, activity_type: "business_details_saved", activity_label: "Business research details saved", actor_email: user?.email || null, details: payload });
@@ -168,7 +173,7 @@ export default function StudioBusinessesPage() {
     if (!response.ok) return setBusinessMessage(b.id, result.error || "Notice failed.", "error");
     setBusinessMessage(b.id, `Notice sent. Response due ${formatDate(result.responseDueAt)}.`, "success"); await loadBusinesses();
   }
-  async function updateStatus(b: any, status: string) { const payload: any = { status, approved: status === "approved" }; if (status === "approved") { payload.approved_by = user?.email || user?.id; payload.approved_at = new Date().toISOString(); } const { error } = await supabase.from("local_businesses").update(payload).eq("id", b.id); if (error) return setBusinessMessage(b.id, error.message, "error"); setBusinessMessage(b.id, `Business marked ${status}.`, "success"); await loadBusinesses(); }
+  async function updateStatus(b: any, status: string) { const payload: any = { status, approved: status === "approved" }; if (status === "approved") { payload.approved_by = user?.email || user?.id; payload.approved_at = new Date().toISOString(); } const { error } = await forSite(supabase.from("local_businesses").update(payload), site.id).eq("id", b.id); if (error) return setBusinessMessage(b.id, error.message, "error"); setBusinessMessage(b.id, `Business marked ${status}.`, "success"); await loadBusinesses(); }
   async function logout() { await supabase.auth.signOut({ scope: "global" }); try { Object.keys(localStorage).filter((k) => k.toLowerCase().includes("supabase") || k.toLowerCase().includes("sb-") || k === AUTH_STORAGE_KEY).forEach((k) => localStorage.removeItem(k)); } catch {} window.location.href = "/login"; }
 
   const pending = businesses.filter((b) => b.status !== "approved");
