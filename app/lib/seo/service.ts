@@ -3,6 +3,7 @@ import { cache } from "react";
 import * as repository from "./repository";
 import type { SeoEntity, SeoEntityKind, SeoSitemapEntry } from "./types";
 import { entityIdFromParam, seoEntityPath } from "./urls";
+import { resolveCurrentSite } from "../sites/siteResolver";
 
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://seattledesitv.com").replace(/\/$/, "");
 const DEFAULT_IMAGE = `${SITE_URL}/hero-sdtv.png`;
@@ -26,7 +27,8 @@ const paths: Record<SeoEntityKind, string> = {
 
 export const getEntity = cache(async (kind: SeoEntityKind, id: string): Promise<SeoEntity | null> => {
   const entityId = entityIdFromParam(id);
-  const row = await repository.getPublicEntity(kind, entityId);
+  const site = await resolveCurrentSite();
+  const row = await repository.getPublicEntity(kind, entityId, site.id);
   if (!row) return null;
   const title = text(row.title || row.name);
   const fallback = kind === "event" ? `Community event details from Seattle Desi TV.`
@@ -84,7 +86,8 @@ export function entityJsonLd(entity: SeoEntity) {
 export function safeJsonLd(value: unknown) { return JSON.stringify(value).replace(/</g, "\\u003c"); }
 
 export async function listSitemapEntries(): Promise<SeoSitemapEntry[]> {
-  const rows = await repository.listPublicEntities();
+  const site = await resolveCurrentSite();
+  const rows = await repository.listPublicEntities(site.id);
   const map = (items: Array<Record<string, unknown>>, prefix: string) => items.map((row) => ({ path: seoEntityPath(prefix, row.title || row.name, row.id), modifiedAt: text(row.updated_at || row.created_at) || null }));
   return [...map(rows.events, "events"), ...map(rows.businesses, "businesses"), ...map(rows.classifieds, "classifieds"), ...map(rows.organizations, "community-organizations"), ...map(rows.releases, "press-releases"), ...map(rows.publications, "publications")];
 }

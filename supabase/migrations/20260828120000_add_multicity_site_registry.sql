@@ -151,3 +151,13 @@ comment on table public.sites is
 
 comment on table public.site_domains is
   'Maps normalized request hostnames to a site. Hostname values exclude scheme, port, path, and query.';
+
+create or replace function public.current_site_id(site_code text default 'sea')
+returns uuid
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select id from public.sites where code = lower(site_code) limit 1
+$$;

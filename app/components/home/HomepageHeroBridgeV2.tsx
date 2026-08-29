@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import HomepageHeroV2, { type HomepageHeroItem, type HeroLayoutStyle } from "./HomepageHeroV2";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -24,6 +26,7 @@ function withinWindow(row: any, today: string) {
 }
 
 export default function HomepageHeroBridgeV2() {
+  const site = useCurrentSite();
   const pathname = usePathname();
   const [mount, setMount] = useState<HTMLElement | null>(null);
   const [items, setItems] = useState<HomepageHeroItem[]>([]);
@@ -60,7 +63,7 @@ export default function HomepageHeroBridgeV2() {
       const [settingsResult, bannersResult, eventsResult, festivalsResult] = await Promise.all([
         supabase.from("homepage_hero_settings").select("layout_style").eq("id", "default").maybeSingle(),
         supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,banner_type,theme,hero_layout,start_date,end_date,display_order,active").eq("active", true).order("display_order", { ascending: true }),
-        supabase.from("events").select("id,title,date,location,image,image_urls,featured,featured_order,hero_theme,hero_layout,status").eq("status", "approved").eq("featured", true).order("featured_order", { ascending: true }).order("date", { ascending: true }).limit(8),
+        forSite(supabase.from("events").select("id,title,date,location,image,image_urls,featured,featured_order,hero_theme,hero_layout,status"), site.id).eq("status", "approved").eq("featured", true).order("featured_order", { ascending: true }).order("date", { ascending: true }).limit(8),
         supabase.from("festival_hero_assets").select("id,festival_name,festival_key,title,subtitle,image_url,theme,hero_layout,start_date,end_date,active").eq("active", true).order("start_date", { ascending: true }),
       ]);
 
@@ -109,7 +112,7 @@ export default function HomepageHeroBridgeV2() {
       setItems(merged);
     }
     load();
-  }, [pathname]);
+  }, [pathname, site.id]);
 
   if (pathname !== "/" || !mount) return null;
   return createPortal(<HomepageHeroV2 items={items} globalLayout={globalLayout} />, mount);

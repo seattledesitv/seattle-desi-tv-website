@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 import HeroCarouselV3, { type HeroItemV3 } from "./HeroCarouselV3";
 
 const supabase = getSupabaseBrowserClient();
@@ -20,13 +22,14 @@ function activeToday(row: any, today: string) {
 }
 
 export default function HomepageHeroLoader() {
+  const site = useCurrentSite();
   const [items, setItems] = useState<HeroItemV3[]>([]);
 
   useEffect(() => {
     async function load() {
       const today = new Date().toISOString().slice(0, 10);
       const [eventsResult, bannersResult, festivalsResult] = await Promise.all([
-        supabase.from("events").select("id,title,date,location,image,image_urls,featured_order,hero_theme").eq("status", "approved").eq("featured", true).order("featured_order", { ascending: true }).limit(8),
+        forSite(supabase.from("events").select("id,title,date,location,image,image_urls,featured_order,hero_theme"), site.id).eq("status", "approved").eq("featured", true).order("featured_order", { ascending: true }).limit(8),
         supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,banner_type,theme,start_date,end_date,display_order,active").eq("active", true).order("display_order", { ascending: true }),
         supabase.from("festival_hero_assets").select("id,festival_name,title,subtitle,image_url,theme,start_date,end_date,active").eq("active", true).order("start_date", { ascending: true }),
       ]);
@@ -68,7 +71,7 @@ export default function HomepageHeroLoader() {
       setItems([...festivalItems, ...eventItems, ...bannerItems].filter((item) => item.title).sort((a, b) => Number(a.display_order || 0) - Number(b.display_order || 0)));
     }
     load();
-  }, []);
+  }, [site.id]);
 
   return <HeroCarouselV3 items={items} />;
 }

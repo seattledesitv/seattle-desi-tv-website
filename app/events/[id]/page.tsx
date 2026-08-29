@@ -9,6 +9,8 @@ import { formatEventTime } from "../../lib/eventTime";
 import { entityIdFromParam, seoEntityPath } from "../../lib/seo/urls";
 
 import { AUTH_STORAGE_KEY, getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 const supabase = getSupabaseBrowserClient();
 
 function cleanRole(role: string) { return String(role || "general_public").toLowerCase().trim(); }
@@ -27,6 +29,7 @@ function deriveTags(event: any) { const text = `${event?.title || ""} ${event?.d
 function countdownLabel(value?: string) { const target = eventDate(value); if (!target) return "Date to be announced"; const today = new Date(); today.setHours(0, 0, 0, 0); const diff = Math.round((target.getTime() - today.getTime()) / 86400000); if (diff < 0) return "Event ended"; if (diff === 0) return "Happening today"; if (diff === 1) return "Starts tomorrow"; return `Starts in ${diff} days`; }
 
 export default function EventDetailPage() {
+  const site = useCurrentSite();
   const params = useParams();
   const rawEventId = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const eventId = entityIdFromParam(rawEventId);
@@ -71,9 +74,9 @@ export default function EventDetailPage() {
     setRole(cleanRole(requestResult.data?.approved_role || requestResult.data?.requested_role || "general_public"));
   }
 
-  async function loadRelatedEvents(currentEvent: any) { const today = new Date().toISOString().split("T")[0]; const { data } = await supabase.from("events").select("id,title,date,location,image,image_urls,ticket_url,status").neq("id", currentEvent.id).gte("date", today).order("date", { ascending: true }).limit(3); setRelatedEvents(data || []); }
+  async function loadRelatedEvents(currentEvent: any) { const today = new Date().toISOString().split("T")[0]; const { data } = await forSite(supabase.from("events").select("id,title,date,location,image,image_urls,ticket_url,status"), site.id).neq("id", currentEvent.id).gte("date", today).order("date", { ascending: true }).limit(3); setRelatedEvents(data || []); }
   async function loadOrganizations(id: string) { const { data } = await supabase.from("event_organizations").select("id,organization_id,relationship,display_order,is_primary,community_organizations(id,name,organization_type,category,location,website,description)").eq("event_id", id).order("is_primary", { ascending: false }).order("display_order", { ascending: true }); setEventOrganizations(data || []); }
-  async function loadEvent() { const { data, error } = await supabase.from("events").select("id,title,date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by,status,crew_member_ids").eq("id", eventId).maybeSingle(); if (error) { setMessage(`Could not load event: ${error.message}`); return null; } if (!data) { setMessage("Event not found."); return null; } setEvent(data); setSelectedDocument(0); await Promise.all([loadRelatedEvents(data), loadOrganizations(data.id)]); return data; }
+  async function loadEvent() { const { data, error } = await forSite(supabase.from("events").select("id,title,date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by,status,crew_member_ids"), site.id).eq("id", eventId).maybeSingle(); if (error) { setMessage(`Could not load event: ${error.message}`); return null; } if (!data) { setMessage("Event not found."); return null; } setEvent(data); setSelectedDocument(0); await Promise.all([loadRelatedEvents(data), loadOrganizations(data.id)]); return data; }
   async function loadRequests(currentUser: any) { const { data } = await supabase.from("event_crew_assignments").select("id,event_id,user_id,user_email,assignment_type,status,created_at,approved_at,crew_confirmed,coverage_completed,coverage_notes").eq("event_id", eventId).order("created_at", { ascending: false }); const rows = data || []; setCrewRequests(rows); const ownerCoverage = rows.find((r: any) => r.assignment_type === "owner_coverage_request" && (!currentUser?.id || r.user_id === currentUser.id)); setCoverageRequest(ownerCoverage || rows.find((r: any) => r.assignment_type === "owner_coverage_request") || null); }
   async function init() { if (!eventId || eventId === "undefined") { setEvent(null); setMessage("Invalid event id."); setLoading(false); return; } setLoading(true); const { data } = await supabase.auth.getUser(); const currentUser = data?.user || null; setUser(currentUser); await loadRole(currentUser); const loadedEvent = await loadEvent(); if (loadedEvent) await loadRequests(currentUser); setLoading(false); }
   async function notify(type: string, title: string, date: string, location: string, reviewUrl: string, directUrl?: string) { await fetch("/api/notify-admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, title, date, location, submittedBy: user?.email || "unknown", reviewUrl, directUrl }) }).catch(() => null); }
@@ -83,7 +86,7 @@ export default function EventDetailPage() {
   async function copyLink() { try { await navigator.clipboard.writeText(eventUrl); setShareMessage("Link copied!"); } catch { setShareMessage("Copy the page URL from your browser."); } }
   function downloadIcs() { if (!event) return; const start = calendarStamp(event.date); const endDate = eventDate(event.date); if (!start || !endDate) return; endDate.setDate(endDate.getDate() + 1); const end = endDate.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z"); const content = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Seattle Desi TV//Events//EN", "BEGIN:VEVENT", `UID:${event.id}@seattledesitv.com`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z")}`, `DTSTART:${start}`, `DTEND:${end}`, `SUMMARY:${escapeIcs(event.title)}`, `DESCRIPTION:${escapeIcs(event.description || `Event details: ${eventUrl}`)}`, `LOCATION:${escapeIcs(event.location || "")}`, `URL:${eventUrl}`, "END:VEVENT", "END:VCALENDAR"].join("\r\n"); const blob = new Blob([content], { type: "text/calendar;charset=utf-8" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `${String(event.title || "event").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.ics`; link.click(); URL.revokeObjectURL(url); }
 
-  useEffect(() => { init(); }, [eventId]);
+  useEffect(() => { init(); }, [eventId, site.id]);
   useEffect(() => { if (!lightboxOpen) return; const onKeyDown = (keyboardEvent: KeyboardEvent) => { if (keyboardEvent.key === "Escape") setLightboxOpen(false); if (keyboardEvent.key === "ArrowLeft") previousDocument(); if (keyboardEvent.key === "ArrowRight") nextDocument(); if (keyboardEvent.key === "+" || keyboardEvent.key === "=") setLightboxZoom((value) => clampZoom(value + 0.25)); if (keyboardEvent.key === "-") setLightboxZoom((value) => clampZoom(value - 0.25)); if (keyboardEvent.key === "0") setLightboxZoom(1); }; window.addEventListener("keydown", onKeyDown); return () => window.removeEventListener("keydown", onKeyDown); }, [lightboxOpen, selectedDocument, images.length]);
   useEffect(() => { if (!shareMessage) return; const timer = window.setTimeout(() => setShareMessage(""), 2500); return () => window.clearTimeout(timer); }, [shareMessage]);
 

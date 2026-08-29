@@ -667,3 +667,14 @@ Safety:
 - Added a temporary Studio diagnostic banner showing the resolved site, request hostname, resolution source, primary domain, and timezone.
 - This phase intentionally makes no public branding or content-filtering changes. Existing Seattle behavior remains unchanged while tables are migrated one module at a time.
 - TypeScript, focused ESLint, whitespace validation, and the complete Next.js production build pass.
+
+## Multi-city Events ownership
+
+- Added required `events.site_id` ownership, with an idempotent backfill assigning every existing event to Seattle.
+- Added site/status/date and site/featured/date indexes for market-scoped public reads.
+- Added a root site provider so browser pages consume the same server-resolved hostname context.
+- Scoped the public Events directory, event detail and related events, homepage event feeds, featured-event UI, SEO records, sitemap entries, mobile Events API, and primary Studio Events manager to the resolved site.
+- New event submissions retain the resolved market and remain pending until moderation.
+- Specialized event operations remain cross-market temporarily; they will receive an explicit market selector before additional cities are activated.
+- Requires `20260829120000_add_event_site_ownership.sql`.
+- TypeScript and the complete Next.js production build pass.

@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { PublicDirectoryService } from "../../../../lib/publicDirectory/services/publicDirectoryService";
 import { isPublicDirectoryResource, publicDirectoryResources } from "../../../../lib/publicDirectory/types";
+import { resolveSiteForHostname } from "../../../../lib/sites/siteResolver";
 
 export const dynamic = "force-dynamic";
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, OPTIONS", "Access-Control-Allow-Headers": "Content-Type" };
@@ -21,7 +22,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ res
     const limit = Number.isFinite(requestedLimit) ? Math.min(100, Math.max(1, Math.trunc(requestedLimit))) : 50;
     const offset = Number.isFinite(requestedOffset) ? Math.max(0, Math.trunc(requestedOffset)) : 0;
     const db = createClient(url, key, { auth: { persistSession: false } });
-    return NextResponse.json(await PublicDirectoryService.list(db, resource, limit, offset), { headers });
+    const site = await resolveSiteForHostname(request.headers.get("x-forwarded-host") || request.headers.get("host"));
+    return NextResponse.json(await PublicDirectoryService.list(db, resource, limit, offset, site.id), { headers });
   } catch (error) {
     console.error("Public mobile directory API failed", error);
     return NextResponse.json({ error: "Public directory data is temporarily unavailable." }, { status: 503, headers: cors });

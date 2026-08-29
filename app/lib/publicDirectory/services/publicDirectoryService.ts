@@ -17,8 +17,8 @@ function normalize(resource: PublicDirectoryResource, row: Record<string, unknow
 }
 
 export const PublicDirectoryService = {
-  async list(db: SupabaseClient, resource: PublicDirectoryResource, limit: number, offset: number): Promise<PublicDirectoryPage> {
-    const result = await repository.listApproved(db, resource, { limit, offset });
+  async list(db: SupabaseClient, resource: PublicDirectoryResource, limit: number, offset: number, siteId?: string | null): Promise<PublicDirectoryPage> {
+    const result = await repository.listApproved(db, resource, { limit, offset, siteId });
     let rows = result.rows;
     if (resource === "influencers") {
       const hidden = await repository.listHiddenIdentities(db);

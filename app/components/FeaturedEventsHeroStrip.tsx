@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -28,14 +30,16 @@ function formatDate(value?: string | null) {
 }
 
 export default function FeaturedEventsHeroStrip() {
+  const site = useCurrentSite();
   const [events, setEvents] = useState<FeaturedEvent[]>([]);
 
   useEffect(() => {
     async function load() {
       const today = new Date().toISOString().split("T")[0];
-      const { data, error } = await supabase
-        .from("events")
-        .select("id,title,date,location,image,image_urls,ticket_url,featured_order")
+      const { data, error } = await forSite(
+        supabase.from("events").select("id,title,date,location,image,image_urls,ticket_url,featured_order"),
+        site.id,
+      )
         .eq("status", "approved")
         .eq("featured", true)
         .gte("date", today)
@@ -45,7 +49,7 @@ export default function FeaturedEventsHeroStrip() {
       if (!error) setEvents(data || []);
     }
     load();
-  }, []);
+  }, [site.id]);
 
   if (events.length === 0) return null;
 

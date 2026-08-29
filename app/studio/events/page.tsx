@@ -6,6 +6,8 @@ import CheckedExternalLink from "../../components/CheckedExternalLink";
 import { formatEventTime } from "../../lib/eventTime";
 
 import { AUTH_STORAGE_KEY, getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 const supabase = getSupabaseBrowserClient();
 const STATUSES = ["all", "pending", "approved", "on_hold", "rejected"];
 
@@ -16,6 +18,7 @@ function getImage(row: any) { if (Array.isArray(row?.image_urls) && row.image_ur
 function ImageThumb({ src, label }: { src?: string; label: string }) { return src ? <img src={src} alt={label} className="w-28 h-28 rounded-xl object-cover bg-gray-100 border" /> : <div className="w-28 h-28 rounded-xl bg-pink-50 grid place-items-center text-pink-600 font-black text-xs text-center px-2">No image</div>; }
 
 export default function StudioEventsPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [actionMessage, setActionMessage] = useState("");
@@ -27,7 +30,7 @@ export default function StudioEventsPage() {
   const canAccess = Boolean(user && roleContainsAdmin(role));
 
   async function loadEvents() {
-    const { data, error } = await supabase.from("events").select("id,title,date,local_start_time,local_end_time,event_timezone,location,description,status,image,image_urls,ticket_url,poc_email,poc_phone,created_at,featured,featured_order").order("date", { ascending: true });
+    const { data, error } = await forSite(supabase.from("events").select("id,title,date,local_start_time,local_end_time,event_timezone,location,description,status,image,image_urls,ticket_url,poc_email,poc_phone,created_at,featured,featured_order"), site.id).order("date", { ascending: true });
     if (error) { setActionMessage(`Could not load events: ${error.message}`); return; }
     setEvents(data || []);
   }
@@ -52,7 +55,7 @@ export default function StudioEventsPage() {
     setActionMessage("Updating event...");
     const payload: any = { status, approved: status === "approved" };
     if (status === "approved") { payload.approved_by = user?.email || user?.id || null; payload.approved_at = new Date().toISOString(); }
-    const { error } = await supabase.from("events").update(payload).eq("id", id);
+    const { error } = await forSite(supabase.from("events").update(payload), site.id).eq("id", id);
     if (error) { setActionMessage(`Event update failed: ${error.message}`); return; }
     setActionMessage(`Event marked ${status}.`);
     await loadEvents();
@@ -60,7 +63,7 @@ export default function StudioEventsPage() {
 
   async function updateFeatured(id: string, featured: boolean, featuredOrder: number = 0) {
     setActionMessage("Updating featured event...");
-    const { error } = await supabase.from("events").update({ featured, featured_order: Number(featuredOrder || 0) }).eq("id", id);
+    const { error } = await forSite(supabase.from("events").update({ featured, featured_order: Number(featuredOrder || 0) }), site.id).eq("id", id);
     if (error) { setActionMessage(`Featured update failed: ${error.message}`); return; }
     setActionMessage(featured ? "Event added to homepage hero." : "Event removed from homepage hero.");
     await loadEvents();
@@ -69,14 +72,14 @@ export default function StudioEventsPage() {
   async function deleteEvent(id: string, title: string) {
     if (!window.confirm(`Delete event: ${title}? This cannot be undone.`)) return;
     setActionMessage("Deleting event...");
-    const { error } = await supabase.from("events").delete().eq("id", id);
+    const { error } = await forSite(supabase.from("events").delete(), site.id).eq("id", id);
     if (error) { setActionMessage(`Event delete failed: ${error.message}`); return; }
     setActionMessage("Event deleted.");
     await loadEvents();
   }
 
   async function logout() { await supabase.auth.signOut(); window.location.href = "/login"; }
-  useEffect(() => { init(); }, []);
+  useEffect(() => { init(); }, [site.id]);
 
   const counts = useMemo(() => { const base: Record<string, number> = { all: events.length, pending: 0, approved: 0, on_hold: 0, rejected: 0 }; events.forEach((event) => { const status = String(event.status || "pending").toLowerCase(); base[status] = (base[status] || 0) + 1; }); return base; }, [events]);
   const filteredEvents = useMemo(() => { const search = searchText.trim().toLowerCase(); return events.filter((event) => { const status = String(event.status || "pending").toLowerCase(); const matchesStatus = statusFilter === "all" || status === statusFilter; const matchesSearch = !search || [event.title, event.location, event.description, event.poc_email].filter(Boolean).join(" ").toLowerCase().includes(search); return matchesStatus && matchesSearch; }); }, [events, statusFilter, searchText]);

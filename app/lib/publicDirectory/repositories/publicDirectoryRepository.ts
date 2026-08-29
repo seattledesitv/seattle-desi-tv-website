@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PublicDirectoryResource } from "../types";
 
-type PageInput = { limit: number; offset: number };
+type PageInput = { limit: number; offset: number; siteId?: string | null };
 
 const selections: Record<PublicDirectoryResource, string> = {
   events: "id,title,date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_at",
@@ -19,6 +19,7 @@ export async function listApproved(db: SupabaseClient, resource: PublicDirectory
           : "events";
 
   let query = db.from(table).select(selections[resource], { count: "exact" }).eq("status", "approved");
+  if (resource === "events" && page.siteId) query = query.eq("site_id", page.siteId);
   if (resource === "organizations" || resource === "groups") query = query.eq("approved", true);
   if (resource === "influencers") query = query.eq("public_listing", true);
   query = resource === "events"

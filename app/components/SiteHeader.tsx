@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import AccountMenu from "./AccountMenu";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../lib/roles";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const HEADER_CACHE_KEY = "sdtv-header-state-v1";
@@ -47,11 +49,11 @@ function installHeroThemeStyles() {
   document.head.appendChild(style);
 }
 
-async function loadHeroThemeMap() {
+async function loadHeroThemeMap(siteId: string | null) {
   const [bannerResult, festivalResult, eventResult] = await Promise.all([
     supabase.from("homepage_hero_banners").select("image_url,theme").eq("active", true),
     supabase.from("festival_hero_assets").select("image_url,theme").eq("active", true),
-    supabase.from("events").select("image,image_urls,hero_theme").eq("featured", true).eq("status", "approved"),
+    forSite(supabase.from("events").select("image,image_urls,hero_theme"), siteId).eq("featured", true).eq("status", "approved"),
   ]);
   const next: Record<string, string> = {};
   [...(bannerResult.data || []), ...(festivalResult.data || [])].forEach((row: any) => {
@@ -97,6 +99,7 @@ function enhanceHeroTheme() {
 }
 
 export default function SiteHeader() {
+  const site = useCurrentSite();
   const cached = readCachedHeaderState();
   const [isLoggedIn, setIsLoggedIn] = useState(Boolean(cached.email));
   const [role, setRole] = useState(cached.role || "general_public");
@@ -118,10 +121,10 @@ export default function SiteHeader() {
   }, []);
 
   useEffect(() => {
-    loadHeroThemeMap().finally(enhanceHeroTheme);
+    loadHeroThemeMap(site.id).finally(enhanceHeroTheme);
     const id = window.setInterval(enhanceHeroTheme, 600);
     return () => window.clearInterval(id);
-  }, [pathname]);
+  }, [pathname, site.id]);
 
   const canSeeStudio = Boolean(isLoggedIn && isAdminRole(role));
   const communityLinks: HeaderLink[] = [

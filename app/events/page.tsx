@@ -9,6 +9,8 @@ import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { canRequestCrew as roleCanRequestCrew, resolveUserRole } from "../lib/roles";
 import { firstError, normalizeUrl, requireText, validateOptionalEmail, validateOptionalImageFile, validateOptionalPhone, validateOptionalUrl } from "../lib/validation";
 import { DEFAULT_EVENT_TIMEZONE, formatEventTime } from "../lib/eventTime";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
@@ -169,6 +171,7 @@ function EventImageSlider({ event }: { event: EventRow }) {
 }
 
 export default function EventsPage() {
+  const site = useCurrentSite();
   const [events, setEvents] = useState<EventRow[]>([]);
   const [coverageByEvent, setCoverageByEvent] = useState<Record<string, any>>({});
   const [influencerByEvent, setInfluencerByEvent] = useState<Record<string, any>>({});
@@ -226,7 +229,7 @@ export default function EventsPage() {
   }, [organizations, organizationSearch]);
 
   async function loadEvents() {
-    const { data, error } = await supabase.from("events").select("id,title,date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by").eq("status", "approved").order("date", { ascending: true });
+    const { data, error } = await forSite(supabase.from("events").select("id,title,date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by"), site.id).eq("status", "approved").order("date", { ascending: true });
     if (error) {
       setEvents([]);
       setMessage(`Could not load events: ${error.message}`);
@@ -421,6 +424,7 @@ export default function EventsPage() {
         status: "pending",
         approved: false,
       };
+      if (site.id) eventPayload.site_id = site.id;
       const { data, error } = await supabase.from("events").insert(eventPayload).select("id,title,date,location").single();
       if (error) throw error;
       const insertedEvent = data as InsertedEvent | null;
@@ -581,7 +585,7 @@ export default function EventsPage() {
       await loadOrganizations();
     });
     return () => listener.subscription.unsubscribe();
-  }, []);
+  }, [site.id]);
 
   const periodEvents = useMemo(() => {
     const today = todayDate();
