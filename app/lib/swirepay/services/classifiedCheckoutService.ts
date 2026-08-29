@@ -16,16 +16,16 @@ export type ClassifiedCheckoutIntent = {
     contactPhone: string | null;
   };
   checkout: {
-    publicKey: string;
-    checkoutUrl: string;
-    mode: "test" | "live";
+    configured: boolean;
     debug: boolean;
-    publicKeySource: string;
-    publicKeyKind: string;
-    publicKeyLength: number;
-    publicKeyFingerprint: string;
-    publicKeyWhitespaceTrimmed: boolean;
   };
+};
+
+export type SwirepayCheckoutSession = {
+  secureToken: string;
+  paymentSessionGid: string;
+  expiresAt: string | null;
+  accountGid: string;
 };
 
 async function accessToken() {
@@ -62,5 +62,19 @@ export async function loadClassifiedCheckout(tokenValue: string) {
       `/api/payments/classifieds/intent?token=${encodeURIComponent(tokenValue)}`,
       { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
     ),
+  );
+}
+
+export async function createSwirepayCheckoutSession(tokenValue: string) {
+  const token = await accessToken();
+  return response<SwirepayCheckoutSession>(
+    fetch("/api/payments/classifieds/session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ token: tokenValue }),
+    }),
   );
 }

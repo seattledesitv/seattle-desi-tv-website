@@ -81,18 +81,18 @@ export default function ClassifiedPaymentPage() {
                       Payment submitted. Waiting for secure confirmation...
                     </p>
                   )}
-                  {!intent.checkout.publicKey ||
-                  !intent.checkout.checkoutUrl ? (
-                    <p className="rounded-xl bg-amber-50 p-4 font-bold text-amber-900">
-                      Embedded checkout is not configured yet. Please contact
-                      SDTV.
-                    </p>
-                  ) : (
-                    <SwirepayEmbeddedCheckout
-                      intent={intent}
-                      onSubmitted={submitted}
-                    />
-                  )}
+                  {!verifying &&
+                    (!intent.checkout.configured ? (
+                      <p className="rounded-xl bg-amber-50 p-4 font-bold text-amber-900">
+                        Embedded checkout is not configured yet. Please contact
+                        SDTV.
+                      </p>
+                    ) : (
+                      <SwirepayEmbeddedCheckout
+                        intent={intent}
+                        onSubmitted={submitted}
+                      />
+                    ))}
                 </>
               ) : (
                 <div className="rounded-xl bg-amber-50 p-5 text-amber-900">

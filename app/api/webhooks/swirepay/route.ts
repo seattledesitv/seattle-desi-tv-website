@@ -99,24 +99,39 @@ export async function POST(request: Request) {
     eventType === "payment.captured" &&
     providerStatus?.toUpperCase() === "SUCCEEDED" &&
     paymentGid &&
-    (paymentLinkGid || classifiedIntentToken) &&
     amountCents !== null &&
     paidAmountCents !== null &&
     amountReceivedCents !== null &&
     currency
   ) {
-    const request = classifiedIntentToken
+    let resolvedIntentToken = classifiedIntentToken;
+    if (!resolvedIntentToken && paymentGid) {
+      const { data: checkoutSession } = await db
+        .from("swirepay_checkout_sessions")
+        .select("swirepay_payment_intents(public_token)")
+        .eq("payment_session_gid", paymentGid)
+        .maybeSingle();
+      const relatedIntent = checkoutSession?.swirepay_payment_intents as
+        | { public_token?: string }
+        | { public_token?: string }[]
+        | null;
+      resolvedIntentToken = Array.isArray(relatedIntent)
+        ? relatedIntent[0]?.public_token || null
+        : relatedIntent?.public_token || null;
+    }
+    const fulfillmentRequest = resolvedIntentToken
       ? db.rpc("fulfill_swirepay_embedded_classified_payment", {
           p_webhook_event_id: recorded.id,
           p_payment_session_gid: paymentGid,
-          p_intent_token: classifiedIntentToken,
+          p_intent_token: resolvedIntentToken,
           p_provider_status: providerStatus,
           p_amount_cents: amountCents,
           p_paid_amount_cents: paidAmountCents,
           p_amount_received_cents: amountReceivedCents,
           p_currency_code: currency,
         })
-      : db.rpc("fulfill_swirepay_payment", {
+      : paymentLinkGid
+        ? db.rpc("fulfill_swirepay_payment", {
           p_webhook_event_id: recorded.id,
           p_payment_session_gid: paymentGid,
           p_payment_link_gid: paymentLinkGid,
@@ -125,8 +140,19 @@ export async function POST(request: Request) {
           p_paid_amount_cents: paidAmountCents,
           p_amount_received_cents: amountReceivedCents,
           p_currency_code: currency,
-        });
-    const { data: fulfillment, error: fulfillmentError } = await request;
+        })
+        : null;
+    if (!fulfillmentRequest) {
+      await db
+        .from("swirepay_webhook_events")
+        .update({
+          processing_status: "mapped",
+          processing_notes: "Verified succeeded payment stored, but it did not match a recorded checkout session or payment link.",
+        })
+        .eq("id", recorded.id);
+      return NextResponse.json({ ok: true, captured: true, fulfillment: null });
+    }
+    const { data: fulfillment, error: fulfillmentError } = await fulfillmentRequest;
     if (fulfillmentError)
       return NextResponse.json(
         { error: "Verified payment could not be fulfilled." },
@@ -137,6 +163,15 @@ export async function POST(request: Request) {
     const fulfilled = ["fulfilled", "duplicate"].includes(
       result?.status || "",
     );
+    if (fulfilled && paymentGid) {
+      await db
+        .from("swirepay_checkout_sessions")
+        .update({
+          status: "succeeded",
+          succeeded_at: new Date().toISOString(),
+        })
+        .eq("payment_session_gid", paymentGid);
+    }
     await db
       .from("swirepay_webhook_events")
       .update({

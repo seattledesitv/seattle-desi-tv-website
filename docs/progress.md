@@ -657,3 +657,4 @@ Safety:
 - Existing private receipts remain attached unless an administrator selects a replacement file.
 - Server-side validation and mileage recalculation are applied to edits, and updater audit fields continue to be recorded.
 - No database migration or new dependency is required.
+- Replaced the legacy browser-key Swirepay classified checkout with the provider's v2 server-minted checkout-session flow, pinned SDK 2.0.6, inline secure component, session-to-intent reconciliation ledger, and signed-webhook-only activation. Requires `20260828150000_add_swirepay_checkout_sessions.sql`, `SWIREPAY_SECRET_KEY`, and `SWIREPAY_ACCOUNT_GID` before deployment.

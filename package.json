@@ -12,6 +12,7 @@
     "@aws-sdk/client-s3": "latest",
     "@aws-sdk/s3-request-presigner": "latest",
     "@supabase/supabase-js": "latest",
+    "@swirepay-developer/swirepay-frontend-payment-sdk": "2.0.6",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest",
