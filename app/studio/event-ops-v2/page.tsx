@@ -10,6 +10,8 @@ import {
   timeInputValue,
 } from "../../lib/eventTime";
 import { useEventImageUpload } from "../../hooks/useEventImageUpload";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const EVENT_STATUSES = ["pending", "approved", "on_hold", "rejected"];
@@ -204,6 +206,7 @@ function blankPoc(): Poc {
 }
 
 export default function EventOpsV2Page() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [actionMessage, setActionMessage] = useState("");
@@ -335,11 +338,12 @@ export default function EventOpsV2Page() {
   async function loadData() {
     const [er, ar, wr, ir, up, admins, team, roleRequests, pocResult] =
       await Promise.all([
-        supabase
-          .from("events")
-          .select(
+        forSite(
+          supabase.from("events").select(
             "id,title,date,local_start_time,local_end_time,event_timezone,location,status,created_by,poc_email,poc_phone,ticket_url,description,image,image_urls,featured,created_at",
-          )
+          ),
+          site.id,
+        )
           .order("date", { ascending: false })
           .limit(300),
 
@@ -397,10 +401,15 @@ export default function EventOpsV2Page() {
       );
     }
 
-    setEvents(er.data || []);
-    setAssignments(ar.data || []);
-    setWorkflows(wr.data || []);
-    setIntents(ir.data || []);
+    const siteEvents = er.data || [];
+    const eventIds = new Set(siteEvents.map((event: any) => event.id));
+    const siteAssignments = (ar.data || []).filter((row: any) => eventIds.has(row.event_id));
+    const siteWorkflows = (wr.data || []).filter((row: any) => eventIds.has(row.event_id));
+    const siteIntents = (ir.data || []).filter((row: any) => eventIds.has(row.event_id));
+    setEvents(siteEvents);
+    setAssignments(siteAssignments);
+    setWorkflows(siteWorkflows);
+    setIntents(siteIntents);
     setUserProfiles(up.data || []);
 
     const profileByUser: Record<string, any> = {};
@@ -515,14 +524,14 @@ export default function EventOpsV2Page() {
     );
 
     const pocMap: Record<string, any> = {};
-    (pocResult.data || []).forEach((p: any) => {
+    (pocResult.data || []).filter((p: any) => eventIds.has(p.event_id)).forEach((p: any) => {
       pocMap[p.event_id] = p;
     });
     setEventPocs(pocMap);
 
     const ids = Array.from(
       new Set(
-        (ir.data || [])
+        siteIntents
           .map((i: any) => i.influencer_profile_id)
           .filter(Boolean),
       ),
@@ -562,7 +571,7 @@ export default function EventOpsV2Page() {
   }
   useEffect(() => {
     init();
-  }, []);
+  }, [site.id]);
   useEffect(() => {
     if (!selectedEvent) return;
     setEditForm({
@@ -635,9 +644,10 @@ export default function EventOpsV2Page() {
   }
   async function updateEventStatus(status: string) {
     if (!selectedEventId) return;
-    const { error } = await supabase
-      .from("events")
-      .update({ status })
+    const { error } = await forSite(
+      supabase.from("events").update({ status }),
+      site.id,
+    )
       .eq("id", selectedEventId);
     if (error) setActionMessage(`Event update failed: ${error.message}`);
     else {
@@ -661,9 +671,10 @@ export default function EventOpsV2Page() {
       image: urls[0] || null,
       image_urls: urls.length ? urls : null,
     };
-    const { error } = await supabase
-      .from("events")
-      .update(payload)
+    const { error } = await forSite(
+      supabase.from("events").update(payload),
+      site.id,
+    )
       .eq("id", selectedEventId);
     if (error) setActionMessage(`Event save failed: ${error.message}`);
     else {

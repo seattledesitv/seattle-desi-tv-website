@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import StudioHeader from "../components/StudioHeader";
 import { getSupabaseBrowserClient, AUTH_STORAGE_KEY } from "../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../lib/roles";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -35,6 +37,7 @@ const emptyCounts: DashboardCounts = { events: 0, pendingEvents: 0, approvedEven
 function monthStartIso() { const date = new Date(); date.setDate(1); date.setHours(0, 0, 0, 0); return date.toISOString(); }
 
 export default function StudioDashboardPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking Studio access...");
   const [actionMessage, setActionMessage] = useState("");
@@ -45,13 +48,13 @@ export default function StudioDashboardPage() {
 
   async function loadCounts() {
     const [eventsResult, pendingEventsResult, approvedEventsResult, onHoldEventsResult, rejectedEventsResult, businessesResult, pendingBusinessesResult, crewResult, pendingCrewResult, volunteersResult, pendingVolunteersResult, teamResult, radioTeamResult, roleRequestsResult, coverageRequestsResult, coverageCompletedResult, coverageCompletedThisMonthResult, videoWorkflowsResult, videoAdminApprovalsResult, videoCrewReviewsResult, videoPublishingReadyResult] = await Promise.all([
-      supabase.from("events").select("id", { count: "exact", head: true }),
-      supabase.from("events").select("id", { count: "exact", head: true }).or("status.is.null,status.eq.pending"),
-      supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "approved"),
-      supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "on_hold"),
-      supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "rejected"),
-      supabase.from("local_businesses").select("id", { count: "exact", head: true }),
-      supabase.from("local_businesses").select("id", { count: "exact", head: true }).or("status.is.null,status.eq.pending"),
+      forSite(supabase.from("events").select("id", { count: "exact", head: true }), site.id),
+      forSite(supabase.from("events").select("id", { count: "exact", head: true }), site.id).or("status.is.null,status.eq.pending"),
+      forSite(supabase.from("events").select("id", { count: "exact", head: true }), site.id).eq("status", "approved"),
+      forSite(supabase.from("events").select("id", { count: "exact", head: true }), site.id).eq("status", "on_hold"),
+      forSite(supabase.from("events").select("id", { count: "exact", head: true }), site.id).eq("status", "rejected"),
+      forSite(supabase.from("local_businesses").select("id", { count: "exact", head: true }), site.id),
+      forSite(supabase.from("local_businesses").select("id", { count: "exact", head: true }), site.id).or("status.is.null,status.eq.pending"),
       supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }),
       supabase.from("event_crew_assignments").select("id", { count: "exact", head: true }).or("status.is.null,status.eq.pending"),
       supabase.from("user_role_requests").select("id", { count: "exact", head: true }).eq("requested_role", "volunteer"),
@@ -90,7 +93,7 @@ export default function StudioDashboardPage() {
     try { Object.keys(localStorage).filter((key) => key.toLowerCase().includes("supabase") || key.toLowerCase().includes("sb-") || key === AUTH_STORAGE_KEY).forEach((key) => localStorage.removeItem(key)); Object.keys(sessionStorage).filter((key) => key.toLowerCase().includes("supabase") || key.toLowerCase().includes("sb-") || key === AUTH_STORAGE_KEY).forEach((key) => sessionStorage.removeItem(key)); } catch {}
     window.location.href = "/login";
   }
-  useEffect(() => { init(); }, []);
+  useEffect(() => { init(); }, [site.id]);
 
   const eventOpsHref = "/studio/event-ops-v2";
   const attentionCards = [

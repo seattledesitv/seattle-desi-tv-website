@@ -694,3 +694,4 @@ Safety:
 - Uses a secure HTTP-only cookie that expires after one hour; production and custom domains return 404 for the switch endpoint.
 - Studio labels the selected context as `Preview override` so administrators can confirm which market is active.
 - TypeScript, focused lint, whitespace validation, and the complete Next.js production build pass.
+- Scoped the Studio dashboard's event/business totals and the primary Event Operations workspace to the previewed market; dependent crew, workflow, influencer-intent, and POC rows are limited to events in that market.
