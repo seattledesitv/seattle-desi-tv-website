@@ -1,9 +1,5 @@
 export type PressReleaseStatus =
-  | "pending"
-  | "changes_requested"
-  | "approved"
-  | "rejected"
-  | "archived";
+  "pending" | "changes_requested" | "approved" | "rejected" | "archived";
 
 export type PressReleaseDocument = {
   url: string;
@@ -14,6 +10,7 @@ export type PressReleaseDocument = {
 
 export type PressRelease = {
   id: string;
+  site_id: string;
   created_by: string;
   title: string;
   summary: string;

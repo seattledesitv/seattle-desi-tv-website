@@ -16,6 +16,8 @@ const selections: Record<PublicDirectoryResource, string> = {
     "id,user_id,email,full_name,city,bio,instagram_url,tiktok_url,youtube_url,website_url,photo_url,niche,follower_count,created_at",
   classifieds:
     "id,title,description,category,location,image_urls,price_cents,price_type,item_condition,requested_placement,starts_at,expires_at,created_at",
+  "press-releases":
+    "id,title,summary,body,organization_name,location,release_date,image_urls,documents,source_url,published_at,created_at",
 };
 
 export async function listApproved(
@@ -34,7 +36,9 @@ export async function listApproved(
             ? "influencer_profiles"
             : resource === "classifieds"
               ? "classified_ads"
-              : "events";
+              : resource === "press-releases"
+                ? "press_releases"
+                : "events";
 
   let query = db
     .from(table)
@@ -48,6 +52,7 @@ export async function listApproved(
       "groups",
       "influencers",
       "classifieds",
+      "press-releases",
     ].includes(resource) &&
     page.siteId
   )
@@ -59,21 +64,26 @@ export async function listApproved(
     query = query
       .lte("starts_at", new Date().toISOString())
       .gt("expires_at", new Date().toISOString());
+  if (resource === "press-releases")
+    query = query.lte("published_at", new Date().toISOString());
   query =
     resource === "events"
       ? query.order("date", { ascending: true })
       : resource === "classifieds"
         ? query.order("created_at", { ascending: false })
-        : query.order(
-            resource === "influencers"
-              ? "full_name"
-              : resource === "businesses"
-                ? "name"
-                : "created_at",
-            {
-              ascending: resource !== "organizations" && resource !== "groups",
-            },
-          );
+        : resource === "press-releases"
+          ? query.order("release_date", { ascending: false })
+          : query.order(
+              resource === "influencers"
+                ? "full_name"
+                : resource === "businesses"
+                  ? "name"
+                  : "created_at",
+              {
+                ascending:
+                  resource !== "organizations" && resource !== "groups",
+              },
+            );
 
   const { data, error, count } = await query.range(
     page.offset,

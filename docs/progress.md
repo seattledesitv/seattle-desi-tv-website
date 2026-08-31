@@ -720,3 +720,10 @@ Safety:
 - Added active classifieds to the market-scoped mobile read-only API.
 - Kept placement pricing shared across markets for this phase; payment intents remain bound to the authenticated owner and exact classified record.
 - Requires `20260831170000_add_classified_site_ownership.sql`.
+
+## Multi-city Press Releases
+
+- Added required `press_releases.site_id` ownership and backfilled existing releases to Seattle.
+- Scoped public newsroom/detail pages, submitter workspaces, Studio creation/moderation, media and document records, SEO/sitemap entries, and Instagram publication updates to the resolved market.
+- Added approved press releases to the market-scoped mobile read-only API.
+- Requires `20260831190000_add_press_release_site_ownership.sql`.

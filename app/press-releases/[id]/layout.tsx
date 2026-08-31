@@ -3,14 +3,31 @@ import { redirect } from "next/navigation";
 import EntitySeoLayout from "../../components/seo/EntitySeoLayout";
 import { entityMetadata, getEntity } from "../../lib/seo/service";
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
   const { id } = await params;
-  return entityMetadata(await getEntity("press_release", id), "Seattle Community Press Release");
+  return entityMetadata(
+    await getEntity("press_release", id),
+    "Seattle Community Press Release",
+  );
 }
 
-export default async function Layout({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
+export default async function Layout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const entity = await getEntity("press_release", id);
   if (entity && `/press-releases/${id}` !== entity.path) redirect(entity.path);
-  return <EntitySeoLayout kind="press_release" id={id}>{children}</EntitySeoLayout>;
+  return (
+    <EntitySeoLayout kind="press_release" id={id}>
+      {children}
+    </EntitySeoLayout>
+  );
 }

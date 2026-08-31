@@ -47,7 +47,8 @@ export async function getPublicEntity(
     (kind === "event" ||
       kind === "business" ||
       kind === "organization" ||
-      kind === "classified") &&
+      kind === "classified" ||
+      kind === "press_release") &&
     siteId
   )
     query = query.eq("site_id", siteId);
@@ -68,6 +69,7 @@ async function list(table: string, columns: string, siteId?: string | null) {
       "local_businesses",
       "community_organizations",
       "classified_ads",
+      "press_releases",
     ].includes(table) &&
     siteId
   )
@@ -94,7 +96,7 @@ export async function listPublicEntities(siteId?: string | null) {
     list("local_businesses", "id,name,created_at", siteId),
     list("classified_ads", "id,title,updated_at", siteId),
     list("community_organizations", "id,name,updated_at", siteId),
-    list("press_releases", "id,title,updated_at"),
+    list("press_releases", "id,title,updated_at", siteId),
     list("publications", "id,name,updated_at"),
   ]);
   return {

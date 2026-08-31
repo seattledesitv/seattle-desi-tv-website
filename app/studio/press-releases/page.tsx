@@ -6,8 +6,10 @@ import PressReleaseForm from "../../components/pressReleases/PressReleaseForm";
 import PressReleaseInstagramPublisher from "../../components/pressReleases/PressReleaseInstagramPublisher";
 import { usePressReleases } from "../../hooks/usePressReleases";
 import type { PressRelease } from "../../lib/pressReleases/types";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
 
 export default function StudioPressReleasesPage() {
+  const site = useCurrentSite();
   const data = usePressReleases("admin");
   const [filter, setFilter] = useState("open");
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -32,8 +34,8 @@ export default function StudioPressReleasesPage() {
         </p>
         <h1 className="mt-2 text-4xl font-black">Press Releases</h1>
         <p className="mt-2 max-w-3xl text-slate-600">
-          Create official SDTV releases or review community submissions before
-          they appear publicly.
+          Create official {site.shortName} releases or review community
+          submissions before they appear publicly.
         </p>
         <div className="mt-8">
           <PressReleaseForm

@@ -88,6 +88,21 @@ function normalize(
       expiresAt: row.expires_at,
       createdAt: row.created_at,
     };
+  if (resource === "press-releases")
+    return {
+      id: row.id,
+      title: row.title,
+      summary: row.summary,
+      body: row.body,
+      organizationName: row.organization_name,
+      location: row.location,
+      releaseDate: row.release_date,
+      imageUrls: imageUrls(row),
+      documents: row.documents,
+      sourceUrl: row.source_url,
+      publishedAt: row.published_at,
+      createdAt: row.created_at,
+    };
   return {
     id: row.id,
     name: row.full_name,

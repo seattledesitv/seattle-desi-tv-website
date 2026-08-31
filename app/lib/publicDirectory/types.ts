@@ -5,6 +5,7 @@ export const publicDirectoryResources = [
   "groups",
   "influencers",
   "classifieds",
+  "press-releases",
 ] as const;
 
 export type PublicDirectoryResource = (typeof publicDirectoryResources)[number];

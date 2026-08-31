@@ -13,7 +13,9 @@ export function buildPressReleaseInstagramCaption(release: PressRelease) {
     release.organization_name ? `From ${release.organization_name}` : "",
     `Read the complete press release: ${publicUrl}`,
     "#SeattleDesiTV #SeattleCommunity #PressRelease #SeattleDesi",
-  ].filter(Boolean).join("\n\n");
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 export async function publishPressReleaseToInstagram(
@@ -22,6 +24,13 @@ export async function publishPressReleaseToInstagram(
   imageUrls: string[],
   caption: string,
 ) {
-  if (release.status !== "approved") throw new Error("Approve this press release before posting it to Instagram.");
-  return publishInstagramMedia(supabase, { pressReleaseId: release.id, imageUrls, caption });
+  if (release.status !== "approved")
+    throw new Error(
+      "Approve this press release before posting it to Instagram.",
+    );
+  return publishInstagramMedia(supabase, {
+    pressReleaseId: release.id,
+    imageUrls,
+    caption,
+  });
 }
