@@ -7,14 +7,15 @@ import type {
   ClassifiedInput,
   ClassifiedPlacement,
 } from "../../lib/classifieds/types";
-const blank: ClassifiedInput = {
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+const blank = (city: string): ClassifiedInput => ({
   category: "items",
   title: "",
   description: "",
   price_cents: null,
   price_type: "fixed",
   item_condition: "good",
-  location: "Seattle Area",
+  location: `${city} Area`,
   image_urls: [],
   contact_name: "",
   contact_email: "",
@@ -22,11 +23,12 @@ const blank: ClassifiedInput = {
   contact_method: "form",
   destination_url: "",
   requested_placement: "standard",
-};
+});
 export default function NewClassified() {
+  const site = useCurrentSite();
   const { pricing, userId, saving, error, create, upload } =
     useClassifieds("owner");
-  const [form, setForm] = useState(blank),
+  const [form, setForm] = useState(() => blank(site.city)),
     [message, setMessage] = useState(""),
     [uploading, setUploading] = useState(false),
     [accepted, setAccepted] = useState(false);
@@ -57,7 +59,7 @@ export default function NewClassified() {
       setMessage(
         "Submitted for SDTV review. You can track it in My Classifieds.",
       );
-      setForm(blank);
+      setForm(blank(site.city));
     } catch {}
   }
   return (

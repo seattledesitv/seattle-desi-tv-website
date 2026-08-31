@@ -13,6 +13,7 @@ export type ClassifiedStatus =
   | "removed";
 export type ClassifiedAd = {
   id: string;
+  site_id: string;
   created_by: string;
   category: string;
   title: string;

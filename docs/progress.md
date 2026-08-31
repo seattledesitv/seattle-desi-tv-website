@@ -712,3 +712,11 @@ Safety:
 - New public and Studio-created influencer profiles retain the active market.
 - Requires `20260831150000_add_influencer_site_ownership.sql`.
 - TypeScript, whitespace validation, and the complete Next.js production build pass.
+
+## Multi-city Classifieds
+
+- Added required `classified_ads.site_id` ownership and backfilled existing classifieds to Seattle.
+- Scoped public listings/details, owner workspaces, submissions, Studio moderation, SEO/sitemap records, and reports to the resolved market.
+- Added active classifieds to the market-scoped mobile read-only API.
+- Kept placement pricing shared across markets for this phase; payment intents remain bound to the authenticated owner and exact classified record.
+- Requires `20260831170000_add_classified_site_ownership.sql`.

@@ -3,14 +3,17 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const serviceKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "";
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SECRET_KEY ||
+  "";
 
 function configured() {
   return Boolean(supabaseUrl && anonKey && serviceKey);
 }
 
 export async function authenticatedUser(authorization: string | null) {
-  if (!configured()) throw new Error("Payment server configuration is incomplete.");
+  if (!configured())
+    throw new Error("Payment server configuration is incomplete.");
   const token = authorization?.replace(/^Bearer\s+/i, "").trim();
   if (!token) throw new Error("Login required.");
   const session = createClient(supabaseUrl, anonKey, {
@@ -23,7 +26,8 @@ export async function authenticatedUser(authorization: string | null) {
 }
 
 function adminDb() {
-  if (!configured()) throw new Error("Payment server configuration is incomplete.");
+  if (!configured())
+    throw new Error("Payment server configuration is incomplete.");
   return createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false },
   });
@@ -39,7 +43,10 @@ function swirepayConfiguration() {
   return { secretKey, accountGid };
 }
 
-function acceptedCheckoutOrigin(requestOrigin: string) {
+function acceptedCheckoutOrigin(
+  requestOrigin: string,
+  primaryHostname: string,
+) {
   const configured = (process.env.SWIREPAY_ALLOWED_ORIGINS || "")
     .split(",")
     .map((value) => value.trim())
@@ -49,6 +56,7 @@ function acceptedCheckoutOrigin(requestOrigin: string) {
   const allowed = new Set([
     "https://seattledesitv.com",
     "https://www.seattledesitv.com",
+    ...(primaryHostname ? [`https://${primaryHostname}`] : []),
     ...configured,
     ...(productionHost ? [`https://${productionHost}`] : []),
     ...(deploymentHost ? [`https://${deploymentHost}`] : []),
@@ -65,13 +73,17 @@ function acceptedCheckoutOrigin(requestOrigin: string) {
   }
   if (!allowed.has(normalized))
     throw new Error("Checkout is not enabled for this website origin.");
-  if (process.env.NODE_ENV === "production" && !normalized.startsWith("https://"))
+  if (
+    process.env.NODE_ENV === "production" &&
+    !normalized.startsWith("https://")
+  )
     throw new Error("Secure checkout requires HTTPS.");
   return normalized;
 }
 
 function providerMessage(body: unknown) {
-  if (!body || typeof body !== "object") return "Swirepay rejected the checkout session.";
+  if (!body || typeof body !== "object")
+    return "Swirepay rejected the checkout session.";
   const source = body as Record<string, unknown>;
   return typeof source.message === "string" && source.message.trim()
     ? source.message.slice(0, 300)
@@ -87,6 +99,7 @@ function providerExpiry(value: unknown) {
 export async function createClassifiedPaymentIntent(
   classifiedId: string,
   userId: string,
+  siteId: string,
 ) {
   const db = adminDb();
   const { data: classified, error } = await db
@@ -95,6 +108,7 @@ export async function createClassifiedPaymentIntent(
       "id,created_by,title,status,payment_status,quoted_price_cents,contact_name,contact_email,contact_phone",
     )
     .eq("id", classifiedId)
+    .eq("site_id", siteId)
     .maybeSingle();
   if (error) throw error;
   if (!classified || classified.created_by !== userId)
@@ -145,7 +159,11 @@ export async function createClassifiedPaymentIntent(
   return { token: intent.public_token as string };
 }
 
-export async function getClassifiedPaymentIntent(token: string, userId: string) {
+export async function getClassifiedPaymentIntent(
+  token: string,
+  userId: string,
+  siteId: string,
+) {
   const db = adminDb();
   const { data: intent, error } = await db
     .from("swirepay_payment_intents")
@@ -165,6 +183,7 @@ export async function getClassifiedPaymentIntent(token: string, userId: string) 
       "id,title,requested_placement,status,payment_status,contact_name,contact_email,contact_phone",
     )
     .eq("id", intent.target_id)
+    .eq("site_id", siteId)
     .maybeSingle();
   if (classifiedError) throw classifiedError;
   if (!classified) throw new Error("Classified not found.");
@@ -181,7 +200,7 @@ export async function getClassifiedPaymentIntent(token: string, userId: string) 
 
   const checkoutConfigured = Boolean(
     process.env.SWIREPAY_SECRET_KEY?.trim() &&
-      process.env.SWIREPAY_ACCOUNT_GID?.trim(),
+    process.env.SWIREPAY_ACCOUNT_GID?.trim(),
   );
 
   return {
@@ -210,13 +229,17 @@ export async function createSwirepayClassifiedCheckoutSession(
   token: string,
   userId: string,
   requestOrigin: string,
+  siteId: string,
+  primaryHostname: string,
 ) {
   const db = adminDb();
   const { secretKey, accountGid } = swirepayConfiguration();
-  const acceptedDomain = acceptedCheckoutOrigin(requestOrigin);
+  const acceptedDomain = acceptedCheckoutOrigin(requestOrigin, primaryHostname);
   const { data: intent, error } = await db
     .from("swirepay_payment_intents")
-    .select("id,public_token,target_id,owner_user_id,amount_cents,currency,status,expires_at")
+    .select(
+      "id,public_token,target_id,owner_user_id,amount_cents,currency,status,expires_at",
+    )
     .eq("public_token", token)
     .eq("target_type", "classified")
     .maybeSingle();
@@ -230,6 +253,7 @@ export async function createSwirepayClassifiedCheckoutSession(
     .from("classified_ads")
     .select("id,status,payment_status,quoted_price_cents")
     .eq("id", intent.target_id)
+    .eq("site_id", siteId)
     .maybeSingle();
   if (classifiedError) throw classifiedError;
   if (

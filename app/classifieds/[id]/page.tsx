@@ -7,7 +7,9 @@ import { ClassifiedService } from "../../lib/classifieds/services/classifiedServ
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import type { ClassifiedAd } from "../../lib/classifieds/types";
 import { entityIdFromParam } from "../../lib/seo/urls";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
 export default function ClassifiedDetail() {
+  const site = useCurrentSite();
   const [id, setId] = useState(""),
     [ad, setAd] = useState<ClassifiedAd | null>(null),
     [message, setMessage] = useState("Loading..."),
@@ -19,13 +21,17 @@ export default function ClassifiedDetail() {
     const value = entityIdFromParam(location.pathname.split("/").pop());
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setId(value);
-    void ClassifiedService.getPublic(value)
+    if (!site.id) {
+      setMessage("This classified is unavailable.");
+      return;
+    }
+    void ClassifiedService.getPublic(value, site.id)
       .then((row) => {
         setAd(row);
         setMessage(row ? "" : "This classified is unavailable or expired.");
       })
       .catch(() => setMessage("Could not load this classified."));
-  }, []);
+  }, [site.id]);
   async function report() {
     const user = (await getSupabaseBrowserClient().auth.getUser()).data.user;
     if (!user) {
@@ -38,6 +44,7 @@ export default function ClassifiedDetail() {
       user.email || "",
       reason,
       details,
+      site.id || "",
     );
     setReporting(false);
     setMessage("Thank you. SDTV will review your report.");
@@ -50,9 +57,9 @@ export default function ClassifiedDetail() {
           <p className="rounded-2xl bg-white p-8">{message}</p>
         ) : (
           <>
-              <Link href="/classifieds" className="font-black text-pink-600">
+            <Link href="/classifieds" className="font-black text-pink-600">
               ← All Classifieds
-              </Link>
+            </Link>
             <div className="mt-5 grid gap-8 lg:grid-cols-[1fr_330px]">
               <article className="overflow-hidden rounded-3xl bg-white shadow-sm">
                 {ad.image_urls[0] && (

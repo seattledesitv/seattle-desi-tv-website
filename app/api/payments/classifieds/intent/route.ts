@@ -4,6 +4,7 @@ import {
   createClassifiedPaymentIntent,
   getClassifiedPaymentIntent,
 } from "../../../../lib/swirepay/server/classifiedPaymentIntentServer";
+import { resolveSiteForHostname } from "../../../../lib/sites/siteResolver";
 
 function message(cause: unknown) {
   return cause instanceof Error ? cause.message : "Payment request failed.";
@@ -18,9 +19,14 @@ export async function POST(request: Request) {
         { error: "Classified ID is required." },
         { status: 400 },
       );
+    const site = await resolveSiteForHostname(
+      request.headers.get("x-forwarded-host") || request.headers.get("host"),
+    );
+    if (!site.id) throw new Error("The active site could not be resolved.");
     const intent = await createClassifiedPaymentIntent(
       body.classifiedId,
       user.id,
+      site.id,
     );
     return NextResponse.json(intent);
   } catch (cause) {
@@ -41,8 +47,12 @@ export async function GET(request: Request) {
         { error: "Payment token is required." },
         { status: 400 },
       );
+    const site = await resolveSiteForHostname(
+      request.headers.get("x-forwarded-host") || request.headers.get("host"),
+    );
+    if (!site.id) throw new Error("The active site could not be resolved.");
     return NextResponse.json(
-      await getClassifiedPaymentIntent(token, user.id),
+      await getClassifiedPaymentIntent(token, user.id, site.id),
     );
   } catch (cause) {
     const error = message(cause);

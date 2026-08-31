@@ -20,11 +20,12 @@ export const ClassifiedService = {
   listOwner: repo.listOwner,
   listAdmin: repo.listAdmin,
   listPricing: repo.listPricing,
-  async create(i: ClassifiedInput, u: string) {
+  async create(i: ClassifiedInput, u: string, siteId: string) {
     validate(i);
     return repo.create(
       { ...i, title: i.title.trim(), description: i.description.trim() },
       u,
+      siteId,
     );
   },
   updateOwner: repo.updateOwner,
@@ -34,7 +35,8 @@ export const ClassifiedService = {
     p: ClassifiedPlacement,
     price: number | null,
     n: string,
-  ) => repo.review(id, d, p, price, n),
+    siteId: string,
+  ) => repo.review(id, d, p, price, n, siteId),
   updatePricing: repo.updatePricing,
   report: repo.report,
   uploadImage: repo.uploadImage,

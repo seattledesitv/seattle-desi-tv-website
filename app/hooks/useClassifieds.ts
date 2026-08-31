@@ -9,12 +9,14 @@ import type {
   ClassifiedPlacement,
   ClassifiedPricing,
 } from "../lib/classifieds/types";
+import { useCurrentSite } from "../lib/sites/SiteContext";
 function message(e: unknown) {
   return e instanceof Error
     ? e.message
     : "The classified operation could not be completed.";
 }
 export function useClassifieds(mode: "public" | "owner" | "admin") {
+  const site = useCurrentSite();
   const [ads, setAds] = useState<ClassifiedAd[]>([]),
     [pricing, setPricing] = useState<ClassifiedPricing[]>([]),
     [userId, setUserId] = useState(""),
@@ -26,12 +28,14 @@ export function useClassifieds(mode: "public" | "owner" | "admin") {
     setLoading(true);
     setError("");
     try {
+      if (!site.id) throw new Error("The active site could not be resolved.");
       const auth = await getSupabaseBrowserClient().auth.getUser();
       const user = auth.data.user;
       setUserId(user?.id || "");
       setEmail(user?.email || "");
       setPricing(await ClassifiedService.listPricing(mode === "admin"));
-      if (mode === "public") setAds(await ClassifiedService.listPublic());
+      if (mode === "public")
+        setAds(await ClassifiedService.listPublic(site.id));
       else {
         if (!user) throw new Error("Please log in to manage classifieds.");
         if (
@@ -41,8 +45,8 @@ export function useClassifieds(mode: "public" | "owner" | "admin") {
           throw new Error("Admin access is required.");
         setAds(
           mode === "admin"
-            ? await ClassifiedService.listAdmin()
-            : await ClassifiedService.listOwner(user.id),
+            ? await ClassifiedService.listAdmin(site.id)
+            : await ClassifiedService.listOwner(user.id, site.id),
         );
       }
     } catch (e) {
@@ -50,7 +54,7 @@ export function useClassifieds(mode: "public" | "owner" | "admin") {
     } finally {
       setLoading(false);
     }
-  }, [mode]);
+  }, [mode, site.id]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
@@ -78,20 +82,33 @@ export function useClassifieds(mode: "public" | "owner" | "admin") {
     error,
     refresh,
     create: (i: ClassifiedInput) =>
-      run(() => ClassifiedService.create(i, userId)),
+      run(() => {
+        if (!site.id) throw new Error("The active site could not be resolved.");
+        return ClassifiedService.create(i, userId, site.id);
+      }),
     update: (id: string, c: Record<string, unknown>) =>
-      run(() => ClassifiedService.updateOwner(id, c)),
+      run(() => {
+        if (!site.id) throw new Error("The active site could not be resolved.");
+        return ClassifiedService.updateOwner(id, c, site.id);
+      }),
     review: (
       id: string,
       d: string,
       p: ClassifiedPlacement,
       price: number | null,
       n: string,
-    ) => run(() => ClassifiedService.review(id, d, p, price, n)),
+    ) =>
+      run(() => {
+        if (!site.id) throw new Error("The active site could not be resolved.");
+        return ClassifiedService.review(id, d, p, price, n, site.id);
+      }),
     updatePricing: (p: ClassifiedPlacement, c: Record<string, unknown>) =>
       run(() => ClassifiedService.updatePricing(p, c)),
     upload: (f: File) => ClassifiedService.uploadImage(f, userId),
     report: (id: string, r: string, n: string) =>
-      run(() => ClassifiedService.report(id, userId, email, r, n)),
+      run(() => {
+        if (!site.id) throw new Error("The active site could not be resolved.");
+        return ClassifiedService.report(id, userId, email, r, n, site.id);
+      }),
   };
 }

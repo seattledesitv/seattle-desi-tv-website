@@ -5,6 +5,7 @@ import SiteHeader from "../components/SiteHeader";
 import SiteFooter from "../components/SiteFooter";
 import { useClassifieds } from "../hooks/useClassifieds";
 import { seoEntityPath } from "../lib/seo/urls";
+import { useCurrentSite } from "../lib/sites/SiteContext";
 const names: Record<string, string> = {
   items: "Items for Sale",
   housing: "Housing & Rentals",
@@ -23,6 +24,7 @@ function money(c: number | null, t: string) {
   return `${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(c / 100)}${t === "negotiable" ? " · negotiable" : ""}`;
 }
 export default function ClassifiedsPage() {
+  const site = useCurrentSite();
   const { ads, loading, error } = useClassifieds("public");
   const [q, setQ] = useState(""),
     [category, setCategory] = useState("all");
@@ -45,10 +47,12 @@ export default function ClassifiedsPage() {
           <p className="font-black uppercase tracking-wide text-pink-300">
             Community marketplace
           </p>
-          <h1 className="mt-2 text-5xl font-black">SDTV Classifieds</h1>
+          <h1 className="mt-2 text-5xl font-black">
+            {site.shortName} Classifieds
+          </h1>
           <p className="mt-4 max-w-3xl text-slate-300">
-            Buy, sell, hire, rent, teach, and connect with the Seattle Desi
-            community. Listings are reviewed by SDTV.
+            Buy, sell, hire, rent, teach, and connect with the {site.city} Desi
+            community. Listings are reviewed by {site.shortName}.
           </p>
           <div className="mt-7 flex gap-3">
             <Link

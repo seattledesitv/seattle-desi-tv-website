@@ -7,11 +7,12 @@ import type {
 } from "../types";
 const db = getSupabaseBrowserClient();
 const fields =
-  "id,created_by,category,title,description,price_cents,price_type,item_condition,location,image_urls,contact_name,contact_email,contact_phone,contact_method,destination_url,requested_placement,status,quoted_price_cents,payment_status,payment_link,admin_notes,starts_at,expires_at,created_at,updated_at";
-export async function listPublic() {
+  "id,site_id,created_by,category,title,description,price_cents,price_type,item_condition,location,image_urls,contact_name,contact_email,contact_phone,contact_method,destination_url,requested_placement,status,quoted_price_cents,payment_status,payment_link,admin_notes,starts_at,expires_at,created_at,updated_at";
+export async function listPublic(siteId: string) {
   const { data, error } = await db
     .from("classified_ads")
     .select(fields)
+    .eq("site_id", siteId)
     .eq("status", "active")
     .lte("starts_at", new Date().toISOString())
     .gt("expires_at", new Date().toISOString())
@@ -20,28 +21,31 @@ export async function listPublic() {
   if (error) throw error;
   return (data || []) as ClassifiedAd[];
 }
-export async function getPublic(id: string) {
+export async function getPublic(id: string, siteId: string) {
   const { data, error } = await db
     .from("classified_ads")
     .select(fields)
     .eq("id", id)
+    .eq("site_id", siteId)
     .maybeSingle();
   if (error) throw error;
   return data as ClassifiedAd | null;
 }
-export async function listOwner(userId: string) {
+export async function listOwner(userId: string, siteId: string) {
   const { data, error } = await db
     .from("classified_ads")
     .select(fields)
     .eq("created_by", userId)
+    .eq("site_id", siteId)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data || []) as ClassifiedAd[];
 }
-export async function listAdmin() {
+export async function listAdmin(siteId: string) {
   const { data, error } = await db
     .from("classified_ads")
     .select(fields)
+    .eq("site_id", siteId)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data || []) as ClassifiedAd[];
@@ -58,11 +62,16 @@ export async function listPricing(all = false) {
   if (error) throw error;
   return (data || []) as ClassifiedPricing[];
 }
-export async function create(input: ClassifiedInput, userId: string) {
+export async function create(
+  input: ClassifiedInput,
+  userId: string,
+  siteId: string,
+) {
   const { data, error } = await db
     .from("classified_ads")
     .insert({
       ...input,
+      site_id: siteId,
       created_by: userId,
       status: "pending",
       payment_status: "not_required",
@@ -75,11 +84,13 @@ export async function create(input: ClassifiedInput, userId: string) {
 export async function updateOwner(
   id: string,
   changes: Record<string, unknown>,
+  siteId: string,
 ) {
   const { error } = await db
     .from("classified_ads")
     .update({ ...changes, updated_at: new Date().toISOString() })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("site_id", siteId);
   if (error) throw error;
 }
 export async function review(
@@ -88,11 +99,20 @@ export async function review(
   placement: ClassifiedPlacement,
   price: number | null,
   notes: string,
+  siteId: string,
 ) {
+  const target = await db
+    .from("classified_ads")
+    .select("id")
+    .eq("id", id)
+    .eq("site_id", siteId)
+    .maybeSingle();
+  if (target.error) throw target.error;
+  if (!target.data) throw new Error("Classified not found for this site.");
   const { error } = await db.rpc("review_classified", {
     classified_id: id,
     decision,
-      requested_placement_input: placement,
+    requested_placement_input: placement,
     final_price_cents: price,
     review_notes: notes || null,
   });
@@ -114,16 +134,23 @@ export async function report(
   email: string,
   reason: string,
   details: string,
+  siteId: string,
 ) {
-  const { error } = await db
-    .from("classified_reports")
-    .insert({
-      classified_id: classifiedId,
-      reporter_user_id: userId,
-      reporter_email: email,
-      reason,
-      details: details || null,
-    });
+  const target = await db
+    .from("classified_ads")
+    .select("id")
+    .eq("id", classifiedId)
+    .eq("site_id", siteId)
+    .maybeSingle();
+  if (target.error) throw target.error;
+  if (!target.data) throw new Error("Classified not found for this site.");
+  const { error } = await db.from("classified_reports").insert({
+    classified_id: classifiedId,
+    reporter_user_id: userId,
+    reporter_email: email,
+    reason,
+    details: details || null,
+  });
   if (error) throw error;
 }
 export async function uploadImage(file: File, userId: string) {
