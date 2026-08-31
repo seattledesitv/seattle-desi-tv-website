@@ -23,10 +23,10 @@ const SOURCES: SourceDefinition[] = [
   { sourceType: "group", label: "Community Groups", table: "community_groups", publicPath: "/community-groups", titleFields: ["name", "group_name", "title"], descriptionFields: ["description", "about", "summary"], imageFields: ["image_url", "logo_url", "image", "cover_image_url"], dateFields: ["approved_at", "created_at", "updated_at"], urlFields: ["group_url", "website", "join_url"] },
 ];
 
-export async function discoverSource(supabase: SupabaseClient, definition: SourceDefinition, range: DiscoveryRange): Promise<DiscoveryResult> {
+export async function discoverSource(supabase: SupabaseClient, definition: SourceDefinition, range: DiscoveryRange, siteId: string): Promise<DiscoveryResult> {
   let data: Record<string, unknown>[];
   try {
-    data = await listPublishingSourceRows(supabase, definition.table);
+    data = await listPublishingSourceRows(supabase, definition.table, siteId);
   } catch (error) {
     return { sourceType: definition.sourceType, label: definition.label, items: [], error: error instanceof Error ? error.message : `Could not load ${definition.label}.` };
   }
@@ -48,12 +48,12 @@ function firstImage(row: Record<string, unknown>) {
   return text(row.image_url) || text(row.image) || text(row.thumbnail_url) || text(row.photo) || text(row.picture) || "/hero-sdtv.png";
 }
 
-async function discoverHomepageHeroes(supabase: SupabaseClient): Promise<DiscoveryResult> {
+async function discoverHomepageHeroes(supabase: SupabaseClient, siteId: string, siteName: string): Promise<DiscoveryResult> {
   try {
     const [banners, festivals, events] = await Promise.all([
-      listPublishingSourceRows(supabase, "homepage_hero_banners"),
-      listPublishingSourceRows(supabase, "festival_hero_assets"),
-      listPublishingSourceRows(supabase, "events"),
+      listPublishingSourceRows(supabase, "homepage_hero_banners", siteId),
+      listPublishingSourceRows(supabase, "festival_hero_assets", siteId),
+      listPublishingSourceRows(supabase, "events", siteId),
     ]);
     const today = new Date().toISOString().slice(0, 10);
     const inWindow = (row: Record<string, unknown>) => (!text(row.start_date) || text(row.start_date) <= today) && (!text(row.end_date) || text(row.end_date) >= today);
@@ -66,8 +66,8 @@ async function discoverHomepageHeroes(supabase: SupabaseClient): Promise<Discove
     const items = rows.map((row, index) => ({
       sourceType: "hero" as const,
       sourceId: String(row.id || `homepage-hero-${index}`),
-      title: text(row.title) || text(row.festival_name) || "Seattle Desi TV",
-      description: text(row.subtitle) || text(row.description) || "Stories, culture, and community from Seattle Desi TV.",
+      title: text(row.title) || text(row.festival_name) || siteName,
+      description: text(row.subtitle) || text(row.description) || `Stories, culture, and community from ${siteName}.`,
       imageUrl: firstImage(row),
       destinationUrl: text(row._url) || "/",
       sourceDate: null,
@@ -75,16 +75,16 @@ async function discoverHomepageHeroes(supabase: SupabaseClient): Promise<Discove
       featured: index === 0,
       metadata: { source: "homepage", kind: row._kind },
     }));
-    if (!items.length) items.push({ sourceType: "hero", sourceId: "homepage-default", title: "Seattle Desi TV", description: "Stories. Culture. Community.", imageUrl: "/hero-sdtv.png", destinationUrl: "/", sourceDate: null, status: "active", featured: true, metadata: { source: "homepage", kind: "Default cover" } });
+    if (!items.length) items.push({ sourceType: "hero", sourceId: "homepage-default", title: siteName, description: "Stories. Culture. Community.", imageUrl: "/hero-sdtv.png", destinationUrl: "/", sourceDate: null, status: "active", featured: true, metadata: { source: "homepage", kind: "Default cover" } });
     return { sourceType: "hero", label: "Cover & Hero", items };
   } catch (error) {
     return { sourceType: "hero", label: "Cover & Hero", items: [], error: error instanceof Error ? error.message : "Could not load homepage heroes." };
   }
 }
 
-async function discoverCommunityHighlights(supabase: SupabaseClient): Promise<DiscoveryResult> {
+async function discoverCommunityHighlights(supabase: SupabaseClient, siteId: string): Promise<DiscoveryResult> {
   try {
-    const rows = (await listPublishingSourceRows(supabase, "featured_social_content"))
+    const rows = (await listPublishingSourceRows(supabase, "featured_social_content", siteId))
       .filter((row) => row.active !== false && row.featured !== false)
       .sort((a, b) => Number(a.display_order ?? 999) - Number(b.display_order ?? 999) || String(b.created_at || "").localeCompare(String(a.created_at || "")))
       .slice(0, 3);
@@ -129,7 +129,7 @@ async function discoverRecognition(supabase: SupabaseClient): Promise<DiscoveryR
   }
 }
 
-async function discoverStatistics(supabase: SupabaseClient): Promise<DiscoveryResult> {
+async function discoverStatistics(supabase: SupabaseClient, siteId: string): Promise<DiscoveryResult> {
   const definitions: Array<[string, string, string, string, { column: string; value: string }?]> = [
     ["Events Published", "events", "Approved community events", "/events", { column: "status", value: "approved" }],
     ["Businesses Listed", "local_businesses", "Approved local businesses", "/businesses", { column: "status", value: "approved" }],
@@ -139,14 +139,14 @@ async function discoverStatistics(supabase: SupabaseClient): Promise<DiscoveryRe
   ];
   const items: Array<PublishingContentItem | null> = await Promise.all(definitions.map(async ([title, table, description, url, filter]): Promise<PublishingContentItem | null> => {
     try {
-      const count = await countPublishingSourceRows(supabase, table, filter);
+      const count = await countPublishingSourceRows(supabase, table, filter, siteId);
       return { sourceType: "statistic" as const, sourceId: table, title, description: `${count.toLocaleString()} — ${description}`, imageUrl: "", destinationUrl: url, sourceDate: null, status: "active", featured: false, metadata: { value: count, label: title, sourceTable: table } };
     } catch {
       return null;
     }
   }));
   try {
-    const socialRows = await listPublishingSourceRows(supabase, "social_media_stats");
+    const socialRows = await listPublishingSourceRows(supabase, "social_media_stats", siteId);
     const totals = socialRows.reduce((sum, row) => sum + Number(row.followers || 0), 0);
     items.push({ sourceType: "statistic", sourceId: "social-followers", title: "Social Followers", description: `${totals.toLocaleString()} — Combined across SDTV social platforms`, imageUrl: "", destinationUrl: "/#social", sourceDate: null, status: "active", featured: true, metadata: { value: totals, label: "Social Followers", sourceTable: "social_media_stats" } });
   } catch { /* Other live totals remain available. */ }
@@ -163,14 +163,14 @@ function discoverGetInvolved(): DiscoveryResult {
   return { sourceType: "call_to_action", label: "Get Involved", items: actions.map(([title, description, destinationUrl], index) => ({ sourceType: "call_to_action", sourceId: `get-involved-${index}`, title, description, imageUrl: "", destinationUrl, sourceDate: null, status: "active", featured: index === 0, metadata: { source: "homepage-contact" } })) };
 }
 
-export async function discoverConfiguredSources(supabase: SupabaseClient, range: DiscoveryRange): Promise<DiscoveryResult[]> {
+export async function discoverConfiguredSources(supabase: SupabaseClient, range: DiscoveryRange, siteId: string, siteName: string): Promise<DiscoveryResult[]> {
   const [standard, hero, highlights, liveSocial, recognition, statistics] = await Promise.all([
-    Promise.all(SOURCES.map((source) => discoverSource(supabase, source, range))),
-    discoverHomepageHeroes(supabase),
-    discoverCommunityHighlights(supabase),
+    Promise.all(SOURCES.map((source) => discoverSource(supabase, source, range, siteId))),
+    discoverHomepageHeroes(supabase, siteId, siteName),
+    discoverCommunityHighlights(supabase, siteId),
     discoverLiveSocialContent(),
     discoverRecognition(supabase),
-    discoverStatistics(supabase),
+    discoverStatistics(supabase, siteId),
   ]);
   return [hero, highlights, ...liveSocial, ...standard, recognition, statistics, discoverGetInvolved()];
 }

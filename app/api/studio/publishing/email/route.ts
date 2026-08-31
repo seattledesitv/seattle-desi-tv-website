@@ -65,12 +65,12 @@ export async function POST(request: Request) {
   const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
   const { data: output, error: outputError } = await db.from("publication_outputs").select("id,publication_id,campaign_id,channel,status,content").eq("id", outputId).single();
   if (outputError || !output) return NextResponse.json({ error: outputError?.message || "Publication email output was not found." }, { status: 404 });
+  const { data: publication, error: publicationError } = await db.from("publications").select("status").eq("id", output.publication_id).eq("site_id", site.id).maybeSingle();
+  if (publicationError || !publication) return NextResponse.json({ error: publicationError?.message || "Publication was not found for the current site." }, { status: 404 });
   if (!['email', 'newsletter'].includes(String(output.channel))) return NextResponse.json({ error: "Select an email or newsletter output." }, { status: 400 });
   const payload = emailPayload(output.content);
   if (!payload) return NextResponse.json({ error: "Generate a new email output before sending." }, { status: 400 });
   if (action === "send_all") {
-    const { data: publication, error: publicationError } = await db.from("publications").select("status").eq("id", output.publication_id).single();
-    if (publicationError) return NextResponse.json({ error: publicationError.message }, { status: 400 });
     if (!["approved", "scheduled", "published"].includes(String(publication?.status))) return NextResponse.json({ error: "Approve this publication in Review & approve before sending it to subscribers." }, { status: 409 });
   }
   const resend = new Resend(resendKey);

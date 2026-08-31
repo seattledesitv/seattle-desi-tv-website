@@ -41,8 +41,12 @@ function sectionKeyFor(sourceType: PublishingContentItem["sourceType"]) {
   return mapping[sourceType];
 }
 
-export async function listPublishingSourceRows(supabase: SupabaseClient, table: string) {
-  const { data, error } = await supabase.from(table).select("*").limit(250);
+const SITE_SCOPED_SOURCE_TABLES = new Set(["events", "local_businesses", "community_organizations", "community_groups", "homepage_hero_banners", "festival_hero_assets", "featured_social_content", "radio_team_members", "social_media_stats"]);
+
+export async function listPublishingSourceRows(supabase: SupabaseClient, table: string, siteId?: string) {
+  let query = supabase.from(table).select("*").limit(250);
+  if (siteId && SITE_SCOPED_SOURCE_TABLES.has(table)) query = query.eq("site_id", siteId);
+  const { data, error } = await query;
   if (error) throw error;
   return (data || []) as Record<string, unknown>[];
 }
@@ -51,8 +55,10 @@ export async function countPublishingSourceRows(
   supabase: SupabaseClient,
   table: string,
   filter?: { column: string; value: string },
+  siteId?: string,
 ) {
   let query = supabase.from(table).select("id", { count: "exact", head: true });
+  if (siteId && SITE_SCOPED_SOURCE_TABLES.has(table)) query = query.eq("site_id", siteId);
   if (filter) query = query.eq(filter.column, filter.value);
   const { count, error } = await query;
   if (error) throw error;

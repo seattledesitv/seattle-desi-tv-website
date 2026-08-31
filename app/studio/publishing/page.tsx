@@ -16,6 +16,7 @@ import {
   updatePublication,
 } from "../../lib/publishing/repository";
 import type { PublicationDraftInput, PublicationRecord, SaveState } from "../../lib/publishing/types";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 const emptyDraft: PublicationDraftInput = { name: "", edition_label: "", publication_type: "monthly", start_date: "", end_date: "", description: "" };
@@ -39,6 +40,7 @@ function SaveIndicator({ state, savedAt }: { state: SaveState; savedAt: Date | n
 
 export default function PublishingPlatformPage() {
   const router = useRouter();
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState("");
   const [accessMessage, setAccessMessage] = useState("Checking Studio access...");
@@ -63,10 +65,10 @@ export default function PublishingPlatformPage() {
     if (!isAdminRole(role)) { setAccessMessage("This account does not have Studio admin access."); setLoading(false); return; }
     setUserId(user.id);
     setAccessMessage("");
-    try { setPublications(await listPublications(supabase)); }
+    try { if (!site.id) throw new Error("The current site is not configured."); setPublications(await listPublications(supabase, site.id)); }
     catch (error: any) { setErrorMessage(error.message || "Could not load publications."); }
     finally { setLoading(false); }
-  }, []);
+  }, [site.id]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -102,7 +104,8 @@ export default function PublishingPlatformPage() {
     if (!userId || !draft.name.trim()) return;
     setBusyId("create"); setErrorMessage("");
     try {
-      const created = await createPublication(supabase, draft, userId);
+      if (!site.id) throw new Error("The current site is not configured.");
+      const created = await createPublication(supabase, draft, userId, site.id);
       setPublications((current) => [created, ...current]);
       setDraft(emptyDraft); setShowCreate(false);
       if (created.publication_type === "weekly_instagram") router.push(`/studio/publishing/${created.id}`);

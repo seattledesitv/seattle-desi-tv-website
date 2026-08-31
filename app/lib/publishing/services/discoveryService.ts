@@ -3,8 +3,8 @@ import type { DiscoveryRange, DiscoveryResult, DiscoverySummary } from "../core/
 import { discoverConfiguredSources } from "../discovery/sources";
 import { listPublicationSections, saveDiscoverySnapshot } from "../repositories/contentRepository";
 
-export async function discoverPublicationContent(supabase: SupabaseClient, range: DiscoveryRange): Promise<DiscoverySummary> {
-  const results = await discoverConfiguredSources(supabase, range);
+export async function discoverPublicationContent(supabase: SupabaseClient, range: DiscoveryRange, siteId: string, siteName: string): Promise<DiscoverySummary> {
+  const results = await discoverConfiguredSources(supabase, range, siteId, siteName);
   return {
     results,
     total: results.reduce((sum, result) => sum + result.items.length, 0),

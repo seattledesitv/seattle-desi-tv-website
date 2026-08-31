@@ -11,11 +11,13 @@ import { discoverPublicationContent } from "../../../../lib/publishing/services/
 import { listPublicationSections, saveDiscoverySnapshot } from "../../../../lib/publishing/repositories/contentRepository";
 import type { DiscoveryResult, DiscoverySummary, PublishingContentItem } from "../../../../lib/publishing/core/content";
 import type { PublicationRecord } from "../../../../lib/publishing/types";
+import { useCurrentSite } from "../../../../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 const keyFor = (item: PublishingContentItem) => `${item.sourceType}:${item.sourceId}`;
 
 export default function PublicationContentPage() {
+  const site = useCurrentSite();
   const params = useParams<{ publicationId: string }>();
   const publicationId = String(params.publicationId || "");
   const [publication, setPublication] = useState<PublicationRecord | null>(null);
@@ -36,18 +38,19 @@ export default function PublicationContentPage() {
         if (!user) throw new Error("Please log in to access the Publishing Platform.");
         const role = await resolveUserRole(supabase, user);
         if (!isAdminRole(role)) throw new Error("This account does not have Studio admin access.");
-        setPublication(await getPublication(supabase, publicationId));
+        if (!site.id) throw new Error("The current site is not configured.");
+        setPublication(await getPublication(supabase, publicationId, site.id));
       } catch (error: any) { setMessage(error.message || "Could not load publication."); }
       finally { setLoading(false); }
     }
     if (publicationId) init();
-  }, [publicationId]);
+  }, [publicationId, site.id]);
 
   async function discover() {
     if (!publication) return;
     setDiscovering(true); setMessage("");
     try {
-      const next = await discoverPublicationContent(supabase, { startDate: publication.start_date, endDate: publication.end_date });
+      const next = await discoverPublicationContent(supabase, { startDate: publication.start_date, endDate: publication.end_date }, publication.site_id, site.name);
       setSummary(next);
       setSelected(new Set(next.results.flatMap((result) => result.items.map(keyFor))));
       if (next.errors.length) setMessage(`Discovery completed with warnings: ${next.errors.join(" | ")}`);

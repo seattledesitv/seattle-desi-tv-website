@@ -8,10 +8,12 @@ import { usePublicationSections } from "../../../../hooks/usePublicationSections
 import { openPublicationEditorialWorkspace } from "../../../../lib/publishing/services/publicationWorkspaceService";
 import type { PublicationRecord } from "../../../../lib/publishing/types";
 import { getSupabaseBrowserClient } from "../../../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../../../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 
 export default function PublicationItemsPage() {
+  const site = useCurrentSite();
   const params = useParams<{ publicationId: string }>();
   const publicationId = String(params.publicationId || "");
   const [publication, setPublication] = useState<PublicationRecord | null>(null);
@@ -27,14 +29,15 @@ export default function PublicationItemsPage() {
     async function initialize() {
       setPageError("");
       try {
-        setPublication(await openPublicationEditorialWorkspace(supabase, publicationId));
+        if (!site.id) throw new Error("The current site is not configured.");
+        setPublication(await openPublicationEditorialWorkspace(supabase, publicationId, site.id));
         setAuthorized(true);
       } catch (error) {
         setPageError(error instanceof Error && error.message ? error.message : "Could not open the item editor.");
       }
     }
     if (publicationId) void initialize();
-  }, [publicationId]);
+  }, [publicationId, site.id]);
 
   const activeSectionId = sections.some((section) => section.id === selectedSectionId)
     ? selectedSectionId

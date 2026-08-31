@@ -19,6 +19,7 @@ import type { PublicationSectionRecord } from "../../../lib/publishing/repositor
 import { openPublicationEditorialWorkspace, savePublicationEditorialChanges } from "../../../lib/publishing/services/publicationWorkspaceService";
 import type { PublicationRecord } from "../../../lib/publishing/types";
 import { getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 type EditorMode = "section" | "items" | "content" | "ai" | "preview" | "events-instagram" | "social-launch" | "review" | "publish";
@@ -34,6 +35,7 @@ const stages: Array<{ key: EditorStage; label: string; description: string; mode
 function stageForMode(mode: EditorMode) { return stages.find((stage) => stage.modes.some((item) => item.key === mode)) || stages[0]; }
 
 export default function UnifiedPublicationEditorPage() {
+  const site = useCurrentSite();
   const params = useParams<{ publicationId: string }>();
   const publicationId = String(params.publicationId || "");
   const [publication, setPublication] = useState<PublicationRecord | null>(null);
@@ -47,7 +49,8 @@ export default function UnifiedPublicationEditorPage() {
   useEffect(() => {
     const loadTimer = setTimeout(async () => {
       try {
-        const opened = await openPublicationEditorialWorkspace(supabase, publicationId);
+        if (!site.id) throw new Error("The current site is not configured.");
+        const opened = await openPublicationEditorialWorkspace(supabase, publicationId, site.id);
         setPublication(opened);
         if (opened.publication_type === "weekly_instagram") setMode("events-instagram");
         setAuthorized(true);
@@ -56,7 +59,7 @@ export default function UnifiedPublicationEditorPage() {
       }
     }, 0);
     return () => clearTimeout(loadTimer);
-  }, [publicationId]);
+  }, [publicationId, site.id]);
 
   const activeId = sectionState.sections.some((section) => section.id === selectedId)
     ? selectedId

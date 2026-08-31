@@ -3,6 +3,7 @@ export type PublicationStatus = "draft" | "review" | "approved" | "scheduled" | 
 
 export type PublicationRecord = {
   id: string;
+  site_id: string;
   name: string;
   edition_label: string | null;
   publication_type: PublicationType;

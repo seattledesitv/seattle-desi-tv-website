@@ -10,8 +10,8 @@ export async function buildPublicationPreview(supabase: SupabaseClient, publicat
   const withItems = await Promise.all(sections.map(async (section) => ({ ...section, items: (await getPublicationItems(supabase, section.id)).filter((item) => item.inclusion_status === "included") })));
   return { publication, sections: withItems, generatedAt: new Date().toISOString() };
 }
-export async function buildPublicPublicationPreview(supabase: SupabaseClient, publicationId: string): Promise<PublicationPreviewModel> {
-  const publication = await getPublication(supabase, publicationId);
+export async function buildPublicPublicationPreview(supabase: SupabaseClient, publicationId: string, siteId: string): Promise<PublicationPreviewModel> {
+  const publication = await getPublication(supabase, publicationId, siteId);
   if (publication.status !== "published") throw new Error("This publication is not public.");
   const sections = (await listSections(supabase, publicationId)).filter((section) => section.included);
   const withItems = await Promise.all(sections.map(async (section) => ({ ...section, items: (await getPublicationItems(supabase, section.id)).filter((item) => item.inclusion_status === "included") })));

@@ -11,10 +11,12 @@ import { isAdminRole, resolveUserRole } from "../../../../lib/roles";
 import { getPublication } from "../../../../lib/publishing/repository";
 import type { PublicationSectionRecord } from "../../../../lib/publishing/repositories/sectionRepository";
 import type { PublicationRecord } from "../../../../lib/publishing/types";
+import { useCurrentSite } from "../../../../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 
 export default function PublicationSectionsPage() {
+  const site = useCurrentSite();
   const params = useParams<{ publicationId: string }>();
   const publicationId = String(params.publicationId || "");
   const [publication, setPublication] = useState<PublicationRecord | null>(null);
@@ -32,14 +34,15 @@ export default function PublicationSectionsPage() {
         if (!user) throw new Error("Please log in to access the Publishing Platform.");
         const role = await resolveUserRole(supabase, user);
         if (!isAdminRole(role)) throw new Error("This account does not have Studio admin access.");
-        setPublication(await getPublication(supabase, publicationId));
+        if (!site.id) throw new Error("The current site is not configured.");
+        setPublication(await getPublication(supabase, publicationId, site.id));
         setAuthorized(true);
       } catch (nextError: any) {
         setPageError(nextError.message || "Could not open the section editor.");
       }
     }
     if (publicationId) void init();
-  }, [publicationId]);
+  }, [publicationId, site.id]);
 
   useEffect(() => {
     if (!selectedId && sections.length) setSelectedId(sections[0].id);

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminRole, resolveUserRole } from "../../../../lib/roles";
+import { resolveCurrentSite } from "../../../../lib/sites/siteResolver";
 
 type GenerationTarget = "item" | "section" | "publication";
 type RequestBody = {
@@ -54,6 +55,8 @@ async function generate(systemPrompt: string, userPrompt: string) {
 }
 
 export async function POST(request: Request) {
+  const site = await resolveCurrentSite();
+  if (!site.id) return NextResponse.json({ error: "The current site is not configured." }, { status: 500 });
   if (!supabaseUrl || !anonKey) return NextResponse.json({ error: "Supabase is not configured." }, { status: 500 });
   const authHeader = request.headers.get("authorization") || "";
   const client = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
@@ -71,7 +74,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Publication ID and a valid target type are required." }, { status: 400 });
   }
 
-  const { data: prompt, error: promptError } = await client.from("publication_ai_prompts").select("prompt_key,system_prompt,user_prompt_template,version").eq("prompt_key", promptKey).eq("active", true).single();
+  const { data: publication } = await client.from("publications").select("id").eq("id", publicationId).eq("site_id", site.id).maybeSingle();
+  if (!publication) return NextResponse.json({ error: "Publication was not found for the current site." }, { status: 404 });
+
+  const { data: prompt, error: promptError } = await client.from("publication_ai_prompts").select("prompt_key,system_prompt,user_prompt_template,version").eq("site_id", site.id).eq("prompt_key", promptKey).eq("active", true).single();
   if (promptError || !prompt) return NextResponse.json({ error: "Active AI prompt was not found. Apply the Sprint 5B migration." }, { status: 400 });
 
   const input = { instruction: body.instruction || "Improve this content.", context: body.context || {}, sourceAttribution: body.sourceAttribution || {} };

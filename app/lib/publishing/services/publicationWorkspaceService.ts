@@ -6,6 +6,7 @@ import type { PublicationRecord } from "../types";
 export async function openPublicationEditorialWorkspace(
   supabase: SupabaseClient,
   publicationId: string,
+  siteId?: string,
 ): Promise<PublicationRecord> {
   const session = await supabase.auth.getSession();
   const user = session.data.session?.user;
@@ -16,7 +17,7 @@ export async function openPublicationEditorialWorkspace(
     throw new Error("This account does not have Studio admin access.");
   }
 
-  return getPublication(supabase, publicationId);
+  return getPublication(supabase, publicationId, siteId);
 }
 
 export async function savePublicationEditorialChanges(

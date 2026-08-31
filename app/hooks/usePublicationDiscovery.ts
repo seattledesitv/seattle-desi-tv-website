@@ -5,10 +5,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DiscoveryResult, DiscoverySummary, PublishingContentItem } from "../lib/publishing/core/content";
 import { discoverPublicationContent, savePublicationDiscovery } from "../lib/publishing/services/discoveryService";
 import type { PublicationRecord } from "../lib/publishing/types";
+import { useCurrentSite } from "../lib/sites/SiteContext";
 
 const itemKey = (item: PublishingContentItem) => `${item.sourceType}:${item.sourceId}`;
 
 export function usePublicationDiscovery(supabase: SupabaseClient, publication: PublicationRecord) {
+  const site = useCurrentSite();
   const [summary, setSummary] = useState<DiscoverySummary | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
@@ -23,7 +25,7 @@ export function usePublicationDiscovery(supabase: SupabaseClient, publication: P
       const next = await discoverPublicationContent(supabase, {
         startDate: publication.start_date,
         endDate: publication.end_date,
-      });
+      }, publication.site_id, site.name);
       setSummary(next);
       setSelected(new Set(next.results.flatMap((result) => result.items.map(itemKey))));
       if (next.errors.length) setMessage(`Discovery completed with warnings: ${next.errors.join(" | ")}`);
@@ -32,7 +34,7 @@ export function usePublicationDiscovery(supabase: SupabaseClient, publication: P
     } finally {
       setDiscovering(false);
     }
-  }, [publication.end_date, publication.start_date, supabase]);
+  }, [publication.end_date, publication.site_id, publication.start_date, site.name, supabase]);
 
   const save = useCallback(async () => {
     if (!summary) return;
