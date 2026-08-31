@@ -3,6 +3,7 @@ export type RadioProgramStatus = "draft" | "published" | "on_hold" | "archived";
 
 export type RadioProgram = {
   id: string;
+  site_id: string;
   title: string;
   description: string | null;
   host_id: string | null;
@@ -26,7 +27,7 @@ export type RadioProgram = {
 
 export type RadioProgramInput = Omit<
   RadioProgram,
-  "id" | "created_at" | "updated_at" | "host"
+  "id" | "site_id" | "created_at" | "updated_at" | "host"
 >;
 
 export type PublicRadioSchedule = {
