@@ -4,12 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const TIERS = ["Platinum Contributor", "Gold Contributor", "Silver Contributor", "Bronze Contributor", "Community Contributor"];
 const emptyForm = { id: "", business_id: "", name: "", website: "", logo_url: "", tier: "Community Contributor", display_order: 0, active: true, start_date: "", end_date: "", contribution_reference: "", internal_notes: "" };
 
 export default function ContributorsPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("Checking access...");
@@ -23,8 +26,8 @@ export default function ContributorsPage() {
 
   async function loadData() {
     const [contributorResult, businessResult] = await Promise.all([
-      supabase.from("homepage_sponsors").select("id,business_id,name,website,logo_url,tier,display_order,active,start_date,end_date,contribution_reference,internal_notes").order("display_order", { ascending: true }).order("name", { ascending: true }),
-      supabase.from("local_businesses").select("id,name,website,image,image_urls,status").eq("status", "approved").order("name", { ascending: true }),
+      forSite(supabase.from("homepage_sponsors").select("id,business_id,name,website,logo_url,tier,display_order,active,start_date,end_date,contribution_reference,internal_notes"), site.id).order("display_order", { ascending: true }).order("name", { ascending: true }),
+      forSite(supabase.from("local_businesses").select("id,name,website,image,image_urls,status"), site.id).eq("status", "approved").order("name", { ascending: true }),
     ]);
     if (contributorResult.error) { setMessage(`Could not load contributors: ${contributorResult.error.message}`); return; }
     setContributors(contributorResult.data || []);
@@ -59,6 +62,7 @@ export default function ContributorsPage() {
   function resetForm() { setForm(emptyForm); }
 
   async function saveContributor() {
+    if (!site.id) { setMessage("The active site is not configured."); return; }
     if (!String(form.name || "").trim()) { setMessage("Contributor name is required."); return; }
     setSaving(true);
     const payload: any = {
@@ -73,10 +77,11 @@ export default function ContributorsPage() {
       end_date: form.end_date || null,
       contribution_reference: form.contribution_reference.trim() || null,
       internal_notes: form.internal_notes.trim() || null,
+      site_id: site.id,
       updated_at: new Date().toISOString(),
     };
     const result = form.id
-      ? await supabase.from("homepage_sponsors").update(payload).eq("id", form.id)
+      ? await supabase.from("homepage_sponsors").update(payload).eq("id", form.id).eq("site_id", site.id || "")
       : await supabase.from("homepage_sponsors").insert(payload);
     setSaving(false);
     if (result.error) { setMessage(`Save failed: ${result.error.message}`); return; }
@@ -86,12 +91,12 @@ export default function ContributorsPage() {
   }
 
   async function toggleContributor(row: any) {
-    const { error } = await supabase.from("homepage_sponsors").update({ active: !row.active, updated_at: new Date().toISOString() }).eq("id", row.id);
+    const { error } = await supabase.from("homepage_sponsors").update({ active: !row.active, updated_at: new Date().toISOString() }).eq("id", row.id).eq("site_id", site.id || "");
     if (error) setMessage(`Update failed: ${error.message}`); else { setMessage("Contributor updated."); await loadData(); }
   }
 
   const filtered = useMemo(() => { const q = search.trim().toLowerCase(); return contributors.filter((row) => !q || [row.name, row.tier, row.website].some((value) => String(value || "").toLowerCase().includes(q))); }, [contributors, search]);
-  useEffect(() => { init(); }, []);
+  useEffect(() => { init(); }, [site.id]);
 
   return <main className="min-h-screen bg-slate-950 text-white"><StudioHeader /><div className="mx-auto max-w-7xl px-6 py-10">
     <div><p className="text-sm font-black uppercase tracking-wide text-pink-300">Community Support</p><h1 className="mt-2 text-4xl font-black">Homepage Contributors</h1><p className="mt-2 text-slate-300">Manage businesses and community supporters recognised as SDTV contributors.</p>{user?.email && <p className="mt-2 text-sm text-slate-400">Logged in as {user.email} · Role: {role}</p>}</div>

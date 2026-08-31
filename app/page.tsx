@@ -613,6 +613,7 @@ export default function HomePage() {
       supabase
         .from("homepage_sponsors")
         .select("id,name,website,logo_url,tier,display_order")
+        .eq("site_id", site.id || "")
         .eq("active", true)
         .order("tier", { ascending: true })
         .order("display_order", { ascending: true }),

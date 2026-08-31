@@ -79,7 +79,7 @@ export async function activateAgreementIfReady(
       ? (
           await db
             .from("local_businesses")
-            .select("name,website,image,image_urls")
+            .select("name,website,image,image_urls,site_id")
             .eq("id", agreement.business_id)
             .maybeSingle()
         ).data
@@ -90,6 +90,7 @@ export async function activateAgreementIfReady(
       .from("homepage_sponsors")
       .insert({
         business_id: agreement.business_id || null,
+        site_id: business?.site_id || undefined,
         name: business?.name || agreement.sponsor_name,
         website: business?.website || null,
         logo_url: logo,

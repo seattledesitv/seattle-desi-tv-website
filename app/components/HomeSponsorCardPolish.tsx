@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 const TIERS = ["Platinum Contributor", "Gold Contributor", "Silver Contributor", "Bronze Contributor", "Community Contributor"];
@@ -82,7 +83,7 @@ function createCard(contributor: any, tier: string) {
   return wrapper;
 }
 
-async function renderContributorSection(): Promise<boolean> {
+async function renderContributorSection(siteId: string, siteName: string): Promise<boolean> {
   if (typeof window === "undefined" || window.location.pathname !== "/") return true;
 
   const heading = Array.from(document.querySelectorAll("h2")).find((item) =>
@@ -96,6 +97,7 @@ async function renderContributorSection(): Promise<boolean> {
   const { data, error } = await supabase
     .from("homepage_sponsors")
     .select("id,name,website,logo_url,tier,display_order,active")
+    .eq("site_id", siteId)
     .eq("active", true)
     .order("display_order", { ascending: true })
     .order("name", { ascending: true });
@@ -107,7 +109,7 @@ async function renderContributorSection(): Promise<boolean> {
   const eyebrow = Array.from(content.querySelectorAll("p")).find((item) => item.textContent?.trim() === "Sponsors");
   if (eyebrow) eyebrow.textContent = "Contributors";
   const description = Array.from(content.querySelectorAll("p")).find((item) => /partners supporting Seattle Desi TV/i.test(item.textContent || ""));
-  if (description) description.textContent = "Thank you to the businesses and community contributors supporting Seattle Desi TV.";
+  if (description) description.textContent = `Thank you to the businesses and community contributors supporting ${siteName}.`;
 
   let tierContainer = Array.from(content.children).find(
     (child) => child instanceof HTMLElement && child.classList.contains("space-y-8")
@@ -154,6 +156,7 @@ async function renderContributorSection(): Promise<boolean> {
 }
 
 export default function HomeSponsorCardPolish() {
+  const site = useCurrentSite();
   useEffect(() => {
     let cancelled = false;
     let attempts = 0;
@@ -161,13 +164,14 @@ export default function HomeSponsorCardPolish() {
     const tryRender = async () => {
       if (cancelled) return;
       attempts += 1;
-      const complete = await renderContributorSection();
+      if (!site.id) return;
+      const complete = await renderContributorSection(site.id, site.name);
       if (!complete && attempts < 12 && !cancelled) window.setTimeout(tryRender, 300);
     };
 
     tryRender();
     return () => { cancelled = true; };
-  }, []);
+  }, [site.id, site.name]);
 
   return null;
 }
