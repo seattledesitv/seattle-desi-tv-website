@@ -4,9 +4,12 @@ import {
   activateAgreementIfReady,
   sponsorshipDb,
 } from "../../../lib/sponsorships/server";
+import { resolveCurrentSite } from "../../../lib/sites/siteResolver";
 
 export async function POST(request: Request) {
   try {
+    const site = await resolveCurrentSite();
+    if (!site.id) return NextResponse.json({ error: "The current site is not configured." }, { status: 500 });
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
     if (!url || !anon)
@@ -43,6 +46,7 @@ export async function POST(request: Request) {
     const { data: agreement, error } = await db
       .from("sponsorship_agreements")
       .select("id,business_id,sponsor_email,status")
+      .eq("site_id", site.id)
       .eq("id", agreementId)
       .maybeSingle();
     if (error) throw error;

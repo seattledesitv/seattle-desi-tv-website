@@ -9,6 +9,7 @@ import type {
   SponsorshipPackage,
 } from "../lib/sponsorships/types";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
 
 function message(error: unknown) {
   return error && typeof error === "object" && "message" in error
@@ -17,6 +18,7 @@ function message(error: unknown) {
 }
 
 export function useSponsorships() {
+  const site = useCurrentSite();
   const [packages, setPackages] = useState<SponsorshipPackage[]>([]);
   const [agreements, setAgreements] = useState<SponsorshipAgreement[]>([]);
   const [businesses, setBusinesses] = useState<SponsorBusiness[]>([]);
@@ -29,9 +31,9 @@ export function useSponsorships() {
     setError("");
     try {
       const [packageRows, agreementRows, businessRows] = await Promise.all([
-        SponsorshipService.listPackages(),
-        SponsorshipService.listAgreements(),
-        SponsorshipService.listBusinesses(),
+        SponsorshipService.listPackages(site.id || ""),
+        SponsorshipService.listAgreements(site.id || ""),
+        SponsorshipService.listBusinesses(site.id || ""),
       ]);
       setPackages(packageRows);
       setAgreements(agreementRows);
@@ -41,7 +43,7 @@ export function useSponsorships() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [site.id]);
 
   useEffect(() => {
     // Initial remote data synchronization is intentionally owned by this hook.
@@ -55,7 +57,8 @@ export function useSponsorships() {
     try {
       const { data } = await getSupabaseBrowserClient().auth.getUser();
       if (!data.user) throw new Error("Please sign in.");
-      await SponsorshipService.create(input, data.user.id);
+      if (!site.id) throw new Error("The current site is not configured.");
+      await SponsorshipService.create(input, data.user.id, site.id, site.code, String(site.settings.zelle_recipient || "info@seattledesitv.com"));
       await refresh();
     } catch (nextError) {
       setError(message(nextError));
@@ -69,7 +72,8 @@ export function useSponsorships() {
     setSaving(true);
     setError("");
     try {
-      await SponsorshipService.updatePackage(id, changes);
+      if (!site.id) throw new Error("The current site is not configured.");
+      await SponsorshipService.updatePackage(id, changes, site.id);
       await refresh();
     } catch (nextError) {
       setError(message(nextError));
@@ -82,7 +86,8 @@ export function useSponsorships() {
     setSaving(true);
     setError("");
     try {
-      await SponsorshipService.update(id, changes);
+      if (!site.id) throw new Error("The current site is not configured.");
+      await SponsorshipService.update(id, changes, site.id);
       await refresh();
     } catch (nextError) {
       setError(message(nextError));

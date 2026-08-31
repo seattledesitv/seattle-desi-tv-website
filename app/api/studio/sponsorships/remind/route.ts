@@ -4,6 +4,7 @@ import {
   requireSponsorshipAdmin,
   sponsorshipDb,
 } from "../../../../lib/sponsorships/server";
+import { resolveCurrentSite } from "../../../../lib/sites/siteResolver";
 
 const money = (cents: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
@@ -20,6 +21,8 @@ function escapeHtml(value: unknown) {
 
 export async function POST(request: Request) {
   try {
+    const site = await resolveCurrentSite();
+    if (!site.id) return NextResponse.json({ error: "The current site is not configured." }, { status: 500 });
     const user = await requireSponsorshipAdmin(request);
     if (!user)
       return NextResponse.json(
@@ -36,7 +39,7 @@ export async function POST(request: Request) {
     const { data: installment, error } = await db
       .from("sponsorship_payment_installments")
       .select(
-        "*,sponsorship_agreements(id,agreement_number,sponsor_name,sponsor_email,sponsor_contact_name,status)",
+        "*,sponsorship_agreements(id,site_id,agreement_number,sponsor_name,sponsor_email,sponsor_contact_name,status)",
       )
       .eq("id", installmentId)
       .single();
@@ -51,12 +54,14 @@ export async function POST(request: Request) {
         { status: 409 },
       );
     const agreement = installment.sponsorship_agreements;
+    if (agreement.site_id !== site.id) return NextResponse.json({ error: "Payment installment not found for the current site." }, { status: 404 });
     const resend = new Resend(process.env.RESEND_API_KEY);
     const recipient = agreement.sponsor_email;
-    const subject = `Payment reminder for SDTV sponsorship ${agreement.agreement_number}`;
+    const subject = `Payment reminder for ${site.name} sponsorship ${agreement.agreement_number}`;
     const greeting = agreement.sponsor_contact_name || agreement.sponsor_name;
-    const bodyText = `Hello ${greeting},\n\nThis is a friendly reminder that payment ${installment.installment_number} for ${money(installment.amount_cents)} is due on ${installment.due_date}.\n\nPlease send the payment by Zelle to info@seattledesitv.com, then use your secure agreement link to upload the confirmation.\n\nIf payment has already been sent, thank you and please disregard this reminder.`;
-    const html = `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;line-height:1.6"><h2>Seattle Desi TV sponsorship payment reminder</h2><p>Hello ${escapeHtml(greeting)},</p><p>This is a friendly reminder that payment ${installment.installment_number} for <strong>${money(installment.amount_cents)}</strong> is due on <strong>${escapeHtml(installment.due_date)}</strong>.</p><p>Please send the payment by Zelle to <strong>info@seattledesitv.com</strong>, then use your secure agreement link to upload the confirmation.</p><p>If payment has already been sent, thank you and please disregard this reminder.</p></div>`;
+    const zelleRecipient = String(installment.zelle_recipient || site.settings.zelle_recipient || "info@seattledesitv.com");
+    const bodyText = `Hello ${greeting},\n\nThis is a friendly reminder that payment ${installment.installment_number} for ${money(installment.amount_cents)} is due on ${installment.due_date}.\n\nPlease send the payment by Zelle to ${zelleRecipient}, then use your secure agreement link to upload the confirmation.\n\nIf payment has already been sent, thank you and please disregard this reminder.`;
+    const html = `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;line-height:1.6"><h2>${escapeHtml(site.name)} sponsorship payment reminder</h2><p>Hello ${escapeHtml(greeting)},</p><p>This is a friendly reminder that payment ${installment.installment_number} for <strong>${money(installment.amount_cents)}</strong> is due on <strong>${escapeHtml(installment.due_date)}</strong>.</p><p>Please send the payment by Zelle to <strong>${escapeHtml(zelleRecipient)}</strong>, then use your secure agreement link to upload the confirmation.</p><p>If payment has already been sent, thank you and please disregard this reminder.</p></div>`;
     const sent = await resend.emails.send({
       from:
         process.env.RESEND_FROM_EMAIL ||

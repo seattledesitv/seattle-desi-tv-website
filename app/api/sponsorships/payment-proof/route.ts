@@ -3,11 +3,14 @@ import {
   agreementForToken,
   sponsorshipDb,
 } from "../../../lib/sponsorships/server";
+import { resolveCurrentSite } from "../../../lib/sites/siteResolver";
 
 export async function POST(request: Request) {
   try {
+    const site = await resolveCurrentSite();
+    if (!site.id) return NextResponse.json({ error: "The current site is not configured." }, { status: 500 });
     const body = await request.json();
-    const agreement = await agreementForToken(String(body.token || ""));
+    const agreement = await agreementForToken(String(body.token || ""), site.id);
     if (!agreement)
       return NextResponse.json(
         { error: "This agreement link is invalid or expired." },

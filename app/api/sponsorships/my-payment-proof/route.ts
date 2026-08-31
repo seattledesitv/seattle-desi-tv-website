@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sponsorshipDb } from "../../../lib/sponsorships/server";
+import { resolveCurrentSite } from "../../../lib/sites/siteResolver";
 
 export async function POST(request: Request) {
   try {
+    const site = await resolveCurrentSite();
+    if (!site.id) return NextResponse.json({ error: "The current site is not configured." }, { status: 500 });
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "",
       anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
     const session = createClient(url, anon, {
@@ -19,7 +22,7 @@ export async function POST(request: Request) {
     const { data: installment, error } = await db
       .from("sponsorship_payment_installments")
       .select(
-        "id,agreement_id,status,sponsorship_agreements(id,business_id,sponsor_email,status)",
+        "id,agreement_id,status,sponsorship_agreements(id,site_id,business_id,sponsor_email,status)",
       )
       .eq("id", body.installmentId)
       .single();
@@ -33,7 +36,10 @@ export async function POST(request: Request) {
       business_id: string | null;
       sponsor_email: string;
       status: string;
+      site_id: string;
     };
+    if (agreement.site_id !== site.id)
+      return NextResponse.json({ error: "Payment was not found for the current site." }, { status: 404 });
     const emailMatch =
       agreement.sponsor_email.toLowerCase() ===
       (data.user.email || "").toLowerCase();

@@ -32,12 +32,13 @@ export async function requireSponsorshipAdmin(request: Request) {
   return data.user;
 }
 
-export async function agreementForToken(token: string) {
+export async function agreementForToken(token: string, siteId: string) {
   const hash = hashSponsorToken(token);
   const db = sponsorshipDb();
   const { data, error } = await db
     .from("sponsorship_agreements")
     .select("*,sponsorship_payment_installments(*)")
+    .eq("site_id", siteId)
     .eq("access_token_hash", hash)
     .maybeSingle();
   if (error) throw error;
@@ -90,7 +91,7 @@ export async function activateAgreementIfReady(
       .from("homepage_sponsors")
       .insert({
         business_id: agreement.business_id || null,
-        site_id: business?.site_id || undefined,
+        site_id: business?.site_id || agreement.site_id,
         name: business?.name || agreement.sponsor_name,
         website: business?.website || null,
         logo_url: logo,

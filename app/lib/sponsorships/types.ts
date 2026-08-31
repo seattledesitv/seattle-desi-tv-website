@@ -18,6 +18,7 @@ export type PaymentStatus =
   | "waived";
 export type SponsorshipPackage = {
   id: string;
+  site_id: string;
   tier: SponsorshipTier;
   name: string;
   price_cents: number | null;
@@ -57,6 +58,7 @@ export type SponsorshipAgreementEvent = {
 };
 export type SponsorshipAgreement = {
   id: string;
+  site_id: string;
   agreement_number: string;
   business_id?: string | null;
   homepage_sponsor_id?: string | null;
@@ -91,6 +93,7 @@ export type SponsorshipAgreement = {
 export type SponsorshipAgreementInput = Omit<
   SponsorshipAgreement,
   | "id"
+  | "site_id"
   | "agreement_number"
   | "status"
   | "created_at"

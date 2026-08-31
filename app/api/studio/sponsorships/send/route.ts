@@ -5,6 +5,7 @@ import {
   requireSponsorshipAdmin,
   sponsorshipDb,
 } from "../../../../lib/sponsorships/server";
+import { resolveCurrentSite } from "../../../../lib/sites/siteResolver";
 
 function escapeHtml(value: unknown) {
   return String(value || "")
@@ -17,6 +18,8 @@ function escapeHtml(value: unknown) {
 
 export async function POST(request: Request) {
   try {
+    const siteConfig = await resolveCurrentSite();
+    if (!siteConfig.id) return NextResponse.json({ error: "The current site is not configured." }, { status: 500 });
     const user = await requireSponsorshipAdmin(request);
     if (!user)
       return NextResponse.json(
@@ -28,6 +31,7 @@ export async function POST(request: Request) {
     const { data: agreement, error } = await db
       .from("sponsorship_agreements")
       .select("*")
+      .eq("site_id", siteConfig.id)
       .eq("id", agreementId)
       .in("status", ["draft", "sent", "viewed"])
       .single();
@@ -54,15 +58,13 @@ export async function POST(request: Request) {
       })
       .eq("id", agreement.id);
     if (updateError) throw updateError;
-    const site = (
-      process.env.NEXT_PUBLIC_SITE_URL || "https://www.seattledesitv.com"
-    ).replace(/\/$/, "");
-    const reviewUrl = `${site}/sponsorship/review?token=${token}`;
+    const siteUrl = `https://${siteConfig.primaryHostname}`;
+    const reviewUrl = `${siteUrl}/sponsorship/review?token=${token}`;
     const recipient = agreement.sponsor_email;
-    const subject = `Seattle Desi TV sponsorship agreement ${agreement.agreement_number}`;
+    const subject = `${siteConfig.name} sponsorship agreement ${agreement.agreement_number}`;
     const greeting = agreement.sponsor_contact_name || agreement.sponsor_name;
-    const bodyText = `Hello ${greeting},\n\nYour Seattle Desi TV sponsorship agreement is ready to review and accept.\n\nReview agreement: ${reviewUrl}\n\nThis secure link expires in 45 days.`;
-    const html = `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;line-height:1.6"><h2>Seattle Desi TV Sponsorship Agreement</h2><p>Hello ${escapeHtml(greeting)},</p><p>Your sponsorship agreement is ready to review.</p><p><a style="display:inline-block;background:#c93678;color:white;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold" href="${reviewUrl}">Review and accept agreement</a></p><p>This secure link expires in 45 days.</p></div>`;
+    const bodyText = `Hello ${greeting},\n\nYour ${siteConfig.name} sponsorship agreement is ready to review and accept.\n\nReview agreement: ${reviewUrl}\n\nThis secure link expires in 45 days.`;
+    const html = `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;line-height:1.6"><h2>${escapeHtml(siteConfig.name)} Sponsorship Agreement</h2><p>Hello ${escapeHtml(greeting)},</p><p>Your sponsorship agreement is ready to review.</p><p><a style="display:inline-block;background:#c93678;color:white;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold" href="${reviewUrl}">Review and accept agreement</a></p><p>This secure link expires in 45 days.</p></div>`;
     if (process.env.RESEND_API_KEY) {
       const resend = new Resend(process.env.RESEND_API_KEY);
       const sent = await resend.emails.send({

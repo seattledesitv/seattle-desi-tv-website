@@ -3,11 +3,14 @@ import {
   requireSponsorshipAdmin,
   sponsorshipDb,
 } from "../../../../lib/sponsorships/server";
+import { resolveCurrentSite } from "../../../../lib/sites/siteResolver";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: Request) {
   try {
+    const site = await resolveCurrentSite();
+    if (!site.id) return NextResponse.json({ error: "The current site is not configured." }, { status: 500 });
     const user = await requireSponsorshipAdmin(request);
     if (!user)
       return NextResponse.json(
@@ -34,6 +37,7 @@ export async function POST(request: Request) {
     const { data: agreement, error } = await db
       .from("sponsorship_agreements")
       .select("id,sponsor_email,status")
+      .eq("site_id", site.id)
       .eq("id", agreementId)
       .maybeSingle();
     if (error) throw error;

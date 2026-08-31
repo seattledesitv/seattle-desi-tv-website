@@ -22,9 +22,9 @@ export const SponsorshipService = {
   listBusinesses: repository.listBusinesses,
   updatePackage: repository.updatePackage,
   listAgreements: repository.listAgreements,
-  async create(input: SponsorshipAgreementInput, userId: string) {
+  async create(input: SponsorshipAgreementInput, userId: string, siteId: string, siteCode: string, zelleRecipient: string) {
     validate(input);
-    return repository.createAgreement(input, userId);
+    return repository.createAgreement(input, userId, siteId, siteCode, zelleRecipient);
   },
   update: repository.updateAgreement,
   verifyInstallment: repository.verifyInstallment,

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { SponsorshipService } from "../lib/sponsorships/services/sponsorshipService";
 import type { SponsorshipAgreement } from "../lib/sponsorships/types";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
 
 function text(error: unknown) {
   return error instanceof Error
@@ -10,6 +11,7 @@ function text(error: unknown) {
     : "Could not load sponsorships.";
 }
 export function useMySponsorships() {
+  const site = useCurrentSite();
   const [agreements, setAgreements] = useState<SponsorshipAgreement[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -21,13 +23,14 @@ export function useMySponsorships() {
       const { data } = await getSupabaseBrowserClient().auth.getUser();
       if (!data.user)
         throw new Error("Please log in to view your sponsorships.");
-      setAgreements(await SponsorshipService.listAgreements());
+      if (!site.id) throw new Error("The current site is not configured.");
+      setAgreements(await SponsorshipService.listAgreements(site.id));
     } catch (cause) {
       setError(text(cause));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [site.id]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
