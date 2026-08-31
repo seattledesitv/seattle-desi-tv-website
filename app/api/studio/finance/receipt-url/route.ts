@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { cleanRole, resolveUserRole } from "../../../../lib/roles";
+import { resolveCurrentSite } from "../../../../lib/sites/siteResolver";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -35,10 +36,12 @@ export async function POST(request: Request) {
   try {
     const auth = await requireSuperAdmin(request);
     if (auth.error) return auth.error;
+    const site = await resolveCurrentSite();
+    if (!site.id) return jsonError("Site context is not configured.", 500);
     const body = await request.json();
     const expenseId = String(body.expense_id || "").trim();
     if (!expenseId) return jsonError("expense_id is required.");
-    const { data, error } = await auth.db.from("finance_expenses").select("id,bill_file_path,bill_file_name").eq("id", expenseId).maybeSingle();
+    const { data, error } = await auth.db.from("finance_expenses").select("id,bill_file_path,bill_file_name").eq("id", expenseId).eq("site_id", site.id).maybeSingle();
     if (error) return jsonError(error.message, 500);
     if (!data?.bill_file_path) return jsonError("No bill file found for this expense.", 404);
     const url = await getSignedUrl(r2Client(), new GetObjectCommand({ Bucket: r2BucketName, Key: data.bill_file_path }), { expiresIn: 600 });

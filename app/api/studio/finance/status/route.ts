@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { cleanRole, resolveUserRole } from "../../../../lib/roles";
+import { resolveCurrentSite } from "../../../../lib/sites/siteResolver";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -27,6 +28,8 @@ export async function POST(request: Request) {
   try {
     const auth = await requireSuperAdmin(request);
     if (auth.error) return auth.error;
+    const site = await resolveCurrentSite();
+    if (!site.id) return jsonError("Site context is not configured.", 500);
     const body = await request.json();
     const id = String(body.id || "").trim();
     const status = String(body.reimbursement_status || "").trim();
@@ -38,7 +41,7 @@ export async function POST(request: Request) {
       payload.paid_by = auth.user.id;
       payload.paid_by_email = auth.user.email || null;
     }
-    const { data, error } = await auth.db.from("finance_expenses").update(payload).eq("id", id).select("*").single();
+    const { data, error } = await auth.db.from("finance_expenses").update(payload).eq("id", id).eq("site_id", site.id).select("*").single();
     if (error) return jsonError(error.message, 500);
     return NextResponse.json({ ok: true, row: data });
   } catch (error: any) {

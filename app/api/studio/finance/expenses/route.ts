@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { cleanRole, resolveUserRole } from "../../../../lib/roles";
+import { resolveCurrentSite } from "../../../../lib/sites/siteResolver";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -96,12 +97,15 @@ export async function GET(request: Request) {
   try {
     const auth = await requireSuperAdmin(request);
     if (auth.error) return auth.error;
+    const site = await resolveCurrentSite();
+    if (!site.id) return jsonError("Site context is not configured.", 500);
     const { searchParams } = new URL(request.url);
     const month = String(searchParams.get("month") || "").trim();
     const category = String(searchParams.get("category") || "").trim();
     let query = auth.db
       .from("finance_expenses")
       .select("*")
+      .eq("site_id", site.id)
       .order("expense_date", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(500);
@@ -129,6 +133,8 @@ export async function POST(request: Request) {
   try {
     const auth = await requireSuperAdmin(request);
     if (auth.error) return auth.error;
+    const site = await resolveCurrentSite();
+    if (!site.id) return jsonError("Site context is not configured.", 500);
     const formData = await request.formData();
     const expenseType =
       String(formData.get("expense_type") || "expense").trim() === "mileage"
@@ -191,7 +197,7 @@ export async function POST(request: Request) {
       billFileName = safeFileName(file.name);
       billMimeType = file.type;
       billFileSize = file.size;
-      billFilePath = `finance/${yyyy}/${mm}/${id}-${billFileName}`;
+      billFilePath = `finance/${site.code}/${yyyy}/${mm}/${id}-${billFileName}`;
       const body = Buffer.from(await file.arrayBuffer());
       await r2Client().send(
         new PutObjectCommand({
@@ -206,6 +212,7 @@ export async function POST(request: Request) {
 
     const payload = {
       id,
+      site_id: site.id,
       expense_type: expenseType,
       expense_date: expenseDate,
       vendor_name: vendorName,
@@ -245,6 +252,8 @@ export async function PATCH(request: Request) {
   try {
     const auth = await requireSuperAdmin(request);
     if (auth.error) return auth.error;
+    const site = await resolveCurrentSite();
+    if (!site.id) return jsonError("Site context is not configured.", 500);
 
     if (
       (request.headers.get("content-type") || "").includes(
@@ -309,6 +318,7 @@ export async function PATCH(request: Request) {
         .from("finance_expenses")
         .select("id,paid_at")
         .eq("id", id)
+        .eq("site_id", site.id)
         .maybeSingle();
       if (existingError) return jsonError(existingError.message, 500);
       if (!existing) return jsonError("Finance item not found.", 404);
@@ -342,7 +352,7 @@ export async function PATCH(request: Request) {
         const yyyy = expenseDate.slice(0, 4);
         const mm = expenseDate.slice(5, 7) || "00";
         const billFileName = safeFileName(file.name);
-        const billFilePath = `finance/${yyyy}/${mm}/${id}-${Date.now()}-${billFileName}`;
+        const billFilePath = `finance/${site.code}/${yyyy}/${mm}/${id}-${Date.now()}-${billFileName}`;
         await r2Client().send(
           new PutObjectCommand({
             Bucket: r2BucketName,
@@ -362,6 +372,7 @@ export async function PATCH(request: Request) {
         .from("finance_expenses")
         .update(patch)
         .eq("id", id)
+        .eq("site_id", site.id)
         .select("*")
         .single();
       if (error) return jsonError(error.message, 500);
@@ -390,6 +401,7 @@ export async function PATCH(request: Request) {
       .from("finance_expenses")
       .update(patch)
       .eq("id", id)
+      .eq("site_id", site.id)
       .select("*")
       .single();
     if (error) return jsonError(error.message, 500);

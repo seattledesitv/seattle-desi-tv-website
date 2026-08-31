@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { cleanRole, resolveUserRole } from "../../../../lib/roles";
+import { resolveCurrentSite } from "../../../../lib/sites/siteResolver";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -26,6 +27,8 @@ export async function POST(request: Request) {
   try {
     const auth = await requireSuperAdmin(request);
     if (auth.error) return auth.error;
+    const site = await resolveCurrentSite();
+    if (!site.id) return jsonError("Site context is not configured.", 500);
     const body = await request.json();
     const expenseDate = String(body.expense_date || "").trim();
     const reimburseeName = String(body.reimbursee_name || "").trim();
@@ -38,6 +41,7 @@ export async function POST(request: Request) {
     if (!Number.isFinite(miles) || miles <= 0) return jsonError("Miles must be greater than zero.");
     if (!Number.isFinite(ratePerMile) || ratePerMile <= 0) return jsonError("Rate per mile must be greater than zero.");
     const payload = {
+      site_id: site.id,
       expense_type: "mileage",
       expense_date: expenseDate,
       vendor_name: reimburseeName,
