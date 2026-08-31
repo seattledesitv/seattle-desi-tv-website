@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { resolveCurrentSite } from "../../lib/sites/siteResolver";
 
 const allowedEntities = new Set(["business", "organization", "event", "group", "contributor", "video", "radio", "newsletter", "page"]);
 const allowedActions = new Set(["page_view", "website_click", "phone_click", "email_click", "whatsapp_click", "directions_click", "ticket_click", "share_click", "calendar_click", "social_click", "profile_click", "manage_click", "other_click"]);
@@ -22,7 +23,10 @@ export async function POST(request: Request) {
     if (!url || !key) return NextResponse.json({ ok: false }, { status: 503 });
 
     const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+    const site = await resolveCurrentSite();
+    if (!site.id) return NextResponse.json({ ok: false }, { status: 503 });
     const { error } = await supabase.from("engagement_events").insert({
+      site_id: site.id,
       entity_type: entityType,
       entity_id: clean(body.entityId, 160),
       entity_name: clean(body.entityName, 240),

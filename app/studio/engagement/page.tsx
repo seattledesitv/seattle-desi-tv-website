@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 const ranges = [7, 30, 90];
@@ -17,6 +18,7 @@ function csvValue(value: unknown) {
 }
 
 export default function EngagementAnalyticsPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading engagement analytics...");
   const [allowed, setAllowed] = useState(false);
@@ -29,6 +31,7 @@ export default function EngagementAnalyticsPage() {
     const { data, error } = await supabase
       .from("engagement_events")
       .select("id,entity_type,entity_id,entity_name,action_type,page_path,target_url,session_id,created_at")
+      .eq("site_id", site.id || "")
       .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(10000);
@@ -88,7 +91,7 @@ export default function EngagementAnalyticsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `sdtv-engagement-${days}-days.csv`;
+    link.download = `${site.code}-engagement-${days}-days.csv`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -96,7 +99,7 @@ export default function EngagementAnalyticsPage() {
   const maxTrend = Math.max(1, ...metrics.trend.map(([, count]) => count));
 
   return <main className="min-h-screen bg-slate-950 text-white"><StudioHeader /><section className="mx-auto max-w-7xl px-4 py-8 md:px-6">
-    <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><p className="text-sm font-black uppercase tracking-[0.25em] text-pink-300">Analytics</p><h1 className="mt-2 text-4xl font-black">Engagement Statistics</h1><p className="mt-2 max-w-3xl text-slate-300">Views and meaningful clicks for businesses, organizations and events. Tracking is asynchronous and does not block navigation.</p></div><div className="flex flex-wrap gap-2">{ranges.map((range) => <button key={range} onClick={() => changeRange(range)} className={`rounded-xl px-4 py-3 font-black ${days === range ? "bg-pink-600" : "bg-white/10"}`}>{range} days</button>)}<button onClick={exportCsv} disabled={!rows.length} className="rounded-xl bg-white px-4 py-3 font-black text-slate-950 disabled:opacity-40">Export CSV</button></div></div>
+    <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><p className="text-sm font-black uppercase tracking-[0.25em] text-pink-300">{site.name} Analytics</p><h1 className="mt-2 text-4xl font-black">Engagement Statistics</h1><p className="mt-2 max-w-3xl text-slate-300">Views and meaningful clicks for businesses, organizations and events in {site.city}. Tracking is asynchronous and does not block navigation.</p></div><div className="flex flex-wrap gap-2">{ranges.map((range) => <button key={range} onClick={() => changeRange(range)} className={`rounded-xl px-4 py-3 font-black ${days === range ? "bg-pink-600" : "bg-white/10"}`}>{range} days</button>)}<button onClick={exportCsv} disabled={!rows.length} className="rounded-xl bg-white px-4 py-3 font-black text-slate-950 disabled:opacity-40">Export CSV</button></div></div>
     {message && <div className="mt-6 rounded-2xl bg-white/10 p-4 font-bold">{message}</div>}
     {loading && <div className="mt-6 rounded-2xl bg-white/10 p-8">Loading...</div>}
     {!loading && !allowed && <div className="mt-6 rounded-2xl bg-white p-8 text-slate-950">Admin access required.</div>}
