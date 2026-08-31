@@ -5,6 +5,8 @@ import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
 import CheckedExternalLink from "./CheckedExternalLink";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 type Kind = "groups" | "organizations";
@@ -45,6 +47,7 @@ function dateText(value?: string | null) { if (!value) return ""; const date = n
 function eventImage(event: any) { return Array.isArray(event?.image_urls) && event.image_urls[0] ? event.image_urls[0] : event?.image || ""; }
 
 export default function CommunityDirectoryPage({ kind }: { kind: Kind }) {
+  const site = useCurrentSite();
   const config = configs[kind];
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -79,7 +82,7 @@ export default function CommunityDirectoryPage({ kind }: { kind: Kind }) {
     const columns = kind === "groups"
       ? "id,name,platform,category,language,location,description,group_url,contact_name,contact_email,created_at"
       : "id,name,organization_type,category,location,website,description,contact_name,contact_email,created_at,image,image_position_x,image_position_y,image_zoom,image_display_mode";
-    const listingResult = await supabase.from(config.table).select(columns).eq("status", "approved").eq("approved", true).order("created_at", { ascending: false });
+    const listingResult = await forSite(supabase.from(config.table).select(columns), site.id).eq("status", "approved").eq("approved", true).order("created_at", { ascending: false });
     setItems(listingResult.data || []);
     if (kind === "organizations") {
       const linksResult = await supabase.from("event_organizations").select("id,organization_id,relationship,is_primary,display_order,events(id,title,date,location,image,image_urls,status,approved)").order("display_order", { ascending: true });
@@ -102,7 +105,8 @@ export default function CommunityDirectoryPage({ kind }: { kind: Kind }) {
     const validation = validate();
     if (validation) { setMessage(validation); return; }
     setSubmitting(true);
-    const payload = { ...form, submitted_by: user.id, submitted_email: user.email, status: "pending", approved: false, updated_at: new Date().toISOString() };
+    const payload: any = { ...form, submitted_by: user.id, submitted_email: user.email, status: "pending", approved: false, updated_at: new Date().toISOString() };
+    if (site.id) payload.site_id = site.id;
     const { error } = await supabase.from(config.table).insert(payload);
     setSubmitting(false);
     if (error) { setMessage(`Submission failed: ${error.message}`); return; }
@@ -111,7 +115,7 @@ export default function CommunityDirectoryPage({ kind }: { kind: Kind }) {
     setShowForm(false);
   }
 
-  useEffect(() => { load(); }, [kind]);
+  useEffect(() => { load(); }, [kind, site.id]);
 
   return <main className="min-h-screen bg-slate-950 text-white">
     <SiteHeader />

@@ -7,6 +7,8 @@ import SiteFooter from "../../components/SiteFooter";
 import CheckedExternalLink from "../../components/CheckedExternalLink";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { entityIdFromParam } from "../../lib/seo/urls";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 function dateText(value?: string) { if (!value) return ""; const d = new Date(`${String(value).split("T")[0]}T00:00:00`); return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" }); }
@@ -14,6 +16,7 @@ function getImage(row: any) { return Array.isArray(row?.image_urls) && row.image
 function initials(value?: string | null) { return String(value || "SDTV").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "SD"; }
 
 export default function CommunityOrganizationProfilePage() {
+  const site = useCurrentSite();
   const params = useParams();
   const organizationId = entityIdFromParam(Array.isArray(params?.id) ? params.id[0] : params?.id);
   const [loading, setLoading] = useState(true);
@@ -26,8 +29,8 @@ export default function CommunityOrganizationProfilePage() {
     setLoading(true);
     const richColumns = "id,name,organization_type,category,location,website,description,contact_name,contact_email,contact_phone,image,image_position_x,image_position_y,image_zoom,image_display_mode,manager_verified_at";
     const basicColumns = "id,name,organization_type,category,location,website,description,contact_name,contact_email,contact_phone,image,image_position_x,image_position_y,image_zoom,image_display_mode";
-    let organizationResult = await supabase.from("community_organizations").select(richColumns).eq("id", organizationId).eq("approved", true).eq("status", "approved").maybeSingle();
-    if (organizationResult.error && /manager_verified_at/i.test(organizationResult.error.message || "")) organizationResult = await supabase.from("community_organizations").select(basicColumns).eq("id", organizationId).eq("approved", true).eq("status", "approved").maybeSingle();
+    let organizationResult = await forSite(supabase.from("community_organizations").select(richColumns), site.id).eq("id", organizationId).eq("approved", true).eq("status", "approved").maybeSingle();
+    if (organizationResult.error && /manager_verified_at/i.test(organizationResult.error.message || "")) organizationResult = await forSite(supabase.from("community_organizations").select(basicColumns), site.id).eq("id", organizationId).eq("approved", true).eq("status", "approved").maybeSingle();
     const linksResult = await supabase.from("event_organizations").select("id,relationship,is_primary,events(id,title,date,location,description,image,image_urls,ticket_url,status,approved)").eq("organization_id", organizationId).order("display_order");
     if (organizationResult.error || !organizationResult.data) { setMessage(organizationResult.error?.message || "Organization not found."); setLoading(false); return; }
     setOrganization(organizationResult.data);
@@ -35,7 +38,7 @@ export default function CommunityOrganizationProfilePage() {
     setLoading(false);
   }
 
-  useEffect(() => { if (organizationId) void load(); }, [organizationId]);
+  useEffect(() => { if (organizationId) void load(); }, [organizationId, site.id]);
   const today = new Date().toISOString().split("T")[0];
   const upcoming = eventLinks.filter((link) => String(link.events?.date || "") >= today).sort((a, b) => String(a.events?.date || "").localeCompare(String(b.events?.date || "")));
   const past = eventLinks.filter((link) => String(link.events?.date || "") < today).sort((a, b) => String(b.events?.date || "").localeCompare(String(a.events?.date || "")));

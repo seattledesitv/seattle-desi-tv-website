@@ -7,6 +7,8 @@ import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../lib/roles";
 import CommunityAdminCreateForm from "./community/CommunityAdminCreateForm";
 import { useCommunityAdminCreation } from "../hooks/useCommunityAdminCreation";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 type Kind = "groups" | "organizations";
@@ -24,6 +26,7 @@ function normalizeWebsite(value: string) { const v = String(value || "").trim();
 function fallbackSearch(item: any, mode: string) { const phrase = mode === "website" ? `official website ${item.name} ${item.location || "Seattle Washington"}` : mode === "email" ? `${item.name} ${item.location || "Seattle Washington"} contact email` : mode === "phone" ? `${item.name} ${item.location || "Seattle Washington"} phone number` : `${item.name} ${item.location || "Seattle Washington"} official logo`; return `https://www.google.com/search?q=${encodeURIComponent(phrase)}`; }
 
 export default function StudioCommunityManagePage({ kind }: { kind: Kind }) {
+  const site = useCurrentSite();
   const config = configs[kind];
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -39,13 +42,13 @@ export default function StudioCommunityManagePage({ kind }: { kind: Kind }) {
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const canAccess = Boolean(user && isAdminRole(role));
-  const creation = useCommunityAdminCreation(kind, user, async () => { await loadItems(); setMessage(`${kind === "groups" ? "Group" : "Organization"} created.`); });
+  const creation = useCommunityAdminCreation(kind, user, async () => { await loadItems(); setMessage(`${kind === "groups" ? "Group" : "Organization"} created.`); }, site.id);
 
   const filtered = useMemo(() => { const q = norm(searchText); return items.filter((item) => { if (statusFilter !== "all" && item.status !== statusFilter) return false; if (!q) return true; return norm(`${item.name || ""} ${item.category || ""} ${item.location || ""} ${item.submitted_email || ""} ${item[config.typeField] || ""}`).includes(q); }); }, [items, searchText, statusFilter, config.typeField]);
   const counts = useMemo(() => ({ total: items.length, pending: items.filter((i) => i.status === "pending" || !i.status).length, approved: items.filter((i) => i.status === "approved").length, rejected: items.filter((i) => i.status === "rejected").length }), [items]);
 
   async function loadItems() {
-    const { data, error } = await supabase.from(config.table).select("*").order("created_at", { ascending: false }).limit(1000);
+    const { data, error } = await forSite(supabase.from(config.table).select("*"), site.id).order("created_at", { ascending: false }).limit(1000);
     if (error) { setMessage(`Could not load ${config.title}: ${error.message}`); return; }
     setItems(data || []);
     if (selected?.id) { const refreshed = (data || []).find((row: any) => row.id === selected.id); if (refreshed) { setSelected(refreshed); setEdit({ ...refreshed }); } }
@@ -111,12 +114,12 @@ export default function StudioCommunityManagePage({ kind }: { kind: Kind }) {
     const payload: any = { ...edit, website: kind === "organizations" ? normalizeWebsite(edit.website || "") || null : edit.website, status: nextStatus, approved: nextStatus === "approved", updated_at: new Date().toISOString() };
     if (nextStatus === "approved") { payload.approved_by = user?.email || user?.id || null; payload.approved_at = new Date().toISOString(); }
     delete payload.id;
-    const { error } = await supabase.from(config.table).update(payload).eq("id", selected.id); setSaving(false);
+    const { error } = await forSite(supabase.from(config.table).update(payload), site.id).eq("id", selected.id); setSaving(false);
     if (error) { setMessage(`Save failed: ${error.message}`); return; }
     setMessage(`Saved ${edit.name || "listing"}.`); await loadItems(); setSelected({ ...selected, ...payload, id: selected.id });
   }
-  async function deleteItem(item: any) { if (!window.confirm(`Delete ${item.name}? This cannot be undone.`)) return; const { error } = await supabase.from(config.table).delete().eq("id", item.id); if (error) { setMessage(`Delete failed: ${error.message}`); return; } setMessage("Deleted listing."); setSelected(null); setEdit({}); await loadItems(); }
-  useEffect(() => { void init(); }, [kind]);
+  async function deleteItem(item: any) { if (!window.confirm(`Delete ${item.name}? This cannot be undone.`)) return; const { error } = await forSite(supabase.from(config.table).delete(), site.id).eq("id", item.id); if (error) { setMessage(`Delete failed: ${error.message}`); return; } setMessage("Deleted listing."); setSelected(null); setEdit({}); await loadItems(); }
+  useEffect(() => { void init(); }, [kind, site.id]);
 
   return <main className="min-h-screen bg-slate-950 text-white"><StudioHeader/><section className="mx-auto max-w-7xl px-6 py-10">
     <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><a href="/studio" className="font-black text-pink-300">← Back to Studio</a><h1 className="mt-3 text-4xl font-black md:text-5xl">{config.title}</h1><p className="mt-2 text-slate-300">Review, research, enrich, approve, hold, reject, or delete public community listings.</p></div><div className="flex gap-3"><a href={config.publicHref} className="rounded-xl bg-white/10 px-5 py-3 font-black">Public Page</a><button onClick={init} className="rounded-xl bg-white px-5 py-3 font-black text-slate-950">Refresh</button></div></div>

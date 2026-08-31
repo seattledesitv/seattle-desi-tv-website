@@ -30,7 +30,7 @@ export async function getPublicEntity(kind: SeoEntityKind, id: string, siteId?: 
   const db = client();
   if (!db || !id) return null;
   let query = db.from(entityTables[kind]).select(entityColumns[kind]).eq("id", id);
-  if ((kind === "event" || kind === "business") && siteId) query = query.eq("site_id", siteId);
+  if ((kind === "event" || kind === "business" || kind === "organization") && siteId) query = query.eq("site_id", siteId);
   if (kind === "event") query = query.or("approved.eq.true,status.eq.approved");
   if (kind === "business") query = query.eq("status", "approved");
   const { data, error } = await query.maybeSingle();
@@ -42,7 +42,7 @@ async function list(table: string, columns: string, siteId?: string | null) {
   const db = client();
   if (!db) return [];
   let query = db.from(table).select(columns).limit(5000);
-  if ((table === "events" || table === "local_businesses") && siteId) query = query.eq("site_id", siteId);
+  if (["events", "local_businesses", "community_organizations"].includes(table) && siteId) query = query.eq("site_id", siteId);
   if (table === "events") query = query.or("approved.eq.true,status.eq.approved");
   if (table === "local_businesses") query = query.eq("status", "approved");
   const { data, error } = await query;
@@ -54,7 +54,7 @@ export async function listPublicEntities(siteId?: string | null) {
     list("events", "id,title,created_at", siteId),
     list("local_businesses", "id,name,created_at", siteId),
     list("classified_ads", "id,title,updated_at"),
-    list("community_organizations", "id,name,updated_at"),
+    list("community_organizations", "id,name,updated_at", siteId),
     list("press_releases", "id,title,updated_at"),
     list("publications", "id,name,updated_at"),
   ]);

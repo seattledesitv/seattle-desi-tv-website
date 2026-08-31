@@ -240,7 +240,7 @@ export default function EventsPage() {
   }
 
   async function loadOrganizations() {
-    const { data, error } = await supabase.from("community_organizations").select("id,name,organization_type,category,location,status").order("name");
+    const { data, error } = await forSite(supabase.from("community_organizations").select("id,name,organization_type,category,location,status"), site.id).order("name");
     if (error) {
       setOrganizations([]);
       return;
@@ -365,7 +365,7 @@ export default function EventsPage() {
     }
     setSaving(true);
     try {
-      const payload = {
+      const payload: any = {
         ...newOrganization,
         name: newOrganization.name.trim(),
         category: newOrganization.category.trim(),
@@ -375,6 +375,7 @@ export default function EventsPage() {
         status: "pending",
         approved: false,
       };
+      if (site.id) payload.site_id = site.id;
       const { data, error } = await supabase.from("community_organizations").insert(payload).select("id,name,organization_type,category,location,status").single();
       if (error) throw error;
       const created = data as OrganizationRow;

@@ -695,3 +695,11 @@ Safety:
 - Studio labels the selected context as `Preview override` so administrators can confirm which market is active.
 - TypeScript, focused lint, whitespace validation, and the complete Next.js production build pass.
 - Scoped the Studio dashboard's event/business totals and the primary Event Operations workspace to the previewed market; dependent crew, workflow, influencer-intent, and POC rows are limited to events in that market.
+
+## Multi-city Organizations and Groups
+
+- Added required `site_id` ownership to community organizations and groups and backfilled existing rows to Seattle.
+- Scoped public directories, organization profiles/SEO, sitemap entries, mobile API resources, community submissions, administrator creation, and Studio moderation to the resolved market.
+- Scoped the event-submission organization picker and inline organization creation to the event's market.
+- Requires `20260831120000_add_community_site_ownership.sql`.
+- TypeScript, whitespace validation, and the complete Next.js production build pass.
