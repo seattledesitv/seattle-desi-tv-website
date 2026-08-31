@@ -19,7 +19,7 @@ export async function listApproved(db: SupabaseClient, resource: PublicDirectory
           : "events";
 
   let query = db.from(table).select(selections[resource], { count: "exact" }).eq("status", "approved");
-  if (["events", "businesses", "organizations", "groups"].includes(resource) && page.siteId) query = query.eq("site_id", page.siteId);
+  if (["events", "businesses", "organizations", "groups", "influencers"].includes(resource) && page.siteId) query = query.eq("site_id", page.siteId);
   if (resource === "organizations" || resource === "groups") query = query.eq("approved", true);
   if (resource === "influencers") query = query.eq("public_listing", true);
   query = resource === "events"

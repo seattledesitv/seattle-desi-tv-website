@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -14,6 +15,7 @@ function dateText(value?: string | null) {
 }
 
 export default function InfluencerOpsPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [actionMessage, setActionMessage] = useState("");
@@ -25,10 +27,17 @@ export default function InfluencerOpsPage() {
   const [events, setEvents] = useState<Record<string, any>>({});
 
   async function loadData() {
-    const [intentResult, pendingProfileResult] = await Promise.all([
-      supabase.from("event_influencer_intents").select("*").order("created_at", { ascending: false }).limit(300),
-      supabase.from("influencer_profiles").select("id,full_name,email,city,niche,follower_count,instagram_url,tiktok_url,youtube_url,status,public_listing,created_at").eq("status", "pending").order("created_at", { ascending: false }).limit(100),
+    if (!site.id) { setMessage("The active site could not be resolved."); setRows([]); return; }
+    const [siteEventResult, pendingProfileResult] = await Promise.all([
+      supabase.from("events").select("id,title,date,location,status").eq("site_id", site.id),
+      supabase.from("influencer_profiles").select("id,full_name,email,city,niche,follower_count,instagram_url,tiktok_url,youtube_url,status,public_listing,created_at").eq("site_id", site.id).eq("status", "pending").order("created_at", { ascending: false }).limit(100),
     ]);
+    if (siteEventResult.error) { setMessage(`Could not load site events: ${siteEventResult.error.message}`); setRows([]); return; }
+    const siteEvents = siteEventResult.data || [];
+    const siteEventIds = siteEvents.map((event: any) => event.id);
+    const intentResult = siteEventIds.length
+      ? await supabase.from("event_influencer_intents").select("*").in("event_id", siteEventIds).order("created_at", { ascending: false }).limit(300)
+      : { data: [], error: null };
     if (intentResult.error) { setMessage(`Could not load influencer requests: ${intentResult.error.message}`); setRows([]); return; }
     setPendingProfiles(pendingProfileResult.data || []);
     const nextRows = intentResult.data || [];
@@ -36,17 +45,14 @@ export default function InfluencerOpsPage() {
     const profileIds = Array.from(new Set(nextRows.map((row: any) => row.influencer_profile_id).filter(Boolean)));
     const eventIds = Array.from(new Set(nextRows.map((row: any) => row.event_id).filter(Boolean)));
     if (profileIds.length) {
-      const profileResult = await supabase.from("influencer_profiles").select("id,full_name,email,city,niche,follower_count,instagram_url,tiktok_url,youtube_url,status,public_listing").in("id", profileIds);
+      const profileResult = await supabase.from("influencer_profiles").select("id,full_name,email,city,niche,follower_count,instagram_url,tiktok_url,youtube_url,status,public_listing").eq("site_id", site.id).in("id", profileIds);
       const map: Record<string, any> = {};
       (profileResult.data || []).forEach((profile: any) => { map[profile.id] = profile; });
       setProfiles(map);
     } else setProfiles({});
-    if (eventIds.length) {
-      const eventResult = await supabase.from("events").select("id,title,date,location,status").in("id", eventIds);
-      const map: Record<string, any> = {};
-      (eventResult.data || []).forEach((event: any) => { map[event.id] = event; });
-      setEvents(map);
-    } else setEvents({});
+    const eventMap: Record<string, any> = {};
+    siteEvents.filter((event: any) => eventIds.includes(event.id)).forEach((event: any) => { eventMap[event.id] = event; });
+    setEvents(eventMap);
   }
 
   async function init() {
@@ -66,7 +72,7 @@ export default function InfluencerOpsPage() {
   async function updateProfile(id: string, status: string) {
     const payload: any = { status, updated_at: new Date().toISOString() };
     if (status === "approved") { payload.approved_by = user?.email || user?.id || null; payload.approved_at = new Date().toISOString(); }
-    const { error } = await supabase.from("influencer_profiles").update(payload).eq("id", id);
+    const { error } = await supabase.from("influencer_profiles").update(payload).eq("id", id).eq("site_id", site.id);
     setActionMessage(error ? `Profile update failed: ${error.message}` : `Influencer profile marked ${status}.`);
     await loadData();
   }
@@ -79,7 +85,7 @@ export default function InfluencerOpsPage() {
     await loadData();
   }
 
-  useEffect(() => { init(); }, []);
+  useEffect(() => { init(); }, [site.id]);
 
   const canAccess = Boolean(user && isAdminRole(role));
 
@@ -90,7 +96,7 @@ export default function InfluencerOpsPage() {
         <div className="mb-8 rounded-3xl border border-white/10 bg-white/10 p-8">
           <p className="font-black uppercase tracking-wide text-pink-300">Studio</p>
           <h1 className="mt-2 text-4xl font-black md:text-5xl">Influencer Ops</h1>
-          <p className="mt-3 max-w-3xl text-slate-300">Approve influencer profiles and event collaboration requests.</p>
+          <p className="mt-3 max-w-3xl text-slate-300">Approve influencer profiles and event collaboration requests for {site.name}.</p>
           <button onClick={init} className="mt-5 rounded-xl bg-white px-4 py-2 font-black text-slate-950">Refresh</button>
         </div>
         {loading && <div className="rounded-2xl bg-white/10 p-6">{message}</div>}

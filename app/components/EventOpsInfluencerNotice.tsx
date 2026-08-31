@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -32,6 +34,7 @@ function buildEmailHref(event: EventRow, approvedCount: number, pendingCount: nu
 }
 
 export default function EventOpsInfluencerNotice() {
+  const site = useCurrentSite();
   const [active, setActive] = useState(false);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [intents, setIntents] = useState<IntentRow[]>([]);
@@ -39,11 +42,13 @@ export default function EventOpsInfluencerNotice() {
   async function load() {
     if (typeof window === "undefined" || window.location.pathname !== "/studio/event-ops") return;
     setActive(true);
-    const [eventResult, intentResult] = await Promise.all([
-      supabase.from("events").select("id,title,poc_email,date,location").order("date", { ascending: false }).limit(300),
-      supabase.from("event_influencer_intents").select("id,event_id,user_email,influencer_profile_id,status,expected_platforms").order("created_at", { ascending: false }).limit(1000),
-    ]);
-    setEvents(eventResult.data || []);
+    const eventResult = await forSite(supabase.from("events").select("id,title,poc_email,date,location"), site.id).order("date", { ascending: false }).limit(300);
+    const siteEvents = eventResult.data || [];
+    const eventIds = siteEvents.map((event) => event.id);
+    const intentResult = eventIds.length
+      ? await supabase.from("event_influencer_intents").select("id,event_id,user_email,influencer_profile_id,status,expected_platforms").in("event_id", eventIds).order("created_at", { ascending: false }).limit(1000)
+      : { data: [] };
+    setEvents(siteEvents);
     setIntents(intentResult.data || []);
   }
 
@@ -62,7 +67,7 @@ export default function EventOpsInfluencerNotice() {
     return map;
   }, [intents]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [site.id]);
 
   useEffect(() => {
     if (!active || typeof window === "undefined") return;

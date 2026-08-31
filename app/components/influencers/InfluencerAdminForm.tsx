@@ -1,12 +1,185 @@
 "use client";
 import { useState } from "react";
 import type { InfluencerAdminInput } from "../../lib/influencers/types";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
 
-const blank: InfluencerAdminInput = { email:"", full_name:"", city:"Washington", bio:"", instagram_url:"", tiktok_url:"", youtube_url:"", website_url:"", photo_url:"", niche:"Community", follower_count:"", status:"pending", public_listing:false };
+const blank = (city: string): InfluencerAdminInput => ({
+  email: "",
+  full_name: "",
+  city,
+  bio: "",
+  instagram_url: "",
+  tiktok_url: "",
+  youtube_url: "",
+  website_url: "",
+  photo_url: "",
+  niche: "Community",
+  follower_count: "",
+  status: "pending",
+  public_listing: false,
+});
 
-export default function InfluencerAdminForm({ saving, onCreate }: { saving:boolean; onCreate:(input:InfluencerAdminInput)=>Promise<unknown> }) {
-  const [form,setForm]=useState(blank),[message,setMessage]=useState("");
-  const set=(key:keyof InfluencerAdminInput,value:unknown)=>setForm(current=>({...current,[key]:value}));
-  async function submit(){setMessage("");try{await onCreate(form);setForm(blank);setMessage("Influencer profile created. It can now be claimed from the public directory.");}catch{} }
-  return <section className="rounded-3xl bg-white p-6 text-slate-950 shadow-xl"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-2xl font-black">Add Influencer</h2><p className="mt-1 text-sm text-slate-600">Create an unclaimed directory profile. The influencer can claim it later through the existing verification workflow.</p></div><span className="rounded-full bg-pink-50 px-3 py-2 text-xs font-black text-pink-700">Studio-created listing</span></div><div className="mt-5 grid gap-4 md:grid-cols-2"><label className="font-bold">Name *<input value={form.full_name} onChange={e=>set("full_name",e.target.value)} className="mt-1 w-full rounded-xl border p-3 font-normal"/></label><label className="font-bold">Contact email *<input type="email" value={form.email} onChange={e=>set("email",e.target.value)} className="mt-1 w-full rounded-xl border p-3 font-normal"/></label><label className="font-bold">City<input value={form.city||""} onChange={e=>set("city",e.target.value)} className="mt-1 w-full rounded-xl border p-3 font-normal"/></label><label className="font-bold">Niche<input value={form.niche||""} onChange={e=>set("niche",e.target.value)} placeholder="Food, fashion, culture..." className="mt-1 w-full rounded-xl border p-3 font-normal"/></label><label className="font-bold">Follower count<input value={form.follower_count||""} onChange={e=>set("follower_count",e.target.value)} placeholder="Example: 15K" className="mt-1 w-full rounded-xl border p-3 font-normal"/></label><label className="font-bold">Photo URL<input value={form.photo_url||""} onChange={e=>set("photo_url",e.target.value)} className="mt-1 w-full rounded-xl border p-3 font-normal"/></label><label className="font-bold">Instagram<input value={form.instagram_url||""} onChange={e=>set("instagram_url",e.target.value)} className="mt-1 w-full rounded-xl border p-3 font-normal"/></label><label className="font-bold">TikTok<input value={form.tiktok_url||""} onChange={e=>set("tiktok_url",e.target.value)} className="mt-1 w-full rounded-xl border p-3 font-normal"/></label><label className="font-bold">YouTube<input value={form.youtube_url||""} onChange={e=>set("youtube_url",e.target.value)} className="mt-1 w-full rounded-xl border p-3 font-normal"/></label><label className="font-bold">Website<input value={form.website_url||""} onChange={e=>set("website_url",e.target.value)} className="mt-1 w-full rounded-xl border p-3 font-normal"/></label><label className="font-bold md:col-span-2">Bio<textarea value={form.bio||""} onChange={e=>set("bio",e.target.value)} className="mt-1 min-h-28 w-full rounded-xl border p-3 font-normal"/></label><label className="font-bold">Initial status<select value={form.status} onChange={e=>set("status",e.target.value)} className="mt-1 w-full rounded-xl border p-3 font-normal"><option value="pending">Pending review</option><option value="approved">Approved</option></select></label><label className="flex items-center gap-3 self-end rounded-xl border p-3 font-bold"><input type="checkbox" checked={form.public_listing} disabled={form.status!=="approved"} onChange={e=>set("public_listing",e.target.checked)}/>Show publicly when approved</label></div><button disabled={saving} onClick={()=>void submit()} className="mt-5 rounded-xl bg-pink-600 px-6 py-3 font-black text-white disabled:opacity-60">{saving?"Creating...":"Create Influencer"}</button>{message&&<p className="mt-4 rounded-xl bg-green-50 p-3 font-bold text-green-900">{message}</p>}</section>;
+export default function InfluencerAdminForm({
+  saving,
+  onCreate,
+}: {
+  saving: boolean;
+  onCreate: (input: InfluencerAdminInput) => Promise<unknown>;
+}) {
+  const site = useCurrentSite();
+  const [form, setForm] = useState(() => blank(site.city)),
+    [message, setMessage] = useState("");
+  const set = (key: keyof InfluencerAdminInput, value: unknown) =>
+    setForm((current) => ({ ...current, [key]: value }));
+  async function submit() {
+    setMessage("");
+    try {
+      await onCreate(form);
+      setForm(blank(site.city));
+      setMessage(
+        "Influencer profile created. It can now be claimed from the public directory.",
+      );
+    } catch {}
+  }
+  return (
+    <section className="rounded-3xl bg-white p-6 text-slate-950 shadow-xl">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-black">Add Influencer</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Create an unclaimed directory profile. The influencer can claim it
+            later through the existing verification workflow.
+          </p>
+        </div>
+        <span className="rounded-full bg-pink-50 px-3 py-2 text-xs font-black text-pink-700">
+          Studio-created listing
+        </span>
+      </div>
+      <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <label className="font-bold">
+          Name *
+          <input
+            value={form.full_name}
+            onChange={(e) => set("full_name", e.target.value)}
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+          />
+        </label>
+        <label className="font-bold">
+          Contact email *
+          <input
+            type="email"
+            value={form.email}
+            onChange={(e) => set("email", e.target.value)}
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+          />
+        </label>
+        <label className="font-bold">
+          City
+          <input
+            value={form.city || ""}
+            onChange={(e) => set("city", e.target.value)}
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+          />
+        </label>
+        <label className="font-bold">
+          Niche
+          <input
+            value={form.niche || ""}
+            onChange={(e) => set("niche", e.target.value)}
+            placeholder="Food, fashion, culture..."
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+          />
+        </label>
+        <label className="font-bold">
+          Follower count
+          <input
+            value={form.follower_count || ""}
+            onChange={(e) => set("follower_count", e.target.value)}
+            placeholder="Example: 15K"
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+          />
+        </label>
+        <label className="font-bold">
+          Photo URL
+          <input
+            value={form.photo_url || ""}
+            onChange={(e) => set("photo_url", e.target.value)}
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+          />
+        </label>
+        <label className="font-bold">
+          Instagram
+          <input
+            value={form.instagram_url || ""}
+            onChange={(e) => set("instagram_url", e.target.value)}
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+          />
+        </label>
+        <label className="font-bold">
+          TikTok
+          <input
+            value={form.tiktok_url || ""}
+            onChange={(e) => set("tiktok_url", e.target.value)}
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+          />
+        </label>
+        <label className="font-bold">
+          YouTube
+          <input
+            value={form.youtube_url || ""}
+            onChange={(e) => set("youtube_url", e.target.value)}
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+          />
+        </label>
+        <label className="font-bold">
+          Website
+          <input
+            value={form.website_url || ""}
+            onChange={(e) => set("website_url", e.target.value)}
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+          />
+        </label>
+        <label className="font-bold md:col-span-2">
+          Bio
+          <textarea
+            value={form.bio || ""}
+            onChange={(e) => set("bio", e.target.value)}
+            className="mt-1 min-h-28 w-full rounded-xl border p-3 font-normal"
+          />
+        </label>
+        <label className="font-bold">
+          Initial status
+          <select
+            value={form.status}
+            onChange={(e) => set("status", e.target.value)}
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+          >
+            <option value="pending">Pending review</option>
+            <option value="approved">Approved</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-3 self-end rounded-xl border p-3 font-bold">
+          <input
+            type="checkbox"
+            checked={form.public_listing}
+            disabled={form.status !== "approved"}
+            onChange={(e) => set("public_listing", e.target.checked)}
+          />
+          Show publicly when approved
+        </label>
+      </div>
+      <button
+        disabled={saving}
+        onClick={() => void submit()}
+        className="mt-5 rounded-xl bg-pink-600 px-6 py-3 font-black text-white disabled:opacity-60"
+      >
+        {saving ? "Creating..." : "Create Influencer"}
+      </button>
+      {message && (
+        <p className="mt-4 rounded-xl bg-green-50 p-3 font-bold text-green-900">
+          {message}
+        </p>
+      )}
+    </section>
+  );
 }

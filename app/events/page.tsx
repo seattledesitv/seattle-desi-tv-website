@@ -538,7 +538,7 @@ export default function EventsPage() {
     }
     setRequestingInfluencerEventId(event.id);
     try {
-      const { data: profile, error: profileError } = await supabase.from("influencer_profiles").select("id,status").ilike("email", user.email).maybeSingle();
+      const { data: profile, error: profileError } = await forSite(supabase.from("influencer_profiles").select("id,status").ilike("email", user.email), site.id).maybeSingle();
       if (profileError) throw profileError;
       if (!profile?.id || String(profile.status || "").toLowerCase() !== "approved") {
         window.location.href = "/my-influencer-profile";

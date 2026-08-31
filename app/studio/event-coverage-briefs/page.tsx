@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -27,6 +29,7 @@ function statusClass(status?: string | null) {
 }
 
 export default function EventCoverageBriefsPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [user, setUser] = useState<any>(null);
@@ -38,19 +41,21 @@ export default function EventCoverageBriefsPage() {
   const [query, setQuery] = useState("");
 
   async function loadData() {
-    const [eventResult, assignmentResult, influencerResult] = await Promise.all([
-      supabase.from("events").select("id,title,date,location,status,poc_email,poc_phone,description").order("date", { ascending: false }).limit(300),
-      supabase.from("event_crew_assignments").select("id,event_id,user_email,assignment_type,status,crew_confirmed,coverage_completed,coverage_notes").order("created_at", { ascending: false }).limit(1000),
-      supabase.from("event_influencer_intents").select("id,event_id,user_email,influencer_profile_id,status,expected_platforms,collab_note,post_url").order("created_at", { ascending: false }).limit(1000),
-    ]);
+    const eventResult = await forSite(supabase.from("events").select("id,title,date,location,status,poc_email,poc_phone,description"), site.id).order("date", { ascending: false }).limit(300);
     if (eventResult.error) { setMessage(`Could not load events: ${eventResult.error.message}`); return; }
-    setEvents(eventResult.data || []);
+    const siteEvents = eventResult.data || [];
+    const eventIds = siteEvents.map((event: any) => event.id);
+    const [assignmentResult, influencerResult] = eventIds.length ? await Promise.all([
+      supabase.from("event_crew_assignments").select("id,event_id,user_email,assignment_type,status,crew_confirmed,coverage_completed,coverage_notes").in("event_id", eventIds).order("created_at", { ascending: false }).limit(1000),
+      supabase.from("event_influencer_intents").select("id,event_id,user_email,influencer_profile_id,status,expected_platforms,collab_note,post_url").in("event_id", eventIds).order("created_at", { ascending: false }).limit(1000),
+    ]) : [{ data: [] }, { data: [] }];
+    setEvents(siteEvents);
     setAssignments(assignmentResult.data || []);
     const influencerRows = influencerResult.data || [];
     setInfluencers(influencerRows);
     const profileIds = Array.from(new Set(influencerRows.map((row: any) => row.influencer_profile_id).filter(Boolean)));
     if (profileIds.length) {
-      const profileResult = await supabase.from("influencer_profiles").select("id,full_name,email,instagram_url,tiktok_url,youtube_url,niche,follower_count,status,public_listing").in("id", profileIds);
+      const profileResult = await forSite(supabase.from("influencer_profiles").select("id,full_name,email,instagram_url,tiktok_url,youtube_url,niche,follower_count,status,public_listing"), site.id).in("id", profileIds);
       const map: Record<string, any> = {};
       (profileResult.data || []).forEach((profile: any) => { map[profile.id] = profile; });
       setProfiles(map);
@@ -71,7 +76,7 @@ export default function EventCoverageBriefsPage() {
     setLoading(false);
   }
 
-  useEffect(() => { init(); }, []);
+  useEffect(() => { init(); }, [site.id]);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();

@@ -675,7 +675,7 @@ Safety:
 - Added a root site provider so browser pages consume the same server-resolved hostname context.
 - Scoped the public Events directory, event detail and related events, homepage event feeds, featured-event UI, SEO records, sitemap entries, mobile Events API, and primary Studio Events manager to the resolved site.
 - New event submissions retain the resolved market and remain pending until moderation.
-- Specialized event operations remain cross-market temporarily; they will receive an explicit market selector before additional cities are activated.
+- Specialized event operations are being scoped incrementally as their related modules receive site ownership.
 - Requires `20260829120000_add_event_site_ownership.sql`.
 - TypeScript and the complete Next.js production build pass.
 
@@ -702,4 +702,13 @@ Safety:
 - Scoped public directories, organization profiles/SEO, sitemap entries, mobile API resources, community submissions, administrator creation, and Studio moderation to the resolved market.
 - Scoped the event-submission organization picker and inline organization creation to the event's market.
 - Requires `20260831120000_add_community_site_ownership.sql`.
+- TypeScript, whitespace validation, and the complete Next.js production build pass.
+
+## Multi-city Influencers
+
+- Added required `influencer_profiles.site_id` ownership and backfilled existing influencer profiles to Seattle.
+- Scoped the public influencer directory, mobile Influencers API, profile submissions, Studio directory management, and pending-profile moderation to the resolved market.
+- Scoped influencer collaboration views and coverage briefs through the owning event market so SFO and Dallas cannot display Seattle requests.
+- New public and Studio-created influencer profiles retain the active market.
+- Requires `20260831150000_add_influencer_site_ownership.sql`.
 - TypeScript, whitespace validation, and the complete Next.js production build pass.

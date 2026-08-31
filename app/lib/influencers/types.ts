@@ -2,6 +2,7 @@ export type InfluencerStatus = "pending" | "approved" | "hidden" | "rejected";
 
 export type InfluencerProfile = {
   id: string;
+  site_id: string;
   user_id: string | null;
   email: string;
   full_name: string;

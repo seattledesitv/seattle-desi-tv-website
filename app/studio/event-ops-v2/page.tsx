@@ -541,6 +541,7 @@ export default function EventOpsV2Page() {
       const { data } = await supabase
         .from("influencer_profiles")
         .select("*")
+        .eq("site_id", site.id)
         .in("id", ids);
       const next: Record<string, any> = {};
       (data || []).forEach((p: any) => {
