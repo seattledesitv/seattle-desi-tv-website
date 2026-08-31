@@ -62,9 +62,9 @@ export default function HomepageHeroBridgeV2() {
       const today = new Date().toISOString().slice(0, 10);
       const [settingsResult, bannersResult, eventsResult, festivalsResult] = await Promise.all([
         supabase.from("homepage_hero_settings").select("layout_style").eq("id", "default").maybeSingle(),
-        supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,banner_type,theme,hero_layout,start_date,end_date,display_order,active").eq("active", true).order("display_order", { ascending: true }),
+        forSite(supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,banner_type,theme,hero_layout,start_date,end_date,display_order,active"), site.id).eq("active", true).order("display_order", { ascending: true }),
         forSite(supabase.from("events").select("id,title,date,location,image,image_urls,featured,featured_order,hero_theme,hero_layout,status"), site.id).eq("status", "approved").eq("featured", true).order("featured_order", { ascending: true }).order("date", { ascending: true }).limit(8),
-        supabase.from("festival_hero_assets").select("id,festival_name,festival_key,title,subtitle,image_url,theme,hero_layout,start_date,end_date,active").eq("active", true).order("start_date", { ascending: true }),
+        forSite(supabase.from("festival_hero_assets").select("id,festival_name,festival_key,title,subtitle,image_url,theme,hero_layout,start_date,end_date,active"), site.id).eq("active", true).order("start_date", { ascending: true }),
       ]);
 
       if (settingsResult.data?.layout_style) setGlobalLayout(settingsResult.data.layout_style as HeroLayoutStyle);
@@ -76,7 +76,7 @@ export default function HomepageHeroBridgeV2() {
         image_url: row.image_url,
         button_text: row.button_text,
         button_url: row.button_url,
-        badge: row.banner_type ? `${String(row.banner_type).toUpperCase()} FEATURE` : "Seattle Desi TV",
+        badge: row.banner_type ? `${String(row.banner_type).toUpperCase()} FEATURE` : site.name,
         display_order: Number(row.display_order || 0),
         theme: row.theme || "fallback",
         hero_layout: row.hero_layout || "inherit",
@@ -98,7 +98,7 @@ export default function HomepageHeroBridgeV2() {
       const festivals: HomepageHeroItem[] = (festivalsResult.data || []).filter((row: any) => withinWindow(row, today)).map((row: any) => ({
         id: `festival-${row.id}`,
         title: row.title || row.festival_name,
-        subtitle: row.subtitle || `Celebrating ${row.festival_name} with the Seattle Desi community.`,
+        subtitle: row.subtitle || `Celebrating ${row.festival_name} with the ${site.city} Desi community.`,
         image_url: row.image_url,
         button_text: "Explore Events",
         button_url: "/events",

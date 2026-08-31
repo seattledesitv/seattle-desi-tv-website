@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import HeroPreview, { type HeroLayoutStyle } from "./HeroPreview";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 type ItemType = "banner" | "event" | "festival";
@@ -14,6 +16,7 @@ function titleFor(type: ItemType, item: any) { return type === "festival" ? item
 function subtitleFor(type: ItemType, item: any) { return type === "event" ? [item.date, item.location].filter(Boolean).join(" · ") : item.subtitle || ""; }
 
 export default function HeroItemLayoutManager() {
+  const site = useCurrentSite();
   const [globalLayout, setGlobalLayout] = useState<HeroLayoutStyle>("image_focus");
   const [banners, setBanners] = useState<any[]>([]); const [events, setEvents] = useState<any[]>([]); const [festivals, setFestivals] = useState<any[]>([]);
   const [savingKey, setSavingKey] = useState(""); const [message, setMessage] = useState(""); const [expandedKey, setExpandedKey] = useState("");
@@ -21,22 +24,22 @@ export default function HeroItemLayoutManager() {
   async function load() {
     const [settings, bannerResult, eventResult, festivalResult] = await Promise.all([
       supabase.from("homepage_hero_settings").select("layout_style").eq("id", "default").maybeSingle(),
-      supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,theme,hero_layout,active").order("display_order", { ascending: true }),
-      supabase.from("events").select("id,title,date,location,image,image_urls,hero_theme,hero_layout").eq("featured", true).order("featured_order", { ascending: true }),
-      supabase.from("festival_hero_assets").select("id,festival_name,title,subtitle,image_url,theme,hero_layout,active").order("start_date", { ascending: true }),
+      forSite(supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,theme,hero_layout,active"), site.id).order("display_order", { ascending: true }),
+      forSite(supabase.from("events").select("id,title,date,location,image,image_urls,hero_theme,hero_layout"), site.id).eq("featured", true).order("featured_order", { ascending: true }),
+      forSite(supabase.from("festival_hero_assets").select("id,festival_name,title,subtitle,image_url,theme,hero_layout,active"), site.id).order("start_date", { ascending: true }),
     ]);
     if (settings.data?.layout_style) setGlobalLayout(settings.data.layout_style as HeroLayoutStyle);
     const error = bannerResult.error || eventResult.error || festivalResult.error;
     if (error) { setMessage(error.message.includes("hero_layout") ? "Run supabase/hero-item-layouts.sql, then refresh this page." : error.message); return; }
     setBanners(bannerResult.data || []); setEvents(eventResult.data || []); setFestivals(festivalResult.data || []);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [site.id]);
   const groups = useMemo(() => [{ type: "banner" as const, label: "Marketing Banners", items: banners }, { type: "event" as const, label: "Featured Events", items: events }, { type: "festival" as const, label: "Festival Heroes", items: festivals }], [banners, events, festivals]);
 
   async function saveLayout(type: ItemType, item: any, heroLayout: LayoutChoice) {
     const key = `${type}:${item.id}`; setSavingKey(key); setMessage("");
     const table = type === "banner" ? "homepage_hero_banners" : type === "festival" ? "festival_hero_assets" : "events";
-    const { error } = await supabase.from(table).update({ hero_layout: heroLayout }).eq("id", item.id);
+    const { error } = await supabase.from(table).update({ hero_layout: heroLayout }).eq("id", item.id).eq("site_id", site.id || "");
     if (error) setMessage(error.message.includes("hero_layout") ? "Run supabase/hero-item-layouts.sql, then refresh this page." : `Layout update failed: ${error.message}`);
     else { setMessage(`${titleFor(type, item)} layout updated.`); await load(); }
     setSavingKey("");

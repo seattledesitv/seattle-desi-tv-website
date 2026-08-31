@@ -30,8 +30,8 @@ export default function HomepageHeroLoader() {
       const today = new Date().toISOString().slice(0, 10);
       const [eventsResult, bannersResult, festivalsResult] = await Promise.all([
         forSite(supabase.from("events").select("id,title,date,location,image,image_urls,featured_order,hero_theme"), site.id).eq("status", "approved").eq("featured", true).order("featured_order", { ascending: true }).limit(8),
-        supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,banner_type,theme,start_date,end_date,display_order,active").eq("active", true).order("display_order", { ascending: true }),
-        supabase.from("festival_hero_assets").select("id,festival_name,title,subtitle,image_url,theme,start_date,end_date,active").eq("active", true).order("start_date", { ascending: true }),
+        forSite(supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,banner_type,theme,start_date,end_date,display_order,active"), site.id).eq("active", true).order("display_order", { ascending: true }),
+        forSite(supabase.from("festival_hero_assets").select("id,festival_name,title,subtitle,image_url,theme,start_date,end_date,active"), site.id).eq("active", true).order("start_date", { ascending: true }),
       ]);
 
       const eventItems: HeroItemV3[] = (eventsResult.data || []).map((row: any) => ({
@@ -52,14 +52,14 @@ export default function HomepageHeroLoader() {
         image_url: row.image_url,
         button_text: row.button_text,
         button_url: row.button_url,
-        badge: row.banner_type ? `${String(row.banner_type).toUpperCase()} FEATURE` : "Seattle Desi TV",
+        badge: row.banner_type ? `${String(row.banner_type).toUpperCase()} FEATURE` : site.name,
         display_order: Number(row.display_order || 0),
         theme: row.theme || "fallback",
       }));
       const festivalItems: HeroItemV3[] = (festivalsResult.data || []).filter((row: any) => activeToday(row, today)).map((row: any) => ({
         id: `festival-${row.id}`,
         title: row.title || row.festival_name,
-        subtitle: row.subtitle || `Celebrating ${row.festival_name} with the Seattle Desi community.`,
+        subtitle: row.subtitle || `Celebrating ${row.festival_name} with the ${site.city} Desi community.`,
         image_url: row.image_url,
         button_text: "Explore Events",
         button_url: "/events",

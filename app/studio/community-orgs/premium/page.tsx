@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../../lib/roles";
+import { useCurrentSite } from "../../../lib/sites/SiteContext";
+import { forSite } from "../../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -41,6 +43,7 @@ function heroButtonUrl(id: string) {
 }
 
 export default function PremiumOrganizationManagerPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [user, setUser] = useState<any>(null);
@@ -71,13 +74,13 @@ export default function PremiumOrganizationManagerPage() {
     }
 
     const [organizationResult, heroResult] = await Promise.all([
-      supabase
+      forSite(supabase
         .from("community_organizations")
-        .select("id,name,organization_type,category,location,status,approved,description,image,is_premium,premium_rank,premium_starts_at,premium_ends_at,premium_label,premium_payment_reference,premium_notes")
+        .select("id,name,organization_type,category,location,status,approved,description,image,is_premium,premium_rank,premium_starts_at,premium_ends_at,premium_label,premium_payment_reference,premium_notes"), site.id)
         .order("name"),
-      supabase
+      forSite(supabase
         .from("homepage_hero_banners")
-        .select("id,title,subtitle,image_url,button_url,start_date,end_date,display_order,active,banner_type")
+        .select("id,title,subtitle,image_url,button_url,start_date,end_date,display_order,active,banner_type"), site.id)
         .eq("banner_type", "organization"),
     ]);
 
@@ -125,7 +128,7 @@ export default function PremiumOrganizationManagerPage() {
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [site.id]);
 
   function update(id: string, patch: Partial<Draft>) {
     setDrafts((current) => ({ ...current, [id]: { ...current[id], ...patch } }));
@@ -136,13 +139,14 @@ export default function PremiumOrganizationManagerPage() {
     const existing = await supabase
       .from("homepage_hero_banners")
       .select("id")
+      .eq("site_id", site.id || "")
       .eq("banner_type", "organization")
       .eq("button_url", buttonUrl)
       .maybeSingle();
 
     if (!draft.hero_enabled) {
       if (existing.data?.id) {
-        const result = await supabase.from("homepage_hero_banners").update({ active: false }).eq("id", existing.data.id);
+        const result = await supabase.from("homepage_hero_banners").update({ active: false }).eq("id", existing.data.id).eq("site_id", site.id || "");
         if (result.error) throw result.error;
       }
       return;
@@ -170,10 +174,11 @@ export default function PremiumOrganizationManagerPage() {
       end_date: draft.hero_ends_at || null,
       display_order: Math.max(0, Math.min(9999, Number(draft.hero_rank || 50))),
       active: true,
+      site_id: site.id,
     };
 
     const result = existing.data?.id
-      ? await supabase.from("homepage_hero_banners").update(payload).eq("id", existing.data.id)
+      ? await supabase.from("homepage_hero_banners").update(payload).eq("id", existing.data.id).eq("site_id", site.id || "")
       : await supabase.from("homepage_hero_banners").insert(payload);
 
     if (result.error) throw result.error;

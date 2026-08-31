@@ -51,8 +51,8 @@ function installHeroThemeStyles() {
 
 async function loadHeroThemeMap(siteId: string | null) {
   const [bannerResult, festivalResult, eventResult] = await Promise.all([
-    supabase.from("homepage_hero_banners").select("image_url,theme").eq("active", true),
-    supabase.from("festival_hero_assets").select("image_url,theme").eq("active", true),
+    forSite(supabase.from("homepage_hero_banners").select("image_url,theme"), siteId).eq("active", true),
+    forSite(supabase.from("festival_hero_assets").select("image_url,theme"), siteId).eq("active", true),
     forSite(supabase.from("events").select("image,image_urls,hero_theme"), siteId).eq("featured", true).eq("status", "approved"),
   ]);
   const next: Record<string, string> = {};

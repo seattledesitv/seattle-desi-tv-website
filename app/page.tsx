@@ -645,6 +645,7 @@ export default function HomePage() {
         .select(
           "id,title,subtitle,image_url,button_text,button_url,banner_type,start_date,end_date,display_order,active",
         )
+        .eq("site_id", site.id || "")
         .eq("active", true)
         .order("display_order", { ascending: true }),
       supabase
@@ -652,6 +653,7 @@ export default function HomePage() {
         .select(
           "id,festival_name,festival_key,title,subtitle,image_url,start_date,end_date,active",
         )
+        .eq("site_id", site.id || "")
         .eq("active", true)
         .order("start_date", { ascending: true }),
       countQuery(
@@ -800,7 +802,7 @@ export default function HomePage() {
               button_url: row.button_url,
               badge: row.banner_type
                 ? `${String(row.banner_type).toUpperCase()} FEATURE`
-                : "Seattle Desi TV",
+                : site.name,
               display_order: row.display_order || 0,
             }))
         : [];
@@ -813,7 +815,7 @@ export default function HomePage() {
               title: row.title || row.festival_name,
               subtitle:
                 row.subtitle ||
-                `Celebrating ${row.festival_name} with the Seattle Desi community.`,
+                `Celebrating ${row.festival_name} with the ${site.city} Desi community.`,
               image_url: row.image_url,
               button_text: "Explore Events",
               button_url: "/events",

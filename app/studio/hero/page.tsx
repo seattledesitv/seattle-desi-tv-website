@@ -6,6 +6,8 @@ import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
 import { uploadFileToCloudinary } from "../../lib/cloudinaryUpload";
 import HeroLayoutDesigner from "./HeroLayoutDesigner";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const THEMES = ["fallback", "gold", "pink", "blue", "festival", "cinematic", "emerald"];
@@ -34,6 +36,7 @@ function EmptyState({ title, text }: { title: string; text: string }) {
 }
 
 export default function HeroCmsPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [user, setUser] = useState<any>(null);
@@ -58,9 +61,9 @@ export default function HeroCmsPage() {
 
   async function loadContent() {
     const [bannerResult, festivalResult, eventResult] = await Promise.all([
-      supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,banner_type,theme,start_date,end_date,display_order,active").order("display_order", { ascending: true }),
-      supabase.from("festival_hero_assets").select("id,festival_name,festival_key,title,subtitle,image_url,theme,start_date,end_date,active").order("start_date", { ascending: true }),
-      supabase.from("events").select("id,title,date,location,image,image_urls,featured,featured_order,hero_theme").eq("featured", true).order("featured_order", { ascending: true }),
+      forSite(supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,banner_type,theme,start_date,end_date,display_order,active"), site.id).order("display_order", { ascending: true }),
+      forSite(supabase.from("festival_hero_assets").select("id,festival_name,festival_key,title,subtitle,image_url,theme,start_date,end_date,active"), site.id).order("start_date", { ascending: true }),
+      forSite(supabase.from("events").select("id,title,date,location,image,image_urls,featured,featured_order,hero_theme"), site.id).eq("featured", true).order("featured_order", { ascending: true }),
     ]);
     const error = bannerResult.error || festivalResult.error || eventResult.error;
     if (error) setMessage(error.message || "Could not load hero content.");
@@ -87,13 +90,14 @@ export default function HeroCmsPage() {
   function resetFestivalForm() { setEditingFestivalId(""); setFestivalForm(emptyFestival); setFestivalFile(null); }
 
   async function saveBanner() {
+    if (!site.id) { setMessage("The active site is not configured."); return; }
     if (!bannerForm.title.trim()) { setMessage("Banner title is required."); return; }
     setSaving(true);
     try {
       let imageUrl = bannerForm.image_url || "";
       if (bannerFile) imageUrl = await uploadFileToCloudinary(bannerFile);
-      const payload = { ...bannerForm, image_url: imageUrl, start_date: bannerForm.start_date || null, end_date: bannerForm.end_date || null, display_order: Number(bannerForm.display_order || 0), updated_at: new Date().toISOString() };
-      const result = editingBannerId ? await supabase.from("homepage_hero_banners").update(payload).eq("id", editingBannerId) : await supabase.from("homepage_hero_banners").insert(payload);
+      const payload = { ...bannerForm, site_id: site.id, image_url: imageUrl, start_date: bannerForm.start_date || null, end_date: bannerForm.end_date || null, display_order: Number(bannerForm.display_order || 0), updated_at: new Date().toISOString() };
+      const result = editingBannerId ? await supabase.from("homepage_hero_banners").update(payload).eq("id", editingBannerId).eq("site_id", site.id || "") : await supabase.from("homepage_hero_banners").insert(payload);
       if (result.error) throw result.error;
       resetBannerForm();
       setMessage(editingBannerId ? "Hero banner updated." : "Hero banner created.");
@@ -102,13 +106,14 @@ export default function HeroCmsPage() {
   }
 
   async function saveFestival() {
+    if (!site.id) { setMessage("The active site is not configured."); return; }
     if (!festivalForm.festival_name.trim() || !festivalForm.festival_key.trim()) { setMessage("Festival name and key are required."); return; }
     setSaving(true);
     try {
       let imageUrl = festivalForm.image_url || "";
       if (festivalFile) imageUrl = await uploadFileToCloudinary(festivalFile);
-      const payload = { ...festivalForm, image_url: imageUrl, start_date: festivalForm.start_date || null, end_date: festivalForm.end_date || null, updated_at: new Date().toISOString() };
-      const result = editingFestivalId ? await supabase.from("festival_hero_assets").update(payload).eq("id", editingFestivalId) : await supabase.from("festival_hero_assets").insert(payload);
+      const payload = { ...festivalForm, site_id: site.id, image_url: imageUrl, start_date: festivalForm.start_date || null, end_date: festivalForm.end_date || null, updated_at: new Date().toISOString() };
+      const result = editingFestivalId ? await supabase.from("festival_hero_assets").update(payload).eq("id", editingFestivalId).eq("site_id", site.id || "") : await supabase.from("festival_hero_assets").insert(payload);
       if (result.error) throw result.error;
       resetFestivalForm();
       setMessage(editingFestivalId ? "Festival hero updated." : "Festival hero created.");
@@ -117,7 +122,7 @@ export default function HeroCmsPage() {
   }
 
   async function updateEventTheme(id: string, hero_theme: string) {
-    const { error } = await supabase.from("events").update({ hero_theme }).eq("id", id);
+    const { error } = await supabase.from("events").update({ hero_theme }).eq("id", id).eq("site_id", site.id || "");
     if (error) setMessage(`Theme update failed: ${error.message}`); else { setMessage("Featured event theme updated."); await loadContent(); }
   }
 
@@ -134,16 +139,16 @@ export default function HeroCmsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   async function toggle(table: string, row: any) {
-    const { error } = await supabase.from(table).update({ active: !row.active }).eq("id", row.id);
+    const { error } = await supabase.from(table).update({ active: !row.active }).eq("id", row.id).eq("site_id", site.id || "");
     if (error) setMessage(error.message); else { setMessage(row.active ? "Hero item disabled." : "Hero item enabled."); await loadContent(); }
   }
   async function remove(table: string, id: string) {
     if (!window.confirm("Delete this hero item? This cannot be undone.")) return;
-    const { error } = await supabase.from(table).delete().eq("id", id);
+    const { error } = await supabase.from(table).delete().eq("id", id).eq("site_id", site.id || "");
     if (error) setMessage(error.message); else { setMessage("Hero item deleted."); await loadContent(); }
   }
 
-  useEffect(() => { init(); }, []);
+  useEffect(() => { init(); }, [site.id]);
 
   const tabs = [
     { key: "marketing" as const, label: "Marketing Banners", count: banners.length },
