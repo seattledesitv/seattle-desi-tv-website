@@ -5,6 +5,8 @@ import StudioHeader from "../../components/StudioHeader";
 import MyHubHeader from "../../components/MyHubHeader";
 import SiteFooter from "../../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -22,6 +24,7 @@ function statusClass(value?: string | null) {
 }
 
 export default function OrganizationSuggestionsPage() {
+  const site = useCurrentSite();
   const [rows,setRows]=useState<Suggestion[]>([]),[notes,setNotes]=useState<Record<string,string>>({});
   const [message,setMessage]=useState("Checking access..."),[loading,setLoading]=useState(true),[working,setWorking]=useState(""),[search,setSearch]=useState(""),[statusFilter,setStatusFilter]=useState("all");
   const [user,setUser]=useState<any>(null),[isAdmin,setIsAdmin]=useState(false);
@@ -37,7 +40,7 @@ export default function OrganizationSuggestionsPage() {
     const adminAccess=String(admin.data?.role||"").toLowerCase().includes("admin");
     setIsAdmin(adminAccess);
 
-    let query=supabase.from("organization_edit_suggestions").select("id,organization_id,submitter_user_id,submitter_name,submitter_email,correction_type,suggestion,status,admin_notes,created_at,reviewed_at,community_organizations(name,location)").order("created_at",{ascending:false});
+    let query=forSite(supabase.from("organization_edit_suggestions").select("id,organization_id,submitter_user_id,submitter_name,submitter_email,correction_type,suggestion,status,admin_notes,created_at,reviewed_at,community_organizations(name,location)"),site.id).order("created_at",{ascending:false});
     if(!adminAccess) query=query.eq("submitter_user_id",current.id);
     const result=await query;
     if(result.error){setMessage(result.error.message);setLoading(false);return;}
@@ -51,7 +54,7 @@ export default function OrganizationSuggestionsPage() {
   async function update(row:Suggestion,status:"approved"|"rejected"|"pending"){
     if(!isAdmin||!user?.id)return;
     setWorking(row.id);
-    const result=await supabase.from("organization_edit_suggestions").update({status,admin_notes:notes[row.id]?.trim()||row.admin_notes||null,reviewed_by:user.id,reviewed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",row.id);
+    const result=await forSite(supabase.from("organization_edit_suggestions").update({status,admin_notes:notes[row.id]?.trim()||row.admin_notes||null,reviewed_by:user.id,reviewed_at:new Date().toISOString(),updated_at:new Date().toISOString()}),site.id).eq("id",row.id);
     setWorking("");
     if(result.error){setMessage(result.error.message);return;}
     setMessage(status==="approved"?"Suggestion marked approved. Apply the verified correction from Community Organizations management.":`Suggestion marked ${status}.`);

@@ -3,12 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
 type Claim = { id:string; organization_id:string; requester_user_id?:string|null; requester_name:string; requester_email:string; requester_phone?:string|null; relationship?:string|null; verification_details?:string|null; status:string; admin_notes?:string|null; created_at:string; community_organizations?:{name?:string;location?:string}|null };
 
 export default function OrganizationClaimsPage() {
+  const site = useCurrentSite();
   const [claims,setClaims]=useState<Claim[]>([]),[notes,setNotes]=useState<Record<string,string>>({});
   const [message,setMessage]=useState("Checking access..."),[loading,setLoading]=useState(true),[working,setWorking]=useState(""),[search,setSearch]=useState(""),[statusFilter,setStatusFilter]=useState("pending");
   const [currentUser,setCurrentUser]=useState<any>(null);
@@ -19,7 +22,7 @@ export default function OrganizationClaimsPage() {
     if(!user){setMessage("Please log in to review organization manager requests.");setLoading(false);return;}
     const admin=await supabase.from("admins").select("role").or(`user_id.eq.${user.id},email.eq.${user.email}`).maybeSingle();
     if(!String(admin.data?.role||"").toLowerCase().includes("admin")){setMessage("Studio admin access is required.");setLoading(false);return;}
-    const result=await supabase.from("organization_claim_requests").select("id,organization_id,requester_user_id,requester_name,requester_email,requester_phone,relationship,verification_details,status,admin_notes,created_at,community_organizations(name,location)").order("created_at",{ascending:false});
+    const result=await forSite(supabase.from("organization_claim_requests").select("id,organization_id,requester_user_id,requester_name,requester_email,requester_phone,relationship,verification_details,status,admin_notes,created_at,community_organizations(name,location)"),site.id).order("created_at",{ascending:false});
     if(result.error){setMessage(result.error.message);setLoading(false);return;}
     setClaims((result.data||[]) as unknown as Claim[]); if(!preserveMessage)setMessage(""); setLoading(false);
   }
@@ -32,12 +35,12 @@ export default function OrganizationClaimsPage() {
     if(status==="needs_information"&&!adminNotes){setMessage("Add the exact information you need before clicking Need info.");setWorking("");return;}
     if(status==="approved"){
       if(!claim.requester_user_id){setMessage("This request is not connected to a user account.");setWorking("");return;}
-      const manager=await supabase.from("organization_managers").upsert({organization_id:claim.organization_id,user_id:claim.requester_user_id,role:claim.relationship||"authorized_representative",is_primary:true,approved_by:currentUser.id,approved_at:now,active:true},{onConflict:"organization_id,user_id"});
+      const manager=await supabase.from("organization_managers").upsert({site_id:site.id,organization_id:claim.organization_id,user_id:claim.requester_user_id,role:claim.relationship||"authorized_representative",is_primary:true,approved_by:currentUser.id,approved_at:now,active:true},{onConflict:"organization_id,user_id"});
       if(manager.error){setMessage(manager.error.message);setWorking("");return;}
-      const organization=await supabase.from("community_organizations").update({manager_verified_at:now,manager_verified_by:currentUser.id}).eq("id",claim.organization_id);
+      const organization=await forSite(supabase.from("community_organizations").update({manager_verified_at:now,manager_verified_by:currentUser.id}),site.id).eq("id",claim.organization_id);
       if(organization.error){setMessage(organization.error.message);setWorking("");return;}
     }
-    const result=await supabase.from("organization_claim_requests").update({status,admin_notes:adminNotes,reviewed_by:currentUser.id,reviewed_at:now,updated_at:now}).eq("id",claim.id);
+    const result=await forSite(supabase.from("organization_claim_requests").update({status,admin_notes:adminNotes,reviewed_by:currentUser.id,reviewed_at:now,updated_at:now}),site.id).eq("id",claim.id);
     setWorking(""); if(result.error){setMessage(result.error.message);return;}
     if(status==="needs_information"){
       const subject=`More information needed for ${claim.community_organizations?.name||"your SDTV organization request"}`;

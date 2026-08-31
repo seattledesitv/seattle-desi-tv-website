@@ -4,10 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
 export default function OrganizationEventLinksPage() {
+  const site = useCurrentSite();
   const [rows, setRows] = useState<any[]>([]);
   const [notes, setNotes] = useState<Record<string,string>>({});
   const [message, setMessage] = useState("Checking access...");
@@ -25,7 +28,7 @@ export default function OrganizationEventLinksPage() {
     if (!current) { setMessage("Please log in to review event link requests."); setLoading(false); return; }
     const role = await resolveUserRole(supabase, current);
     if (!isAdminRole(role)) { setMessage("Studio admin access is required."); setLoading(false); return; }
-    const result = await supabase.from("organization_event_link_requests").select("id,organization_id,event_id,requested_by,relationship,request_notes,status,admin_notes,created_at,community_organizations(id,name,location),events(id,title,date,location,status)").order("created_at", { ascending: false });
+    const result = await forSite(supabase.from("organization_event_link_requests").select("id,organization_id,event_id,requested_by,relationship,request_notes,status,admin_notes,created_at,community_organizations(id,name,location),events(id,title,date,location,status)"), site.id).order("created_at", { ascending: false });
     if (result.error) { setMessage(result.error.message); setLoading(false); return; }
     setRows(result.data || []);
     if (!preserveMessage) setMessage("");
@@ -41,11 +44,11 @@ export default function OrganizationEventLinksPage() {
       const existing = await supabase.from("event_organizations").select("id").eq("event_id", row.event_id).eq("organization_id", row.organization_id).maybeSingle();
       if (existing.error) { setMessage(existing.error.message); setWorking(""); return; }
       if (!existing.data) {
-        const insert = await supabase.from("event_organizations").insert({ event_id: row.event_id, organization_id: row.organization_id, relationship: row.relationship, is_primary: false, display_order: 99, created_by: row.requested_by });
+        const insert = await supabase.from("event_organizations").insert({ site_id: site.id, event_id: row.event_id, organization_id: row.organization_id, relationship: row.relationship, is_primary: false, display_order: 99, created_by: row.requested_by });
         if (insert.error) { setMessage(`Could not create event relationship: ${insert.error.message}`); setWorking(""); return; }
       }
     }
-    const result = await supabase.from("organization_event_link_requests").update({ status, admin_notes: notes[row.id]?.trim() || row.admin_notes || null, reviewed_by: user?.id || null, reviewed_at: status === "pending" ? null : new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", row.id);
+    const result = await forSite(supabase.from("organization_event_link_requests").update({ status, admin_notes: notes[row.id]?.trim() || row.admin_notes || null, reviewed_by: user?.id || null, reviewed_at: status === "pending" ? null : new Date().toISOString(), updated_at: new Date().toISOString() }), site.id).eq("id", row.id);
     setWorking("");
     if (result.error) { setMessage(result.error.message); return; }
     setMessage(status === "approved" ? "Event relationship approved and linked." : `Request marked ${status}.`);

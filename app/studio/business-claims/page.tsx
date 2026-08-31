@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -10,6 +12,7 @@ type Claim = { id:string; business_id:string; requester_user_id?:string|null; re
 type Suggestion = { id:string; business_id:string; submitter_name?:string|null; submitter_email?:string|null; suggestion:string; status:string; created_at:string; local_businesses?:{name?:string;address?:string}|null };
 
 export default function BusinessClaimsPage() {
+  const site = useCurrentSite();
   const [claims,setClaims]=useState<Claim[]>([]),[suggestions,setSuggestions]=useState<Suggestion[]>([]),[notes,setNotes]=useState<Record<string,string>>({});
   const [message,setMessage]=useState("Checking access..."),[loading,setLoading]=useState(true),[working,setWorking]=useState(""),[search,setSearch]=useState(""),[statusFilter,setStatusFilter]=useState("pending");
   const [tab,setTab]=useState<"claims"|"suggestions">("claims"),[currentUser,setCurrentUser]=useState<any>(null);
@@ -20,8 +23,8 @@ export default function BusinessClaimsPage() {
     const admin=await supabase.from("admins").select("role").or(`user_id.eq.${user.id},email.eq.${user.email}`).maybeSingle();
     if(!String(admin.data?.role||"").toLowerCase().includes("admin")){setMessage("Studio admin access is required.");setLoading(false);return;}
     const [claimResult,suggestionResult]=await Promise.all([
-      supabase.from("business_claim_requests").select("id,business_id,requester_user_id,requester_name,requester_email,requester_phone,relationship,verification_details,status,admin_notes,created_at,local_businesses(name,address)").order("created_at",{ascending:false}),
-      supabase.from("business_edit_suggestions").select("id,business_id,submitter_name,submitter_email,suggestion,status,created_at,local_businesses(name,address)").order("created_at",{ascending:false})]);
+      forSite(supabase.from("business_claim_requests").select("id,business_id,requester_user_id,requester_name,requester_email,requester_phone,relationship,verification_details,status,admin_notes,created_at,local_businesses(name,address)"),site.id).order("created_at",{ascending:false}),
+      forSite(supabase.from("business_edit_suggestions").select("id,business_id,submitter_name,submitter_email,suggestion,status,created_at,local_businesses(name,address)"),site.id).order("created_at",{ascending:false})]);
     if(claimResult.error||suggestionResult.error){const error=claimResult.error||suggestionResult.error;setMessage(error?.message||"Could not load claim data.");setLoading(false);return;}
     setClaims((claimResult.data||[]) as unknown as Claim[]);setSuggestions((suggestionResult.data||[]) as unknown as Suggestion[]);if(!preserveMessage)setMessage("");setLoading(false);
   }
@@ -32,12 +35,12 @@ export default function BusinessClaimsPage() {
     if(status==="needs_information"&&!adminNotes){setMessage("Add the exact information you need from the claimant before clicking Need info.");setWorking("");return;}
     if(status==="approved"){
       if(!claim.requester_user_id){setMessage("This claim is not connected to a user account and cannot be approved yet.");setWorking("");return;}
-      const managerResult=await supabase.from("business_managers").upsert({business_id:claim.business_id,user_id:claim.requester_user_id,role:"owner",is_primary:true,approved_by:currentUser.id,approved_at:now,active:true},{onConflict:"business_id,user_id"});
+      const managerResult=await supabase.from("business_managers").upsert({site_id:site.id,business_id:claim.business_id,user_id:claim.requester_user_id,role:"owner",is_primary:true,approved_by:currentUser.id,approved_at:now,active:true},{onConflict:"business_id,user_id"});
       if(managerResult.error){setMessage(managerResult.error.message);setWorking("");return;}
-      const businessResult=await supabase.from("local_businesses").update({owner_verified_at:now,owner_verified_by:currentUser.id}).eq("id",claim.business_id);
+      const businessResult=await forSite(supabase.from("local_businesses").update({owner_verified_at:now,owner_verified_by:currentUser.id}),site.id).eq("id",claim.business_id);
       if(businessResult.error){setMessage(businessResult.error.message);setWorking("");return;}
     }
-    const result=await supabase.from("business_claim_requests").update({status,admin_notes:adminNotes,reviewed_by:currentUser.id,reviewed_at:now,updated_at:now}).eq("id",claim.id);
+    const result=await forSite(supabase.from("business_claim_requests").update({status,admin_notes:adminNotes,reviewed_by:currentUser.id,reviewed_at:now,updated_at:now}),site.id).eq("id",claim.id);
     setWorking("");if(result.error){setMessage(result.error.message);return;}
     if(status==="needs_information"){
       const subject=`More information needed for ${claim.local_businesses?.name||"your SDTV business claim"}`;
@@ -49,7 +52,7 @@ export default function BusinessClaimsPage() {
   }
 
   async function updateSuggestion(suggestion:Suggestion,status:"approved"|"rejected"|"pending"){
-    setWorking(suggestion.id);const result=await supabase.from("business_edit_suggestions").update({status,admin_notes:notes[suggestion.id]?.trim()||null,reviewed_at:new Date().toISOString()}).eq("id",suggestion.id);setWorking("");
+    setWorking(suggestion.id);const result=await forSite(supabase.from("business_edit_suggestions").update({status,admin_notes:notes[suggestion.id]?.trim()||null,reviewed_at:new Date().toISOString()}),site.id).eq("id",suggestion.id);setWorking("");
     if(result.error){setMessage(result.error.message);return;}setMessage(`Suggestion marked ${status}. Apply approved corrections from Business Management.`);await load(true);
   }
 

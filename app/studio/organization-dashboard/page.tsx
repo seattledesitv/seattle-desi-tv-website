@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -21,6 +23,7 @@ function StatusCard({ label, value, active, onClick }: { label: string; value: n
 }
 
 export default function OrganizationDashboardPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [organizations, setOrganizations] = useState<any[]>([]);
@@ -38,17 +41,17 @@ export default function OrganizationDashboardPage() {
     const role = await resolveUserRole(supabase, user);
     if (!isAdminRole(role)) { setMessage("Admin access required."); setLoading(false); return; }
 
-    const organizationResult = await supabase.from("community_organizations").select("*").order("created_at", { ascending: false }).limit(2000);
+    const organizationResult = await forSite(supabase.from("community_organizations").select("*"), site.id).order("created_at", { ascending: false }).limit(2000);
     if (organizationResult.error) { setMessage(`Could not load organizations: ${organizationResult.error.message}`); setLoading(false); return; }
     setOrganizations(organizationResult.data || []);
 
-    const managerResult = await supabase.from("organization_managers").select("organization_id").eq("active", true);
+    const managerResult = await forSite(supabase.from("organization_managers").select("organization_id"), site.id).eq("active", true);
     if (!managerResult.error) setClaimedIds(new Set((managerResult.data || []).map((row: any) => String(row.organization_id))));
 
-    const claimResult = await supabase.from("organization_manager_requests").select("id", { count: "exact", head: true }).eq("status", "pending");
+    const claimResult = await forSite(supabase.from("organization_claim_requests").select("id", { count: "exact", head: true }), site.id).eq("status", "pending");
     if (!claimResult.error) setPendingClaims(claimResult.count || 0);
 
-    const suggestionResult = await supabase.from("organization_edit_suggestions").select("id", { count: "exact", head: true }).eq("status", "pending");
+    const suggestionResult = await forSite(supabase.from("organization_edit_suggestions").select("id", { count: "exact", head: true }), site.id).eq("status", "pending");
     if (!suggestionResult.error) setPendingSuggestions(suggestionResult.count || 0);
 
     setMessage("");
