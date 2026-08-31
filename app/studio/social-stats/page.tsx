@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -25,6 +26,8 @@ function formatNumber(value: any) {
 }
 
 export default function StudioSocialStatsPage() {
+  const site = useCurrentSite();
+  const siteDefaultRows = site.code === "sea" ? defaultSocialRows : defaultSocialRows.map((row) => ({ ...row, href: "" }));
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading social stats...");
   const [actionMessage, setActionMessage] = useState("");
@@ -37,15 +40,16 @@ export default function StudioSocialStatsPage() {
     const { data, error } = await supabase
       .from("social_media_stats")
       .select("platform,followers,views,videos,href,updated_at")
+      .eq("site_id", site.id || "")
       .order("platform", { ascending: true });
 
     if (error) {
-      setRows(defaultSocialRows);
+      setRows(siteDefaultRows);
       setActionMessage(`Could not load social_media_stats: ${error.message}`);
       return;
     }
 
-    setRows(Array.isArray(data) && data.length > 0 ? data : defaultSocialRows);
+    setRows(Array.isArray(data) && data.length > 0 ? data : siteDefaultRows);
   }
 
   async function init() {
@@ -85,7 +89,7 @@ export default function StudioSocialStatsPage() {
 
   async function seedDefaults() {
     setActionMessage("Creating default social stat rows...");
-    const { error } = await supabase.from("social_media_stats").upsert(defaultSocialRows, { onConflict: "platform" });
+    const { error } = await supabase.from("social_media_stats").upsert(siteDefaultRows.map((row) => ({ ...row, site_id: site.id })), { onConflict: "site_id,platform" });
     if (error) {
       setActionMessage(`Could not seed defaults: ${error.message}`);
       return;
@@ -99,6 +103,7 @@ export default function StudioSocialStatsPage() {
     const payload = rows
       .filter((row) => String(row.platform || "").trim())
       .map((row) => ({
+        site_id: site.id,
         platform: String(row.platform || "").trim(),
         followers: Number(row.followers || 0),
         views: Number(row.views || 0),
@@ -107,7 +112,7 @@ export default function StudioSocialStatsPage() {
         updated_at: new Date().toISOString(),
       }));
 
-    const { error } = await supabase.from("social_media_stats").upsert(payload, { onConflict: "platform" });
+    const { error } = await supabase.from("social_media_stats").upsert(payload, { onConflict: "site_id,platform" });
     if (error) {
       setActionMessage(`Could not save social stats: ${error.message}`);
       return;
@@ -116,7 +121,7 @@ export default function StudioSocialStatsPage() {
     setActionMessage("Social media stats saved. Refresh the homepage to see the latest numbers.");
   }
 
-  useEffect(() => { init(); }, []);
+  useEffect(() => { init(); }, [site.id]);
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">

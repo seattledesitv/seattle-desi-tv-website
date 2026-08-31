@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 const defaults = [
@@ -79,6 +80,7 @@ function DirectorySection({ title, subtitle }: { title: string; subtitle: string
 }
 
 export default function HomeCommunityCallouts() {
+  const site = useCurrentSite();
   const [mount, setMount] = useState<HTMLElement | null>(null);
   const [settings, setSettings] = useState<any[]>(defaults);
   const [isHome, setIsHome] = useState(false);
@@ -98,14 +100,14 @@ export default function HomeCommunityCallouts() {
   useEffect(() => {
     if (!isHome) return;
     async function loadSettings() {
-      const { data } = await supabase.from("homepage_settings").select("section_key,display_order,enabled,title,subtitle").in("section_key", ["community_submit", "community_directory"]);
+      const { data } = await supabase.from("homepage_settings").select("section_key,display_order,enabled,title,subtitle").eq("site_id", site.id || "").in("section_key", ["community_submit", "community_directory"]);
       if (Array.isArray(data) && data.length > 0) {
         const merged = defaults.map((item) => ({ ...item, ...(data.find((row: any) => row.section_key === item.section_key) || {}) }));
         setSettings(merged);
       }
     }
     loadSettings();
-  }, [isHome]);
+  }, [isHome, site.id]);
 
   const sections = useMemo(() => settings.filter((item) => item.enabled !== false).sort((a, b) => Number(a.display_order || 999) - Number(b.display_order || 999)), [settings]);
   if (!mount || !isHome) return null;

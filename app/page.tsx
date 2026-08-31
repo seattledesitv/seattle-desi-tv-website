@@ -605,10 +605,12 @@ export default function HomePage() {
       supabase
         .from("homepage_settings")
         .select("section_key,display_order,enabled,title,subtitle")
+        .eq("site_id", site.id || "")
         .order("display_order", { ascending: true }),
       supabase
         .from("social_media_stats")
         .select("platform,followers,views,videos,href")
+        .eq("site_id", site.id || "")
         .order("platform", { ascending: true }),
       supabase
         .from("homepage_sponsors")

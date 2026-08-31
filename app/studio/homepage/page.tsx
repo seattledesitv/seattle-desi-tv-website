@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -30,6 +31,13 @@ const defaultSocial = [
 ];
 
 export default function StudioHomepagePage() {
+  const site = useCurrentSite();
+  const siteSections = defaultSections.map((row) => ({
+    ...row,
+    title: row.title.replaceAll("Seattle Desi", `${site.city} Desi`),
+    subtitle: row.subtitle.replaceAll("Seattle Desi TV", site.name),
+  }));
+  const siteSocial = site.code === "sea" ? defaultSocial : defaultSocial.map((row) => ({ ...row, href: "" }));
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading homepage settings...");
   const [actionMessage, setActionMessage] = useState("");
@@ -40,22 +48,23 @@ export default function StudioHomepagePage() {
   const canAccess = Boolean(user && isAdminRole(role));
 
   async function seedDefaults() {
-    await supabase.from("homepage_settings").upsert(defaultSections, { onConflict: "section_key" });
-    await supabase.from("social_media_stats").upsert(defaultSocial, { onConflict: "platform" });
+    if (!site.id) return;
+    await supabase.from("homepage_settings").upsert(siteSections.map((row) => ({ ...row, site_id: site.id })), { onConflict: "site_id,section_key" });
+    await supabase.from("social_media_stats").upsert(siteSocial.map((row) => ({ ...row, site_id: site.id })), { onConflict: "site_id,platform" });
   }
 
   async function loadContent() {
     const [sectionResult, socialResult] = await Promise.all([
-      supabase.from("homepage_settings").select("section_key,display_order,enabled,title,subtitle").order("display_order", { ascending: true }),
-      supabase.from("social_media_stats").select("platform,followers,views,videos,href,updated_at").order("platform", { ascending: true }),
+      supabase.from("homepage_settings").select("section_key,display_order,enabled,title,subtitle").eq("site_id", site.id || "").order("display_order", { ascending: true }),
+      supabase.from("social_media_stats").select("platform,followers,views,videos,href,updated_at").eq("site_id", site.id || "").order("platform", { ascending: true }),
     ]);
     if (!sectionResult.error && Array.isArray(sectionResult.data) && sectionResult.data.length > 0) {
       const existing = sectionResult.data;
-      const missing = defaultSections.filter((item) => !existing.some((row: any) => row.section_key === item.section_key));
+      const missing = siteSections.filter((item) => !existing.some((row: any) => row.section_key === item.section_key));
       setSections([...existing, ...missing].sort((a: any, b: any) => Number(a.display_order || 999) - Number(b.display_order || 999)));
-    } else setSections(defaultSections);
+    } else setSections(siteSections);
     if (!socialResult.error && Array.isArray(socialResult.data) && socialResult.data.length > 0) setSocialRows(socialResult.data);
-    else setSocialRows(defaultSocial);
+    else setSocialRows(siteSocial);
   }
 
   async function init() {
@@ -74,8 +83,8 @@ export default function StudioHomepagePage() {
 
   async function saveSections() {
     setActionMessage("Saving homepage sections...");
-    const payload: any[] = sections.map((section, index) => ({ section_key: section.section_key, display_order: Number(section.display_order || index + 1), enabled: Boolean(section.enabled), title: section.title || null, subtitle: section.subtitle || null }));
-    const { error } = await supabase.from("homepage_settings").upsert(payload, { onConflict: "section_key" });
+    const payload: any[] = sections.map((section, index) => ({ site_id: site.id, section_key: section.section_key, display_order: Number(section.display_order || index + 1), enabled: Boolean(section.enabled), title: section.title || null, subtitle: section.subtitle || null }));
+    const { error } = await supabase.from("homepage_settings").upsert(payload, { onConflict: "site_id,section_key" });
     if (error) { setActionMessage(`Could not save sections: ${error.message}`); return; }
     setActionMessage("Homepage sections saved. Refresh the homepage to see changes.");
     await loadContent();
@@ -83,8 +92,8 @@ export default function StudioHomepagePage() {
 
   async function saveSocialStats() {
     setActionMessage("Saving social stats...");
-    const payload: any[] = socialRows.map((row) => ({ platform: row.platform, followers: Number(row.followers || 0), views: Number(row.views || 0), videos: Number(row.videos || 0), href: row.href || null, updated_at: new Date().toISOString() }));
-    const { error } = await supabase.from("social_media_stats").upsert(payload, { onConflict: "platform" });
+    const payload: any[] = socialRows.map((row) => ({ site_id: site.id, platform: row.platform, followers: Number(row.followers || 0), views: Number(row.views || 0), videos: Number(row.videos || 0), href: row.href || null, updated_at: new Date().toISOString() }));
+    const { error } = await supabase.from("social_media_stats").upsert(payload, { onConflict: "site_id,platform" });
     if (error) { setActionMessage(`Could not save social stats: ${error.message}`); return; }
     setActionMessage("Social stats saved. Refresh the homepage to see changes.");
     await loadContent();
@@ -101,7 +110,7 @@ export default function StudioHomepagePage() {
   function moveSection(index: number, direction: -1 | 1) { const target = index + direction; if (target < 0 || target >= sections.length) return; const next = [...sections]; [next[index], next[target]] = [next[target], next[index]]; setSections(next.map((item, itemIndex) => ({ ...item, display_order: itemIndex + 1 }))); }
   function updateSocial(index: number, field: string, value: any) { setSocialRows((current) => current.map((item, i) => i === index ? { ...item, [field]: value } : item)); }
 
-  useEffect(() => { init(); }, []);
+  useEffect(() => { init(); }, [site.id]);
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
