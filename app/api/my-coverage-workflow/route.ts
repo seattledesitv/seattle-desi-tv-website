@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { resolveCurrentSite } from "../../lib/sites/siteResolver";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -16,12 +17,14 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ error: "Login required." }, { status: 401 });
     if (!serviceKey) return NextResponse.json({ error: "Supabase server key is missing." }, { status: 500 });
     const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } }) as any;
+    const site = await resolveCurrentSite();
+    if (!site.id) return NextResponse.json({ error: "Site context is not configured." }, { status: 500 });
     const body = await request.json();
     const action = clean(body.action);
     const assignmentId = clean(body.assignment_id);
     if (!assignmentId) return NextResponse.json({ error: "Assignment id is required." }, { status: 400 });
 
-    const assignmentResult = await db.from("event_crew_assignments").select("*").eq("id", assignmentId).maybeSingle();
+    const assignmentResult = await db.from("event_crew_assignments").select("*").eq("id", assignmentId).eq("site_id", site.id).maybeSingle();
     if (assignmentResult.error) throw assignmentResult.error;
     const assignment = assignmentResult.data;
     if (!assignment) return NextResponse.json({ error: "Assignment not found." }, { status: 404 });
@@ -29,12 +32,12 @@ export async function POST(request: Request) {
     if (!sameUser) return NextResponse.json({ error: "You can only update your own assignment." }, { status: 403 });
 
     const eventId = assignment.event_id;
-    const workflowResult = await db.from("event_video_workflows").select("*").eq("event_id", eventId).maybeSingle();
+    const workflowResult = await db.from("event_video_workflows").select("*").eq("event_id", eventId).eq("site_id", site.id).maybeSingle();
     if (workflowResult.error) throw workflowResult.error;
     let workflow = workflowResult.data;
 
     if (action === "confirm_assignment") {
-      const result = await db.from("event_crew_assignments").update({ crew_confirmed: true }).eq("id", assignmentId);
+      const result = await db.from("event_crew_assignments").update({ crew_confirmed: true }).eq("id", assignmentId).eq("site_id", site.id);
       if (result.error) throw result.error;
       await db.from("event_video_workflow_activity").insert({ event_id: eventId, workflow_id: workflow?.id || null, actor_user_id: user.id, actor_email: user.email, activity_type: "assignment_confirmed", notes: "Crew confirmed assignment." });
       return NextResponse.json({ ok: true, message: "Assignment confirmed." });
@@ -60,7 +63,7 @@ export async function POST(request: Request) {
       };
       if (workflow?.id) {
         delete nextWorkflowPayload.event_id;
-        const result = await db.from("event_video_workflows").update(nextWorkflowPayload).eq("id", workflow.id).select("*").maybeSingle();
+        const result = await db.from("event_video_workflows").update(nextWorkflowPayload).eq("id", workflow.id).eq("site_id", site.id).select("*").maybeSingle();
         if (result.error) throw result.error;
         workflow = result.data;
       } else {
@@ -69,7 +72,7 @@ export async function POST(request: Request) {
         if (result.error) throw result.error;
         workflow = result.data;
       }
-      const assignmentUpdate = await db.from("event_crew_assignments").update({ coverage_completed: true, crew_confirmed: true, coverage_notes: coverageNotes, completed_at: new Date().toISOString() }).eq("id", assignmentId);
+      const assignmentUpdate = await db.from("event_crew_assignments").update({ coverage_completed: true, crew_confirmed: true, coverage_notes: coverageNotes, completed_at: new Date().toISOString() }).eq("id", assignmentId).eq("site_id", site.id);
       if (assignmentUpdate.error) throw assignmentUpdate.error;
       await db.from("event_video_workflow_activity").insert({ event_id: eventId, workflow_id: workflow?.id || null, actor_user_id: user.id, actor_email: user.email, activity_type: noContent ? "coverage_no_content" : "coverage_submitted", notes: coverageNotes });
       return NextResponse.json({ ok: true, message: noContent ? "Marked complete with no media content." : "Coverage submitted to the editor workflow." });
@@ -81,7 +84,7 @@ export async function POST(request: Request) {
       const notes = clean(body.notes);
       if (!decision) return NextResponse.json({ error: "Review decision is required." }, { status: 400 });
       const nextStatus = decision === "approved" ? "awaiting_admin_approval" : "changes_requested";
-      const result = await db.from("event_video_workflows").update({ status: nextStatus, crew_review_decision: decision, crew_review_notes: notes || null, crew_reviewed_at: new Date().toISOString(), updated_by: user.id, updated_at: new Date().toISOString() }).eq("id", workflow.id);
+      const result = await db.from("event_video_workflows").update({ status: nextStatus, crew_review_decision: decision, crew_review_notes: notes || null, crew_reviewed_at: new Date().toISOString(), updated_by: user.id, updated_at: new Date().toISOString() }).eq("id", workflow.id).eq("site_id", site.id);
       if (result.error) throw result.error;
       await db.from("event_video_workflow_activity").insert({ event_id: eventId, workflow_id: workflow.id, actor_user_id: user.id, actor_email: user.email, activity_type: decision === "approved" ? "crew_approved_draft" : "crew_requested_changes", notes });
       return NextResponse.json({ ok: true, message: decision === "approved" ? "Draft approved and sent to admin review." : "Change request sent to the editor." });

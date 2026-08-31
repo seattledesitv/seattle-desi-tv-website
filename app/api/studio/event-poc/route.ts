@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminRole, resolveUserRole } from "../../../lib/roles";
+import { resolveCurrentSite } from "../../../lib/sites/siteResolver";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -23,9 +24,13 @@ export async function POST(request: Request) {
     if (!serviceKey) return NextResponse.json({ error: "Supabase server key is missing." }, { status: 500 });
 
     const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } }) as any;
+    const site = await resolveCurrentSite();
+    if (!site.id) return NextResponse.json({ error: "Site context is not configured." }, { status: 500 });
     const body = await request.json();
     const eventId = String(body.event_id || "");
     if (!eventId) return NextResponse.json({ error: "Event id is required." }, { status: 400 });
+    const eventResult = await db.from("events").select("id").eq("id", eventId).eq("site_id", site.id).maybeSingle();
+    if (eventResult.error || !eventResult.data) return NextResponse.json({ error: "Event not found for this site." }, { status: 404 });
 
     const raw = Array.isArray(body.pocs) && body.pocs.length ? body.pocs : [body];
     const seen = new Set<string>();
@@ -68,6 +73,7 @@ export async function POST(request: Request) {
 
     const primary = pocs[0] || {};
     const payload = {
+      site_id: site.id,
       event_id: eventId,
       admin_user_id: primary.admin_user_id || null,
       admin_email: primary.admin_email || null,

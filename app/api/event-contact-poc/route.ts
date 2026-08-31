@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
+import { resolveCurrentSite } from "../../lib/sites/siteResolver";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -22,15 +23,17 @@ export async function POST(request: Request) {
     const user = data?.user || null;
     if (!user) return NextResponse.json({ error: "Login required." }, { status: 401 });
     const db = serviceKey ? createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } }) as any : sessionClient as any;
+    const site = await resolveCurrentSite();
+    if (!site.id) return NextResponse.json({ error: "Site context is not configured." }, { status: 500 });
     const body = await request.json();
     const eventId = String(body.event_id || "");
     const message = String(body.message || "").trim();
     if (!eventId || !message) return NextResponse.json({ error: "Event and message are required." }, { status: 400 });
 
-    const { data: event, error: eventError } = await db.from("events").select("id,title,date,location,created_by,poc_email").eq("id", eventId).single();
+    const { data: event, error: eventError } = await db.from("events").select("id,title,date,location,created_by,poc_email").eq("id", eventId).eq("site_id", site.id).single();
     if (eventError || !event) return NextResponse.json({ error: "Event not found." }, { status: 404 });
     if (event.created_by && event.created_by !== user.id) return NextResponse.json({ error: "You can only contact SDTV for your own event listing." }, { status: 403 });
-    const { data: poc } = await db.from("event_admin_pocs").select("*").eq("event_id", eventId).maybeSingle();
+    const { data: poc } = await db.from("event_admin_pocs").select("*").eq("event_id", eventId).eq("site_id", site.id).maybeSingle();
     const senderEmail = cleanEmail(user.email || event.poc_email || "");
     const senderName = String(user.user_metadata?.full_name || user.user_metadata?.name || senderEmail || "Organizer");
     const to = pocEmails(poc);
@@ -39,7 +42,7 @@ export async function POST(request: Request) {
     const subject = `Organizer question: ${event.title || "SDTV event"}`;
     const text = [`Organizer message for SDTV`, ``, `Event: ${event.title || "—"}`, `Date: ${event.date || "—"}`, `Location: ${event.location || "—"}`, `Organizer: ${senderName}`, `Organizer email: ${senderEmail || "—"}`, `Assigned SDTV POC(s): ${pocNames(poc)}`, ``, `Message:`, message].join("\n");
 
-    await db.from("event_contact_messages").insert({ event_id: eventId, sender_user_id: user.id, sender_email: senderEmail || null, sender_name: senderName || null, message, admin_poc_email: to.filter((e) => e !== infoEmail).join(", ") || null, recipients: to });
+    await db.from("event_contact_messages").insert({ site_id: site.id, event_id: eventId, sender_user_id: user.id, sender_email: senderEmail || null, sender_name: senderName || null, message, admin_poc_email: to.filter((e) => e !== infoEmail).join(", ") || null, recipients: to });
 
     let emailStatus: any = { skipped: true, reason: "RESEND_API_KEY is not configured." };
     if (resendKey) {
