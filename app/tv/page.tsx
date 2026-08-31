@@ -8,6 +8,7 @@ import InstagramLatestSection from "../components/InstagramLatestSection";
 import YouTubePlaylistsSection from "../components/YouTubePlaylistsSection";
 import SafeImage from "../components/SafeImage";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -45,6 +46,7 @@ function VideoCard({ video }: { video: VideoRow }) {
 }
 
 export default function TVPage() {
+  const site = useCurrentSite();
   const [videos, setVideos] = useState<VideoRow[]>([]);
   const [videoMessage, setVideoMessage] = useState("Loading latest YouTube videos...");
   const [featuredSocial, setFeaturedSocial] = useState<FeaturedSocialItem[]>([]);
@@ -71,6 +73,7 @@ export default function TVPage() {
     const { data, error } = await supabase
       .from("featured_social_content")
       .select("id,title,subtitle,platform,content_type,content_url,thumbnail_url,button_text,display_order,active,featured,start_date,end_date")
+      .eq("site_id", site.id || "")
       .eq("active", true)
       .eq("featured", true)
       .order("display_order", { ascending: true })
@@ -78,7 +81,7 @@ export default function TVPage() {
     if (!error && Array.isArray(data)) setFeaturedSocial(data.filter((row: any) => isWithinDateWindow(row, today)) as FeaturedSocialItem[]);
   }
 
-  useEffect(() => { loadLatestVideos(); loadFeaturedSocial(); }, []);
+  useEffect(() => { loadLatestVideos(); loadFeaturedSocial(); }, [site.id]);
 
   const visibleVideos = videos.length ? videos : fallbackVideos;
 

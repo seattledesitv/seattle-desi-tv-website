@@ -621,6 +621,7 @@ export default function HomePage() {
         .select(
           "id,title,subtitle,platform,content_type,content_url,thumbnail_url,button_text,display_order,active,featured,start_date,end_date",
         )
+        .eq("site_id", site.id || "")
         .eq("active", true)
         .eq("featured", true)
         .order("display_order", { ascending: true })

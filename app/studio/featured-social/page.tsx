@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -21,6 +22,7 @@ const emptyForm = {
 };
 
 export default function FeaturedSocialStudioPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading featured social content...");
   const [actionMessage, setActionMessage] = useState("");
@@ -32,7 +34,7 @@ export default function FeaturedSocialStudioPage() {
   const canAccess = Boolean(user && isAdminRole(role));
 
   async function loadItems() {
-    const { data, error } = await supabase.from("featured_social_content").select("id,title,subtitle,platform,content_type,content_url,thumbnail_url,button_text,active,featured,display_order,created_at,updated_at").order("display_order", { ascending: true }).order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("featured_social_content").select("id,title,subtitle,platform,content_type,content_url,thumbnail_url,button_text,active,featured,display_order,created_at,updated_at").eq("site_id", site.id || "").order("display_order", { ascending: true }).order("created_at", { ascending: false });
     if (error) { setActionMessage(`Could not load featured social content: ${error.message}`); setItems([]); return; }
     setItems(data || []);
   }
@@ -56,10 +58,11 @@ export default function FeaturedSocialStudioPage() {
   function resetForm() { setEditingId(null); setForm(emptyForm); }
 
   async function saveItem() {
+    if (!site.id) { setActionMessage("The active site is not configured."); return; }
     if (!form.title || !form.content_url) { setActionMessage("Title and content URL are required."); return; }
     setActionMessage(editingId ? "Updating featured item..." : "Adding featured item...");
-    const payload = { title: form.title, subtitle: form.subtitle || null, platform: form.platform || "instagram", content_type: form.content_type || "reel", content_url: form.content_url, thumbnail_url: form.thumbnail_url || null, button_text: form.button_text || "View Post", display_order: Number(form.display_order || 1), active: Boolean(form.active), featured: Boolean(form.featured), updated_at: new Date().toISOString() };
-    const result = editingId ? await supabase.from("featured_social_content").update(payload).eq("id", editingId) : await supabase.from("featured_social_content").insert(payload);
+    const payload = { site_id: site.id, title: form.title, subtitle: form.subtitle || null, platform: form.platform || "instagram", content_type: form.content_type || "reel", content_url: form.content_url, thumbnail_url: form.thumbnail_url || null, button_text: form.button_text || "View Post", display_order: Number(form.display_order || 1), active: Boolean(form.active), featured: Boolean(form.featured), updated_at: new Date().toISOString() };
+    const result = editingId ? await supabase.from("featured_social_content").update(payload).eq("id", editingId).eq("site_id", site.id || "") : await supabase.from("featured_social_content").insert(payload);
     if (result.error) { setActionMessage(`Could not save: ${result.error.message}`); return; }
     setActionMessage("Featured social content saved. Refresh the homepage to see changes.");
     resetForm();
@@ -67,12 +70,12 @@ export default function FeaturedSocialStudioPage() {
   }
 
   async function toggleActive(item: any) {
-    const { error } = await supabase.from("featured_social_content").update({ active: item.active === false, updated_at: new Date().toISOString() }).eq("id", item.id);
+    const { error } = await supabase.from("featured_social_content").update({ active: item.active === false, updated_at: new Date().toISOString() }).eq("id", item.id).eq("site_id", site.id || "");
     if (error) { setActionMessage(`Could not update active status: ${error.message}`); return; }
     await loadItems();
   }
 
-  useEffect(() => { init(); }, []);
+  useEffect(() => { init(); }, [site.id]);
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
