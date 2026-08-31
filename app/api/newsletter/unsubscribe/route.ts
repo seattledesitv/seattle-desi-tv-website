@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { resolveCurrentSite } from "../../../lib/sites/siteResolver";
 
 function getClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -20,6 +21,8 @@ export async function POST(request: Request) {
   try {
     const supabase = getClient();
     if (!supabase) return NextResponse.json({ ok: false, error: "Newsletter database is not configured." }, { status: 200 });
+    const site = await resolveCurrentSite();
+    if (!site.id) return NextResponse.json({ ok: false, error: "This site is not configured for newsletter subscriptions." }, { status: 200 });
 
     const body = await request.json().catch(() => ({}));
     const email = normalizeEmail(body.email);
@@ -30,6 +33,7 @@ export async function POST(request: Request) {
     const { data: existing, error: findError } = await supabase
       .from("newsletter_subscribers")
       .select("id,email,status")
+      .eq("site_id", site.id)
       .eq("email", email)
       .maybeSingle();
 
@@ -44,10 +48,11 @@ export async function POST(request: Request) {
     const { error } = await supabase
       .from("newsletter_subscribers")
       .update(payload)
+      .eq("site_id", site.id)
       .eq("email", email);
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 200 });
-    return NextResponse.json({ ok: true, status: nextStatus, message: nextStatus === "active" ? "You are subscribed again." : "You have been unsubscribed from SDTV newsletter emails." });
+    return NextResponse.json({ ok: true, status: nextStatus, message: nextStatus === "active" ? `You are subscribed to ${site.name} again.` : `You have been unsubscribed from ${site.name} newsletter emails.` });
   } catch (error: any) {
     return NextResponse.json({ ok: false, error: error?.message || "Could not update subscription right now." }, { status: 200 });
   }

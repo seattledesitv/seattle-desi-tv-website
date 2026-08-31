@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { resolveCurrentSite } from "../../../lib/sites/siteResolver";
 
 function getSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -24,6 +25,8 @@ export async function POST(request: Request) {
   try {
     const supabase = getSupabaseClient();
     if (!supabase) return NextResponse.json({ ok: false, error: "Newsletter database is not configured." }, { status: 200 });
+    const site = await resolveCurrentSite();
+    if (!site.id) return NextResponse.json({ ok: false, error: "This site is not configured for newsletter subscriptions." }, { status: 200 });
 
     const body = await request.json().catch(() => ({}));
     const email = normalizeEmail(body.email);
@@ -38,6 +41,7 @@ export async function POST(request: Request) {
     }
 
     const payload = {
+      site_id: site.id,
       email,
       name: name || null,
       status: "active",
@@ -48,10 +52,10 @@ export async function POST(request: Request) {
 
     const { error } = await supabase
       .from("newsletter_subscribers")
-      .upsert(payload, { onConflict: "email" });
+      .upsert(payload, { onConflict: "site_id,email" });
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 200 });
-    return NextResponse.json({ ok: true, message: "Thank you for subscribing to SDTV." });
+    return NextResponse.json({ ok: true, message: `Thank you for subscribing to ${site.name}.` });
   } catch (error: any) {
     return NextResponse.json({ ok: false, error: error?.message || "Could not subscribe right now." }, { status: 200 });
   }

@@ -6,6 +6,7 @@ import NewsletterPreview from "../../components/NewsletterPreview";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { generateNewsletterDraft } from "../../lib/newsletterGenerator";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 const defaultSections = [
@@ -24,6 +25,7 @@ function fmt(value: any) { if (!value) return "—"; const date = new Date(value
 type TabKey = "generation" | "ordering" | "subscribers";
 
 export default function StudioNewsletterPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading newsletter dashboard...");
   const [actionMessage, setActionMessage] = useState("");
@@ -43,10 +45,11 @@ export default function StudioNewsletterPage() {
   const filteredSubscribers = useMemo(() => subscriberFilter === "all" ? subscribers : subscribers.filter((row) => (row.status || "active") === subscriberFilter), [subscribers, subscriberFilter]);
 
   async function loadContent() {
+    if (!site.id) return;
     const [subscriberResult, settingsResult, campaignsResult] = await Promise.all([
-      supabase.from("newsletter_subscribers").select("id,email,name,status,source_page,subscribed_at,unsubscribed_at,created_at").order("subscribed_at", { ascending: false }).limit(500),
-      supabase.from("newsletter_settings").select("section_key,display_order,enabled,title,max_items").order("display_order", { ascending: true }),
-      supabase.from("newsletter_campaigns").select("id,subject,preheader,status,created_by_email,test_sent_to,test_sent_at,sent_at,created_at,updated_at,draft_json").order("updated_at", { ascending: false }).limit(25),
+      supabase.from("newsletter_subscribers").select("id,email,name,status,source_page,subscribed_at,unsubscribed_at,created_at").eq("site_id", site.id).order("subscribed_at", { ascending: false }).limit(500),
+      supabase.from("newsletter_settings").select("section_key,display_order,enabled,title,max_items").eq("site_id", site.id).order("display_order", { ascending: true }),
+      supabase.from("newsletter_campaigns").select("id,subject,preheader,status,created_by_email,test_sent_to,test_sent_at,sent_at,created_at,updated_at,draft_json").eq("site_id", site.id).order("updated_at", { ascending: false }).limit(25),
     ]);
     if (!subscriberResult.error && Array.isArray(subscriberResult.data)) setSubscribers(subscriberResult.data);
     if (!campaignsResult.error && Array.isArray(campaignsResult.data)) setCampaigns(campaignsResult.data);
@@ -71,25 +74,26 @@ export default function StudioNewsletterPage() {
   }
 
   async function saveSettings() {
+    if (!site.id) return;
     setActionMessage("Saving newsletter control...");
-    const payload = sections.map((section, index) => ({ section_key: section.section_key, display_order: numberValue(section.display_order, index + 1), enabled: section.enabled !== false, title: section.title || null, max_items: Math.max(1, numberValue(section.max_items, 4)) }));
-    const { error } = await supabase.from("newsletter_settings").upsert(payload, { onConflict: "section_key" });
+    const payload = sections.map((section, index) => ({ site_id: site.id, section_key: section.section_key, display_order: numberValue(section.display_order, index + 1), enabled: section.enabled !== false, title: section.title || null, max_items: Math.max(1, numberValue(section.max_items, 4)) }));
+    const { error } = await supabase.from("newsletter_settings").upsert(payload, { onConflict: "site_id,section_key" });
     if (error) { setActionMessage(`Could not save newsletter control: ${error.message}`); return; }
     setActionMessage("Newsletter control saved."); await loadContent();
   }
-  async function seedDefaults() { setActionMessage("Creating default newsletter control..."); const { error } = await supabase.from("newsletter_settings").upsert(defaultSections, { onConflict: "section_key" }); if (error) setActionMessage(`Could not seed defaults: ${error.message}`); else { setActionMessage("Default newsletter control created."); await loadContent(); } }
+  async function seedDefaults() { if (!site.id) return; setActionMessage("Creating default newsletter control..."); const { error } = await supabase.from("newsletter_settings").upsert(defaultSections.map((section) => ({ ...section, site_id: site.id })), { onConflict: "site_id,section_key" }); if (error) setActionMessage(`Could not seed defaults: ${error.message}`); else { setActionMessage("Default newsletter control created."); await loadContent(); } }
   function updateSection(index: number, field: string, value: any) { setSections((current) => current.map((item, i) => i === index ? { ...item, [field]: value } : item)); }
   function moveSection(index: number, direction: -1 | 1) { const target = index + direction; if (target < 0 || target >= sections.length) return; const next = [...sections]; [next[index], next[target]] = [next[target], next[index]]; setSections(next.map((item, itemIndex) => ({ ...item, display_order: itemIndex + 1 }))); }
-  async function generateDraft() { setActionMessage("Generating newsletter from latest SDTV content..."); const nextDraft = await generateNewsletterDraft(sections); setDraft(nextDraft); setCampaignId(""); setActiveTab("generation"); setActionMessage("Newsletter generated from latest content. Save it before sending a preview or reusing later."); }
-  async function saveDraft() { if (!draft) { setActionMessage("Generate a newsletter first."); return; } setActionMessage("Saving newsletter..."); const payload = { subject: draft.subject || "Seattle Desi TV Community Update", preheader: draft.preheader || "", status: "draft", draft_json: draft, created_by: user?.id || null, created_by_email: user?.email || null, updated_at: new Date().toISOString() } as any; const request = campaignId ? supabase.from("newsletter_campaigns").update(payload).eq("id", campaignId).select("id").single() : supabase.from("newsletter_campaigns").insert(payload).select("id").single(); const { data, error } = await request; if (error) { setActionMessage(`Could not save newsletter: ${error.message}`); return; } setCampaignId(data?.id || campaignId); setActionMessage("Newsletter saved."); await loadContent(); }
-  async function sendPreview() { if (!draft) { setActionMessage("Generate or load a newsletter first."); return; } if (!previewEmail.includes("@")) { setActionMessage("Enter a valid preview email."); return; } setActionMessage("Sending preview email..."); const response = await fetch("/api/newsletter/send-test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: previewEmail, draft }) }); const result = await response.json(); if (!result?.ok) { setActionMessage(result?.error || "Could not send preview email."); return; } if (campaignId) await supabase.from("newsletter_campaigns").update({ status: "test_sent", test_sent_to: previewEmail, test_sent_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", campaignId); setActionMessage("Preview email sent."); await loadContent(); }
-  async function setSubscriberStatus(subscriber: any, status: "active" | "unsubscribed") { setActionMessage(status === "active" ? `Resubscribing ${subscriber.email}...` : `Unsubscribing ${subscriber.email}...`); const payload: any = { status }; if (status === "active") payload.subscribed_at = new Date().toISOString(); if (status === "unsubscribed") payload.unsubscribed_at = new Date().toISOString(); const { error } = await supabase.from("newsletter_subscribers").update(payload).eq("id", subscriber.id); if (error) { setActionMessage(`Could not update subscriber: ${error.message}`); return; } setActionMessage(status === "active" ? "Subscriber reactivated." : "Subscriber unsubscribed."); await loadContent(); }
+  async function generateDraft() { if (!site.id) return; setActionMessage(`Generating newsletter from latest ${site.name} content...`); const nextDraft = await generateNewsletterDraft(sections, { id: site.id, name: site.name }); setDraft(nextDraft); setCampaignId(""); setActiveTab("generation"); setActionMessage("Newsletter generated from latest content. Save it before sending a preview or reusing later."); }
+  async function saveDraft() { if (!draft) { setActionMessage("Generate a newsletter first."); return; } if (!site.id) return; setActionMessage("Saving newsletter..."); const payload = { site_id: site.id, subject: draft.subject || `${site.name} Community Update`, preheader: draft.preheader || "", status: "draft", draft_json: draft, created_by: user?.id || null, created_by_email: user?.email || null, updated_at: new Date().toISOString() } as any; const request = campaignId ? supabase.from("newsletter_campaigns").update(payload).eq("site_id", site.id).eq("id", campaignId).select("id").single() : supabase.from("newsletter_campaigns").insert(payload).select("id").single(); const { data, error } = await request; if (error) { setActionMessage(`Could not save newsletter: ${error.message}`); return; } setCampaignId(data?.id || campaignId); setActionMessage("Newsletter saved."); await loadContent(); }
+  async function sendPreview() { if (!draft) { setActionMessage("Generate or load a newsletter first."); return; } if (!previewEmail.includes("@")) { setActionMessage("Enter a valid preview email."); return; } setActionMessage("Sending preview email..."); const response = await fetch("/api/newsletter/send-test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: previewEmail, draft }) }); const result = await response.json(); if (!result?.ok) { setActionMessage(result?.error || "Could not send preview email."); return; } if (campaignId && site.id) await supabase.from("newsletter_campaigns").update({ status: "test_sent", test_sent_to: previewEmail, test_sent_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("site_id", site.id).eq("id", campaignId); setActionMessage("Preview email sent."); await loadContent(); }
+  async function setSubscriberStatus(subscriber: any, status: "active" | "unsubscribed") { if (!site.id) return; setActionMessage(status === "active" ? `Resubscribing ${subscriber.email}...` : `Unsubscribing ${subscriber.email}...`); const payload: any = { status }; if (status === "active") payload.subscribed_at = new Date().toISOString(); if (status === "unsubscribed") payload.unsubscribed_at = new Date().toISOString(); const { error } = await supabase.from("newsletter_subscribers").update(payload).eq("site_id", site.id).eq("id", subscriber.id); if (error) { setActionMessage(`Could not update subscriber: ${error.message}`); return; } setActionMessage(status === "active" ? "Subscriber reactivated." : "Subscriber unsubscribed."); await loadContent(); }
   function loadCampaign(campaign: any) { setDraft(campaign.draft_json); setCampaignId(campaign.id); setActiveTab("generation"); setActionMessage("Newsletter loaded for editing or resend preview."); }
   function duplicateCampaign(campaign: any) { setDraft({ ...campaign.draft_json, subject: `${campaign.subject} Copy` }); setCampaignId(""); setActiveTab("generation"); setActionMessage("Newsletter duplicated. Save it as a new draft."); }
   function updateDraftSection(index: number, field: string, value: any) { setDraft((current: any) => ({ ...current, sections: current.sections.map((item: any, i: number) => i === index ? { ...item, [field]: value } : item) })); }
   function removeDraftSection(index: number) { setDraft((current: any) => ({ ...current, sections: current.sections.filter((_: any, i: number) => i !== index) })); }
-  function addCustomSection() { const custom = { id: `custom-${Date.now()}`, title: "New Section", body: "Add your message here.", items: [] }; setDraft((current: any) => current ? { ...current, sections: [...current.sections, custom] } : { subject: "Seattle Desi TV Community Update", preheader: "", sections: [custom] }); setActiveTab("generation"); }
-  useEffect(() => { init(); }, []);
+  function addCustomSection() { const custom = { id: `custom-${Date.now()}`, title: "New Section", body: "Add your message here.", items: [] }; setDraft((current: any) => current ? { ...current, sections: [...current.sections, custom] } : { subject: `${site.name} Community Update`, preheader: "", sections: [custom] }); setActiveTab("generation"); }
+  useEffect(() => { init(); }, [site.id]);
 
   const tabClass = (key: TabKey) => `${activeTab === key ? "bg-pink-600 text-white shadow-lg shadow-pink-900/30" : "bg-white text-slate-950 hover:bg-pink-50"} rounded-2xl px-5 py-3 font-black transition`;
 

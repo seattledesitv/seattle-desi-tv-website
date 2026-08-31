@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { isAdminRole, resolveUserRole } from "../../../../lib/roles";
 import type { ChannelOutputPayload } from "../../../../lib/publishing/pipeline/types";
+import { resolveCurrentSite } from "../../../../lib/sites/siteResolver";
 
 type EmailAction = "test" | "send_all";
 type Subscriber = { id: string; email: string; name: string | null; unsubscribe_token: string | null };
@@ -12,7 +13,6 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "";
 const resendKey = process.env.RESEND_API_KEY || "";
 const fromEmail = process.env.NEWSLETTER_FROM_EMAIL || process.env.RESEND_FROM_EMAIL || "Seattle Desi TV <updates@seattledesitv.com>";
-const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://seattledesitv.com").replace(/\/$/, "");
 
 function validEmail(value: unknown) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim().toLowerCase()); }
 function escapeHtml(value: unknown) { return String(value || "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character); }
@@ -21,15 +21,15 @@ function emailPayload(value: unknown): ChannelOutputPayload | null {
   const payload = value as Partial<ChannelOutputPayload>;
   return payload.schemaVersion === 4 && typeof payload.title === "string" && typeof payload.html === "string" && typeof payload.text === "string" ? payload as ChannelOutputPayload : null;
 }
-function withFooter(html: string, email: string) {
+function withFooter(html: string, email: string, siteName: string, siteUrl: string) {
   const manageUrl = `${siteUrl}/unsubscribe?email=${encodeURIComponent(email)}`;
-  const footer = `<div style="background:#f1f5f9;color:#475569;text-align:center;padding:24px;font:13px/1.6 Arial,sans-serif"><p>You are receiving this because you subscribed to Seattle Desi TV updates.</p><p><a href="${escapeHtml(manageUrl)}" style="color:#be185d;font-weight:700">Manage subscription or unsubscribe</a></p></div>`;
+  const footer = `<div style="background:#f1f5f9;color:#475569;text-align:center;padding:24px;font:13px/1.6 Arial,sans-serif"><p>You are receiving this because you subscribed to ${escapeHtml(siteName)} updates.</p><p><a href="${escapeHtml(manageUrl)}" style="color:#be185d;font-weight:700">Manage subscription or unsubscribe</a></p></div>`;
   return html.includes("</body>") ? html.replace("</body>", `${footer}</body>`) : `${html}${footer}`;
 }
-async function subscribers(db: SupabaseClient) {
+async function subscribers(db: SupabaseClient, siteId: string) {
   const rows: Subscriber[] = [];
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await db.from("newsletter_subscribers").select("id,email,name,unsubscribe_token").eq("status", "active").order("id").range(from, from + 999);
+    const { data, error } = await db.from("newsletter_subscribers").select("id,email,name,unsubscribe_token").eq("site_id", siteId).eq("status", "active").order("id").range(from, from + 999);
     if (error) throw error;
     const page = (data || []) as unknown as Subscriber[];
     rows.push(...page);
@@ -44,6 +44,9 @@ async function attempt(db: SupabaseClient, row: Record<string, unknown>) {
 }
 
 export async function POST(request: Request) {
+  const site = await resolveCurrentSite();
+  if (!site.id) return NextResponse.json({ error: "The current site is not configured." }, { status: 500 });
+  const siteUrl = `https://${site.primaryHostname}`;
   if (!supabaseUrl || !anonKey || !serviceKey) return NextResponse.json({ error: "Supabase server credentials are not configured." }, { status: 500 });
   if (!resendKey) return NextResponse.json({ error: "Email delivery is not configured. Add RESEND_API_KEY and NEWSLETTER_FROM_EMAIL in Vercel." }, { status: 500 });
   const authHeader = request.headers.get("authorization") || "";
@@ -77,7 +80,7 @@ export async function POST(request: Request) {
     if (action === "test") {
       const testEmail = String(body.testEmail || "").trim().toLowerCase();
       if (!validEmail(testEmail)) return NextResponse.json({ error: "Enter a valid test email address." }, { status: 400 });
-      const result = await resend.emails.send({ from: fromEmail, to: testEmail, subject: `[TEST] ${payload.subject || payload.title}`, html: withFooter(payload.html || "", testEmail), text: payload.text });
+      const result = await resend.emails.send({ from: fromEmail, to: testEmail, subject: `[TEST] ${payload.subject || payload.title}`, html: withFooter(payload.html || "", testEmail, site.name, siteUrl), text: payload.text });
       if (result.error) throw new Error(result.error.message || "Test email failed.");
       await attempt(db, { ...baseAttempt, action: "email_test", status: "completed", request_snapshot: { testEmail }, response_snapshot: { providerMessageId: result.data?.id || null } });
       return NextResponse.json({ ok: true, message: `Test email sent to ${testEmail}.`, testEmail });
@@ -89,7 +92,7 @@ export async function POST(request: Request) {
     if (testError) throw testError;
     if (!testCount) return NextResponse.json({ error: "Send and review a test email for this output before sending to subscribers." }, { status: 400 });
 
-    const activeSubscribers = await subscribers(db);
+    const activeSubscribers = await subscribers(db, site.id);
     if (!activeSubscribers.length) return NextResponse.json({ error: "There are no active subscribers." }, { status: 400 });
     const { data: delivered, error: deliveredError } = await db.from("publication_email_deliveries").select("email").eq("output_id", outputId).eq("status", "sent");
     if (deliveredError) throw deliveredError;
@@ -100,7 +103,7 @@ export async function POST(request: Request) {
     let sent = 0;
     for (let index = 0; index < pending.length; index += 100) {
       const batch = pending.slice(index, index + 100);
-      const result = await resend.batch.send(batch.map((subscriber) => ({ from: fromEmail, to: [subscriber.email], subject: payload.subject || payload.title, html: withFooter(payload.html || "", subscriber.email), text: payload.text, tags: [{ name: "publication_output", value: outputId.replace(/-/g, "") }] })));
+      const result = await resend.batch.send(batch.map((subscriber) => ({ from: fromEmail, to: [subscriber.email], subject: payload.subject || payload.title, html: withFooter(payload.html || "", subscriber.email, site.name, siteUrl), text: payload.text, tags: [{ name: "publication_output", value: outputId.replace(/-/g, "") }] })));
       if (result.error) {
         await db.from("publication_email_deliveries").upsert(batch.map((subscriber) => ({ publication_id: output.publication_id, output_id: outputId, subscriber_id: subscriber.id, email: subscriber.email, status: "failed", error_message: result.error?.message || "Batch send failed.", updated_at: new Date().toISOString() })), { onConflict: "output_id,email" });
         throw new Error(`${result.error.message || "Subscriber email batch failed."} ${sent} email(s) were accepted before this failure; retry will skip them.`);

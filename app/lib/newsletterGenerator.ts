@@ -34,7 +34,7 @@ async function latestYoutube(limit: number) {
   } catch { return []; }
 }
 
-async function tableItems(sectionKey: string, limit: number) {
+async function tableItems(sectionKey: string, limit: number, siteId: string) {
   const map: Record<string, any> = {
     events: ["events", "id,title,date,location,image_urls,status,created_at", "/events", "date"],
     businesses: ["local_businesses", "id,name,category,discount,offer,website,image_urls,created_at,status", "/businesses", "created_at"],
@@ -43,30 +43,30 @@ async function tableItems(sectionKey: string, limit: number) {
   };
   const config = map[sectionKey];
   if (!config) return [];
-  let query = supabase.from(config[0]).select(config[1]).limit(limit).order(config[3], { ascending: sectionKey === "events" });
+  let query = supabase.from(config[0]).select(config[1]).eq("site_id", siteId).limit(limit).order(config[3], { ascending: sectionKey === "events" });
   if (["events", "groups", "organizations"].includes(sectionKey)) query = query.eq("status", "approved");
   const { data, error } = await query;
   if (error || !Array.isArray(data)) return [];
   return data.map((row: any) => itemFrom({ ...row, meta: row.date ? `${dateLabel(row.date)}${row.location ? ` · ${row.location}` : ""}` : row.category || row.platform || "" }, config[2]));
 }
 
-export async function generateNewsletterDraft(settings: any[]) {
+export async function generateNewsletterDraft(settings: any[], site: { id: string; name: string }) {
   const enabled = settings.filter((s) => s.enabled !== false).sort((a, b) => toNumber(a.display_order, 999) - toNumber(b.display_order, 999));
   const draftSections = [];
   for (const section of enabled) {
     const limit = Math.max(1, toNumber(section.max_items, 4));
     let items: any[] = [];
     let body = "";
-    if (section.section_key === "intro") body = "Here are the latest Seattle Desi TV stories, events, interviews, community updates, and local highlights curated for our community.";
-    else if (section.section_key === "closing") body = "Thank you for staying connected with Seattle Desi TV. Follow us for more community stories, interviews, events, radio, and updates.";
+    if (section.section_key === "intro") body = `Here are the latest ${site.name} stories, events, interviews, community updates, and local highlights curated for our community.`;
+    else if (section.section_key === "closing") body = `Thank you for staying connected with ${site.name}. Follow us for more community stories, interviews, events, radio, and updates.`;
     else if (section.section_key === "instagram") items = await latestInstagram(limit);
     else if (section.section_key === "tv") items = await latestYoutube(limit);
-    else items = await tableItems(section.section_key, limit);
+    else items = await tableItems(section.section_key, limit, site.id);
     if (body || items.length) draftSections.push({ id: `${section.section_key}-${Date.now()}-${Math.random()}`, key: section.section_key, title: section.title || section.section_key, body, items });
   }
   return {
-    subject: `Seattle Desi TV Community Update - ${new Date().toLocaleDateString()}`,
-    preheader: "Latest events, stories, interviews, local highlights, and community updates from Seattle Desi TV.",
+    subject: `${site.name} Community Update - ${new Date().toLocaleDateString()}`,
+    preheader: `Latest events, stories, interviews, local highlights, and community updates from ${site.name}.`,
     sections: draftSections,
   };
 }
