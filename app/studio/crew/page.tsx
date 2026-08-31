@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { AUTH_STORAGE_KEY, getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 const supabase = getSupabaseBrowserClient();
 
 function roleContainsAdmin(role: string) {
@@ -34,6 +36,7 @@ function ImageThumb({ src, label }: { src?: string; label: string }) {
 }
 
 export default function StudioCrewPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [actionMessage, setActionMessage] = useState("");
@@ -50,13 +53,13 @@ export default function StudioCrewPage() {
 
   async function loadCrewData() {
     const [eventResult, assignmentResult] = await Promise.all([
-      supabase
+      forSite(supabase
         .from("events")
-        .select("id,title,date,location,status,image,image_urls,created_at")
+        .select("id,title,date,location,status,image,image_urls,created_at"), site.id)
         .order("created_at", { ascending: false }),
-      supabase
+      forSite(supabase
         .from("event_crew_assignments")
-        .select("id,event_id,user_id,assignment_type,created_at,status,user_email,approved_by,approved_at,event_title")
+        .select("id,event_id,user_id,assignment_type,created_at,status,user_email,approved_by,approved_at,event_title"), site.id)
         .order("created_at", { ascending: false }),
     ]);
 
@@ -118,7 +121,7 @@ export default function StudioCrewPage() {
       payload.event_title = assignedEvent.title;
     }
 
-    const { error } = await supabase.from("event_crew_assignments").update(payload).eq("id", id);
+    const { error } = await forSite(supabase.from("event_crew_assignments").update(payload), site.id).eq("id", id);
     if (error) {
       setActionMessage(`Crew update failed: ${error.message}`);
       return;
@@ -132,7 +135,7 @@ export default function StudioCrewPage() {
     if (!ok) return;
 
     setActionMessage("Deleting crew assignment...");
-    const { error } = await supabase.from("event_crew_assignments").delete().eq("id", id);
+    const { error } = await forSite(supabase.from("event_crew_assignments").delete(), site.id).eq("id", id);
     if (error) {
       setActionMessage(`Crew delete failed: ${error.message}`);
       return;

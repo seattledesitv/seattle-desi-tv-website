@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { canAccessVideoProduction, isAdminRole, isTeamRole, isVideoEditorRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -39,6 +41,7 @@ function StatCard({ title, value, helper, active, onClick }: { title: string; va
 }
 
 export default function VideoProductionPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking Video Production access...");
   const [actionMessage, setActionMessage] = useState("");
@@ -59,14 +62,14 @@ export default function VideoProductionPage() {
     const activeUser = currentUser || user;
     const activeRole = currentRole || role;
     const activeEmail = activeUser?.email || "";
-    const workflowResult = await supabase.from("event_video_workflows").select("*, events(id,title,date,location,image,image_urls)").order("priority", { ascending: true }).order("updated_at", { ascending: false });
+    const workflowResult = await forSite(supabase.from("event_video_workflows").select("*, events(id,title,date,location,image,image_urls)"), site.id).order("priority", { ascending: true }).order("updated_at", { ascending: false });
     if (workflowResult.error) { setActionMessage(`Could not load video workflows: ${workflowResult.error.message}`); setWorkflows([]); }
     else {
       const rows = workflowResult.data || [];
       setWorkflows(isAdminRole(activeRole) ? rows : rows.filter((row: any) => emailMatches(row.assigned_editor_email, activeEmail) || emailMatches(row.crew_reviewer_email, activeEmail) || isTeamRole(activeRole)));
     }
     if (isAdminRole(activeRole) || isTeamRole(activeRole)) {
-      const eventResult = await supabase.from("events").select("id,title,date,location,status").eq("status", "approved").order("date", { ascending: false }).limit(100);
+      const eventResult = await forSite(supabase.from("events").select("id,title,date,location,status"), site.id).eq("status", "approved").order("date", { ascending: false }).limit(100);
       if (!eventResult.error) setEvents(eventResult.data || []);
     }
   }
@@ -86,14 +89,14 @@ export default function VideoProductionPage() {
   async function createWorkflow(event: React.FormEvent) {
     event.preventDefault(); if (!selectedEventId || !user?.id) return;
     setActionMessage("Creating video workflow...");
-    const { error } = await supabase.from("event_video_workflows").insert({ event_id: selectedEventId, status: "ready_for_editing", raw_media_url: form.raw_media_url || null, external_media_url: form.external_media_url || null, crew_notes: form.crew_notes || null, assigned_editor_email: form.assigned_editor_email || null, crew_reviewer_email: form.crew_reviewer_email || user.email || null, priority: Number(form.priority) || 10, created_by: user.id, updated_by: user.id });
+    const { error } = await supabase.from("event_video_workflows").insert({ site_id: site.id, event_id: selectedEventId, status: "ready_for_editing", raw_media_url: form.raw_media_url || null, external_media_url: form.external_media_url || null, crew_notes: form.crew_notes || null, assigned_editor_email: form.assigned_editor_email || null, crew_reviewer_email: form.crew_reviewer_email || user.email || null, priority: Number(form.priority) || 10, created_by: user.id, updated_by: user.id });
     if (error) { setActionMessage(`Could not create workflow: ${error.message}`); return; }
     setActionMessage("Video workflow created and marked ready for editing."); setSelectedEventId(""); setForm({ raw_media_url: "", external_media_url: "", crew_notes: "", assigned_editor_email: "", crew_reviewer_email: "", priority: 10 }); await loadData();
   }
 
   async function updateWorkflow(workflow: any, payload: any, success: string) {
     setActionMessage("Updating workflow...");
-    const { error } = await supabase.from("event_video_workflows").update({ ...payload, updated_by: user?.id || null, updated_at: new Date().toISOString() }).eq("id", workflow.id);
+    const { error } = await forSite(supabase.from("event_video_workflows").update({ ...payload, updated_by: user?.id || null, updated_at: new Date().toISOString() }), site.id).eq("id", workflow.id);
     if (error) { setActionMessage(`Workflow update failed: ${error.message}`); return; }
     setActionMessage(success); await loadData();
   }

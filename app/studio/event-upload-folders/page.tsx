@@ -4,11 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 function dateText(v?: string | null) { if (!v) return "Date TBD"; const d = new Date(`${String(v).split("T")[0]}T00:00:00`); return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString(); }
 
 export default function EventUploadFoldersPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading...");
   const [user, setUser] = useState<any>(null);
@@ -40,8 +43,8 @@ export default function EventUploadFoldersPage() {
       return;
     }
     const [eventsResult, workflowResult] = await Promise.all([
-      supabase.from("events").select("id,title,date,location,status,poc_email,created_at").order("date", { ascending: false }).limit(500),
-      supabase.from("event_video_workflows").select("id,event_id,status,upload_destination_url,crew_shared_folder_url,assigned_editor_email,updated_at"),
+      forSite(supabase.from("events").select("id,title,date,location,status,poc_email,created_at"), site.id).order("date", { ascending: false }).limit(500),
+      forSite(supabase.from("event_video_workflows").select("id,event_id,status,upload_destination_url,crew_shared_folder_url,assigned_editor_email,updated_at"), site.id),
     ]);
     if (eventsResult.error) setMessage(eventsResult.error.message);
     const workflowMap: Record<string, any> = {};

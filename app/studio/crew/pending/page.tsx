@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import StudioHeader from "../../../components/StudioHeader";
 
 import { AUTH_STORAGE_KEY, getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../../lib/sites/SiteContext";
+import { forSite } from "../../../lib/sites/query";
 const supabase = getSupabaseBrowserClient();
 
 function roleContainsAdmin(role: string) { return String(role || "").toLowerCase().includes("admin"); }
@@ -12,6 +14,7 @@ function getImage(row: any) { if (Array.isArray(row?.image_urls) && row.image_ur
 function shouldAddToEventCrew(assignment: any) { return assignment?.assignment_type === "team_member_request" || assignment?.assignment_type === "self_selected"; }
 
 export default function PendingCrewPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [actionMessage, setActionMessage] = useState("");
@@ -25,8 +28,8 @@ export default function PendingCrewPage() {
 
   async function loadData() {
     const [eventsResult, crewResult] = await Promise.all([
-      supabase.from("events").select("id,title,date,location,image,image_urls,crew_member_ids"),
-      supabase.from("event_crew_assignments").select("id,event_id,user_id,user_email,assignment_type,status,created_at,event_title").or("status.is.null,status.eq.pending").order("created_at", { ascending: false })
+      forSite(supabase.from("events").select("id,title,date,location,image,image_urls,crew_member_ids"), site.id),
+      forSite(supabase.from("event_crew_assignments").select("id,event_id,user_id,user_email,assignment_type,status,created_at,event_title"), site.id).or("status.is.null,status.eq.pending").order("created_at", { ascending: false })
     ]);
     if (eventsResult.error) setActionMessage(`Could not load events: ${eventsResult.error.message}`); else setEvents(eventsResult.data || []);
     if (crewResult.error) setActionMessage(`Could not load pending crew: ${crewResult.error.message}`); else setAssignments(crewResult.data || []);
@@ -100,7 +103,7 @@ export default function PendingCrewPage() {
         if (addsCrew) await addCrewToEvent({ ...assignment, user_id: payload.user_id }, assignedEvent);
       }
       if (assignedEvent?.title) payload.event_title = assignedEvent.title;
-      const { error } = await supabase.from("event_crew_assignments").update(payload).eq("id", assignment.id);
+      const { error } = await forSite(supabase.from("event_crew_assignments").update(payload), site.id).eq("id", assignment.id);
       if (error) throw error;
       setActionMessage(addsCrew ? "Crew request approved and member added to event crew." : `Request marked ${status}.`);
       await loadData();
@@ -111,7 +114,7 @@ export default function PendingCrewPage() {
 
   async function deleteCrew(id: string) {
     if (!window.confirm("Delete this crew request?")) return;
-    const { error } = await supabase.from("event_crew_assignments").delete().eq("id", id);
+    const { error } = await forSite(supabase.from("event_crew_assignments").delete(), site.id).eq("id", id);
     if (error) setActionMessage(`Delete failed: ${error.message}`); else { setActionMessage("Crew request deleted."); await loadData(); }
   }
 

@@ -5,6 +5,8 @@ import StudioHeader from "../../../components/StudioHeader";
 import MyHubHeader from "../../../components/MyHubHeader";
 import { getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
 import { canAccessVideoProduction, isAdminRole, isTeamRole, isVideoEditorRole, resolveUserRole } from "../../../lib/roles";
+import { useCurrentSite } from "../../../lib/sites/SiteContext";
+import { forSite } from "../../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const EDITABLE_STATUSES = ["ready_for_editing", "in_editing", "changes_requested"];
@@ -42,6 +44,7 @@ function ChecklistItem({ ok, children }: { ok: boolean; children: any }) {
 }
 
 export default function VideoWorkflowDetailPage() {
+  const site = useCurrentSite();
   const [workflowId, setWorkflowId] = useState("");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading workflow...");
@@ -75,14 +78,14 @@ export default function VideoWorkflowDetailPage() {
 
   async function loadWorkflow(id: string) {
     if (!id) { setMessage("Workflow ID is missing from the URL."); return; }
-    const { data, error } = await supabase.from("event_video_workflows").select("*, events(id,title,date,location,coverage_brief,required_shots,interview_targets,sponsor_requirements,special_instructions)").eq("id", id).maybeSingle();
+    const { data, error } = await forSite(supabase.from("event_video_workflows").select("*, events(id,title,date,location,coverage_brief,required_shots,interview_targets,sponsor_requirements,special_instructions)"), site.id).eq("id", id).maybeSingle();
     if (error) { setWorkflow(null); setMessage(`Could not load workflow: ${error.message}`); return; }
     if (!data) { setWorkflow(null); setMessage(`Workflow not found for ID: ${id}`); return; }
     setWorkflow(data);
     setPublish({ youtube_url: data.youtube_url || "", instagram_url: data.instagram_url || "", facebook_url: data.facebook_url || "", publish_notes: data.publish_notes || "" });
     setMessage("");
   }
-  async function loadRevisions(id: string) { if (!id) return; const { data } = await supabase.from("event_video_revisions").select("*").eq("workflow_id", id).order("revision_number", { ascending: false }).order("created_at", { ascending: false }); setRevisions(data || []); }
+  async function loadRevisions(id: string) { if (!id) return; const { data } = await forSite(supabase.from("event_video_revisions").select("*"), site.id).eq("workflow_id", id).order("revision_number", { ascending: false }).order("created_at", { ascending: false }); setRevisions(data || []); }
 
   async function init() {
     setLoading(true); setActionMessage("");
@@ -98,7 +101,7 @@ export default function VideoWorkflowDetailPage() {
   async function updateWorkflow(payload: any, success: string) {
     if (!workflow?.id) return false;
     setActionMessage("Updating workflow...");
-    const { data, error } = await supabase.from("event_video_workflows").update({ ...payload, updated_by: user?.id || null, updated_at: new Date().toISOString() }).eq("id", workflow.id).select("*").maybeSingle();
+    const { data, error } = await forSite(supabase.from("event_video_workflows").update({ ...payload, updated_by: user?.id || null, updated_at: new Date().toISOString() }), site.id).eq("id", workflow.id).select("*").maybeSingle();
     if (error) { setActionMessage(`Update failed: ${error.message}`); return false; }
     if (!data) { setActionMessage("Update did not save. Supabase RLS is likely blocking video workflow updates. Please run the video workflow SQL policy fix."); await loadWorkflow(workflow.id); return false; }
     setWorkflow((current: any) => ({ ...(current || {}), ...data }));
@@ -114,14 +117,14 @@ export default function VideoWorkflowDetailPage() {
     if (!draftHasUrl && !draftHasNA) { setActionMessage("Please add at least one review/file link before submitting, or write N/A in Editor Notes with the reason."); return; }
     if (!draftNotesOk) { setActionMessage("Please add editor notes with at least 12 characters, or write N/A with the reason."); return; }
     const nextRevision = Math.max(0, ...revisions.map((r) => Number(r.revision_number || 0))) + 1;
-    const { error } = await supabase.from("event_video_revisions").insert({ workflow_id: workflow.id, revision_number: nextRevision, full_video_url: draftHasUrl ? draft.full_video_url || null : null, reel_url: draftHasUrl ? draft.reel_url || null : null, youtube_title: draft.youtube_title || null, instagram_caption: draft.instagram_caption || null, feedback: draft.notes || null, submitted_by: user.id, submitted_by_email: user.email || null });
+    const { error } = await supabase.from("event_video_revisions").insert({ site_id: site.id, workflow_id: workflow.id, revision_number: nextRevision, full_video_url: draftHasUrl ? draft.full_video_url || null : null, reel_url: draftHasUrl ? draft.reel_url || null : null, youtube_title: draft.youtube_title || null, instagram_caption: draft.instagram_caption || null, feedback: draft.notes || null, submitted_by: user.id, submitted_by_email: user.email || null });
     if (error) { setActionMessage(`Draft failed: ${error.message}`); return; }
     const saved = await updateWorkflow({ status: "awaiting_crew_review", assigned_editor_email: workflow.assigned_editor_email || user.email || null, editor_notes: draft.notes || null }, `Revision ${nextRevision} submitted for crew review.`);
     if (!saved) return;
     setDraft({ full_video_url: "", reel_url: "", youtube_title: "", instagram_caption: "", notes: "" }); await loadRevisions(workflow.id);
   }
 
-  async function requestChanges() { if (!workflow?.id || !feedback.trim() || !user?.id) return; const nextRevision = Math.max(0, ...revisions.map((r) => Number(r.revision_number || 0))) + 1; await supabase.from("event_video_revisions").insert({ workflow_id: workflow.id, revision_number: nextRevision, feedback, submitted_by: user.id, submitted_by_email: user.email || null }); const note = feedback; setFeedback(""); await updateWorkflow({ status: "changes_requested", editor_notes: note }, "Feedback saved. Changes requested."); await loadRevisions(workflow.id); }
+  async function requestChanges() { if (!workflow?.id || !feedback.trim() || !user?.id) return; const nextRevision = Math.max(0, ...revisions.map((r) => Number(r.revision_number || 0))) + 1; await supabase.from("event_video_revisions").insert({ site_id: site.id, workflow_id: workflow.id, revision_number: nextRevision, feedback, submitted_by: user.id, submitted_by_email: user.email || null }); const note = feedback; setFeedback(""); await updateWorkflow({ status: "changes_requested", editor_notes: note }, "Feedback saved. Changes requested."); await loadRevisions(workflow.id); }
   async function crewApprove() { await updateWorkflow({ status: "awaiting_admin_approval", crew_reviewer_email: workflow.crew_reviewer_email || user?.email || null, crew_approved_at: new Date().toISOString() }, "Crew approved. Awaiting admin approval."); }
   async function adminApprove() { await updateWorkflow({ status: "approved_for_publishing", admin_approver_email: user?.email || null, admin_approved_at: new Date().toISOString() }, "Admin approved. Editor can publish."); }
   async function markPublished(e: FormEvent) {

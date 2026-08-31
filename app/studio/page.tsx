@@ -146,10 +146,12 @@ export default function StudioDashboardPage() {
       supabase
         .from("event_crew_assignments")
         .select("id", { count: "exact", head: true })
+        .eq("site_id", site.id || "")
         .in("event_id", eventScope),
       supabase
         .from("event_crew_assignments")
         .select("id", { count: "exact", head: true })
+        .eq("site_id", site.id || "")
         .in("event_id", eventScope)
         .or("status.is.null,status.eq.pending"),
       supabase
@@ -183,37 +185,44 @@ export default function StudioDashboardPage() {
       supabase
         .from("event_crew_assignments")
         .select("id", { count: "exact", head: true })
+        .eq("site_id", site.id || "")
         .in("event_id", eventScope)
         .eq("assignment_type", "owner_coverage_request")
         .or("status.is.null,status.eq.pending"),
       supabase
         .from("event_crew_assignments")
         .select("id", { count: "exact", head: true })
+        .eq("site_id", site.id || "")
         .in("event_id", eventScope)
         .eq("coverage_completed", true),
       supabase
         .from("event_crew_assignments")
         .select("id", { count: "exact", head: true })
+        .eq("site_id", site.id || "")
         .in("event_id", eventScope)
         .eq("coverage_completed", true)
         .gte("completed_at", monthStartIso()),
       supabase
         .from("event_video_workflows")
         .select("id", { count: "exact", head: true })
+        .eq("site_id", site.id || "")
         .in("event_id", eventScope),
       supabase
         .from("event_video_workflows")
         .select("id", { count: "exact", head: true })
+        .eq("site_id", site.id || "")
         .in("event_id", eventScope)
         .eq("status", "awaiting_admin_approval"),
       supabase
         .from("event_video_workflows")
         .select("id", { count: "exact", head: true })
+        .eq("site_id", site.id || "")
         .in("event_id", eventScope)
         .eq("status", "awaiting_crew_review"),
       supabase
         .from("event_video_workflows")
         .select("id", { count: "exact", head: true })
+        .eq("site_id", site.id || "")
         .in("event_id", eventScope)
         .eq("status", "approved_for_publishing"),
     ]);

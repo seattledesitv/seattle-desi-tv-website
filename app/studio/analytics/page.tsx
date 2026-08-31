@@ -187,12 +187,14 @@ export default function StudioAnalyticsPage() {
         supabase
           .from("event_crew_assignments")
           .select("id", { count: "exact", head: true })
+          .eq("site_id", site.id || "")
           .eq("assignment_type", "owner_coverage_request"),
       ),
       countQuery(
         supabase
           .from("event_crew_assignments")
           .select("id", { count: "exact", head: true })
+          .eq("site_id", site.id || "")
           .eq("assignment_type", "owner_coverage_request")
           .eq("status", "approved"),
       ),
@@ -200,6 +202,7 @@ export default function StudioAnalyticsPage() {
         supabase
           .from("event_crew_assignments")
           .select("id", { count: "exact", head: true })
+          .eq("site_id", site.id || "")
           .eq("assignment_type", "owner_coverage_request")
           .or("status.is.null,status.eq.pending"),
       ),
@@ -207,12 +210,14 @@ export default function StudioAnalyticsPage() {
         supabase
           .from("event_crew_assignments")
           .select("id", { count: "exact", head: true })
+          .eq("site_id", site.id || "")
           .eq("assignment_type", "team_member_request"),
       ),
       countQuery(
         supabase
           .from("event_crew_assignments")
           .select("id", { count: "exact", head: true })
+          .eq("site_id", site.id || "")
           .eq("assignment_type", "team_member_request")
           .eq("status", "approved"),
       ),
@@ -220,6 +225,7 @@ export default function StudioAnalyticsPage() {
         supabase
           .from("event_crew_assignments")
           .select("id", { count: "exact", head: true })
+          .eq("site_id", site.id || "")
           .eq("coverage_completed", true),
       ),
       countQuery(

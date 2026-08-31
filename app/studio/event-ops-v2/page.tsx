@@ -347,19 +347,19 @@ export default function EventOpsV2Page() {
           .order("date", { ascending: false })
           .limit(300),
 
-        supabase
+        forSite(supabase
           .from("event_crew_assignments")
           .select(
             "id,event_id,user_id,user_email,assignment_type,status,event_title,coverage_completed,coverage_notes,completed_at,created_at,approved_at,crew_confirmed,approved_by",
-          )
+          ), site.id)
           .order("created_at", { ascending: false })
           .limit(1000),
 
-        supabase
+        forSite(supabase
           .from("event_video_workflows")
           .select(
             "id,event_id,status,assigned_editor_email,crew_reviewer_email,raw_media_url,external_media_url,crew_notes,updated_at,published_at,priority",
-          )
+          ), site.id)
           .order("updated_at", { ascending: false })
           .limit(300),
 
@@ -391,7 +391,7 @@ export default function EventOpsV2Page() {
           .select("user_id,email,approved_role,requested_role,status")
           .eq("status", "approved"),
 
-        supabase.from("event_admin_pocs").select("*"),
+        forSite(supabase.from("event_admin_pocs").select("*"), site.id),
       ]);
 
     if (er.error) setActionMessage(er.error.message);
@@ -738,6 +738,7 @@ export default function EventOpsV2Page() {
     const { error } = await supabase
       .from("event_crew_assignments")
       .update(payload)
+      .eq("site_id", site.id || "")
       .eq("id", item.id);
     if (error) setActionMessage(`Crew request update failed: ${error.message}`);
     else {
@@ -759,6 +760,7 @@ export default function EventOpsV2Page() {
   async function assignCrew() {
     if (!selectedEvent || selectedCrewUsers().length === 0) return;
     const rows = selectedCrewUsers().map((m) => ({
+      site_id: site.id,
       event_id: selectedEvent.id,
       event_title: selectedEvent.title,
       user_id: m.user_id,
@@ -800,6 +802,7 @@ export default function EventOpsV2Page() {
       const { error } = await supabase
         .from("event_video_workflows")
         .update(payload)
+        .eq("site_id", site.id || "")
         .eq("id", eventWorkflow.id);
 
       if (error)
@@ -812,6 +815,7 @@ export default function EventOpsV2Page() {
     }
 
     const { error } = await supabase.from("event_video_workflows").insert({
+      site_id: site.id,
       event_id: selectedEventId,
       ...payload,
       created_by: user?.id || null,
@@ -841,6 +845,7 @@ export default function EventOpsV2Page() {
         updated_by: user?.id || null,
         updated_at: new Date().toISOString(),
       })
+      .eq("site_id", site.id || "")
       .eq("id", eventWorkflow.id);
     if (error)
       setActionMessage(`Video workflow update failed: ${error.message}`);

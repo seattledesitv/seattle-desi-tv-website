@@ -4,12 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 function dateText(v?: string | null) { if (!v) return "Date TBD"; const d = new Date(`${String(v).split("T")[0]}T00:00:00`); return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString(); }
 function cleanPhone(v?: string | null) { return String(v || "").replace(/[^0-9+]/g, ""); }
 
 export default function EventPocsPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("Loading...");
@@ -35,11 +38,11 @@ export default function EventPocsPage() {
     const nextRole = current ? await resolveUserRole(supabase, current) : ""; setRole(nextRole);
     if (!current || !isAdminRole(nextRole)) { setMessage("Studio admin access required."); setLoading(false); return; }
     const [eventsResult, adminsResult, profilesResult, teamResult, pocsResult] = await Promise.all([
-      supabase.from("events").select("id,title,date,location,status,poc_email,poc_phone,created_at").order("date", { ascending: false }).limit(500),
+      forSite(supabase.from("events").select("id,title,date,location,status,poc_email,poc_phone,created_at"), site.id).order("date", { ascending: false }).limit(500),
       supabase.from("admins").select("user_id,email,role,name,created_at").order("created_at", { ascending: false }),
       supabase.from("user_profiles").select("user_id,email,full_name,profile_photo_url,phone"),
       supabase.from("team_members").select("name,email,image,user_id"),
-      supabase.from("event_admin_pocs").select("*")
+      forSite(supabase.from("event_admin_pocs").select("*"), site.id)
     ]);
     if (eventsResult.error) { setMessage(eventsResult.error.message); setLoading(false); return; }
     if (pocsResult.error) { setMessage("Run supabase/event-admin-poc.sql first, then refresh this page."); setLoading(false); return; }

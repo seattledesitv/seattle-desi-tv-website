@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -11,6 +13,7 @@ function dateText(value?: string) { if (!value) return ""; const d = new Date(`$
 function getImage(row: any) { if (Array.isArray(row?.image_urls) && row.image_urls.length > 0) return row.image_urls[0]; return row?.image || ""; }
 
 export default function CoverageRequestsPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [actionMessage, setActionMessage] = useState("");
@@ -24,8 +27,8 @@ export default function CoverageRequestsPage() {
 
   async function loadData() {
     const [eventsResult, requestsResult] = await Promise.all([
-      supabase.from("events").select("id,title,date,location,image,image_urls,created_by,crew_member_ids"),
-      supabase.from("event_crew_assignments").select("id,event_id,user_id,user_email,assignment_type,status,created_at,approved_by,approved_at,event_title").eq("assignment_type", "owner_coverage_request").order("created_at", { ascending: false })
+      forSite(supabase.from("events").select("id,title,date,location,image,image_urls,created_by,crew_member_ids"), site.id),
+      forSite(supabase.from("event_crew_assignments").select("id,event_id,user_id,user_email,assignment_type,status,created_at,approved_by,approved_at,event_title"), site.id).eq("assignment_type", "owner_coverage_request").order("created_at", { ascending: false })
     ]);
     if (eventsResult.error) setActionMessage(`Could not load events: ${eventsResult.error.message}`); else setEvents(eventsResult.data || []);
     if (requestsResult.error) setActionMessage(`Could not load coverage requests: ${requestsResult.error.message}`); else setRequests(requestsResult.data || []);
@@ -48,7 +51,7 @@ export default function CoverageRequestsPage() {
     setActionMessage("Updating coverage request...");
     const payload: any = { status };
     if (["approved", "rejected", "on_hold"].includes(status)) { payload.approved_by = user?.email || user?.id || null; payload.approved_at = new Date().toISOString(); }
-    const { error } = await supabase.from("event_crew_assignments").update(payload).eq("id", request.id);
+    const { error } = await forSite(supabase.from("event_crew_assignments").update(payload), site.id).eq("id", request.id);
     if (error) { setActionMessage(`Update failed: ${error.message}`); return; }
     setActionMessage(`Coverage request marked ${status}.`);
     await loadData();
