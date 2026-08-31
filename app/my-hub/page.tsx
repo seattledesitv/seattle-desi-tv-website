@@ -11,6 +11,7 @@ import {
   isVideoEditorRole,
   resolveUserRole,
 } from "../lib/roles";
+import { useCurrentSite } from "../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -40,6 +41,7 @@ const emptyCounts: Counts = {
 };
 
 export default function MyHubPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading...");
   const [email, setEmail] = useState("");
@@ -67,6 +69,12 @@ export default function MyHubPage() {
       setLoading(false);
       return;
     }
+    if (!site.id) {
+      setCounts(emptyCounts);
+      setMessage("The current site is not configured.");
+      setLoading(false);
+      return;
+    }
     const today = new Date().toISOString().split("T")[0];
     const [
       events,
@@ -84,12 +92,14 @@ export default function MyHubPage() {
         supabase
           .from("events")
           .select("id", { count: "exact", head: true })
+          .eq("site_id", site.id)
           .eq("created_by", user.id),
       ),
       countQuery(
         supabase
           .from("local_businesses")
           .select("id", { count: "exact", head: true })
+          .eq("site_id", site.id)
           .eq("created_by", user.id),
       ),
       countQuery(
@@ -102,6 +112,7 @@ export default function MyHubPage() {
         supabase
           .from("contact_requests")
           .select("id", { count: "exact", head: true })
+          .eq("site_id", site.id)
           .ilike("email", nextEmail),
       ),
       countQuery(
@@ -143,6 +154,7 @@ export default function MyHubPage() {
         supabase
           .from("influencer_profiles")
           .select("id", { count: "exact", head: true })
+          .eq("site_id", site.id)
           .ilike("email", nextEmail),
       ),
     ]);
@@ -163,7 +175,7 @@ export default function MyHubPage() {
   }
   useEffect(() => {
     loadHub();
-  }, []);
+  }, [site.id]);
 
   const cards = [
     {

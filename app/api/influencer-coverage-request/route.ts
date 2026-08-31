@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { resolveCurrentSite } from "../../lib/sites/siteResolver";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
 
@@ -19,6 +20,8 @@ function escapeHtml(value: string) {
 
 export async function POST(req: Request) {
   try {
+    const site = await resolveCurrentSite();
+    if (!site.id) return NextResponse.json({ success: false, error: "The current site is not configured." }, { status: 500 });
     const body = await req.json();
     const businessName = clean(body.businessName);
     const contactName = clean(body.contactName);
@@ -53,6 +56,7 @@ export async function POST(req: Request) {
     ].join("\n");
 
     const { error: insertError } = await supabase.from("contact_requests").insert({
+      site_id: site.id,
       name: `${contactName} - ${businessName}`,
       email,
       phone: phone || null,
@@ -67,8 +71,8 @@ export async function POST(req: Request) {
     if (!process.env.RESEND_API_KEY) return NextResponse.json({ success: true, step: "db_saved_email_skipped" });
 
     const resend = new Resend(process.env.RESEND_API_KEY);
-    const fromAddress = process.env.CONTACT_EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "Seattle Desi TV <onboarding@resend.dev>";
-    const adminTo = process.env.CONTACT_EMAIL_TO || "seattledesitv@gmail.com";
+    const fromAddress = process.env.CONTACT_EMAIL_FROM || process.env.RESEND_FROM_EMAIL || `${site.name} <onboarding@resend.dev>`;
+    const adminTo = process.env.CONTACT_EMAIL_TO || String(site.settings.contact_email || "seattledesitv@gmail.com");
     const safeBusiness = escapeHtml(businessName);
     const safeContact = escapeHtml(contactName);
     const safeEmail = escapeHtml(email);
@@ -80,14 +84,14 @@ export async function POST(req: Request) {
       to: adminTo,
       replyTo: `${safeContact} <${email}>`,
       subject: `New Influencer Coverage Request: ${businessName}`,
-      html: `<h2>New Influencer Coverage Request</h2><p><b>Business:</b> ${safeBusiness}</p><p><b>Contact:</b> ${safeContact}</p><p><b>Email:</b> ${safeEmail}</p><p><b>Phone:</b> ${safePhone || "—"}</p><p><b>Details:</b></p><p>${safeMessage}</p><p><a href="https://seattledesitv.com/studio/contact-requests">Open Contact Requests in Studio</a></p>`,
+      html: `<h2>New Influencer Coverage Request</h2><p><b>Market:</b> ${escapeHtml(site.name)}</p><p><b>Business:</b> ${safeBusiness}</p><p><b>Contact:</b> ${safeContact}</p><p><b>Email:</b> ${safeEmail}</p><p><b>Phone:</b> ${safePhone || "—"}</p><p><b>Details:</b></p><p>${safeMessage}</p><p><a href="https://${site.primaryHostname}/studio/contact-requests">Open Contact Requests in Studio</a></p>`,
     });
 
     const autoReply = await resend.emails.send({
       from: fromAddress,
       to: email,
       subject: "We received your SDTV influencer coverage request",
-      html: `<h2>Thank you for contacting Seattle Desi TV</h2><p>Hi ${safeContact},</p><p>We received your influencer coverage request for <b>${safeBusiness}</b>.</p><p>Our team will review it and respond with next steps.</p><p>Seattle Desi TV<br/>Community • Culture • Connection</p>`,
+      html: `<h2>Thank you for contacting ${escapeHtml(site.name)}</h2><p>Hi ${safeContact},</p><p>We received your influencer coverage request for <b>${safeBusiness}</b>.</p><p>Our team will review it and respond with next steps.</p><p>${escapeHtml(site.name)}<br/>Community • Culture • Connection</p>`,
     });
 
     return NextResponse.json({ success: true, step: "db_saved_email_sent", adminEmail, autoReply });

@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import MyHubHeader from "../components/MyHubHeader";
 import SiteFooter from "../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 
 export default function MyContactRequestsPage() {
+  const site = useCurrentSite();
   const [rows, setRows] = useState<any[]>([]);
   const [message, setMessage] = useState("Loading...");
 
@@ -16,12 +18,13 @@ export default function MyContactRequestsPage() {
       const { data: auth } = await supabase.auth.getUser();
       const email = auth?.user?.email || "";
       if (!email) { setMessage("Please login to view contact requests submitted with your email."); return; }
-      const { data, error } = await supabase.from("contact_requests").select("id,name,email,interest,message,created_at").ilike("email", email).order("created_at", { ascending: false });
+      if (!site.id) { setMessage("The current site is not configured."); return; }
+      const { data, error } = await supabase.from("contact_requests").select("id,name,email,interest,message,created_at").eq("site_id", site.id).ilike("email", email).order("created_at", { ascending: false });
       setRows(data || []);
       setMessage(error ? error.message : "Contact requests submitted with your email.");
     }
     loadRows();
-  }, []);
+  }, [site.id]);
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">

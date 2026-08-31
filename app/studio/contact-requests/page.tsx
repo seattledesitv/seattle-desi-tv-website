@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -45,15 +46,16 @@ function statusClass(status?: string | null) {
   return "bg-slate-100 text-slate-700";
 }
 
-function responseBody(request: ContactRequest) {
+function responseBody(request: ContactRequest, siteName: string) {
   const isInfluencerBusiness = normalize(request.interest).toLowerCase().includes("influencer coverage");
   if (isInfluencerBusiness) {
-    return [`Hello ${request.name?.split(" - ")[0] || ""},`, ``, `Thank you for submitting an SDTV influencer coverage request.`, ``, `We reviewed your request and would like to connect on the next steps, including campaign goals, timing, creator fit, deliverables, and package options.`, ``, `Please share a few times that work for a quick discussion.`, ``, `Thank you,`, `Seattle Desi TV Team`].join("\n");
+    return [`Hello ${request.name?.split(" - ")[0] || ""},`, ``, `Thank you for submitting a ${siteName} influencer coverage request.`, ``, `We reviewed your request and would like to connect on the next steps, including campaign goals, timing, creator fit, deliverables, and package options.`, ``, `Please share a few times that work for a quick discussion.`, ``, `Thank you,`, `${siteName} Team`].join("\n");
   }
-  return [`Hello ${request.name || ""},`, ``, `Thank you for contacting Seattle Desi TV.`, ``, `We received your request and our team would like to follow up with next steps.`, ``, `Thank you,`, `Seattle Desi TV Team`].join("\n");
+  return [`Hello ${request.name || ""},`, ``, `Thank you for contacting ${siteName}.`, ``, `We received your request and our team would like to follow up with next steps.`, ``, `Thank you,`, `${siteName} Team`].join("\n");
 }
 
 export default function StudioContactRequestsPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [actionMessage, setActionMessage] = useState("");
@@ -82,10 +84,12 @@ export default function StudioContactRequestsPage() {
   }, [requests, interestFilter, statusFilter, searchText]);
 
   async function loadData() {
+    if (!site.id) return;
     setActionMessage("");
     const result = await supabase
       .from("contact_requests")
       .select("id,name,email,phone,interest,message,source,status,created_at,updated_at")
+      .eq("site_id", site.id)
       .order("created_at", { ascending: false });
 
     if (result.error) {
@@ -98,8 +102,9 @@ export default function StudioContactRequestsPage() {
   }
 
   async function updateStatus(id: string, status: string) {
+    if (!site.id) return;
     setActionMessage("");
-    const { error } = await supabase.from("contact_requests").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
+    const { error } = await supabase.from("contact_requests").update({ status, updated_at: new Date().toISOString() }).eq("site_id", site.id).eq("id", id);
     if (error) setActionMessage(`Could not update status: ${error.message}. Run supabase/contact-requests-admin-workflow.sql if needed.`);
     else { setActionMessage(`Request marked ${label(status)}.`); await loadData(); }
   }
@@ -132,7 +137,7 @@ export default function StudioContactRequestsPage() {
     setLoading(false);
   }
 
-  useEffect(() => { init(); }, []);
+  useEffect(() => { init(); }, [site.id]);
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -182,7 +187,7 @@ export default function StudioContactRequestsPage() {
             <section className="grid gap-4">
               {filteredRequests.map((request) => {
                 const subject = normalize(request.interest).toLowerCase().includes("influencer coverage") ? `SDTV influencer coverage request - ${request.name || "Business"}` : `Seattle Desi TV follow up - ${request.interest || "Request"}`;
-                const mailto = `mailto:${request.email || ""}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(responseBody(request))}`;
+                const mailto = `mailto:${request.email || ""}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(responseBody(request, site.name))}`;
                 return <article key={request.id} className="bg-white text-slate-950 rounded-2xl p-5 shadow-xl">
                   <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                     <div>

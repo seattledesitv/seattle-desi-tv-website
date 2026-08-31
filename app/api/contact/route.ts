@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { resolveCurrentSite } from "../../lib/sites/siteResolver";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
 const PHONE_REGEX = /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]{6,}$/;
@@ -26,6 +27,8 @@ function escapeHtml(value: string) {
 
 export async function POST(req: Request) {
   try {
+    const site = await resolveCurrentSite();
+    if (!site.id) return NextResponse.json({ success: false, error: "The current site is not configured." }, { status: 500 });
     const body = await req.json();
     const name = clean(body.name);
     const email = clean(body.email).toLowerCase();
@@ -62,6 +65,7 @@ export async function POST(req: Request) {
     const { error: insertError } = await supabase
       .from("contact_requests")
       .insert({
+        site_id: site.id,
         name,
         email,
         phone: phone || null,
@@ -86,8 +90,8 @@ export async function POST(req: Request) {
     const safePhone = escapeHtml(phone || "");
     const safeType = escapeHtml(requestType);
     const safeMessage = escapeHtml(message || "").replace(/\n/g, "<br />");
-    const fromAddress = process.env.CONTACT_EMAIL_FROM || "Seattle Desi TV <onboarding@resend.dev>";
-    const adminTo = process.env.CONTACT_EMAIL_TO || "seattledesitv@gmail.com";
+    const fromAddress = process.env.CONTACT_EMAIL_FROM || `${site.name} <onboarding@resend.dev>`;
+    const adminTo = process.env.CONTACT_EMAIL_TO || String(site.settings.contact_email || "seattledesitv@gmail.com");
 
     const adminEmail = await resend.emails.send({
       from: fromAddress,
@@ -102,20 +106,21 @@ export async function POST(req: Request) {
         <p><b>Type:</b> ${safeType}</p>
         <p><b>Message:</b></p>
         <p>${safeMessage}</p>
-        <p><a href="https://seattledesitv.com/studio/contact-requests">Open Contact Requests in Studio</a></p>
+        <p><b>Market:</b> ${escapeHtml(site.name)}</p>
+        <p><a href="https://${site.primaryHostname}/studio/contact-requests">Open Contact Requests in Studio</a></p>
       `,
     });
 
     const autoReply = await resend.emails.send({
       from: fromAddress,
       to: email,
-      subject: "We received your Seattle Desi TV request",
+      subject: `We received your ${site.name} request`,
       html: `
-        <h2>Thank you for contacting Seattle Desi TV</h2>
+        <h2>Thank you for contacting ${escapeHtml(site.name)}</h2>
         <p>Hi ${safeName},</p>
         <p>We received your request regarding <b>${safeType}</b>.</p>
         <p>Our team will review it and get back to you soon.</p>
-        <p>Seattle Desi TV<br/>Community • Culture • Connection</p>
+        <p>${escapeHtml(site.name)}<br/>Community • Culture • Connection</p>
       `,
     });
 
