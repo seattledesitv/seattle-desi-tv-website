@@ -727,3 +727,12 @@ Safety:
 - Scoped public newsroom/detail pages, submitter workspaces, Studio creation/moderation, media and document records, SEO/sitemap entries, and Instagram publication updates to the resolved market.
 - Added approved press releases to the market-scoped mobile read-only API.
 - Requires `20260831190000_add_press_release_site_ownership.sql`.
+
+## Multi-city Matrimony
+
+- Added required site ownership to private matrimony profiles and access requests, with existing records backfilled to Seattle.
+- Changed the open-request rule from one request per user globally to one request per user per market.
+- Updated database entitlements and private-photo access so an active grant unlocks approved profiles only in the same market.
+- Scoped member profiles, approved matches, access requests, Studio moderation, and payment activation checks to the resolved market.
+- Kept Matrimony access pricing shared across markets for this phase.
+- Requires `20260831210000_add_matrimony_site_ownership.sql`.

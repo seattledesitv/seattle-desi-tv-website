@@ -1,26 +1,357 @@
 "use client";
-import {useEffect,useState} from "react";
-import type {MatrimonyContact,MatrimonyProfile,MatrimonyProfileInput} from "../../lib/matrimony/types";
-const currentYear=new Date().getFullYear();
-function blank(email=""):MatrimonyProfileInput{return{display_name:"",birth_year:currentYear-25,gender:"",seeking:"",marital_status:"Never married",religion:null,community:null,languages:[],education:null,occupation:null,city:"",state_region:null,country:"United States",about:"",partner_preferences:"",photo_paths:[],consent_confirmed:false,contact:{full_name:"",email,phone:null,preferred_contact:"email"}};}
-export default function MatrimonyProfileForm({profile,email,saving,onSave,onUpload}:{profile:(MatrimonyProfile&{contact?:MatrimonyContact|null})|null;email:string;saving:boolean;onSave:(input:MatrimonyProfileInput,id?:string)=>Promise<unknown>;onUpload:(file:File)=>Promise<string>}){
- const [form,setForm]=useState<MatrimonyProfileInput>(blank(email)),[uploading,setUploading]=useState(false),[notice,setNotice]=useState("");
- useEffect(()=>{const timer=window.setTimeout(()=>{if(profile)setForm({display_name:profile.display_name,birth_year:profile.birth_year,gender:profile.gender,seeking:profile.seeking,marital_status:profile.marital_status,religion:profile.religion,community:profile.community,languages:profile.languages,education:profile.education,occupation:profile.occupation,city:profile.city,state_region:profile.state_region,country:profile.country,about:profile.about,partner_preferences:profile.partner_preferences,photo_paths:profile.photo_paths,consent_confirmed:profile.consent_confirmed,contact:profile.contact||{full_name:"",email,phone:null,preferred_contact:"email"}});},0);return()=>window.clearTimeout(timer);},[profile,email]);
- const set=<K extends keyof MatrimonyProfileInput>(key:K,value:MatrimonyProfileInput[K])=>setForm(current=>({...current,[key]:value}));
- async function upload(file?:File){if(!file)return;setUploading(true);setNotice("");try{const path=await onUpload(file);set("photo_paths",[path]);setNotice("Photo uploaded privately. Submit the profile to save it.");}catch(cause){setNotice(cause instanceof Error?cause.message:"Upload failed.");}finally{setUploading(false);}}
- async function submit(){setNotice("");try{await onSave(form,profile?.id);setNotice("Profile submitted for SDTV review.");}catch{} }
- const editable=!profile||["draft","changes_requested","rejected"].includes(profile.status);
- if(profile&&!editable)return <div className="rounded-3xl border bg-white p-7"><p className="text-sm font-black uppercase text-pink-600">Your Profile</p><h2 className="mt-2 text-2xl font-black">{profile.display_name}</h2><p className="mt-2 text-slate-600">Status: <b>{profile.status.replaceAll("_"," ")}</b></p>{profile.admin_notes&&<p className="mt-4 rounded-xl bg-amber-50 p-4 text-amber-900">{profile.admin_notes}</p>}<p className="mt-4 text-sm text-slate-500">Editing is paused while this profile is under review or approved. Contact SDTV if an approved profile needs changes.</p></div>;
- return <section className="rounded-3xl border bg-white p-6 shadow-sm"><h2 className="text-2xl font-black">{profile?"Update and Resubmit Profile":"Submit a Matrimony Profile"}</h2><p className="mt-2 text-sm text-slate-600">Only approved, paid-access members can see profile information. Contact details remain private with SDTV.</p>{profile?.admin_notes&&<p className="mt-4 rounded-xl bg-amber-50 p-4 text-amber-900">Admin notes: {profile.admin_notes}</p>}{notice&&<p className="mt-4 rounded-xl bg-blue-50 p-3 text-sm font-bold text-blue-900">{notice}</p>}<div className="mt-6 grid gap-4 md:grid-cols-2">
-  <label className="font-bold">Display Name<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={form.display_name} onChange={e=>set("display_name",e.target.value)}/></label><label className="font-bold">Birth Year<input type="number" min="1900" max={currentYear-18} className="mt-1 w-full rounded-xl border p-3 font-normal" value={form.birth_year} onChange={e=>set("birth_year",Number(e.target.value))}/></label>
-  <label className="font-bold">Gender<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={form.gender} onChange={e=>set("gender",e.target.value)} placeholder="How you identify"/></label><label className="font-bold">Seeking<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={form.seeking} onChange={e=>set("seeking",e.target.value)} placeholder="Partner preference"/></label>
-  <label className="font-bold">Marital Status<select className="mt-1 w-full rounded-xl border p-3 font-normal" value={form.marital_status} onChange={e=>set("marital_status",e.target.value)}><option>Never married</option><option>Divorced</option><option>Widowed</option><option>Separated</option></select></label><label className="font-bold">City<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={form.city} onChange={e=>set("city",e.target.value)}/></label>
-  <label className="font-bold">State / Region<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={form.state_region||""} onChange={e=>set("state_region",e.target.value||null)}/></label><label className="font-bold">Country<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={form.country} onChange={e=>set("country",e.target.value)}/></label>
-  <label className="font-bold">Religion (optional)<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={form.religion||""} onChange={e=>set("religion",e.target.value||null)}/></label><label className="font-bold">Community (optional)<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={form.community||""} onChange={e=>set("community",e.target.value||null)}/></label>
-  <label className="font-bold">Languages<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={form.languages.join(", ")} onChange={e=>set("languages",e.target.value.split(",").map(v=>v.trim()).filter(Boolean))} placeholder="English, Hindi, Telugu"/></label><label className="font-bold">Education<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={form.education||""} onChange={e=>set("education",e.target.value||null)}/></label>
-  <label className="font-bold">Occupation<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={form.occupation||""} onChange={e=>set("occupation",e.target.value||null)}/></label><label className="font-bold">Private Profile Photo<input type="file" accept="image/*" disabled={uploading} className="mt-1 w-full rounded-xl border p-3 font-normal" onChange={e=>void upload(e.target.files?.[0])}/></label>
-  <label className="font-bold md:col-span-2">About<textarea className="mt-1 min-h-28 w-full rounded-xl border p-3 font-normal" value={form.about} onChange={e=>set("about",e.target.value)} placeholder="Share interests, values, family outlook, and what makes this person unique."/></label><label className="font-bold md:col-span-2">Partner Preferences<textarea className="mt-1 min-h-24 w-full rounded-xl border p-3 font-normal" value={form.partner_preferences} onChange={e=>set("partner_preferences",e.target.value)}/></label>
-  <div className="rounded-2xl bg-slate-50 p-4 md:col-span-2"><h3 className="font-black">Private contact details — SDTV only</h3><div className="mt-3 grid gap-3 md:grid-cols-3"><input className="rounded-xl border p-3" value={form.contact.full_name} onChange={e=>set("contact",{...form.contact,full_name:e.target.value})} placeholder="Full legal name"/><input className="rounded-xl border p-3" type="email" value={form.contact.email} onChange={e=>set("contact",{...form.contact,email:e.target.value})} placeholder="Email"/><input className="rounded-xl border p-3" value={form.contact.phone||""} onChange={e=>set("contact",{...form.contact,phone:e.target.value||null})} placeholder="Phone (optional)"/></div></div>
-  <label className="flex items-start gap-3 font-bold md:col-span-2"><input type="checkbox" className="mt-1" checked={form.consent_confirmed} onChange={e=>set("consent_confirmed",e.target.checked)}/><span>I confirm that I am authorized to submit this adult profile, the information is accurate, and I consent to SDTV reviewing and sharing the approved profile with approved paid-access members.</span></label>
- </div><button onClick={submit} disabled={saving||uploading} className="mt-6 rounded-xl bg-pink-600 px-6 py-3 font-black text-white disabled:opacity-50">{saving?"Submitting...":"Submit for Approval"}</button></section>;
+import { useEffect, useState } from "react";
+import type {
+  MatrimonyContact,
+  MatrimonyProfile,
+  MatrimonyProfileInput,
+} from "../../lib/matrimony/types";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+const currentYear = new Date().getFullYear();
+function blank(email = "", city = ""): MatrimonyProfileInput {
+  return {
+    display_name: "",
+    birth_year: currentYear - 25,
+    gender: "",
+    seeking: "",
+    marital_status: "Never married",
+    religion: null,
+    community: null,
+    languages: [],
+    education: null,
+    occupation: null,
+    city,
+    state_region: null,
+    country: "United States",
+    about: "",
+    partner_preferences: "",
+    photo_paths: [],
+    consent_confirmed: false,
+    contact: { full_name: "", email, phone: null, preferred_contact: "email" },
+  };
+}
+export default function MatrimonyProfileForm({
+  profile,
+  email,
+  saving,
+  onSave,
+  onUpload,
+}: {
+  profile: (MatrimonyProfile & { contact?: MatrimonyContact | null }) | null;
+  email: string;
+  saving: boolean;
+  onSave: (input: MatrimonyProfileInput, id?: string) => Promise<unknown>;
+  onUpload: (file: File) => Promise<string>;
+}) {
+  const site = useCurrentSite();
+  const [form, setForm] = useState<MatrimonyProfileInput>(
+      blank(email, site.city),
+    ),
+    [uploading, setUploading] = useState(false),
+    [notice, setNotice] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (profile)
+        setForm({
+          display_name: profile.display_name,
+          birth_year: profile.birth_year,
+          gender: profile.gender,
+          seeking: profile.seeking,
+          marital_status: profile.marital_status,
+          religion: profile.religion,
+          community: profile.community,
+          languages: profile.languages,
+          education: profile.education,
+          occupation: profile.occupation,
+          city: profile.city,
+          state_region: profile.state_region,
+          country: profile.country,
+          about: profile.about,
+          partner_preferences: profile.partner_preferences,
+          photo_paths: profile.photo_paths,
+          consent_confirmed: profile.consent_confirmed,
+          contact: profile.contact || {
+            full_name: "",
+            email,
+            phone: null,
+            preferred_contact: "email",
+          },
+        });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [profile, email]);
+  const set = <K extends keyof MatrimonyProfileInput>(
+    key: K,
+    value: MatrimonyProfileInput[K],
+  ) => setForm((current) => ({ ...current, [key]: value }));
+  async function upload(file?: File) {
+    if (!file) return;
+    setUploading(true);
+    setNotice("");
+    try {
+      const path = await onUpload(file);
+      set("photo_paths", [path]);
+      setNotice("Photo uploaded privately. Submit the profile to save it.");
+    } catch (cause) {
+      setNotice(cause instanceof Error ? cause.message : "Upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  }
+  async function submit() {
+    setNotice("");
+    try {
+      await onSave(form, profile?.id);
+      setNotice("Profile submitted for SDTV review.");
+    } catch {}
+  }
+  const editable =
+    !profile ||
+    ["draft", "changes_requested", "rejected"].includes(profile.status);
+  if (profile && !editable)
+    return (
+      <div className="rounded-3xl border bg-white p-7">
+        <p className="text-sm font-black uppercase text-pink-600">
+          Your Profile
+        </p>
+        <h2 className="mt-2 text-2xl font-black">{profile.display_name}</h2>
+        <p className="mt-2 text-slate-600">
+          Status: <b>{profile.status.replaceAll("_", " ")}</b>
+        </p>
+        {profile.admin_notes && (
+          <p className="mt-4 rounded-xl bg-amber-50 p-4 text-amber-900">
+            {profile.admin_notes}
+          </p>
+        )}
+        <p className="mt-4 text-sm text-slate-500">
+          Editing is paused while this profile is under review or approved.
+          Contact SDTV if an approved profile needs changes.
+        </p>
+      </div>
+    );
+  return (
+    <section className="rounded-3xl border bg-white p-6 shadow-sm">
+      <h2 className="text-2xl font-black">
+        {profile ? "Update and Resubmit Profile" : "Submit a Matrimony Profile"}
+      </h2>
+      <p className="mt-2 text-sm text-slate-600">
+        Only approved, paid-access members can see profile information. Contact
+        details remain private with SDTV.
+      </p>
+      {profile?.admin_notes && (
+        <p className="mt-4 rounded-xl bg-amber-50 p-4 text-amber-900">
+          Admin notes: {profile.admin_notes}
+        </p>
+      )}
+      {notice && (
+        <p className="mt-4 rounded-xl bg-blue-50 p-3 text-sm font-bold text-blue-900">
+          {notice}
+        </p>
+      )}
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <label className="font-bold">
+          Display Name
+          <input
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+            value={form.display_name}
+            onChange={(e) => set("display_name", e.target.value)}
+          />
+        </label>
+        <label className="font-bold">
+          Birth Year
+          <input
+            type="number"
+            min="1900"
+            max={currentYear - 18}
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+            value={form.birth_year}
+            onChange={(e) => set("birth_year", Number(e.target.value))}
+          />
+        </label>
+        <label className="font-bold">
+          Gender
+          <input
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+            value={form.gender}
+            onChange={(e) => set("gender", e.target.value)}
+            placeholder="How you identify"
+          />
+        </label>
+        <label className="font-bold">
+          Seeking
+          <input
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+            value={form.seeking}
+            onChange={(e) => set("seeking", e.target.value)}
+            placeholder="Partner preference"
+          />
+        </label>
+        <label className="font-bold">
+          Marital Status
+          <select
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+            value={form.marital_status}
+            onChange={(e) => set("marital_status", e.target.value)}
+          >
+            <option>Never married</option>
+            <option>Divorced</option>
+            <option>Widowed</option>
+            <option>Separated</option>
+          </select>
+        </label>
+        <label className="font-bold">
+          City
+          <input
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+            value={form.city}
+            onChange={(e) => set("city", e.target.value)}
+          />
+        </label>
+        <label className="font-bold">
+          State / Region
+          <input
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+            value={form.state_region || ""}
+            onChange={(e) => set("state_region", e.target.value || null)}
+          />
+        </label>
+        <label className="font-bold">
+          Country
+          <input
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+            value={form.country}
+            onChange={(e) => set("country", e.target.value)}
+          />
+        </label>
+        <label className="font-bold">
+          Religion (optional)
+          <input
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+            value={form.religion || ""}
+            onChange={(e) => set("religion", e.target.value || null)}
+          />
+        </label>
+        <label className="font-bold">
+          Community (optional)
+          <input
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+            value={form.community || ""}
+            onChange={(e) => set("community", e.target.value || null)}
+          />
+        </label>
+        <label className="font-bold">
+          Languages
+          <input
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+            value={form.languages.join(", ")}
+            onChange={(e) =>
+              set(
+                "languages",
+                e.target.value
+                  .split(",")
+                  .map((v) => v.trim())
+                  .filter(Boolean),
+              )
+            }
+            placeholder="English, Hindi, Telugu"
+          />
+        </label>
+        <label className="font-bold">
+          Education
+          <input
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+            value={form.education || ""}
+            onChange={(e) => set("education", e.target.value || null)}
+          />
+        </label>
+        <label className="font-bold">
+          Occupation
+          <input
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+            value={form.occupation || ""}
+            onChange={(e) => set("occupation", e.target.value || null)}
+          />
+        </label>
+        <label className="font-bold">
+          Private Profile Photo
+          <input
+            type="file"
+            accept="image/*"
+            disabled={uploading}
+            className="mt-1 w-full rounded-xl border p-3 font-normal"
+            onChange={(e) => void upload(e.target.files?.[0])}
+          />
+        </label>
+        <label className="font-bold md:col-span-2">
+          About
+          <textarea
+            className="mt-1 min-h-28 w-full rounded-xl border p-3 font-normal"
+            value={form.about}
+            onChange={(e) => set("about", e.target.value)}
+            placeholder="Share interests, values, family outlook, and what makes this person unique."
+          />
+        </label>
+        <label className="font-bold md:col-span-2">
+          Partner Preferences
+          <textarea
+            className="mt-1 min-h-24 w-full rounded-xl border p-3 font-normal"
+            value={form.partner_preferences}
+            onChange={(e) => set("partner_preferences", e.target.value)}
+          />
+        </label>
+        <div className="rounded-2xl bg-slate-50 p-4 md:col-span-2">
+          <h3 className="font-black">Private contact details — SDTV only</h3>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            <input
+              className="rounded-xl border p-3"
+              value={form.contact.full_name}
+              onChange={(e) =>
+                set("contact", { ...form.contact, full_name: e.target.value })
+              }
+              placeholder="Full legal name"
+            />
+            <input
+              className="rounded-xl border p-3"
+              type="email"
+              value={form.contact.email}
+              onChange={(e) =>
+                set("contact", { ...form.contact, email: e.target.value })
+              }
+              placeholder="Email"
+            />
+            <input
+              className="rounded-xl border p-3"
+              value={form.contact.phone || ""}
+              onChange={(e) =>
+                set("contact", {
+                  ...form.contact,
+                  phone: e.target.value || null,
+                })
+              }
+              placeholder="Phone (optional)"
+            />
+          </div>
+        </div>
+        <label className="flex items-start gap-3 font-bold md:col-span-2">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={form.consent_confirmed}
+            onChange={(e) => set("consent_confirmed", e.target.checked)}
+          />
+          <span>
+            I confirm that I am authorized to submit this adult profile, the
+            information is accurate, and I consent to SDTV reviewing and sharing
+            the approved profile with approved paid-access members.
+          </span>
+        </label>
+      </div>
+      <button
+        onClick={submit}
+        disabled={saving || uploading}
+        className="mt-6 rounded-xl bg-pink-600 px-6 py-3 font-black text-white disabled:opacity-50"
+      >
+        {saving ? "Submitting..." : "Submit for Approval"}
+      </button>
+    </section>
+  );
 }
