@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import SafeImage from "./SafeImage";
 import TestimonialsSection, { TestimonialItem } from "./TestimonialsSection";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -67,6 +68,7 @@ function SocialCard({ item }: { item: FeaturedSocialItem }) {
 }
 
 export default function FeaturedSocialSection({ items, title, subtitle }: { items: FeaturedSocialItem[]; title: string; subtitle: string }) {
+  const site = useCurrentSite();
   const [testimonials, setTestimonials] = useState<TestimonialItem[]>([]);
 
   useEffect(() => {
@@ -74,13 +76,14 @@ export default function FeaturedSocialSection({ items, title, subtitle }: { item
       const { data, error } = await supabase
         .from("homepage_testimonials")
         .select("id,name,title,quote,image_url,display_order,active")
+        .eq("site_id", site.id || "")
         .eq("active", true)
         .order("display_order", { ascending: true })
         .limit(6);
       if (!error && Array.isArray(data)) setTestimonials(data as TestimonialItem[]);
     }
     loadTestimonials();
-  }, []);
+  }, [site.id]);
 
   if (!items.length && !testimonials.length) return null;
   const visibleItems = items.slice(0, 6);

@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 const emptyForm = { name: "", title: "", quote: "", image_url: "", display_order: 1, active: true };
 
 export default function TestimonialsStudioPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading testimonials...");
   const [actionMessage, setActionMessage] = useState("");
@@ -20,7 +22,7 @@ export default function TestimonialsStudioPage() {
   const canAccess = Boolean(user && isAdminRole(role));
 
   async function loadItems() {
-    const { data, error } = await supabase.from("homepage_testimonials").select("id,name,title,quote,image_url,display_order,active,created_at,updated_at").order("display_order", { ascending: true }).order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("homepage_testimonials").select("id,name,title,quote,image_url,display_order,active,created_at,updated_at").eq("site_id", site.id || "").order("display_order", { ascending: true }).order("created_at", { ascending: false });
     if (error) { setActionMessage(`Could not load testimonials: ${error.message}`); setItems([]); return; }
     setItems(data || []);
   }
@@ -44,10 +46,11 @@ export default function TestimonialsStudioPage() {
   function editItem(item: any) { setEditingId(item.id); setForm({ name: item.name || "", title: item.title || "", quote: item.quote || "", image_url: item.image_url || "", display_order: item.display_order || 1, active: item.active !== false }); window.scrollTo({ top: 0, behavior: "smooth" }); }
 
   async function saveItem() {
+    if (!site.id) { setActionMessage("The active site is not configured."); return; }
     if (!form.name || !form.quote) { setActionMessage("Name and testimonial text are required."); return; }
     setActionMessage(editingId ? "Updating testimonial..." : "Adding testimonial...");
-    const payload = { name: form.name, title: form.title || null, quote: form.quote, image_url: form.image_url || null, display_order: Number(form.display_order || 1), active: Boolean(form.active), updated_at: new Date().toISOString() };
-    const result = editingId ? await supabase.from("homepage_testimonials").update(payload).eq("id", editingId) : await supabase.from("homepage_testimonials").insert(payload);
+    const payload = { site_id: site.id, name: form.name, title: form.title || null, quote: form.quote, image_url: form.image_url || null, display_order: Number(form.display_order || 1), active: Boolean(form.active), updated_at: new Date().toISOString() };
+    const result = editingId ? await supabase.from("homepage_testimonials").update(payload).eq("id", editingId).eq("site_id", site.id) : await supabase.from("homepage_testimonials").insert(payload);
     if (result.error) { setActionMessage(`Could not save: ${result.error.message}`); return; }
     setActionMessage("Testimonial saved. Refresh the homepage to see changes.");
     resetForm();
@@ -55,12 +58,12 @@ export default function TestimonialsStudioPage() {
   }
 
   async function toggleActive(item: any) {
-    const { error } = await supabase.from("homepage_testimonials").update({ active: item.active === false, updated_at: new Date().toISOString() }).eq("id", item.id);
+    const { error } = await supabase.from("homepage_testimonials").update({ active: item.active === false, updated_at: new Date().toISOString() }).eq("id", item.id).eq("site_id", site.id || "");
     if (error) { setActionMessage(`Could not update active status: ${error.message}`); return; }
     await loadItems();
   }
 
-  useEffect(() => { init(); }, []);
+  useEffect(() => { init(); }, [site.id]);
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
