@@ -2,7 +2,8 @@
 
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
-import { SDTV_PHONE_DISPLAY, SdtvContactButtons } from "./SdtvContactLinks";
+import { SdtvContactButtons } from "./SdtvContactLinks";
+import { useCurrentSite } from "../lib/sites/SiteContext";
 
 const requestTypes = ["General Inquiry", "Volunteer", "Internship", "RJ / Radio Host", "VJ / Anchor", "Sponsorship", "Event Coverage", "Business Listing", "Partnership"];
 const interestAliases: Record<string, string> = { volunteer: "Volunteer", intern: "Internship", internship: "Internship", "rj-vj": "RJ / Radio Host", rj: "RJ / Radio Host", radio: "RJ / Radio Host", "radio-host": "RJ / Radio Host", vj: "VJ / Anchor", anchor: "VJ / Anchor", sponsorship: "Sponsorship", sponsor: "Sponsorship", coverage: "Event Coverage", "event-coverage": "Event Coverage", business: "Business Listing", "business-listing": "Business Listing", partnership: "Partnership" };
@@ -20,6 +21,7 @@ function normalizedInterest(value: string | null | undefined) { if (!value) retu
 function isValidEmail(value: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()); }
 
 export default function ContactSection({ compact = false, initialInterest = "" }: { compact?: boolean; initialInterest?: string }) {
+  const site = useCurrentSite();
   const turnstileRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "", interest: "General Inquiry", message: "" });
@@ -48,7 +50,7 @@ export default function ContactSection({ compact = false, initialInterest = "" }
       const response = await fetch("/api/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, captchaToken }) });
       const result = await response.json().catch(() => null);
       if (!response.ok || !result?.success) setStatus(result?.error || "Could not submit contact request.");
-      else { setStatus("Thank you. Seattle Desi TV received your message."); setForm({ name: "", email: "", phone: "", interest: "General Inquiry", message: "" }); setCaptchaToken(""); if (window.turnstile && widgetIdRef.current) window.turnstile.reset(widgetIdRef.current); }
+      else { setStatus(`Thank you. ${site.name} received your message.`); setForm({ name: "", email: "", phone: "", interest: "General Inquiry", message: "" }); setCaptchaToken(""); if (window.turnstile && widgetIdRef.current) window.turnstile.reset(widgetIdRef.current); }
     } catch {
       setStatus("Could not submit contact request. Please try again.");
     } finally { setSaving(false); }
@@ -62,14 +64,14 @@ export default function ContactSection({ compact = false, initialInterest = "" }
       <div className="max-w-7xl mx-auto px-6 md:px-10">
         <div className="grid lg:grid-cols-[0.9fr_1.1fr] gap-8 items-start">
           <div className="bg-slate-950 text-white rounded-3xl p-8 md:p-10">
-            <p className="text-pink-300 font-black uppercase tracking-wide">Contact Seattle Desi TV</p><h1 className="text-4xl md:text-5xl font-black mt-3">Tell us how we can help.</h1><p className="text-slate-300 mt-4">Reach out for event coverage, sponsorships, business listings, volunteering, internships, radio, interviews, or partnerships.</p>
+            <p className="text-pink-300 font-black uppercase tracking-wide">Contact {site.name}</p><h1 className="text-4xl md:text-5xl font-black mt-3">Tell us how we can help.</h1><p className="text-slate-300 mt-4">Reach out for event coverage, sponsorships, business listings, volunteering, internships, radio, interviews, or partnerships.</p>
             <div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.06] p-4">
               <p className="mb-3 text-sm font-black uppercase tracking-wide text-pink-300">Fastest ways to reach us</p>
               <SdtvContactButtons compact />
-              <p className="mt-3 text-xs font-bold text-slate-300">Phone: {SDTV_PHONE_DISPLAY}</p>
+              {(site.settings.phone_display || site.settings.whatsapp_number) && <p className="mt-3 text-xs font-bold text-slate-300">Phone: {String(site.settings.phone_display || site.settings.whatsapp_number)}</p>}
             </div>
             <div className="grid gap-3 mt-8">{ctaCards.map(([title, note, interest]) => <button key={title} type="button" onClick={() => chooseInterest(interest)} className="bg-white/10 rounded-2xl p-4 text-left hover:bg-white/15"><span className="block font-black">{title}</span><span className="block text-sm text-slate-300 mt-1">{note}</span></button>)}</div>
-            <div className="grid gap-3 mt-8 text-sm"><a href="mailto:info@seattledesitv.com" className="bg-white/10 rounded-2xl p-4 font-bold hover:bg-white/15">info@seattledesitv.com</a><a href="https://www.youtube.com/@SeattleDesiTV" target="_blank" rel="noreferrer" className="bg-white/10 rounded-2xl p-4 font-bold hover:bg-white/15">YouTube @SeattleDesiTV</a><a href="https://instagram.com/seattledesitv" target="_blank" rel="noreferrer" className="bg-white/10 rounded-2xl p-4 font-bold hover:bg-white/15">Instagram @seattledesitv</a></div>
+            <div className="grid gap-3 mt-8 text-sm">{site.settings.contact_email && <a href={`mailto:${String(site.settings.contact_email)}`} className="bg-white/10 rounded-2xl p-4 font-bold hover:bg-white/15">{String(site.settings.contact_email)}</a>}{site.settings.youtube_url && <a href={String(site.settings.youtube_url)} target="_blank" rel="noreferrer" className="bg-white/10 rounded-2xl p-4 font-bold hover:bg-white/15">YouTube</a>}{site.settings.instagram_url && <a href={String(site.settings.instagram_url)} target="_blank" rel="noreferrer" className="bg-white/10 rounded-2xl p-4 font-bold hover:bg-white/15">Instagram</a>}</div>
           </div>
           <form id="contact-form" onSubmit={submit} className="bg-white text-slate-950 border rounded-3xl p-6 md:p-8 shadow-xl" noValidate={false}>
             <div className="grid md:grid-cols-2 gap-4">

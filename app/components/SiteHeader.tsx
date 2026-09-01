@@ -147,7 +147,7 @@ export default function SiteHeader() {
     { label: "My Hub", href: "/my-hub", show: isLoggedIn },
     { label: "Studio", href: "/studio", show: canSeeStudio },
   ];
-  const mobileLinks: HeaderLink[] = [{ label: "Share with SDTV", href: "/submit-content", show: true, primary: true }, ...links];
+  const mobileLinks: HeaderLink[] = [{ label: `Share with ${site.shortName}`, href: "/submit-content", show: true, primary: true }, ...links];
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -170,22 +170,22 @@ export default function SiteHeader() {
     <>
       <div className="flex flex-wrap items-center justify-between gap-3 bg-[#050b18] px-4 py-2 text-sm text-white md:px-10">
         <div className="hidden flex-wrap gap-4 sm:flex">
-          <a href="https://www.youtube.com/@SeattleDesiTV" target="_blank" rel="noreferrer" className="hover:text-pink-300">YouTube</a>
-          <a href="https://instagram.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-300">Instagram</a>
-          <a href="https://facebook.com/seattledesitv" target="_blank" rel="noreferrer" className="hover:text-pink-300">Facebook</a>
-          <a href="mailto:info@seattledesitv.com" className="hover:text-pink-300">info@seattledesitv.com</a>
+          {site.settings.youtube_url && <a href={String(site.settings.youtube_url)} target="_blank" rel="noreferrer" className="hover:text-pink-300">YouTube</a>}
+          {site.settings.instagram_url && <a href={String(site.settings.instagram_url)} target="_blank" rel="noreferrer" className="hover:text-pink-300">Instagram</a>}
+          {site.settings.facebook_url && <a href={String(site.settings.facebook_url)} target="_blank" rel="noreferrer" className="hover:text-pink-300">Facebook</a>}
+          {site.settings.contact_email && <a href={`mailto:${String(site.settings.contact_email)}`} className="hover:text-pink-300">{String(site.settings.contact_email)}</a>}
         </div>
-        <span className="font-bold text-yellow-300">Seattle Desi TV + Radio</span>
+        <span className="font-bold text-yellow-300">{site.name} + Radio</span>
       </div>
 
       <header className="sticky top-0 z-40 border-b bg-white/95 px-3 py-3 text-slate-950 backdrop-blur md:px-10">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3 md:gap-4">
             <a href="/" className="flex min-w-0 items-center gap-2 text-base font-black md:text-xl">
-              <img src="/sdtv-logo.png" alt="Seattle Desi TV" className="h-10 w-auto shrink-0 md:h-14" />
-              <span className="truncate">Seattle Desi TV</span>
+              <img src={String(site.settings.logo_url || "/sdtv-logo.png")} alt={site.name} className="h-10 w-auto shrink-0 md:h-14" />
+              <span className="truncate">{site.name}</span>
             </a>
-            <a href="/submit-content" className="hidden rounded-xl bg-pink-600 px-4 py-2 text-sm font-black text-white shadow-sm hover:bg-pink-700 sm:inline-flex">Share with SDTV</a>
+            <a href="/submit-content" className="hidden rounded-xl bg-pink-600 px-4 py-2 text-sm font-black text-white shadow-sm hover:bg-pink-700 sm:inline-flex">Share with {site.shortName}</a>
           </div>
 
           <nav className="hidden items-center gap-1 text-sm font-bold lg:flex">

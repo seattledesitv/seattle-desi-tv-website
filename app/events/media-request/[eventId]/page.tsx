@@ -67,6 +67,7 @@ export default function EventMediaRequestPage() {
     setSaving(true);
     const payload = {
       event_id: eventId,
+      site_id: site.id,
       source_type: "organizer_media",
       status: "available",
       source_url: form.source_url.trim(),

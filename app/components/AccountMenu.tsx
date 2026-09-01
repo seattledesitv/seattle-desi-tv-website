@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, isTeamRole, isVideoEditorRole, resolveUserRole } from "../lib/roles";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -11,14 +13,15 @@ function initials(email: string) { return String(email || "?").trim().charAt(0).
 function roleLabel(role: string) { return String(role || "general_public").replaceAll("_", " "); }
 
 export default function AccountMenu({ tone = "light", from = "site" }: AccountMenuProps) {
+  const site = useCurrentSite();
   const [open, setOpen] = useState(false), [email, setEmail] = useState(""), [role, setRole] = useState("general_public"), [unreadCount, setUnreadCount] = useState(0), [businessCount, setBusinessCount] = useState(0);
   async function load() {
     const { data } = await supabase.auth.getUser(); const user = data?.user || null; const nextRole = await resolveUserRole(supabase, user); let nextUnreadCount = 0, nextBusinessCount = 0;
     if (user?.id) {
       const [{ count }, managerResult, submittedResult] = await Promise.all([
         supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("read", false),
-        supabase.from("business_managers").select("business_id").eq("user_id", user.id).eq("active", true),
-        supabase.from("local_businesses").select("id").eq("created_by", user.id),
+        forSite(supabase.from("business_managers").select("business_id"), site.id).eq("user_id", user.id).eq("active", true),
+        forSite(supabase.from("local_businesses").select("id"), site.id).eq("created_by", user.id),
       ]);
       nextUnreadCount = count || 0;
       const ids = new Set<string>(); (managerResult.data || []).forEach((row: any) => ids.add(row.business_id)); (submittedResult.data || []).forEach((row: any) => ids.add(row.id)); nextBusinessCount = ids.size;
@@ -26,7 +29,7 @@ export default function AccountMenu({ tone = "light", from = "site" }: AccountMe
     setEmail(user?.email || ""); setRole(nextRole); setUnreadCount(nextUnreadCount); setBusinessCount(nextBusinessCount);
   }
   async function logout() { await supabase.auth.signOut(); setOpen(false); window.location.href = "/"; }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [site.id]);
   const loggedIn = Boolean(email), dark = tone === "dark", canSeeStudio = isAdminRole(role), canSeeTeam = isTeamRole(role), canSeeVideo = isVideoEditorRole(role) || canSeeStudio;
   const triggerClass = dark ? "border border-white/20 bg-white/10 text-white hover:bg-white/15" : "border border-slate-200 bg-white text-slate-950 shadow-sm hover:bg-slate-50";
   if (!loggedIn) return <a href="/login" className="rounded-xl bg-pink-600 px-4 py-2 text-sm font-black text-white">Login</a>;

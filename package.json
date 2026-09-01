@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run check:multicity && next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "check:multicity": "node scripts/check-multicity.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "latest",

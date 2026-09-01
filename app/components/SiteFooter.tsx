@@ -5,11 +5,13 @@ import Link from "next/link";
 import NewsletterSubscribeForm from "./NewsletterSubscribeForm";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, isTeamRole, resolveUserRole } from "../lib/roles";
-import { SDTV_PHONE_DISPLAY, SdtvContactButtons } from "./SdtvContactLinks";
+import { SdtvContactButtons } from "./SdtvContactLinks";
+import { useCurrentSite } from "../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 
 export default function SiteFooter() {
+  const site = useCurrentSite();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("general_public");
 
@@ -32,9 +34,9 @@ export default function SiteFooter() {
       <div className="max-w-7xl mx-auto mb-8 rounded-[2rem] border border-white/10 bg-white/[0.06] p-6 md:p-8 shadow-2xl">
         <div className="grid gap-5 lg:grid-cols-[1fr_1.1fr] lg:items-center">
           <div>
-            <p className="text-sm font-black uppercase tracking-wide text-pink-300">Subscribe to SDTV</p>
+            <p className="text-sm font-black uppercase tracking-wide text-pink-300">Subscribe to {site.shortName}</p>
             <h2 className="mt-2 text-2xl md:text-3xl font-black">Hear from us</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-300">Get Seattle Desi TV community updates, events, interviews, TV, radio, local business highlights, and special announcements.</p>
+            <p className="mt-3 text-sm leading-6 text-slate-300">Get {site.name} community updates, events, interviews, TV, radio, local business highlights, and special announcements.</p>
             <Link href="/subscribe" className="mt-3 inline-flex text-sm font-black text-pink-300 underline">Open the full Subscribe page</Link>
           </div>
           <NewsletterSubscribeForm source="footer" compact />
@@ -43,17 +45,17 @@ export default function SiteFooter() {
 
       <div className="max-w-7xl mx-auto mb-8 rounded-[2rem] border border-amber-100 bg-[#fffaf0] p-5 text-slate-950 shadow-2xl shadow-black/20 md:p-6">
         <div className="mb-4">
-          <p className="text-sm font-black uppercase tracking-wide text-pink-600">Connect with SDTV</p>
+          <p className="text-sm font-black uppercase tracking-wide text-pink-600">Connect with {site.shortName}</p>
           <h3 className="mt-1 text-2xl font-black">Call, WhatsApp, or join the fan club</h3>
-          <p className="mt-2 text-sm text-slate-700">Phone: {SDTV_PHONE_DISPLAY}</p>
+          {(site.settings.phone_display || site.settings.whatsapp_number) && <p className="mt-2 text-sm text-slate-700">Phone: {String(site.settings.phone_display || site.settings.whatsapp_number)}</p>}
         </div>
         <SdtvContactButtons tone="light" />
       </div>
 
       <div className="max-w-7xl mx-auto grid gap-8 md:grid-cols-2 xl:grid-cols-4">
         <div>
-          <h2 className="text-2xl font-black">Seattle Desi TV</h2>
-          <p className="text-slate-300 mt-3 text-sm leading-6">Community media, culture, events, radio, interviews, and stories across the Pacific Northwest.</p>
+          <h2 className="text-2xl font-black">{site.name}</h2>
+          <p className="text-slate-300 mt-3 text-sm leading-6">{String(site.settings.region_description || `Community media, culture, events, radio, interviews, and stories for ${site.city} and the surrounding region.`)}</p>
           <a href="/submit-content" className="mt-4 inline-flex rounded-xl bg-pink-600 px-4 py-3 text-sm font-black text-white">Submit Content</a>
         </div>
 
@@ -110,7 +112,7 @@ export default function SiteFooter() {
       </div>
 
       <div className="max-w-7xl mx-auto mt-8 flex flex-col gap-3 border-t border-white/10 pt-6 text-xs text-slate-400 md:flex-row md:items-center md:justify-between">
-        <p>© 2026 Seattle Desi TV. All Rights Reserved.</p>
+        <p>© 2026 {site.name}. All Rights Reserved.</p>
         <p>SDTV Platform v1.0.3</p>
       </div>
     </footer>

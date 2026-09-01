@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -28,8 +30,8 @@ function findSlot() {
   return slot;
 }
 
-function buildBody(eventTitle: string, formLink: string) {
-  return [`Hello,`, ``, `Thank you for requesting SDTV coverage for ${eventTitle || "your event"}.`, ``, `Please share your event photos or videos using this SDTV form:`, ``, formLink || "[media request link will appear after the event is resolved]", ``, `Once received, SDTV can review the media and assign it for editing/publishing consideration.`, ``, `Thank you,`, `Seattle Desi TV Team`].join("\n");
+function buildBody(eventTitle: string, formLink: string, siteName: string) {
+  return [`Hello,`, ``, `Thank you for requesting ${siteName} coverage for ${eventTitle || "your event"}.`, ``, `Please share your event photos or videos using this form:`, ``, formLink || "[media request link will appear after the event is resolved]", ``, `Once received, ${siteName} can review the media and assign it for editing/publishing consideration.`, ``, `Thank you,`, `${siteName} Team`].join("\n");
 }
 
 function validEmail(value: string) {
@@ -37,6 +39,7 @@ function validEmail(value: string) {
 }
 
 export default function EventOpsMediaRecovery() {
+  const site = useCurrentSite();
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const [eventId, setEventId] = useState("");
   const [eventTitle, setEventTitle] = useState("");
@@ -51,7 +54,7 @@ export default function EventOpsMediaRecovery() {
   async function resolveEvent(title: string) {
     if (!title || title === activeTitleRef.current) return;
     activeTitleRef.current = title;
-    const { data } = await supabase.from("events").select("id,title,poc_email").eq("title", title).order("date", { ascending: false }).limit(1).maybeSingle();
+    const { data } = await forSite(supabase.from("events").select("id,title,poc_email"), site.id).eq("title", title).order("date", { ascending: false }).limit(1).maybeSingle();
     const nextId = data?.id || "";
     const nextTitle = data?.title || title;
     const nextEmail = data?.poc_email || "";
@@ -60,10 +63,10 @@ export default function EventOpsMediaRecovery() {
     setEventTitle(nextTitle);
     setPocEmail(nextEmail);
     setEmailSubject(`SDTV media folder request - ${nextTitle || "Event"}`);
-    setEmailBody(buildBody(nextTitle, nextLink));
+    setEmailBody(buildBody(nextTitle, nextLink, site.name));
     setLastRequestedAt("");
     if (nextId) {
-      const { data: existing } = await supabase.from("event_coverage_sources").select("requested_at,created_at,status").eq("event_id", nextId).eq("source_type", "organizer_media").order("created_at", { ascending: false }).limit(1).maybeSingle();
+      const { data: existing } = await forSite(supabase.from("event_coverage_sources").select("requested_at,created_at,status"), site.id).eq("event_id", nextId).eq("source_type", "organizer_media").order("created_at", { ascending: false }).limit(1).maybeSingle();
       setLastRequestedAt(existing?.requested_at || existing?.created_at || "");
     }
   }
@@ -76,7 +79,7 @@ export default function EventOpsMediaRecovery() {
       resolveEvent(selectedTitle());
     }, 1000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [site.id, site.name]);
 
   async function notifyPoc(formLink: string) {
     const email = pocEmail.trim().toLowerCase();
@@ -99,6 +102,7 @@ export default function EventOpsMediaRecovery() {
     const formLink = `${window.location.origin}/events/media-request/${eventId}`;
     const payload = {
       event_id: eventId,
+      site_id: site.id,
       source_type: "organizer_media",
       status: "requested",
       source_url: formLink,

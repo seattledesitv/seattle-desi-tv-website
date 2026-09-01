@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
@@ -28,6 +30,7 @@ function findPortalTarget() {
 }
 
 export default function EventOpsAgingPanel() {
+  const site = useCurrentSite();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
@@ -35,10 +38,10 @@ export default function EventOpsAgingPanel() {
   async function loadAgingItems() {
     setLoading(true);
     const [events, crew, influencers, videos] = await Promise.all([
-      supabase.from("events").select("id,title,date,status,created_at,updated_at").in("status", ["pending", "on_hold"]).limit(200),
-      supabase.from("event_crew_assignments").select("id,event_id,event_title,user_email,assignment_type,status,created_at,updated_at").in("status", ["pending", "on_hold"]).limit(300),
-      supabase.from("event_influencer_intents").select("id,event_id,user_email,status,created_at,updated_at,collab_note").in("status", ["pending", "on_hold"]).limit(300),
-      supabase.from("event_video_workflows").select("id,event_id,status,assigned_editor_email,updated_at,created_at").in("status", ["changes_requested", "awaiting_admin_approval", "awaiting_crew_review", "ready_for_editing"]).limit(300),
+      forSite(supabase.from("events").select("id,title,date,status,created_at,updated_at"), site.id).in("status", ["pending", "on_hold"]).limit(200),
+      forSite(supabase.from("event_crew_assignments").select("id,event_id,event_title,user_email,assignment_type,status,created_at,updated_at"), site.id).in("status", ["pending", "on_hold"]).limit(300),
+      forSite(supabase.from("event_influencer_intents").select("id,event_id,user_email,status,created_at,updated_at,collab_note"), site.id).in("status", ["pending", "on_hold"]).limit(300),
+      forSite(supabase.from("event_video_workflows").select("id,event_id,status,assigned_editor_email,updated_at,created_at"), site.id).in("status", ["changes_requested", "awaiting_admin_approval", "awaiting_crew_review", "ready_for_editing"]).limit(300),
     ]);
     const next: any[] = [];
     (events.data || []).forEach((event: any) => { const since = event.updated_at || event.created_at; if (old(since)) next.push({ kind: "Event approval", title: event.title || "Untitled event", status: event.status, since, note: event.date ? `Event date: ${event.date}` : "Needs admin decision" }); });
@@ -49,7 +52,7 @@ export default function EventOpsAgingPanel() {
     setLoading(false);
   }
 
-  useEffect(() => { loadAgingItems(); }, []);
+  useEffect(() => { loadAgingItems(); }, [site.id]);
   useEffect(() => {
     const refresh = () => setPortalTarget(findPortalTarget());
     refresh();

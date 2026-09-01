@@ -6,6 +6,8 @@ import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
 import { useRegisteredUsers } from "../../hooks/useRegisteredUsers";
 import type { RegisteredUser } from "../../lib/userAdmin/types";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
@@ -161,6 +163,7 @@ function ConnectedInput({ field, value, onChange }: { field: string; value: any;
 }
 
 export default function UserControlClient() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -241,7 +244,7 @@ export default function UserControlClient() {
   }
   async function loadRows() {
     setActionMessage("");
-    const [profiles, admins, team, radio, volunteers, influencers, content] = await Promise.all([safe(supabase.from("user_profiles").select("*").limit(1000)), safe(supabase.from("admins").select("user_id,email,name,role,created_at").limit(500)), safe(supabase.from("team_members").select("*").limit(1000)), safe(supabase.from("radio_team_members").select("*").limit(1000)), safe(supabase.from("volunteer_onboarding_submissions").select("*").limit(1000)), safe(supabase.from("influencer_profiles").select("*").limit(1000)), safe(supabase.from("public_content_requests").select("*").limit(1000))]);
+    const [profiles, admins, team, radio, volunteers, influencers, content] = await Promise.all([safe(supabase.from("user_profiles").select("*").limit(1000)), safe(supabase.from("admins").select("user_id,email,name,role,created_at").limit(500)), safe(forSite(supabase.from("team_members").select("*"), site.id).limit(1000)), safe(forSite(supabase.from("radio_team_members").select("*"), site.id).limit(1000)), safe(forSite(supabase.from("volunteer_onboarding_submissions").select("*"), site.id).limit(1000)), safe(forSite(supabase.from("influencer_profiles").select("*"), site.id).limit(1000)), safe(forSite(supabase.from("public_content_requests").select("*"), site.id).limit(1000))]);
     const map = new Map<string, Person>();
     profiles.forEach((r: any) => merge(map, r, "Profile", r.role || "general_public"));
     admins.forEach((r: any) => merge(map, { ...r, full_name: r.name }, "Admin", r.role || "admin"));
@@ -321,7 +324,7 @@ export default function UserControlClient() {
     return score;
   }
   async function findConnected(row: Person, kind: string, title: string, table: string, statusField = "status") {
-    const result = await supabase.from(table).select("*").limit(1000);
+    const result = await forSite(supabase.from(table).select("*"), site.id).limit(1000);
     if (result.error) {
       setActionMessage((c) => c || `Could not load ${title}: ${result.error.message}`);
       return null;
@@ -459,7 +462,7 @@ export default function UserControlClient() {
       if (connectedEdit[k] !== undefined) payload[k] = connectedEdit[k] || null;
     });
     setSaving(true);
-    const { error } = await supabase.from(selectedConnected.table).update(payload).eq("id", selectedConnected.row.id);
+    const { error } = await forSite(supabase.from(selectedConnected.table).update(payload), site.id).eq("id", selectedConnected.row.id);
     setActionMessage(error ? `Could not save connected profile: ${error.message}` : "Connected profile saved.");
     if (selectedRow) await loadConnectedFor(selectedRow);
     setSaving(false);
@@ -467,12 +470,12 @@ export default function UserControlClient() {
   async function saveConnectedImage(item: any, nextImage?: string) {
     const field = imageField(item.kind);
     setSaving(true);
-    const { error } = await supabase
+    const { error } = await forSite(supabase
       .from(item.table)
       .update({
         [field]: nextImage ?? item.row[field] ?? "",
         updated_at: new Date().toISOString(),
-      })
+      }), site.id)
       .eq("id", item.row.id);
     setActionMessage(error ? `Could not save ${item.title} image: ${error.message}` : `${item.title} image saved.`);
     if (selectedRow) await loadConnectedFor(selectedRow);
@@ -489,12 +492,12 @@ export default function UserControlClient() {
     setSaving(true);
     const results = await Promise.all(
       targets.map((i) =>
-        supabase
+        forSite(supabase
           .from(i.table)
           .update({
             [imageField(i.kind)]: editForm.profile_photo_url,
             updated_at: new Date().toISOString(),
-          })
+          }), site.id)
           .eq("id", i.row.id),
       ),
     );
@@ -517,7 +520,7 @@ export default function UserControlClient() {
   }
   useEffect(() => {
     init();
-  }, []);
+  }, [site.id]);
 
   if (loading)
     return (
