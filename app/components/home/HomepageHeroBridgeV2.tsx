@@ -61,7 +61,7 @@ export default function HomepageHeroBridgeV2() {
     async function load() {
       const today = new Date().toISOString().slice(0, 10);
       const [settingsResult, bannersResult, eventsResult, festivalsResult] = await Promise.all([
-        supabase.from("homepage_hero_settings").select("layout_style").eq("id", "default").maybeSingle(),
+        forSite(supabase.from("homepage_hero_settings").select("layout_style").eq("id", "default"), site.id).maybeSingle(),
         forSite(supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,banner_type,theme,hero_layout,start_date,end_date,display_order,active"), site.id).eq("active", true).order("display_order", { ascending: true }),
         forSite(supabase.from("events").select("id,title,date,location,image,image_urls,featured,featured_order,hero_theme,hero_layout,status"), site.id).eq("status", "approved").eq("featured", true).order("featured_order", { ascending: true }).order("date", { ascending: true }).limit(8),
         forSite(supabase.from("festival_hero_assets").select("id,festival_name,festival_key,title,subtitle,image_url,theme,hero_layout,start_date,end_date,active"), site.id).eq("active", true).order("start_date", { ascending: true }),

@@ -69,9 +69,9 @@ export default function Page() {
     const team = await forSite(supabase.from("team_members").select("id,name,title,email,show_on_public_team").eq("show_on_public_team", true).order("created_at", { ascending: true }), site.id);
     if (team.error) { setMessage(team.error.message); setLoading(false); return; }
     setMembers(team.data || []);
-    const sec = await supabase.from("team_page_sections").select("section_key,title,subtitle,display_order,enabled").order("display_order", { ascending: true });
-    const pos = await supabase.from("team_page_member_assignments").select("member_id,section_key,display_order");
-    const settings = await supabase.from("team_page_settings").select("key,value");
+    const sec = await forSite(supabase.from("team_page_sections").select("section_key,title,subtitle,display_order,enabled").order("display_order", { ascending: true }), site.id);
+    const pos = await forSite(supabase.from("team_page_member_assignments").select("member_id,section_key,display_order"), site.id);
+    const settings = await forSite(supabase.from("team_page_settings").select("key,value"), site.id);
     if (sec.error || pos.error || settings.error) { setMessage("Team page tables are not ready yet in Supabase."); setLoading(false); return; }
     setSections(mergeSections(sec.data || []));
     const nextChoices: any = {}; const nextOrders: any = {};

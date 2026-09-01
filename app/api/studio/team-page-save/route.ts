@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminRole, resolveUserRole } from "../../../lib/roles";
+import { resolveCurrentSite } from "../../../lib/sites/siteResolver";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -18,6 +19,8 @@ export async function POST(request: Request) {
     if (!writeKey) return NextResponse.json({ ok: false, error: "SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY is missing in Vercel." }, { status: 500 });
 
     const db = createClient(supabaseUrl, writeKey, { auth: { persistSession: false } }) as any;
+    const site = await resolveCurrentSite();
+    if (!site.id) return NextResponse.json({ ok: false, error: "Site context is not configured." }, { status: 500 });
     const body = await request.json();
     const action = body.action;
 
@@ -25,12 +28,12 @@ export async function POST(request: Request) {
       const sections = Array.isArray(body.sections) ? body.sections : [];
       const text = body.text || {};
       if (sections.length) {
-        const result = await db.from("team_page_sections").upsert(sections, { onConflict: "section_key" });
+        const result = await db.from("team_page_sections").upsert(sections.map((row: any) => ({ ...row, site_id: site.id })), { onConflict: "site_id,section_key" });
         if (result.error) throw result.error;
       }
-      const rows = Object.keys(text).map((key) => ({ key, value: String(text[key] || ""), updated_at: new Date().toISOString() }));
+      const rows = Object.keys(text).map((key) => ({ site_id: site.id, key, value: String(text[key] || ""), updated_at: new Date().toISOString() }));
       if (rows.length) {
-        const result = await db.from("team_page_settings").upsert(rows, { onConflict: "key" });
+        const result = await db.from("team_page_settings").upsert(rows, { onConflict: "site_id,key" });
         if (result.error) throw result.error;
       }
       return NextResponse.json({ ok: true, message: "Default sections and text saved." });
@@ -38,15 +41,15 @@ export async function POST(request: Request) {
 
     if (action === "text") {
       const text = body.text || {};
-      const rows = Object.keys(text).map((key) => ({ key, value: String(text[key] || ""), updated_at: new Date().toISOString() }));
-      const result = await db.from("team_page_settings").upsert(rows, { onConflict: "key" });
+      const rows = Object.keys(text).map((key) => ({ site_id: site.id, key, value: String(text[key] || ""), updated_at: new Date().toISOString() }));
+      const result = await db.from("team_page_settings").upsert(rows, { onConflict: "site_id,key" });
       if (result.error) throw result.error;
       return NextResponse.json({ ok: true, message: "Text saved." });
     }
 
     if (action === "section") {
       const s = body.section || {};
-      const result = await db.from("team_page_sections").upsert({ section_key: s.section_key, title: s.title, subtitle: s.subtitle || "", display_order: Number(s.display_order || 100), enabled: s.enabled !== false, updated_at: new Date().toISOString() }, { onConflict: "section_key" });
+      const result = await db.from("team_page_sections").upsert({ site_id: site.id, section_key: s.section_key, title: s.title, subtitle: s.subtitle || "", display_order: Number(s.display_order || 100), enabled: s.enabled !== false, updated_at: new Date().toISOString() }, { onConflict: "site_id,section_key" });
       if (result.error) throw result.error;
       return NextResponse.json({ ok: true, message: "Section saved." });
     }
@@ -56,11 +59,11 @@ export async function POST(request: Request) {
       const sectionKey = String(body.sectionKey || "");
       if (!memberId) return NextResponse.json({ ok: false, error: "Missing member id." }, { status: 400 });
       if (!sectionKey) {
-        const result = await db.from("team_page_member_assignments").delete().eq("member_id", memberId);
+        const result = await db.from("team_page_member_assignments").delete().eq("site_id", site.id).eq("member_id", memberId);
         if (result.error) throw result.error;
         return NextResponse.json({ ok: true, message: "Auto group restored." });
       }
-      const result = await db.from("team_page_member_assignments").upsert({ member_id: memberId, section_key: sectionKey, display_order: Number(body.displayOrder || 100), updated_at: new Date().toISOString() }, { onConflict: "member_id,section_key" });
+      const result = await db.from("team_page_member_assignments").upsert({ site_id: site.id, member_id: memberId, section_key: sectionKey, display_order: Number(body.displayOrder || 100), updated_at: new Date().toISOString() }, { onConflict: "site_id,member_id,section_key" });
       if (result.error) throw result.error;
       return NextResponse.json({ ok: true, message: "Member moved." });
     }

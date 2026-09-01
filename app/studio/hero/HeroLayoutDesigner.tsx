@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import HeroPreview, { type HeroLayoutStyle } from "./HeroPreview";
 import HeroItemLayoutManager from "./HeroItemLayoutManager";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const LAYOUTS: Array<{ key: HeroLayoutStyle; name: string; note: string }> = [
@@ -18,6 +20,7 @@ const LAYOUTS: Array<{ key: HeroLayoutStyle; name: string; note: string }> = [
 ];
 
 export default function HeroLayoutDesigner({ banners, featuredEvents, festivals }: { banners: any[]; featuredEvents: any[]; festivals: any[] }) {
+  const site = useCurrentSite();
   const [layout, setLayout] = useState<HeroLayoutStyle>("image_focus");
   const [savedLayout, setSavedLayout] = useState<HeroLayoutStyle>("image_focus");
   const [saving, setSaving] = useState(false);
@@ -38,7 +41,7 @@ export default function HeroLayoutDesigner({ banners, featuredEvents, festivals 
 
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.from("homepage_hero_settings").select("layout_style").eq("id", "default").maybeSingle();
+      const { data, error } = await forSite(supabase.from("homepage_hero_settings").select("layout_style").eq("id", "default"), site.id).maybeSingle();
       if (!error && data?.layout_style) {
         setLayout(data.layout_style as HeroLayoutStyle);
         setSavedLayout(data.layout_style as HeroLayoutStyle);
@@ -49,7 +52,7 @@ export default function HeroLayoutDesigner({ banners, featuredEvents, festivals 
 
   async function save() {
     setSaving(true);
-    const { error } = await supabase.from("homepage_hero_settings").upsert({ id: "default", layout_style: layout, updated_at: new Date().toISOString() });
+    const { error } = await supabase.from("homepage_hero_settings").upsert({ site_id: site.id, id: "default", layout_style: layout, updated_at: new Date().toISOString() }, { onConflict: "site_id,id" });
     if (error) setMessage(`Layout save failed: ${error.message}`);
     else {
       setSavedLayout(layout);
