@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const ROLES = ["general_public", "team_member", "video_editor", "pm_admin", "super_admin"];
 const STATUS_OPTIONS = ["all", "pending", "approved", "rejected"];
@@ -11,6 +13,7 @@ const supabase = getSupabaseBrowserClient();
 function norm(value?: string | null) { return String(value || "").trim().toLowerCase(); }
 
 export default function StudioRolesPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [actionMessage, setActionMessage] = useState("");
@@ -41,7 +44,7 @@ export default function StudioRolesPage() {
   }
 
   async function loadRequests() {
-    const { data, error } = await supabase.from("user_role_requests").select("id,user_id,email,requested_role,status,approved_role,approved_by,approved_at,created_at").order("created_at", { ascending: false });
+    const { data, error } = await forSite(supabase.from("user_role_requests").select("id,user_id,email,requested_role,status,approved_role,approved_by,approved_at,created_at").order("created_at", { ascending: false }), site.id);
     if (error) { setActionMessage(`Could not load role requests: ${error.message}`); return; }
     setRequests(data || []);
     const next: Record<string, string> = {};
@@ -70,7 +73,7 @@ export default function StudioRolesPage() {
       if (upsertError) { setActionMessage(`Could not update admin role: ${upsertError.message}`); return; }
     }
 
-    const { error: updateError } = await supabase.from("user_role_requests").update({ status: "approved", approved_role: approvedRole, approved_by: user?.email || user?.id || null, approved_at: new Date().toISOString() }).eq("id", request.id);
+    const { error: updateError } = await forSite(supabase.from("user_role_requests").update({ status: "approved", approved_role: approvedRole, approved_by: user?.email || user?.id || null, approved_at: new Date().toISOString() }).eq("id", request.id), site.id);
     if (updateError) { setActionMessage(`Could not approve role request: ${updateError.message}`); return; }
     await notifyUser(request.user_id, "Role request approved", `Your Seattle Desi TV role request was approved as ${approvedRole}.`, "/portal");
     setActionMessage(`Approved ${request.email} as ${approvedRole}.`);
@@ -79,7 +82,7 @@ export default function StudioRolesPage() {
 
   async function rejectRequest(request: any) {
     setActionMessage("Rejecting role request...");
-    const { error } = await supabase.from("user_role_requests").update({ status: "rejected", approved_by: user?.email || user?.id || null, approved_at: new Date().toISOString() }).eq("id", request.id);
+    const { error } = await forSite(supabase.from("user_role_requests").update({ status: "rejected", approved_by: user?.email || user?.id || null, approved_at: new Date().toISOString() }).eq("id", request.id), site.id);
     if (error) { setActionMessage(`Reject failed: ${error.message}`); return; }
     await notifyUser(request.user_id, "Role request rejected", "Your Seattle Desi TV role request was reviewed and rejected.", "/portal");
     setActionMessage(`Rejected request from ${request.email}.`);

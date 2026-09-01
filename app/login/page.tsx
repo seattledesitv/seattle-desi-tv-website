@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { AUTH_STORAGE_KEY, getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../lib/roles";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -23,6 +25,7 @@ function statusLabel(status?: string | null) {
 }
 
 export default function LoginPage() {
+  const site = useCurrentSite();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("Checking login...");
@@ -38,12 +41,12 @@ export default function LoginPage() {
     if (!user?.email) return;
     const nextRole = await resolveUserRole(supabase, user);
     setRole(nextRole);
-    const { data } = await supabase
+    const { data } = await forSite(supabase
       .from("user_role_requests")
       .select("requested_role,status,created_at")
       .or(`user_id.eq.${user.id},email.eq.${user.email}`)
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(20), site.id);
     const rows = data || [];
     const volunteer = rows.find((row: any) => row.requested_role === "volunteer");
     const team = rows.find((row: any) => row.requested_role === "team_member");
@@ -113,6 +116,7 @@ export default function LoginPage() {
       requested_role: "volunteer",
       status: "awaiting_orientation",
       approved_role: null,
+      site_id: site.id,
     });
     if (error) { setRoleRequestMessage(`Volunteer request failed: ${error.message}`); return; }
     setVolunteerStatus("awaiting_orientation");
@@ -128,6 +132,7 @@ export default function LoginPage() {
       requested_role: "team_member",
       status: "pending",
       approved_role: null,
+      site_id: site.id,
     });
     if (error) { setRoleRequestMessage(`Team access request failed: ${error.message}`); return; }
     setTeamAccessStatus("pending");

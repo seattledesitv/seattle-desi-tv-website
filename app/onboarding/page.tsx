@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const cloudinaryCloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
@@ -67,6 +69,7 @@ function requiredMissing(form: any) {
 }
 
 export default function OnboardingPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -84,7 +87,7 @@ export default function OnboardingPage() {
     setUser(currentUser);
     if (!currentUser?.email) { setMessage("Please login before completing onboarding."); setLoading(false); return; }
     setForm((current) => ({ ...current, full_name: currentUser.user_metadata?.full_name || current.full_name || "" }));
-    const { data, error } = await supabase.from("user_role_requests").select("id,user_id,email,requested_role,status,created_at").or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`).eq("requested_role", "volunteer").order("created_at", { ascending: false }).limit(1).maybeSingle();
+    const { data, error } = await forSite(supabase.from("user_role_requests").select("id,user_id,email,requested_role,status,created_at").or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`).eq("requested_role", "volunteer").order("created_at", { ascending: false }).limit(1), site.id).maybeSingle();
     if (error) { setMessage(`Could not load volunteer request: ${error.message}`); setLoading(false); return; }
     setVolunteerRequest(data);
     if (!data) setMessage("No volunteer request found. Please request to volunteer from Settings first.");
@@ -152,6 +155,7 @@ export default function OnboardingPage() {
       agreement_acknowledged_at: new Date().toISOString(),
       agreement_text: agreementText,
       status: "submitted",
+      site_id: site.id,
     };
     const { error: insertError } = await supabase.from("volunteer_onboarding_submissions").insert(payload);
     if (insertError) { setSubmitting(false); setMessage(`Could not submit onboarding: ${insertError.message}. Please confirm the volunteer_onboarding_submissions table exists in Supabase.`); return; }
@@ -170,7 +174,7 @@ export default function OnboardingPage() {
       updated_at: new Date().toISOString(),
     }, { onConflict: "user_id" });
     if (profileError) { setSubmitting(false); setMessage(`Onboarding saved, but base profile sync failed: ${profileError.message}`); return; }
-    const { error: updateError } = await supabase.from("user_role_requests").update({ status: "awaiting_team_role_access" }).eq("id", volunteerRequest.id);
+    const { error: updateError } = await forSite(supabase.from("user_role_requests").update({ status: "awaiting_team_role_access" }).eq("id", volunteerRequest.id), site.id);
     setSubmitting(false);
     if (updateError) { setMessage(`Onboarding and base profile saved, but status update failed: ${updateError.message}`); return; }
     setVolunteerRequest({ ...volunteerRequest, status: "awaiting_team_role_access" });

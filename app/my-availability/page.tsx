@@ -5,11 +5,14 @@ import MyHubHeader from "../components/MyHubHeader";
 import SiteFooter from "../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isTeamRole, resolveUserRole } from "../lib/roles";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 function todayIso() { return new Date().toISOString().split("T")[0]; }
 
 export default function MyAvailabilityPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [user, setUser] = useState<any>(null);
@@ -22,7 +25,7 @@ export default function MyAvailabilityPage() {
 
   async function loadRows(currentUser: any) {
     if (!currentUser?.id) return;
-    const { data, error } = await supabase.from("crew_availability").select("id,available_date,status,note").eq("user_id", currentUser.id).gte("available_date", todayIso()).order("available_date", { ascending: true });
+    const { data, error } = await forSite(supabase.from("crew_availability").select("id,available_date,status,note"), site.id).eq("user_id", currentUser.id).gte("available_date", todayIso()).order("available_date", { ascending: true });
     if (error) setMessage(`Could not load availability: ${error.message}`); else setRows(data || []);
   }
 
@@ -43,7 +46,7 @@ export default function MyAvailabilityPage() {
   async function save() {
     if (!user?.id) return;
     setMessage("Saving...");
-    const { error } = await supabase.from("crew_availability").upsert({ user_id: user.id, user_email: user.email || null, available_date: date, status, note: note || null, updated_at: new Date().toISOString() }, { onConflict: "user_id,available_date" });
+    const { error } = await supabase.from("crew_availability").upsert({ site_id: site.id, user_id: user.id, user_email: user.email || null, available_date: date, status, note: note || null, updated_at: new Date().toISOString() }, { onConflict: "site_id,user_id,available_date" });
     if (error) setMessage(`Save failed: ${error.message}`); else { setMessage("Saved."); setNote(""); await loadRows(user); }
   }
 

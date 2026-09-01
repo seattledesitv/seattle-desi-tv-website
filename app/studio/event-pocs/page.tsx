@@ -41,7 +41,7 @@ export default function EventPocsPage() {
       forSite(supabase.from("events").select("id,title,date,location,status,poc_email,poc_phone,created_at"), site.id).order("date", { ascending: false }).limit(500),
       supabase.from("admins").select("user_id,email,role,name,created_at").order("created_at", { ascending: false }),
       supabase.from("user_profiles").select("user_id,email,full_name,profile_photo_url,phone"),
-      supabase.from("team_members").select("name,email,image,user_id"),
+      forSite(supabase.from("team_members").select("name,email,image,user_id"), site.id),
       forSite(supabase.from("event_admin_pocs").select("*"), site.id)
     ]);
     if (eventsResult.error) { setMessage(eventsResult.error.message); setLoading(false); return; }

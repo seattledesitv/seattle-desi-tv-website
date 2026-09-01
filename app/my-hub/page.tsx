@@ -106,6 +106,7 @@ export default function MyHubPage() {
         supabase
           .from("event_crew_assignments")
           .select("id", { count: "exact", head: true })
+          .eq("site_id", site.id)
           .or(`user_id.eq.${user.id},user_email.eq.${nextEmail}`),
       ),
       countQuery(
@@ -119,12 +120,14 @@ export default function MyHubPage() {
         supabase
           .from("user_role_requests")
           .select("id", { count: "exact", head: true })
+          .eq("site_id", site.id)
           .or(`user_id.eq.${user.id},email.eq.${nextEmail}`),
       ),
       countQuery(
         supabase
           .from("event_crew_assignments")
           .select("id", { count: "exact", head: true })
+          .eq("site_id", site.id)
           .eq("user_id", user.id)
           .eq("status", "approved"),
       ),
@@ -132,6 +135,7 @@ export default function MyHubPage() {
         supabase
           .from("crew_availability")
           .select("id", { count: "exact", head: true })
+          .eq("site_id", site.id)
           .eq("user_id", user.id)
           .gte("available_date", today),
       ),

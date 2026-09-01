@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const TEAM_AREAS = ["General Team", "Events Team", "Radio Team", "Production Team", "Photography Team", "Social Media Team", "Marketing Team", "Youth Team"];
@@ -23,6 +25,7 @@ function fmt(value?: string | null) { return value ? new Date(value).toLocaleStr
 function readOnly(labelText: string, value: any) { return <div className="rounded-2xl bg-slate-100 p-4 text-slate-700"><p className="text-xs font-black uppercase tracking-wide text-slate-500">{labelText}</p><p className="mt-1 break-words text-sm font-bold">{value === null || value === undefined || value === "" ? "—" : String(value)}</p></div>; }
 
 export default function StudioVolunteersPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -61,9 +64,9 @@ export default function StudioVolunteersPage() {
   }
 
   async function loadVolunteers() {
-    const requestResult = await supabase.from("user_role_requests").select("id,user_id,email,requested_role,status,approved_role,approved_by,approved_at,created_at,updated_at").eq("requested_role", "volunteer").order("created_at", { ascending: false });
+    const requestResult = await forSite(supabase.from("user_role_requests").select("id,user_id,email,requested_role,status,approved_role,approved_by,approved_at,created_at,updated_at").eq("requested_role", "volunteer").order("created_at", { ascending: false }), site.id);
     if (requestResult.error) { setActionMessage(`Could not load volunteer requests: ${requestResult.error.message}`); return; }
-    const submissionResult = await supabase.from("volunteer_onboarding_submissions").select("id,user_id,email,volunteer_request_id,full_name,phone,city,interests,availability,experience,photo_url,agreement_acknowledged,agreement_acknowledged_at,status,created_at,updated_at").order("created_at", { ascending: false });
+    const submissionResult = await forSite(supabase.from("volunteer_onboarding_submissions").select("id,user_id,email,volunteer_request_id,full_name,phone,city,interests,availability,experience,photo_url,agreement_acknowledged,agreement_acknowledged_at,status,created_at,updated_at"), site.id).order("created_at", { ascending: false });
     if (submissionResult.error) setActionMessage(`Volunteer requests loaded, but onboarding submissions could not load: ${submissionResult.error.message}`);
     const rows = requestResult.data || [];
     const areaDefaults: Record<string, string> = {};
@@ -96,7 +99,7 @@ export default function StudioVolunteersPage() {
       patch.approved_by = user?.email || user?.id || null;
       patch.approved_at = new Date().toISOString();
     }
-    const { error } = await supabase.from("user_role_requests").update(patch).eq("id", request.id);
+    const { error } = await forSite(supabase.from("user_role_requests").update(patch).eq("id", request.id), site.id);
     if (error) { setActionMessage(`Status update failed: ${error.message}`); return; }
     if (status === "awaiting_onboarding") await notifyVolunteer(request, "Volunteer onboarding ready", "Your SDTV orientation is complete. Please complete your onboarding form.", "/onboarding");
     setActionMessage(`Updated ${request.email} to ${label(status)}.`);
@@ -121,25 +124,25 @@ export default function StudioVolunteersPage() {
 
     let existing: any = null;
     if (payload.linked_user) {
-      const byLinked = await supabase.from("team_members").select("id").eq("linked_user", payload.linked_user).limit(1).maybeSingle();
+      const byLinked = await forSite(supabase.from("team_members").select("id"), site.id).eq("linked_user", payload.linked_user).limit(1).maybeSingle();
       existing = byLinked.data || null;
     }
     if (!existing && payload.user_id) {
-      const byUser = await supabase.from("team_members").select("id").eq("user_id", payload.user_id).limit(1).maybeSingle();
+      const byUser = await forSite(supabase.from("team_members").select("id"), site.id).eq("user_id", payload.user_id).limit(1).maybeSingle();
       existing = byUser.data || null;
     }
     if (!existing && email) {
-      const byEmail = await supabase.from("team_members").select("id").eq("email", email).limit(1).maybeSingle();
+      const byEmail = await forSite(supabase.from("team_members").select("id"), site.id).eq("email", email).limit(1).maybeSingle();
       existing = byEmail.data || null;
     }
     if (!existing && name) {
-      const byName = await supabase.from("team_members").select("id").ilike("name", name).limit(1).maybeSingle();
+      const byName = await forSite(supabase.from("team_members").select("id"), site.id).ilike("name", name).limit(1).maybeSingle();
       existing = byName.data || null;
     }
 
     const result = existing?.id
-      ? await supabase.from("team_members").update(payload).eq("id", existing.id)
-      : await supabase.from("team_members").insert({ ...payload, created_by: user?.id || user?.email || null });
+      ? await forSite(supabase.from("team_members").update(payload), site.id).eq("id", existing.id)
+      : await supabase.from("team_members").insert({ ...payload, site_id: site.id, created_by: user?.id || user?.email || null });
     if (result.error) { setActionMessage(`Team access was processed, but Team page auto-sync failed: ${result.error.message}.`); return false; }
     return true;
   }
@@ -147,7 +150,7 @@ export default function StudioVolunteersPage() {
   async function approveTeamAccess(request: any) {
     const teamArea = teamAreas[request.id] || "General Team";
     setActionMessage(`Approving ${request.email} for ${teamArea} and syncing Team page...`);
-    const updateResult = await supabase.from("user_role_requests").update({ status: "approved", approved_role: "team_member", approved_by: user?.email || user?.id || null, approved_at: new Date().toISOString() }).eq("id", request.id);
+    const updateResult = await forSite(supabase.from("user_role_requests").update({ status: "approved", approved_role: "team_member", approved_by: user?.email || user?.id || null, approved_at: new Date().toISOString() }).eq("id", request.id), site.id);
     if (updateResult.error) { setActionMessage(`Could not assign team member role: ${updateResult.error.message}`); return; }
     await saveTeamArea(request, teamArea);
     const published = await publishToTeamPage(request);
@@ -183,7 +186,7 @@ export default function StudioVolunteersPage() {
     if (!selected?.onboarding || !editProfile) return;
     setSavingProfile(true);
     setActionMessage("Saving onboarding profile changes...");
-    const { error } = await supabase.from("volunteer_onboarding_submissions").update(editProfile).eq("id", selected.onboarding.id);
+    const { error } = await forSite(supabase.from("volunteer_onboarding_submissions").update(editProfile), site.id).eq("id", selected.onboarding.id);
     setSavingProfile(false);
     if (error) { setActionMessage(`Profile update failed: ${error.message}`); return; }
     const updatedOnboarding = { ...selected.onboarding, ...editProfile };

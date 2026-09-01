@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const defaults = [
@@ -19,6 +21,7 @@ function mergeSections(rows: any[]) { const map: any = {}; defaults.forEach((s) 
 function orderDisplay(value: any) { const n = Number(value); return !value || n === 100 ? "" : String(n); }
 
 export default function Page() {
+  const site = useCurrentSite();
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState("");
   const [loading, setLoading] = useState(true);
@@ -63,7 +66,7 @@ export default function Page() {
     const auth = await supabase.auth.getUser(); const current = auth.data?.user || null; setUser(current);
     const nextRole = current ? await resolveUserRole(supabase, current) : ""; setRole(nextRole);
     if (!current || !isAdminRole(nextRole)) { setMessage("Studio admin access required."); setLoading(false); return; }
-    const team = await supabase.from("team_members").select("id,name,title,email,show_on_public_team").eq("show_on_public_team", true).order("created_at", { ascending: true });
+    const team = await forSite(supabase.from("team_members").select("id,name,title,email,show_on_public_team").eq("show_on_public_team", true).order("created_at", { ascending: true }), site.id);
     if (team.error) { setMessage(team.error.message); setLoading(false); return; }
     setMembers(team.data || []);
     const sec = await supabase.from("team_page_sections").select("section_key,title,subtitle,display_order,enabled").order("display_order", { ascending: true });

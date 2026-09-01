@@ -5,6 +5,8 @@ import StudioHeader from "../../components/StudioHeader";
 import { firstError, requireText, validateImageFile, validateOptionalUrl } from "../../lib/validation";
 
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 const supabase = getSupabaseBrowserClient();
 
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
@@ -88,6 +90,7 @@ function Thumb({ src, text }: { src?: string | null; text: string }) {
 }
 
 export default function StudioTeamPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [notice, setNotice] = useState("");
@@ -140,12 +143,12 @@ export default function StudioTeamPage() {
         if (item.user_id) roleById[item.user_id] = enrichedRole;
       });
 
-      const requestResult = await supabase
+      const requestResult = await forSite(supabase
         .from("user_role_requests")
         .select("user_id,email,status,approved_role,approved_at,created_at")
         .eq("status", "approved")
         .or(filter)
-        .order("approved_at", { ascending: false });
+        .order("approved_at", { ascending: false }), site.id);
 
       (requestResult.data || []).forEach((item: any) => {
         const enrichedRole = {
@@ -157,11 +160,11 @@ export default function StudioTeamPage() {
         if (item.user_id && !roleById[item.user_id]) roleById[item.user_id] = enrichedRole;
       });
 
-      const profileResult = await supabase
+      const profileResult = await forSite(supabase
         .from("volunteer_onboarding_submissions")
         .select("user_id,email,photo_url,status,created_at")
         .or(filter)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }), site.id);
 
       (profileResult.data || []).forEach((item: any) => {
         if (item.email && !profileByEmail[clean(item.email)]) profileByEmail[clean(item.email)] = item;
@@ -185,10 +188,10 @@ export default function StudioTeamPage() {
   }
 
   async function loadData() {
-    const teamResult = await supabase
+    const teamResult = await forSite(supabase
       .from("team_members")
       .select("id,name,title,image,user_id,email,show_on_public_team,created_at,updated_at")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }), site.id);
 
     if (teamResult.error) {
       setNotice(`Could not load team members: ${teamResult.error.message}`);
@@ -199,11 +202,11 @@ export default function StudioTeamPage() {
     setMembers(teamRows);
 
     const adminResult = await supabase.from("admins").select("user_id,email,role,created_at").order("created_at", { ascending: false });
-    const requestResult = await supabase
+    const requestResult = await forSite(supabase
       .from("user_role_requests")
       .select("user_id,email,approved_role,status,approved_at,created_at")
       .eq("status", "approved")
-      .order("approved_at", { ascending: false });
+      .order("approved_at", { ascending: false }), site.id);
 
     if (adminResult.error) {
       setNotice(`Could not load admin roles: ${adminResult.error.message}`);
@@ -228,11 +231,11 @@ export default function StudioTeamPage() {
 
     if (emails.length || ids.length) {
       const filter = [...emails.map((email) => `email.eq.${email}`), ...ids.map((id) => `user_id.eq.${id}`)].join(",");
-      const profileResult = await supabase
+      const profileResult = await forSite(supabase
         .from("volunteer_onboarding_submissions")
         .select("user_id,email,full_name,photo_url,created_at")
         .or(filter)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }), site.id);
 
       (profileResult.data || []).forEach((item: any) => {
         if (item.email && !profileByEmail[clean(item.email)]) profileByEmail[clean(item.email)] = item;
@@ -401,8 +404,8 @@ export default function StudioTeamPage() {
     setNotice(editingId ? "Updating team member..." : "Publishing team member...");
 
     const result = editingId
-      ? await supabase.from("team_members").update(payload).eq("id", editingId)
-      : await supabase.from("team_members").insert({ ...payload, created_by: user?.id || null });
+      ? await forSite(supabase.from("team_members").update(payload).eq("id", editingId), site.id)
+      : await supabase.from("team_members").insert({ ...payload, site_id: site.id, created_by: user?.id || null });
 
     if (result.error) {
       setNotice(`Save failed: ${result.error.message}`);
@@ -418,10 +421,10 @@ export default function StudioTeamPage() {
 
   async function toggleVisibility(member: Member) {
     const nextVisible = member.show_on_public_team === false;
-    const { error } = await supabase
+    const { error } = await forSite(supabase
       .from("team_members")
       .update({ show_on_public_team: nextVisible, updated_at: new Date().toISOString() })
-      .eq("id", member.id);
+      .eq("id", member.id), site.id);
 
     if (error) setNotice(`Visibility update failed: ${error.message}`);
     else {
@@ -436,7 +439,7 @@ export default function StudioTeamPage() {
     );
     if (!confirmed) return;
 
-    const { error } = await supabase.from("team_members").delete().eq("id", member.id);
+    const { error } = await forSite(supabase.from("team_members").delete().eq("id", member.id), site.id);
     if (error) setNotice(`Remove failed: ${error.message}`);
     else {
       setNotice("Team member removed from public Team page.");

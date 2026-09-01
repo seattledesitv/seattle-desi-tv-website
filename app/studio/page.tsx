@@ -157,10 +157,12 @@ export default function StudioDashboardPage() {
       supabase
         .from("user_role_requests")
         .select("id", { count: "exact", head: true })
+        .eq("site_id", site.id || "")
         .eq("requested_role", "volunteer"),
       supabase
         .from("user_role_requests")
         .select("id", { count: "exact", head: true })
+        .eq("site_id", site.id || "")
         .eq("requested_role", "volunteer")
         .in("status", [
           "awaiting_orientation",
@@ -170,7 +172,8 @@ export default function StudioDashboardPage() {
         ]),
       supabase
         .from("team_members")
-        .select("id", { count: "exact", head: true }),
+        .select("id", { count: "exact", head: true })
+        .eq("site_id", site.id || ""),
       forSite(
         supabase
           .from("radio_team_members")
@@ -180,6 +183,7 @@ export default function StudioDashboardPage() {
       supabase
         .from("user_role_requests")
         .select("id", { count: "exact", head: true })
+        .eq("site_id", site.id || "")
         .neq("requested_role", "volunteer")
         .or("status.is.null,status.eq.pending"),
       supabase

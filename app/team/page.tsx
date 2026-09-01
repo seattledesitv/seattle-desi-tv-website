@@ -7,6 +7,8 @@ import SafeImage from "../components/SafeImage";
 import { isPubliclyHidden, loadHiddenUsers } from "../lib/publicVisibility";
 
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 const supabase = getSupabaseBrowserClient();
 
 type TeamMember = {
@@ -146,6 +148,7 @@ function sortMembers(a: TeamMember, b: TeamMember, mode: string) {
 }
 
 export default function PublicTeamPage() {
+  const site = useCurrentSite();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [topVolunteers, setTopVolunteers] = useState<Spotlight[]>([]);
   const [weeklyThanks, setWeeklyThanks] = useState<CoverageThanks[]>([]);
@@ -157,7 +160,7 @@ export default function PublicTeamPage() {
   useEffect(() => {
     async function loadTeam() {
       setError("");
-      const [teamResult, assignmentsResult, volunteerProfilesResult, userProfilesResult, adminsResult, hidden, pageSettingsResult, pageSectionsResult, pageAssignmentsResult] = await Promise.all([supabase.from("team_members").select("id,name,title,image,email,user_id,show_on_public_team").eq("show_on_public_team", true).order("created_at", { ascending: true }), supabase.from("event_crew_assignments").select("id,user_id,user_email,event_title,coverage_completed,completed_at,status").eq("coverage_completed", true).order("completed_at", { ascending: false }).limit(500), supabase.from("volunteer_onboarding_submissions").select("user_id,email,full_name,photo_url"), supabase.from("user_profiles").select("user_id,email,full_name,profile_photo_url,id_badge_url"), supabase.from("admins").select("user_id,email,role,name"), loadHiddenUsers(supabase), supabase.from("team_page_settings").select("key,value"), supabase.from("team_page_sections").select("section_key,title,subtitle,display_order,enabled").order("display_order", { ascending: true }), supabase.from("team_page_member_assignments").select("member_id,section_key,display_order")]);
+      const [teamResult, assignmentsResult, volunteerProfilesResult, userProfilesResult, adminsResult, hidden, pageSettingsResult, pageSectionsResult, pageAssignmentsResult] = await Promise.all([forSite(supabase.from("team_members").select("id,name,title,image,email,user_id,show_on_public_team").eq("show_on_public_team", true).order("created_at", { ascending: true }), site.id), forSite(supabase.from("event_crew_assignments").select("id,user_id,user_email,event_title,coverage_completed,completed_at,status").eq("coverage_completed", true).order("completed_at", { ascending: false }).limit(500), site.id), forSite(supabase.from("volunteer_onboarding_submissions").select("user_id,email,full_name,photo_url"), site.id), supabase.from("user_profiles").select("user_id,email,full_name,profile_photo_url,id_badge_url"), supabase.from("admins").select("user_id,email,role,name"), loadHiddenUsers(supabase), supabase.from("team_page_settings").select("key,value"), supabase.from("team_page_sections").select("section_key,title,subtitle,display_order,enabled").order("display_order", { ascending: true }), supabase.from("team_page_member_assignments").select("member_id,section_key,display_order")]);
 
       if (!pageSettingsResult.error && pageSettingsResult.data) {
         const next: any = { ...defaultSettings };

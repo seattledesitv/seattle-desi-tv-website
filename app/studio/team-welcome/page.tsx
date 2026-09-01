@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const groupUrl = "https://chat.whatsapp.com/FOP04oZJWEOLgTMJVJPiVt";
@@ -85,6 +87,7 @@ function defaultInvite(member: Member) {
 }
 
 export default function TeamWelcomePage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState(false);
   const [message, setMessage] = useState("Checking access...");
@@ -98,9 +101,9 @@ export default function TeamWelcomePage() {
 
   async function load() {
     const [teamResult, profileResult, welcomeResult] = await Promise.all([
-      supabase.from("team_members").select("*").order("created_at", { ascending: false }),
+      forSite(supabase.from("team_members").select("*").order("created_at", { ascending: false }), site.id),
       supabase.from("user_profiles").select("user_id,email,full_name,preferred_name,short_bio,profile_photo_url,id_badge_url"),
-      supabase.from("team_member_welcomes").select("*"),
+      forSite(supabase.from("team_member_welcomes").select("*"), site.id),
     ]);
     if (teamResult.error) throw teamResult.error;
     if (profileResult.error) throw profileResult.error;
@@ -154,8 +157,9 @@ export default function TeamWelcomePage() {
       completed_at: complete ? (next.completed_at || value) : next.completed_at || null,
       completed_by: complete ? auth?.user?.id || null : null,
       updated_at: value,
+      site_id: site.id,
     };
-    const { error } = await supabase.from("team_member_welcomes").upsert(payload, { onConflict: "email" });
+    const { error } = await supabase.from("team_member_welcomes").upsert(payload, { onConflict: "site_id,email" });
     if (error) setMessage(`Could not save welcome progress: ${error.message}`);
     else {
       setWelcomes((existing) => ({ ...existing, [email]: { ...next, completed_at: complete ? (next.completed_at || value) : next.completed_at } }));

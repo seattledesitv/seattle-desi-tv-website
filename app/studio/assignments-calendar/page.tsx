@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import StudioHeader from "../../components/StudioHeader";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -13,6 +15,7 @@ function monthIso() { return new Date().toISOString().slice(0, 7); }
 function statusClass(status?: string) { const s = String(status || "not marked").toLowerCase(); if (s === "available") return "bg-green-50 text-green-800 border-green-200"; if (s === "maybe") return "bg-yellow-50 text-yellow-800 border-yellow-200"; if (s === "unavailable") return "bg-red-50 text-red-800 border-red-200"; return "bg-gray-50 text-gray-700 border-gray-200"; }
 
 export default function AssignmentsCalendarPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [user, setUser] = useState<any>(null);
@@ -30,9 +33,9 @@ export default function AssignmentsCalendarPage() {
 
   async function loadData() {
     const [eventsResult, membersResult, availabilityResult] = await Promise.all([
-      supabase.from("events").select("id,title,date,location,image,image_urls,status,crew_member_ids,poc_email,poc_phone").gte("date", startDate).lt("date", endDate).order("date", { ascending: true }),
+      forSite(supabase.from("events").select("id,title,date,location,image,image_urls,status,crew_member_ids,poc_email,poc_phone").gte("date", startDate).lt("date", endDate).order("date", { ascending: true }), site.id),
       supabase.from("admins").select("user_id,email,role,name").order("email", { ascending: true }),
-      supabase.from("crew_availability").select("user_id,user_email,available_date,status,note").gte("available_date", startDate).lt("available_date", endDate)
+      forSite(supabase.from("crew_availability").select("user_id,user_email,available_date,status,note").gte("available_date", startDate).lt("available_date", endDate), site.id)
     ]);
     if (eventsResult.error) setMessage(`Could not load events: ${eventsResult.error.message}`); else setEvents(eventsResult.data || []);
     if (membersResult.error) setMessage(`Could not load members: ${membersResult.error.message}`); else setMembers((membersResult.data || []).filter((m: any) => m.user_id));

@@ -231,7 +231,8 @@ export default function StudioAnalyticsPage() {
       countQuery(
         supabase
           .from("team_members")
-          .select("id", { count: "exact", head: true }),
+          .select("id", { count: "exact", head: true })
+          .eq("site_id", site.id || ""),
       ),
       countQuery(
         forSite(
@@ -249,18 +250,21 @@ export default function StudioAnalyticsPage() {
       countQuery(
         supabase
           .from("user_role_requests")
-          .select("id", { count: "exact", head: true }),
+          .select("id", { count: "exact", head: true })
+          .eq("site_id", site.id || ""),
       ),
       countQuery(
         supabase
           .from("user_role_requests")
           .select("id", { count: "exact", head: true })
+          .eq("site_id", site.id || "")
           .or("status.is.null,status.eq.pending"),
       ),
       countQuery(
         supabase
           .from("user_role_requests")
           .select("id", { count: "exact", head: true })
+          .eq("site_id", site.id || "")
           .eq("status", "approved"),
       ),
       countQuery(

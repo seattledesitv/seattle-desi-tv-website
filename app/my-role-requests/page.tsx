@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import MyHubHeader from "../components/MyHubHeader";
 import SiteFooter from "../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -66,6 +68,7 @@ function formatDate(value?: string | null) {
 }
 
 export default function MyRoleRequestsPage() {
+  const site = useCurrentSite();
   const [rows, setRows] = useState<RoleRequest[]>([]);
   const [message, setMessage] = useState("Loading...");
   const [loading, setLoading] = useState(true);
@@ -83,11 +86,11 @@ export default function MyRoleRequestsPage() {
       return;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await forSite(supabase
       .from("user_role_requests")
       .select("id,requested_role,status,approved_role,created_at,updated_at")
       .or(`user_id.eq.${user?.id},email.eq.${email}`)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }), site.id);
 
     setRows(data || []);
     setMessage(error ? error.message : "Role requests submitted from your SDTV profile.");
