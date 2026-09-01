@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { isAdminRole, resolveUserRole } from "../../../lib/roles";
+import { resolveCurrentSite } from "../../../lib/sites/siteResolver";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -34,6 +35,8 @@ export async function POST(request: Request) {
     if (userError || !user) return NextResponse.json({ error: "Login required." }, { status: 401 });
     const resolvedRole = await resolveUserRole(sessionClient, user);
     if (!isAdminRole(resolvedRole)) return NextResponse.json({ error: "Studio admin access required." }, { status: 403 });
+    const site = await resolveCurrentSite();
+    if (!site.id) return NextResponse.json({ error: "The current site is not configured." }, { status: 500 });
 
     const body = await request.json();
     const businessId = String(body.businessId || "").trim();
@@ -43,7 +46,7 @@ export async function POST(request: Request) {
     const db = createClient(supabaseUrl, serviceKey);
     const { data: business, error: businessError } = await db.from("local_businesses")
       .select("id,name,address,website,poc_name,poc_email,contact_email,status,outreach_status,outreach_sent_at,outreach_send_count,claim_token,opted_out_at")
-      .eq("id", businessId).maybeSingle();
+      .eq("id", businessId).eq("site_id", site.id).maybeSingle();
     if (businessError || !business) return NextResponse.json({ error: businessError?.message || "Business not found." }, { status: 404 });
     if (business.opted_out_at || business.outreach_status === "opted_out") return NextResponse.json({ error: "This business opted out and cannot be contacted from this workflow." }, { status: 409 });
 
@@ -68,7 +71,7 @@ export async function POST(request: Request) {
     const resend = new Resend(resendKey);
     const sendResult = await resend.emails.send({ from: fromEmail, to: recipient, subject, text, html });
     if (sendResult.error) {
-      await db.from("local_businesses").update({ outreach_status: "send_failed", outreach_recipient: recipient, contact_email: recipient }).eq("id", businessId);
+      await db.from("local_businesses").update({ outreach_status: "send_failed", outreach_recipient: recipient, contact_email: recipient }).eq("id", businessId).eq("site_id", site.id);
       await db.from("business_activity_log").insert({ business_id: businessId, activity_type: "listing_notice_failed", activity_label: "Listing notice send failed", actor_email: user.email || null, details: { recipient, error: sendResult.error.message } });
       return NextResponse.json({ error: sendResult.error.message || "Email send failed." }, { status: 500 });
     }
@@ -83,7 +86,7 @@ export async function POST(request: Request) {
       outreach_response_due_at: responseDue.toISOString(),
       outreach_message_id: sendResult.data?.id || null,
       outreach_recipient: recipient,
-    }).eq("id", businessId);
+    }).eq("id", businessId).eq("site_id", site.id);
     if (updateError) return NextResponse.json({ error: `Email sent, but the business record could not be updated: ${updateError.message}` }, { status: 500 });
 
     await db.from("business_activity_log").insert({ business_id: businessId, activity_type: forceResend ? "listing_notice_resent" : "listing_notice_sent", activity_label: forceResend ? "Listing notice resent" : "Listing notice sent", actor_email: user.email || null, details: { recipient, response_due_at: responseDue.toISOString(), message_id: sendResult.data?.id || null } });
