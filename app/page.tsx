@@ -587,21 +587,21 @@ export default function HomePage() {
       )
         .eq("status", "approved")
         .limit(6),
-      supabase
+      forSite(supabase
         .from("team_members")
         .select("id,name,title,image,photo,picture")
-        .limit(6),
-      supabase
+        .limit(6), site.id),
+      forSite(supabase
         .from("volunteer_onboarding_submissions")
-        .select("email,full_name,photo_url"),
-      supabase
+        .select("email,full_name,photo_url"), site.id),
+      forSite(supabase
         .from("event_crew_assignments")
         .select(
           "id,user_email,user_id,event_title,coverage_completed,completed_at",
         )
         .eq("coverage_completed", true)
         .order("completed_at", { ascending: false })
-        .limit(250),
+        .limit(250), site.id),
       supabase
         .from("homepage_settings")
         .select("section_key,display_order,enabled,title,subtitle")
@@ -673,15 +673,15 @@ export default function HomePage() {
         ).eq("status", "approved"),
       ),
       countQuery(
-        supabase
+        forSite(supabase
           .from("event_crew_assignments")
           .select("id", { count: "exact", head: true })
-          .eq("assignment_type", "owner_coverage_request"),
+          .eq("assignment_type", "owner_coverage_request"), site.id),
       ),
       countQuery(
-        supabase
+        forSite(supabase
           .from("team_members")
-          .select("id", { count: "exact", head: true }),
+          .select("id", { count: "exact", head: true }), site.id),
       ),
       countQuery(
         forSite(

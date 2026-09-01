@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import SafeImage from "../components/SafeImage";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 type PersonRow = { id: string; name: string; photo?: string | null; image?: string | null; picture?: string | null; count?: number };
 type TeamLookupRow = { id: string; name?: string | null; email?: string | null; user_id?: string | null; image?: string | null; photo?: string | null; picture?: string | null };
@@ -41,11 +43,12 @@ function compactNumber(value?: number) {
 }
 
 export default function RecognitionWallPremium({ people, stats }: { people: PersonRow[]; stats?: RecognitionStats }) {
+  const site = useCurrentSite();
   const [teamLookup, setTeamLookup] = useState<Record<string, TeamLookupRow>>({});
 
   useEffect(() => {
     async function loadTeamLookup() {
-      const { data } = await supabase.from("team_members").select("id,name,email,user_id,image,photo,picture");
+      const { data } = await forSite(supabase.from("team_members").select("id,name,email,user_id,image,photo,picture"), site.id);
       const next: Record<string, TeamLookupRow> = {};
       (data || []).forEach((row: TeamLookupRow) => {
         if (row.email) next[String(row.email).toLowerCase()] = row;

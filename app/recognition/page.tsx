@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import SiteHeader from "../components/SiteHeader";
 import SiteFooter from "../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const POINTS_PER_COVERAGE = 10;
@@ -73,6 +75,7 @@ function VolunteerAvatar({ person, fallback }: { person: VolunteerScore; fallbac
 }
 
 export default function RecognitionPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [scores, setScores] = useState<VolunteerScore[]>([]);
   const [message, setMessage] = useState("");
@@ -81,13 +84,13 @@ export default function RecognitionPage() {
     setLoading(true);
     setMessage("");
     const [assignmentsResult, profilesResult] = await Promise.all([
-      supabase
+      forSite(supabase
         .from("event_crew_assignments")
         .select("id,user_id,user_email,event_title,coverage_completed,completed_at")
         .eq("coverage_completed", true)
         .order("completed_at", { ascending: false })
-        .limit(1000),
-      supabase.from("volunteer_onboarding_submissions").select("user_id,email,full_name,photo_url"),
+        .limit(1000), site.id),
+      forSite(supabase.from("volunteer_onboarding_submissions").select("user_id,email,full_name,photo_url"), site.id),
     ]);
 
     if (assignmentsResult.error) {

@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const whatsappGroupUrl = "https://chat.whatsapp.com/FOP04oZJWEOLgTMJVJPiVt";
@@ -25,6 +27,7 @@ function drawImageContain(ctx: CanvasRenderingContext2D, img: HTMLImageElement, 
 function portraitSlots(count: number) { if (count <= 1) return [{ x: 540, y: 820 }]; if (count === 2) return [{ x: 330, y: 820 }, { x: 750, y: 820 }]; if (count === 3) return [{ x: 540, y: 735 }, { x: 330, y: 960 }, { x: 750, y: 960 }]; return [{ x: 330, y: 735 }, { x: 750, y: 735 }, { x: 330, y: 960 }, { x: 750, y: 960 }]; }
 
 export default function StudioRecognitionPage() {
+  const site = useCurrentSite();
   const defaultRange = useMemo(() => lastWeekRange(), []);
   const [startDate, setStartDate] = useState(toInputDate(defaultRange.start));
   const [endDate, setEndDate] = useState(toInputDate(defaultRange.end));
@@ -67,8 +70,8 @@ export default function StudioRecognitionPage() {
     if (!isAdminRole(nextRole)) { setMessage(`Studio admin access required. Current role: ${nextRole}`); setLoading(false); return; }
     if (!startDate || !endDate || start > end) { setMessage("Please choose a valid start and end date."); setLoading(false); return; }
     const [assignments, profiles] = await Promise.all([
-      supabase.from("event_crew_assignments").select("id,user_id,user_email,event_title,assignment_type,completed_at,coverage_completed").eq("coverage_completed", true).gte("completed_at", start.toISOString()).lte("completed_at", end.toISOString()).order("completed_at", { ascending: false }).limit(1000),
-      supabase.from("volunteer_onboarding_submissions").select("user_id,email,full_name,photo_url"),
+      forSite(supabase.from("event_crew_assignments").select("id,user_id,user_email,event_title,assignment_type,completed_at,coverage_completed").eq("coverage_completed", true).gte("completed_at", start.toISOString()).lte("completed_at", end.toISOString()).order("completed_at", { ascending: false }).limit(1000), site.id),
+      forSite(supabase.from("volunteer_onboarding_submissions").select("user_id,email,full_name,photo_url"), site.id),
     ]);
     if (assignments.error) { setMessage(`Could not load coverage: ${assignments.error.message}`); setMembers([]); setLoading(false); return; }
     const byEmail: Record<string, any> = {}; const byUser: Record<string, any> = {};
