@@ -5,13 +5,14 @@ import type {
   OfferBusiness,
   OfferPricing,
 } from "../types";
+import { forSite } from "../../sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const OFFER_SELECT =
   "id,business_id,advertiser_name,advertiser_email,title,description,terms,offer_code,destination_url,image_url,starts_at,ends_at,status,requested_placement,is_premium,premium_rank,is_featured,featured_rank,is_homepage_hero,homepage_rank,quoted_price_cents,payment_status,payment_reference,payment_link,payment_requested_at,paid_at,sponsorship_agreement_id,sponsor_waiver_tier,created_by,approved_at,created_at,updated_at,local_businesses(id,name,address,website,category,image,image_urls)";
 
-export async function listPublicOffers() {
-  const { data, error } = await supabase
+export async function listPublicOffers(siteId: string) {
+  const { data, error } = await forSite(supabase
     .from("business_offers")
     .select(OFFER_SELECT)
     .eq("status", "approved")
@@ -21,33 +22,34 @@ export async function listPublicOffers() {
     .order("featured_rank")
     .order("is_premium", { ascending: false })
     .order("premium_rank")
-    .order("starts_at", { ascending: false });
+    .order("starts_at", { ascending: false }), siteId);
   if (error) throw error;
   return (data || []) as unknown as BusinessOffer[];
 }
-export async function listOffersForBusinesses(businessIds: string[]) {
+export async function listOffersForBusinesses(businessIds: string[], siteId: string) {
   if (!businessIds.length) return [];
-  const { data, error } = await supabase
+  const { data, error } = await forSite(supabase
     .from("business_offers")
     .select(OFFER_SELECT)
     .in("business_id", businessIds)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }), siteId);
   if (error) throw error;
   return (data || []) as unknown as BusinessOffer[];
 }
 export async function listOffersForOwner(
   userId: string,
   businessIds: string[],
+  siteId: string,
 ) {
-  const submitted = await supabase
+  const submitted = await forSite(supabase
     .from("business_offers")
     .select(OFFER_SELECT)
     .eq("created_by", userId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }), siteId);
   if (submitted.error) throw submitted.error;
   if (!businessIds.length)
     return (submitted.data || []) as unknown as BusinessOffer[];
-  const managed = await listOffersForBusinesses(businessIds);
+  const managed = await listOffersForBusinesses(businessIds, siteId);
   const map = new Map<string, BusinessOffer>();
   [
     ...((submitted.data || []) as unknown as BusinessOffer[]),
@@ -57,19 +59,19 @@ export async function listOffersForOwner(
     b.created_at.localeCompare(a.created_at),
   );
 }
-export async function listManagedBusinesses(userId: string) {
+export async function listManagedBusinesses(userId: string, siteId: string) {
   const columns = "id,name,address,website,category,image,image_urls";
   const [submitted, managed] = await Promise.all([
-    supabase
+    forSite(supabase
       .from("local_businesses")
       .select(columns)
       .eq("created_by", userId)
-      .order("name"),
-    supabase
+      .order("name"), siteId),
+    forSite(supabase
       .from("business_managers")
       .select(`local_businesses(${columns})`)
       .eq("user_id", userId)
-      .eq("active", true),
+      .eq("active", true), siteId),
   ]);
   if (submitted.error) throw submitted.error;
   if (managed.error) throw managed.error;
@@ -85,26 +87,26 @@ export async function listManagedBusinesses(userId: string) {
   });
   return Array.from(map.values());
 }
-export async function listApprovedBusinesses() {
-  const { data, error } = await supabase
+export async function listApprovedBusinesses(siteId: string) {
+  const { data, error } = await forSite(supabase
     .from("local_businesses")
     .select("id,name,address,website,category,image,image_urls")
     .eq("status", "approved")
-    .order("name");
+    .order("name"), siteId);
   if (error) throw error;
   return (data || []) as OfferBusiness[];
 }
-export async function listActiveSponsorships(businessIds: string[]) {
+export async function listActiveSponsorships(businessIds: string[], siteId: string) {
   if (!businessIds.length) return [];
   const today = new Date().toISOString().slice(0, 10);
-  const { data, error } = await supabase
+  const { data, error } = await forSite(supabase
     .from("sponsorship_agreements")
     .select("id,business_id,tier")
     .in("business_id", businessIds)
     .eq("status", "active")
     .lte("start_date", today)
     .gte("end_date", today)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }), siteId);
   if (error) throw error;
   return (data || []) as Array<{
     id: string;
@@ -112,29 +114,29 @@ export async function listActiveSponsorships(businessIds: string[]) {
     tier: "platinum" | "gold" | "silver" | "bronze";
   }>;
 }
-export async function listAllOffers() {
-  const { data, error } = await supabase
+export async function listAllOffers(siteId: string) {
+  const { data, error } = await forSite(supabase
     .from("business_offers")
     .select(OFFER_SELECT)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }), siteId);
   if (error) throw error;
   return (data || []) as unknown as BusinessOffer[];
 }
-export async function getOffer(id: string) {
-  const { data, error } = await supabase
+export async function getOffer(id: string, siteId: string) {
+  const { data, error } = await forSite(supabase
     .from("business_offers")
     .select(OFFER_SELECT)
-    .eq("id", id)
+    .eq("id", id), siteId)
     .single();
   if (error) throw error;
   return data as unknown as BusinessOffer;
 }
-export async function getActiveSponsorship(businessId: string) {
+export async function getActiveSponsorship(businessId: string, siteId: string) {
   const today = new Date().toISOString().slice(0, 10);
-  const { data, error } = await supabase
+  const { data, error } = await forSite(supabase
     .from("sponsorship_agreements")
     .select("id,tier,start_date,end_date,status")
-    .eq("business_id", businessId)
+    .eq("business_id", businessId), siteId)
     .eq("status", "active")
     .lte("start_date", today)
     .gte("end_date", today)
@@ -147,10 +149,10 @@ export async function getActiveSponsorship(businessId: string) {
     tier: "platinum" | "gold" | "silver" | "bronze";
   } | null;
 }
-export async function createOffer(input: BusinessOfferInput, userId: string) {
+export async function createOffer(input: BusinessOfferInput, userId: string, siteId: string) {
   const { data, error } = await supabase
     .from("business_offers")
-    .insert({ ...input, created_by: userId, status: input.status || "pending" })
+    .insert({ ...input, site_id: siteId, created_by: userId, status: input.status || "pending" })
     .select(OFFER_SELECT)
     .single();
   if (error) throw error;
@@ -159,43 +161,45 @@ export async function createOffer(input: BusinessOfferInput, userId: string) {
 export async function updateOwnerOffer(
   id: string,
   input: Partial<BusinessOfferInput>,
+  siteId: string,
 ) {
-  const { data, error } = await supabase
+  const { data, error } = await forSite(supabase
     .from("business_offers")
     .update({ ...input, updated_at: new Date().toISOString() })
-    .eq("id", id)
+    .eq("id", id), siteId)
     .select(OFFER_SELECT)
     .single();
   if (error) throw error;
   return data as unknown as BusinessOffer;
 }
-export async function deleteOwnerOffer(id: string) {
-  const { error } = await supabase
+export async function deleteOwnerOffer(id: string, siteId: string) {
+  const { error } = await forSite(supabase
     .from("business_offers")
     .delete()
-    .eq("id", id);
+    .eq("id", id), siteId);
   if (error) throw error;
 }
 export async function updateOfferAdmin(
   id: string,
   changes: Record<string, unknown>,
+  siteId: string,
 ) {
-  const { data, error } = await supabase
+  const { data, error } = await forSite(supabase
     .from("business_offers")
     .update({ ...changes, updated_at: new Date().toISOString() })
-    .eq("id", id)
+    .eq("id", id), siteId)
     .select(OFFER_SELECT)
     .single();
   if (error) throw error;
   return data as unknown as BusinessOffer;
 }
-export async function listOfferPricing(includeInactive = false) {
-  let query = supabase
+export async function listOfferPricing(siteId: string, includeInactive = false) {
+  let query = forSite(supabase
     .from("business_offer_pricing")
     .select(
       "placement,label,description,price_cents,active,display_order,updated_at",
     )
-    .order("display_order");
+    .order("display_order"), siteId);
   if (!includeInactive) query = query.eq("active", true);
   const { data, error } = await query;
   if (error) throw error;
@@ -204,11 +208,12 @@ export async function listOfferPricing(includeInactive = false) {
 export async function updateOfferPricing(
   placement: string,
   changes: Record<string, unknown>,
+  siteId: string,
 ) {
-  const { data, error } = await supabase
+  const { data, error } = await forSite(supabase
     .from("business_offer_pricing")
     .update({ ...changes, updated_at: new Date().toISOString() })
-    .eq("placement", placement)
+    .eq("placement", placement), siteId)
     .select(
       "placement,label,description,price_cents,active,display_order,updated_at",
     )

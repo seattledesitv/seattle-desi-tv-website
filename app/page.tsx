@@ -697,6 +697,7 @@ export default function HomePage() {
       .select(
         "id,title,description,image_url,homepage_rank,destination_url,local_businesses(name,image,image_urls)",
       )
+      .eq("site_id", site.id || "")
       .eq("status", "approved")
       .eq("is_homepage_hero", true)
       .lte("starts_at", today)

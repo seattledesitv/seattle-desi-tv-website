@@ -10,6 +10,7 @@ import type {
 } from "../lib/businessOffers/types";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../lib/roles";
+import { useCurrentSite } from "../lib/sites/SiteContext";
 
 function errorMessage(cause: unknown, fallback: string) {
   if (cause instanceof Error) return cause.message;
@@ -24,6 +25,7 @@ function errorMessage(cause: unknown, fallback: string) {
 }
 
 export function useBusinessOffers(mode: "public" | "owner" | "admin") {
+  const site = useCurrentSite();
   const [offers, setOffers] = useState<BusinessOffer[]>([]);
   const [businesses, setBusinesses] = useState<OfferBusiness[]>([]);
   const [userId, setUserId] = useState("");
@@ -35,7 +37,7 @@ export function useBusinessOffers(mode: "public" | "owner" | "admin") {
     setLoading(true);
     setError("");
     try {
-      if (mode === "public") setOffers(await BusinessOfferService.listPublic());
+      if (mode === "public") setOffers(await BusinessOfferService.listPublic(site.id));
       else if (mode === "admin") {
         const supabase = getSupabaseBrowserClient();
         const { data } = await supabase.auth.getUser();
@@ -45,7 +47,7 @@ export function useBusinessOffers(mode: "public" | "owner" | "admin") {
         )
           throw new Error("Admin access is required to manage offers.");
         setUserId(data.user.id);
-        const workspace = await BusinessOfferService.adminWorkspace();
+        const workspace = await BusinessOfferService.adminWorkspace(site.id);
         setOffers(workspace.offers);
         setBusinesses(workspace.businesses);
       } else {
@@ -57,7 +59,7 @@ export function useBusinessOffers(mode: "public" | "owner" | "admin") {
           setBusinesses([]);
           setError("Please log in to manage business offers.");
         } else {
-          const workspace = await BusinessOfferService.ownerWorkspace(id);
+          const workspace = await BusinessOfferService.ownerWorkspace(id, site.id);
           setBusinesses(workspace.businesses);
           setOffers(workspace.offers);
         }
@@ -67,7 +69,7 @@ export function useBusinessOffers(mode: "public" | "owner" | "admin") {
     } finally {
       setLoading(false);
     }
-  }, [mode]);
+  }, [mode, site.id]);
 
   useEffect(() => {
     // The hook owns the initial remote-state synchronization for its consumers.
@@ -80,7 +82,7 @@ export function useBusinessOffers(mode: "public" | "owner" | "admin") {
     setSaving(true);
     setError("");
     try {
-      await BusinessOfferService.create(input, userId);
+      await BusinessOfferService.create(input, userId, site.id);
       await refresh();
     } catch (cause: unknown) {
       setError(errorMessage(cause, "Could not create offer."));
@@ -93,7 +95,7 @@ export function useBusinessOffers(mode: "public" | "owner" | "admin") {
     setSaving(true);
     setError("");
     try {
-      await BusinessOfferService.moderate(id, changes);
+      await BusinessOfferService.moderate(id, changes, site.id);
       await refresh();
     } catch (cause: unknown) {
       setError(errorMessage(cause, "Could not update offer."));
@@ -105,7 +107,7 @@ export function useBusinessOffers(mode: "public" | "owner" | "admin") {
     setSaving(true);
     setError("");
     try {
-      await BusinessOfferService.approveForPayment(id, placement);
+      await BusinessOfferService.approveForPayment(id, placement, site.id);
       await refresh();
     } catch (cause: unknown) {
       setError(errorMessage(cause, "Could not approve the offer."));
@@ -117,7 +119,7 @@ export function useBusinessOffers(mode: "public" | "owner" | "admin") {
     setSaving(true);
     setError("");
     try {
-      await BusinessOfferService.confirmPaymentAndActivate(id, reference);
+      await BusinessOfferService.confirmPaymentAndActivate(id, site.id, reference);
       await refresh();
     } catch (cause: unknown) {
       setError(errorMessage(cause, "Could not activate the offer."));
@@ -129,7 +131,7 @@ export function useBusinessOffers(mode: "public" | "owner" | "admin") {
     setSaving(true);
     setError("");
     try {
-      await BusinessOfferService.remove(id);
+      await BusinessOfferService.remove(id, site.id);
       await refresh();
     } catch (cause: unknown) {
       setError(errorMessage(cause, "Could not delete offer."));

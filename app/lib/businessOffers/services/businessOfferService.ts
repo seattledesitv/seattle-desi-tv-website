@@ -22,15 +22,17 @@ function validate(input: BusinessOfferInput) {
 }
 export const BusinessOfferService = {
   listPublic: repository.listPublicOffers,
-  async ownerWorkspace(userId: string) {
-    const businesses = await repository.listManagedBusinesses(userId);
+  async ownerWorkspace(userId: string, siteId: string) {
+    const businesses = await repository.listManagedBusinesses(userId, siteId);
     const [offers, sponsorships] = await Promise.all([
       repository.listOffersForOwner(
         userId,
         businesses.map((business) => business.id),
+        siteId,
       ),
       repository.listActiveSponsorships(
         businesses.map((business) => business.id),
+        siteId,
       ),
     ]);
     const tierByBusiness = new Map(
@@ -45,14 +47,14 @@ export const BusinessOfferService = {
     };
   },
   listForAdmin: repository.listAllOffers,
-  async adminWorkspace() {
+  async adminWorkspace(siteId: string) {
     const [offers, businesses] = await Promise.all([
-      repository.listAllOffers(),
-      repository.listApprovedBusinesses(),
+      repository.listAllOffers(siteId),
+      repository.listApprovedBusinesses(siteId),
     ]);
     return { offers, businesses };
   },
-  async create(input: BusinessOfferInput, userId: string) {
+  async create(input: BusinessOfferInput, userId: string, siteId: string) {
     validate(input);
     return repository.createOffer(
       {
@@ -62,17 +64,18 @@ export const BusinessOfferService = {
         title: input.title.trim(),
       },
       userId,
+      siteId,
     );
   },
-  async update(id: string, input: Partial<BusinessOfferInput>) {
-    return repository.updateOwnerOffer(id, input);
+  async update(id: string, input: Partial<BusinessOfferInput>, siteId: string) {
+    return repository.updateOwnerOffer(id, input, siteId);
   },
   remove: repository.deleteOwnerOffer,
   moderate: repository.updateOfferAdmin,
-  async approveForPayment(id: string, placement: OfferPlacement) {
+  async approveForPayment(id: string, placement: OfferPlacement, siteId: string) {
     const [tiers, offer] = await Promise.all([
-      repository.listOfferPricing(true),
-      repository.getOffer(id),
+      repository.listOfferPricing(siteId, true),
+      repository.getOffer(id, siteId),
     ]);
     const pricing = tiers.find(
       (item) => item.placement === placement && item.active,
@@ -82,7 +85,7 @@ export const BusinessOfferService = {
         "This placement tier is not active or has no pricing configuration.",
       );
     const sponsorship = offer.business_id
-      ? await repository.getActiveSponsorship(offer.business_id)
+      ? await repository.getActiveSponsorship(offer.business_id, siteId)
       : null;
     const included: Record<string, OfferPlacement[]> = {
       bronze: ["standard", "premium"],
@@ -105,20 +108,21 @@ export const BusinessOfferService = {
       is_premium: ["premium", "featured", "hero"].includes(placement),
       is_featured: ["featured", "hero"].includes(placement),
       is_homepage_hero: placement === "hero",
-    });
+    }, siteId);
   },
-  async confirmPaymentAndActivate(id: string, paymentReference?: string) {
+  async confirmPaymentAndActivate(id: string, siteId: string, paymentReference?: string) {
     return repository.updateOfferAdmin(id, {
       status: "approved",
       payment_status: "paid",
       payment_reference: paymentReference || null,
       paid_at: new Date().toISOString(),
-    });
+    }, siteId);
   },
   listPricing: repository.listOfferPricing,
-  listAllPricing: () => repository.listOfferPricing(true),
+  listAllPricing: (siteId: string) => repository.listOfferPricing(siteId, true),
   updatePricing: (
     placement: OfferPlacement,
     changes: Record<string, unknown>,
-  ) => repository.updateOfferPricing(placement, changes),
+    siteId: string,
+  ) => repository.updateOfferPricing(placement, changes, siteId),
 };
