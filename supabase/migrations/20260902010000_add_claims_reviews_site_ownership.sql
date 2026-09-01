@@ -1,4 +1,34 @@
 -- Keep listing ownership, reviews, suggestions, and claims within their parent market.
+-- The parent-column setup is repeated intentionally so this migration can repair
+-- an environment where an earlier multi-city migration was skipped.
+
+alter table public.local_businesses
+  add column if not exists site_id uuid references public.sites(id) on delete restrict;
+alter table public.community_organizations
+  add column if not exists site_id uuid references public.sites(id) on delete restrict;
+alter table public.events
+  add column if not exists site_id uuid references public.sites(id) on delete restrict;
+
+update public.local_businesses set site_id = public.current_site_id('sea') where site_id is null;
+update public.community_organizations set site_id = public.current_site_id('sea') where site_id is null;
+update public.events set site_id = public.current_site_id('sea') where site_id is null;
+
+do $$
+begin
+  if exists (select 1 from public.local_businesses where site_id is null)
+     or exists (select 1 from public.community_organizations where site_id is null)
+     or exists (select 1 from public.events where site_id is null) then
+    raise exception 'Parent listings could not be assigned to Seattle. Confirm the sites registry and sea site exist.';
+  end if;
+end
+$$;
+
+alter table public.local_businesses alter column site_id set not null;
+alter table public.local_businesses alter column site_id set default public.current_site_id('sea');
+alter table public.community_organizations alter column site_id set not null;
+alter table public.community_organizations alter column site_id set default public.current_site_id('sea');
+alter table public.events alter column site_id set not null;
+alter table public.events alter column site_id set default public.current_site_id('sea');
 
 alter table public.business_claim_requests add column if not exists site_id uuid references public.sites(id) on delete restrict;
 alter table public.business_managers add column if not exists site_id uuid references public.sites(id) on delete restrict;
