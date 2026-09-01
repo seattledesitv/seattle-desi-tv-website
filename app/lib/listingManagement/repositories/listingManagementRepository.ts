@@ -7,14 +7,14 @@ export async function createRequest(client: SupabaseClient, input: CreateListing
   return data as ListingManagementRequest;
 }
 
-export async function listOwnRequests(client: SupabaseClient, userId: string) {
-  const { data, error } = await client.from("listing_management_requests").select("*").eq("requester_user_id", userId).order("created_at", { ascending: false });
+export async function listOwnRequests(client: SupabaseClient, userId: string, siteId: string) {
+  const { data, error } = await client.from("listing_management_requests").select("*").eq("requester_user_id", userId).eq("site_id", siteId).order("created_at", { ascending: false });
   if (error) throw error;
   return (data || []) as ListingManagementRequest[];
 }
 
-export async function listAllRequests(client: SupabaseClient) {
-  const { data, error } = await client.from("listing_management_requests").select("*").order("created_at", { ascending: false });
+export async function listAllRequests(client: SupabaseClient, siteId: string) {
+  const { data, error } = await client.from("listing_management_requests").select("*").eq("site_id", siteId).order("created_at", { ascending: false });
   if (error) throw error;
   return (data || []) as ListingManagementRequest[];
 }

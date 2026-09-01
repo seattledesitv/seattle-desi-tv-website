@@ -4,6 +4,7 @@ export type ListingRequestStatus = "pending" | "needs_information" | "approved" 
 
 export type ListingManagementRequest = {
   id: string;
+  site_id: string;
   entity_type: ManagedListingType;
   entity_id: string;
   entity_name: string;

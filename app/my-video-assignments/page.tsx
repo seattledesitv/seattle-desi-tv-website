@@ -5,6 +5,8 @@ import MyHubHeader from "../components/MyHubHeader";
 import SiteFooter from "../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, isVideoEditorRole, resolveUserRole } from "../lib/roles";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const STATUS_LABELS: Record<string, string> = {
@@ -42,6 +44,7 @@ function StatCard({ title, value, helper }: { title: string; value: number; help
 }
 
 export default function MyVideoAssignmentsPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading video assignments...");
   const [actionMessage, setActionMessage] = useState("");
@@ -72,7 +75,7 @@ export default function MyVideoAssignmentsPage() {
       setWorkflows(visible);
     }
 
-    const contentResult = await supabase.from("public_content_requests").select("*").order("updated_at", { ascending: false }).limit(200);
+    const contentResult = await forSite(supabase.from("public_content_requests").select("*"), site.id).order("updated_at", { ascending: false }).limit(200);
     if (contentResult.error) { setActionMessage(`Could not load public content assignments: ${contentResult.error.message}. Run supabase/public-content-requests.sql.`); setContentRows([]); }
     else { const rows = contentResult.data || []; const visible = isAdminRole(nextRole) ? rows : rows.filter((row: any) => sameEmail(row.assigned_editor_email, currentUser.email)); setContentRows(visible); }
 
@@ -83,7 +86,7 @@ export default function MyVideoAssignmentsPage() {
 
   async function updateContent(row: any, payload: any, success: string) {
     setActionMessage("Updating content assignment...");
-    const { error } = await supabase.from("public_content_requests").update({ ...payload, updated_at: new Date().toISOString() }).eq("id", row.id);
+    const { error } = await forSite(supabase.from("public_content_requests").update({ ...payload, updated_at: new Date().toISOString() }), site.id).eq("id", row.id);
     if (error) { setActionMessage(`Update failed: ${error.message}`); return; }
     setActionMessage(success);
     await load();

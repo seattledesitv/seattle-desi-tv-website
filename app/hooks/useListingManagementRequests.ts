@@ -5,10 +5,12 @@ import type { User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { loadOwnListingRequests, submitListingRequest } from "../lib/listingManagement/services/listingManagementService";
 import type { CreateListingRequest, ListingManagementRequest } from "../lib/listingManagement/types";
+import { useCurrentSite } from "../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 
 export function useListingManagementRequests() {
+  const site = useCurrentSite();
   const [user, setUser] = useState<User | null>(null);
   const [requests, setRequests] = useState<ListingManagementRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,9 +22,9 @@ export function useListingManagementRequests() {
     const { data } = await supabase.auth.getUser();
     const currentUser = data?.user || null; setUser(currentUser);
     if (!currentUser?.id) { setRequests([]); setLoading(false); return; }
-    try { setRequests(await loadOwnListingRequests(supabase, currentUser.id)); } catch (cause: unknown) { setError(cause instanceof Error ? cause.message : "Could not load your requests."); }
+    try { setRequests(site.id ? await loadOwnListingRequests(supabase, currentUser.id, site.id) : []); } catch (cause: unknown) { setError(cause instanceof Error ? cause.message : "Could not load your requests."); }
     setLoading(false);
-  }, []);
+  }, [site.id]);
 
   // Loading remote state is the purpose of this mount effect.
   // eslint-disable-next-line react-hooks/set-state-in-effect

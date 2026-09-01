@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const CONTENT_STATUSES = ["new", "reviewing", "assigned_to_editor", "approved_for_publishing", "published", "rejected", "closed"];
@@ -13,6 +15,7 @@ function label(value?: string | null) { return String(value || "").replaceAll("_
 function contentStatusClass(status?: string | null) { const value = String(status || "new").toLowerCase(); if (value === "new") return "bg-pink-50 text-pink-700"; if (value.includes("review") || value.includes("assigned")) return "bg-yellow-50 text-yellow-800"; if (value.includes("approved") || value.includes("published")) return "bg-green-50 text-green-700"; if (value.includes("reject")) return "bg-red-50 text-red-700"; return "bg-slate-100 text-slate-700"; }
 
 export default function CommunityContentPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [actionMessage, setActionMessage] = useState("");
@@ -25,7 +28,7 @@ export default function CommunityContentPage() {
   const canAccess = Boolean(user && isAdminRole(role));
 
   async function loadContent() {
-    const contentResult = await supabase.from("public_content_requests").select("*").order("created_at", { ascending: false }).limit(300);
+    const contentResult = await forSite(supabase.from("public_content_requests").select("*"), site.id).order("created_at", { ascending: false }).limit(300);
     if (contentResult.error) { setActionMessage(`Could not load public content requests: ${contentResult.error.message}. Run supabase/public-content-requests.sql.`); setRows([]); }
     else setRows(contentResult.data || []);
     const adminResult = await supabase.from("admins").select("email,name,role").order("created_at", { ascending: false });
@@ -46,7 +49,7 @@ export default function CommunityContentPage() {
 
   async function updateContentRequest(row: any, payload: any, success = "Content request updated.") {
     setActionMessage("Updating content request...");
-    const { error } = await supabase.from("public_content_requests").update({ ...payload, updated_at: new Date().toISOString() }).eq("id", row.id);
+    const { error } = await forSite(supabase.from("public_content_requests").update({ ...payload, updated_at: new Date().toISOString() }), site.id).eq("id", row.id);
     if (error) { setActionMessage(`Content request update failed: ${error.message}`); return; }
     setActionMessage(success); await loadContent();
   }

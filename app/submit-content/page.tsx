@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import SiteHeader from "../components/SiteHeader";
 import SiteFooter from "../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
 export default function SubmitContentPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -68,6 +70,7 @@ export default function SubmitContentPage() {
     if (!form.content.trim() && !form.imageUrl.trim() && !form.videoUrl.trim() && !form.sourceUrl.trim()) { setMessage("Please provide text, an image, a video URL, or a source URL."); return; }
     setSaving(true);
     const { error } = await supabase.from("public_content_requests").insert({
+      site_id: site.id,
       submitter_user_id: user.id,
       submitter_name: form.name.trim(),
       submitter_email: user.email.toLowerCase(),

@@ -7,11 +7,13 @@ import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
 import { loadAllListingRequests, reviewListingRequest } from "../../lib/listingManagement/services/listingManagementService";
 import type { ListingManagementRequest, ListingRequestStatus } from "../../lib/listingManagement/types";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 export default function ListingRequestsStudioPage() {
+  const site = useCurrentSite();
   const [user, setUser] = useState<User | null>(null); const [rows, setRows] = useState<ListingManagementRequest[]>([]); const [loading, setLoading] = useState(true); const [message, setMessage] = useState(""); const [filter, setFilter] = useState("pending"); const [notes, setNotes] = useState<Record<string, string>>({}); const [working, setWorking] = useState("");
-  async function load() { setLoading(true); const { data } = await supabase.auth.getUser(); const current = data?.user || null; setUser(current); if (!current || !isAdminRole(await resolveUserRole(supabase, current))) { setMessage("Studio admin access is required."); setLoading(false); return; } try { setRows(await loadAllListingRequests(supabase)); } catch (cause: unknown) { setMessage(cause instanceof Error ? cause.message : "Could not load requests."); } setLoading(false); }
+  async function load() { setLoading(true); const { data } = await supabase.auth.getUser(); const current = data?.user || null; setUser(current); if (!current || !isAdminRole(await resolveUserRole(supabase, current))) { setMessage("Studio admin access is required."); setLoading(false); return; } try { setRows(site.id ? await loadAllListingRequests(supabase, site.id) : []); } catch (cause: unknown) { setMessage(cause instanceof Error ? cause.message : "Could not load requests."); } setLoading(false); }
   // Loading the moderation queue is the purpose of this mount effect.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, []);
