@@ -2,18 +2,21 @@
 
 import { useEffect } from "react";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
 export default function BusinessReviewSummaryEnhancer() {
+  const site = useCurrentSite();
   useEffect(() => {
     if (window.location.pathname !== "/businesses") return;
     let cancelled = false;
 
     async function enhance() {
-      const businessResult = await supabase.from("local_businesses").select("id,name").eq("status", "approved");
+      const businessResult = await forSite(supabase.from("local_businesses").select("id,name"), site.id).eq("status", "approved");
       if (cancelled || businessResult.error) return;
-      const reviewResult = await supabase.from("business_reviews").select("business_id,rating").eq("status", "approved");
+      const reviewResult = await forSite(supabase.from("business_reviews").select("business_id,rating"), site.id).eq("status", "approved");
       if (cancelled || reviewResult.error) return;
 
       const stats: Record<string, { total: number; count: number }> = {};
@@ -44,6 +47,6 @@ export default function BusinessReviewSummaryEnhancer() {
     const observer = new MutationObserver(() => enhance());
     observer.observe(document.body, { childList: true, subtree: true });
     return () => { cancelled = true; observer.disconnect(); };
-  }, []);
+  }, [site.id]);
   return null;
 }

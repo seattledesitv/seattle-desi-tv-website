@@ -4,12 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import SiteHeader from "../../components/SiteHeader";
 import SiteFooter from "../../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
 type Review = { id: string; user_id: string; reviewer_name: string; rating: number; comment: string; status: string; created_at: string };
 
 export default function BusinessReviewsPage() {
+  const site = useCurrentSite();
   const [business, setBusiness] = useState<any>(null), [reviews, setReviews] = useState<Review[]>([]), [user, setUser] = useState<any>(null);
   const [rating, setRating] = useState(5), [comment, setComment] = useState(""), [message, setMessage] = useState("Loading reviews..."), [saving, setSaving] = useState(false);
   const businessId = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("business") || "";
@@ -18,8 +21,8 @@ export default function BusinessReviewsPage() {
     if (!businessId) { setMessage("Business not specified."); return; }
     const auth = await supabase.auth.getUser(); const currentUser = auth.data.user || null; setUser(currentUser);
     const [businessResult, reviewResult] = await Promise.all([
-      supabase.from("local_businesses").select("id,name,address,category").eq("id", businessId).eq("status", "approved").maybeSingle(),
-      supabase.from("business_reviews").select("id,user_id,reviewer_name,rating,comment,status,created_at").eq("business_id", businessId).order("created_at", { ascending: false })
+      forSite(supabase.from("local_businesses").select("id,name,address,category").eq("id", businessId).eq("status", "approved"), site.id).maybeSingle(),
+      forSite(supabase.from("business_reviews").select("id,user_id,reviewer_name,rating,comment,status,created_at").eq("business_id", businessId).order("created_at", { ascending: false }), site.id)
     ]);
     if (businessResult.error || !businessResult.data) { setMessage("Business not found."); return; }
     setBusiness(businessResult.data); setReviews((reviewResult.data || []) as Review[]);
@@ -37,7 +40,7 @@ export default function BusinessReviewsPage() {
     if (comment.trim().length < 3) { setMessage("Please add a short comment."); return; }
     setSaving(true); setMessage("");
     const reviewerName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Community member";
-    const { error } = await supabase.from("business_reviews").upsert({ business_id: businessId, user_id: user.id, reviewer_name: reviewerName, reviewer_email: user.email || null, rating, comment: comment.trim(), status: "pending", moderation_notes: null, moderated_by: null, moderated_at: null }, { onConflict: "business_id,user_id" });
+    const { error } = await supabase.from("business_reviews").upsert({ site_id: site.id, business_id: businessId, user_id: user.id, reviewer_name: reviewerName, reviewer_email: user.email || null, rating, comment: comment.trim(), status: "pending", moderation_notes: null, moderated_by: null, moderated_at: null }, { onConflict: "business_id,user_id" });
     setSaving(false); if (error) { setMessage(`Could not submit review: ${error.message}`); return; }
     setMessage("Review submitted for admin approval."); await load();
   }

@@ -5,6 +5,8 @@ import MyHubHeader from "../../components/MyHubHeader";
 import SiteFooter from "../../components/SiteFooter";
 import DirectoryImageCropper, { type DirectoryImageCrop } from "../../components/DirectoryImageCropper";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 import { validateOptionalImageFile } from "../../lib/validation";
 
 const supabase = getSupabaseBrowserClient();
@@ -26,13 +28,14 @@ async function upload(file: File) {
 }
 
 export default function BusinessImageEditorPage() {
+  const site = useCurrentSite();
   const [business, setBusiness] = useState<any>(null);
   const [file, setFile] = useState<File | null>(null);
   const [crop, setCrop] = useState<DirectoryImageCrop>({ x: 50, y: 50, zoom: 1 });
   const [message, setMessage] = useState("Checking access...");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [site.id]);
 
   async function load() {
     const businessId = new URLSearchParams(window.location.search).get("business") || "";
@@ -40,11 +43,11 @@ export default function BusinessImageEditorPage() {
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user || null;
     if (!user) return setMessage("Please login to manage this business image.");
-    const listing = await supabase.from("local_businesses").select("id,name,image,image_urls,image_position_x,image_position_y,image_zoom,created_by").eq("id", businessId).maybeSingle();
+    const listing = await forSite(supabase.from("local_businesses").select("id,name,image,image_urls,image_position_x,image_position_y,image_zoom,created_by"), site.id).eq("id", businessId).maybeSingle();
     if (listing.error || !listing.data) return setMessage(listing.error?.message || "Business not found.");
     let allowed = listing.data.created_by === user.id;
     if (!allowed) {
-      const manager = await supabase.from("business_managers").select("id").eq("business_id", businessId).eq("user_id", user.id).eq("active", true).maybeSingle();
+      const manager = await forSite(supabase.from("business_managers").select("id"), site.id).eq("business_id", businessId).eq("user_id", user.id).eq("active", true).maybeSingle();
       allowed = Boolean(manager.data);
     }
     if (!allowed) return setMessage("You do not have permission to manage this business image.");
@@ -61,7 +64,7 @@ export default function BusinessImageEditorPage() {
       if (!imageUrl) throw new Error("Choose an image first.");
       const existing = Array.isArray(business.image_urls) ? business.image_urls : [];
       const imageUrls = Array.from(new Set([imageUrl, ...existing]));
-      const result = await supabase.from("local_businesses").update({ image: imageUrl, image_urls: imageUrls, image_position_x: crop.x, image_position_y: crop.y, image_zoom: crop.zoom, updated_at: new Date().toISOString() }).eq("id", business.id);
+      const result = await forSite(supabase.from("local_businesses").update({ image: imageUrl, image_urls: imageUrls, image_position_x: crop.x, image_position_y: crop.y, image_zoom: crop.zoom, updated_at: new Date().toISOString() }), site.id).eq("id", business.id);
       if (result.error) throw result.error;
       setBusiness({ ...business, image: imageUrl, image_urls: imageUrls, image_position_x: crop.x, image_position_y: crop.y, image_zoom: crop.zoom });
       setFile(null); setMessage("Image and visible card area saved.");

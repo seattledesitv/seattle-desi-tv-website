@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -19,6 +21,7 @@ function formatDate(value?: string | null) {
 }
 
 export default function FeaturedEventsStudioPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [user, setUser] = useState<any>(null);
@@ -27,12 +30,12 @@ export default function FeaturedEventsStudioPage() {
   const canAccess = Boolean(user && isAdminRole(role));
 
   async function loadEvents() {
-    const { data, error } = await supabase
+    const { data, error } = await forSite(supabase
       .from("events")
       .select("id,title,date,location,status,image,image_urls,ticket_url,featured,featured_order")
       .eq("status", "approved")
       .order("featured_order", { ascending: true })
-      .order("date", { ascending: true });
+      .order("date", { ascending: true }), site.id);
 
     if (error) {
       setMessage(`Could not load events: ${error.message}`);
@@ -69,10 +72,10 @@ export default function FeaturedEventsStudioPage() {
 
   async function updateFeatured(id: string, featured: boolean, featuredOrder = 0) {
     setMessage("Updating featured event...");
-    const { error } = await supabase
+    const { error } = await forSite(supabase
       .from("events")
       .update({ featured, featured_order: Number(featuredOrder || 0) })
-      .eq("id", id);
+      .eq("id", id), site.id);
 
     if (error) {
       setMessage(`Featured update failed: ${error.message}`);

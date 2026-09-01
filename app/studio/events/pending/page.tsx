@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
 import { formatEventTime } from "../../../lib/eventTime";
+import { useCurrentSite } from "../../../lib/sites/SiteContext";
+import { forSite } from "../../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -22,6 +24,7 @@ function getImage(row: any) {
 }
 
 export default function PendingEventsPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Checking access...");
   const [actionMessage, setActionMessage] = useState("");
@@ -32,11 +35,11 @@ export default function PendingEventsPage() {
   const canAccess = Boolean(user && roleContainsAdmin(role));
 
   async function loadEvents() {
-    const { data, error } = await supabase
+    const { data, error } = await forSite(supabase
       .from("events")
       .select("id,title,date,local_start_time,local_end_time,event_timezone,location,description,status,image,image_urls,ticket_url,poc_email,created_at")
       .or("status.is.null,status.eq.pending")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }), site.id);
 
     if (error) setActionMessage(`Could not load pending events: ${error.message}`);
     else setEvents(data || []);
@@ -82,7 +85,7 @@ export default function PendingEventsPage() {
       payload.approved_at = new Date().toISOString();
     }
 
-    const { error } = await supabase.from("events").update(payload).eq("id", id);
+    const { error } = await forSite(supabase.from("events").update(payload).eq("id", id), site.id);
     if (error) setActionMessage(`Update failed: ${error.message}`);
     else {
       setActionMessage(`Event marked ${status}.`);
@@ -92,7 +95,7 @@ export default function PendingEventsPage() {
 
   async function deleteEvent(id: string, title: string) {
     if (!window.confirm(`Delete event: ${title}?`)) return;
-    const { error } = await supabase.from("events").delete().eq("id", id);
+    const { error } = await forSite(supabase.from("events").delete().eq("id", id), site.id);
     if (error) setActionMessage(`Delete failed: ${error.message}`);
     else {
       setActionMessage("Event deleted.");

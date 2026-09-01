@@ -5,6 +5,8 @@ import MyHubHeader from "../components/MyHubHeader";
 import SiteFooter from "../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { formatEventTime, timeInputValue } from "../lib/eventTime";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
@@ -18,8 +20,9 @@ async function uploadEventImage(file: File) { if (!file.type.startsWith("image/"
 function Field({ label, children }: { label: string; children: any }) { return <label className="grid gap-1 text-sm font-black text-slate-800"><span>{label}</span>{children}</label>; }
 
 export default function MyEventsPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [message, setMessage] = useState("Loading your event listings..."); const [rows, setRows] = useState<any[]>([]); const [selectedId, setSelectedId] = useState(""); const [editingId, setEditingId] = useState(""); const [editForm, setEditForm] = useState<any>({}); const [imageFiles, setImageFiles] = useState<File[]>([]); const [searchText, setSearchText] = useState(""); const [monthFilter, setMonthFilter] = useState(""); const [statusFilter, setStatusFilter] = useState("all");
-  async function loadRows() { setLoading(true); const { data: auth } = await supabase.auth.getUser(); const user = auth?.user || null; if (!user?.id) { setRows([]); setMessage("Please login to view event listings submitted from your profile."); setLoading(false); return; } const { data, error } = await supabase.from("events").select("id,title,date,local_start_time,local_end_time,event_timezone,location,description,ticket_url,poc_email,poc_phone,image,image_urls,status,created_at,created_by").eq("created_by", user.id).order("created_at", { ascending: false }); const nextRows = data || []; setRows(nextRows); setSelectedId((current) => current || nextRows[0]?.id || ""); setMessage(error ? error.message : "Event listings submitted from your profile."); setLoading(false); }
+  async function loadRows() { setLoading(true); const { data: auth } = await supabase.auth.getUser(); const user = auth?.user || null; if (!user?.id) { setRows([]); setMessage("Please login to view event listings submitted from your profile."); setLoading(false); return; } const { data, error } = await forSite(supabase.from("events").select("id,title,date,local_start_time,local_end_time,event_timezone,location,description,ticket_url,poc_email,poc_phone,image,image_urls,status,created_at,created_by").eq("created_by", user.id).order("created_at", { ascending: false }), site.id); const nextRows = data || []; setRows(nextRows); setSelectedId((current) => current || nextRows[0]?.id || ""); setMessage(error ? error.message : "Event listings submitted from your profile."); setLoading(false); }
   useEffect(() => { loadRows(); }, []);
   const filteredRows = useMemo(() => { const q = searchText.trim().toLowerCase(); return rows.filter((row) => { if (statusFilter !== "all" && String(row.status || "pending").toLowerCase() !== statusFilter) return false; if (monthFilter && monthInput(row.date) !== monthFilter) return false; if (!q) return true; return [row.title, row.location, row.description, row.poc_email, row.poc_phone, row.status].some((value) => String(value || "").toLowerCase().includes(q)); }); }, [rows, searchText, monthFilter, statusFilter]);
   const selectedRow = rows.find((row) => row.id === selectedId) || filteredRows[0] || null;

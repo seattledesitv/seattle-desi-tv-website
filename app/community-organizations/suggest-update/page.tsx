@@ -4,10 +4,13 @@ import { useEffect, useState } from "react";
 import SiteHeader from "../../components/SiteHeader";
 import SiteFooter from "../../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
 export default function SuggestOrganizationUpdatePage() {
+  const site = useCurrentSite();
   const [organization, setOrganization] = useState<any>(null);
   const [organizationId, setOrganizationId] = useState("");
   const [user, setUser] = useState<any>(null);
@@ -23,7 +26,7 @@ export default function SuggestOrganizationUpdatePage() {
     setUser(currentUser);
     if (currentUser) setForm((current) => ({ ...current, name: currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || "", email: currentUser.email || "" }));
     if (!id) { setMessage("Organization not specified."); return; }
-    const result = await supabase.from("community_organizations").select("id,name,location,website").eq("id", id).eq("approved", true).eq("status", "approved").maybeSingle();
+    const result = await forSite(supabase.from("community_organizations").select("id,name,location,website").eq("id", id).eq("approved", true).eq("status", "approved"), site.id).maybeSingle();
     if (result.error || !result.data) { setMessage(result.error?.message || "Organization not found."); return; }
     setOrganization(result.data); setMessage("");
   })(); }, []);
@@ -33,6 +36,7 @@ export default function SuggestOrganizationUpdatePage() {
     if (!form.suggestion.trim()) { setMessage("Please describe the update you are suggesting."); return; }
     setSaving(true); setMessage("");
     const result = await supabase.from("organization_edit_suggestions").insert({
+      site_id: site.id,
       organization_id: organization.id,
       submitter_user_id: user?.id || null,
       submitter_name: form.name.trim() || null,

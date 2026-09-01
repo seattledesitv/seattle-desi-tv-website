@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import MyHubHeader from "../../components/MyHubHeader";
 import SiteFooter from "../../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const RELATIONSHIPS = ["Organizer", "Co-Organizer", "Community Partner", "Educational Partner", "Charity Partner", "Venue Partner", "Media Partner", "Sponsor"];
@@ -15,6 +17,7 @@ function dateText(value?: string | null) {
 }
 
 export default function LinkOrganizationEventPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("Loading organizations and events...");
@@ -36,10 +39,10 @@ export default function LinkOrganizationEventPage() {
     if (!currentUser?.id) { setMessage("Please log in to link an event to an organization."); setLoading(false); return; }
 
     const [submitted, managed, eventResult, requestResult] = await Promise.all([
-      supabase.from("community_organizations").select("id,name,location,category,submitted_by").eq("submitted_by", currentUser.id).order("name"),
-      supabase.from("organization_managers").select("organization_id,community_organizations(id,name,location,category)").eq("user_id", currentUser.id).eq("active", true),
-      supabase.from("events").select("id,title,date,location,status,approved").or("status.eq.approved,approved.eq.true").order("date", { ascending: false }).limit(500),
-      supabase.from("organization_event_link_requests").select("id,organization_id,event_id,relationship,status,admin_notes,created_at,community_organizations(name),events(title,date)").eq("requested_by", currentUser.id).order("created_at", { ascending: false }),
+      forSite(supabase.from("community_organizations").select("id,name,location,category,submitted_by"), site.id).eq("submitted_by", currentUser.id).order("name"),
+      forSite(supabase.from("organization_managers").select("organization_id,community_organizations(id,name,location,category)"), site.id).eq("user_id", currentUser.id).eq("active", true),
+      forSite(supabase.from("events").select("id,title,date,location,status,approved"), site.id).or("status.eq.approved,approved.eq.true").order("date", { ascending: false }).limit(500),
+      forSite(supabase.from("organization_event_link_requests").select("id,organization_id,event_id,relationship,status,admin_notes,created_at,community_organizations(name),events(title,date)"), site.id).eq("requested_by", currentUser.id).order("created_at", { ascending: false }),
     ]);
 
     const map = new Map<string, any>();
@@ -54,7 +57,7 @@ export default function LinkOrganizationEventPage() {
     setLoading(false);
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [site.id]);
 
   const filteredEvents = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -66,7 +69,7 @@ export default function LinkOrganizationEventPage() {
     if (!user?.id || !organizationId || !eventId) { setMessage("Select an organization and an event."); return; }
     setSaving(true);
     setMessage("Submitting event link request...");
-    const payload = { organization_id: organizationId, event_id: eventId, requested_by: user.id, relationship, request_notes: notes.trim() || null, status: "pending", updated_at: new Date().toISOString() };
+    const payload = { organization_id: organizationId, event_id: eventId, site_id: site.id, requested_by: user.id, relationship, request_notes: notes.trim() || null, status: "pending", updated_at: new Date().toISOString() };
     const result = await supabase.from("organization_event_link_requests").upsert(payload, { onConflict: "organization_id,event_id,requested_by" });
     setSaving(false);
     if (result.error) { setMessage(`Could not submit request: ${result.error.message}`); return; }

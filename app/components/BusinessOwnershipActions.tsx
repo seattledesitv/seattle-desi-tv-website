@@ -2,23 +2,26 @@
 
 import { useEffect } from "react";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
 type OwnershipBusiness = { id: string; name: string; address?: string | null; owner_verified_at?: string | null; image_position_x?: number | null; image_position_y?: number | null; image_zoom?: number | null };
 
 export default function BusinessOwnershipActions() {
+  const site = useCurrentSite();
   useEffect(() => {
     if (typeof window === "undefined" || window.location.pathname !== "/businesses") return;
     let cancelled = false;
     let enhancing = false;
 
     async function loadBusinesses(): Promise<OwnershipBusiness[]> {
-      const enhanced = await supabase.from("local_businesses").select("id,name,address,owner_verified_at,image_position_x,image_position_y,image_zoom").eq("status", "approved");
+      const enhanced = await forSite(supabase.from("local_businesses").select("id,name,address,owner_verified_at,image_position_x,image_position_y,image_zoom"), site.id).eq("status", "approved");
       if (!enhanced.error) return (enhanced.data || []) as OwnershipBusiness[];
-      const fallback = await supabase.from("local_businesses").select("id,name,address,owner_verified_at").eq("status", "approved");
+      const fallback = await forSite(supabase.from("local_businesses").select("id,name,address,owner_verified_at"), site.id).eq("status", "approved");
       if (!fallback.error) return (fallback.data || []) as OwnershipBusiness[];
-      const basic = await supabase.from("local_businesses").select("id,name,address").eq("status", "approved");
+      const basic = await forSite(supabase.from("local_businesses").select("id,name,address"), site.id).eq("status", "approved");
       return (basic.data || []) as OwnershipBusiness[];
     }
 

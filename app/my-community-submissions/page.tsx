@@ -5,6 +5,8 @@ import MyHubHeader from "../components/MyHubHeader";
 import SiteFooter from "../components/SiteFooter";
 import CheckedExternalLink from "../components/CheckedExternalLink";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 function label(v?: string | null) { return String(v || "pending").replaceAll("_", " "); }
@@ -14,6 +16,7 @@ function readOnly(name: string, value: any) { return <div className="rounded-2xl
 function kindConfig(kind: string) { return kind === "group" ? { table: "community_groups", title: "Community Group", urlField: "group_url", typeField: "platform", publicHref: "/community-groups" } : { table: "community_organizations", title: "Community Organization", urlField: "website", typeField: "organization_type", publicHref: "/community-organizations" }; }
 
 export default function MyCommunitySubmissionsPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("Loading community submissions...");
@@ -34,8 +37,8 @@ export default function MyCommunitySubmissionsPage() {
     setUser(currentUser);
     if (!currentUser?.id) { setMessage("Please login to view your community submissions."); setLoading(false); return; }
     const [groupResult, orgResult] = await Promise.all([
-      supabase.from("community_groups").select("*").eq("submitted_by", currentUser.id).order("created_at", { ascending: false }),
-      supabase.from("community_organizations").select("*").eq("submitted_by", currentUser.id).order("created_at", { ascending: false }),
+      forSite(supabase.from("community_groups").select("*").eq("submitted_by", currentUser.id).order("created_at", { ascending: false }), site.id),
+      forSite(supabase.from("community_organizations").select("*").eq("submitted_by", currentUser.id).order("created_at", { ascending: false }), site.id),
     ]);
     setGroups(groupResult.data || []);
     setOrgs(orgResult.data || []);
@@ -51,7 +54,7 @@ export default function MyCommunitySubmissionsPage() {
     const cfg = kindConfig(selected.kind);
     const payload: any = { ...edit, status: "pending", approved: false, updated_at: new Date().toISOString() };
     delete payload.id; delete payload.kind; delete payload.approved_at; delete payload.approved_by;
-    const { error } = await supabase.from(cfg.table).update(payload).eq("id", selected.id).eq("submitted_by", user.id);
+    const { error } = await forSite(supabase.from(cfg.table).update(payload).eq("id", selected.id).eq("submitted_by", user.id), site.id);
     setSaving(false);
     if (error) { setMessage(`Save failed: ${error.message}`); return; }
     setMessage("Updated and moved back to pending admin review.");

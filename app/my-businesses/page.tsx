@@ -5,6 +5,8 @@ import MyHubHeader from "../components/MyHubHeader";
 import SiteFooter from "../components/SiteFooter";
 import DirectoryImageCropper, { type DirectoryImageCrop, type DirectoryImageMode } from "../components/DirectoryImageCropper";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 import { validateOptionalImageFile } from "../lib/validation";
 
 const supabase = getSupabaseBrowserClient();
@@ -40,6 +42,7 @@ function BusinessImagePreview({ row }: { row: BusinessRow }) {
 }
 
 export default function MyBusinessesPage() {
+  const site = useCurrentSite();
   const [rows, setRows] = useState<BusinessRow[]>([]); const [message, setMessage] = useState("Loading..."); const [saving, setSaving] = useState(false);
   const [selectedId, setSelectedId] = useState(""); const [editingId, setEditingId] = useState(""); const [editTab, setEditTab] = useState<"general" | "media">("general");
   const [editForm, setEditForm] = useState<any>({}); const [imageFile, setImageFile] = useState<File | null>(null);
@@ -50,15 +53,15 @@ export default function MyBusinessesPage() {
     const { data: auth } = await supabase.auth.getUser(); const currentUser = auth?.user || null; setUser(currentUser);
     if (!currentUser?.id) { setMessage("Please login to view your submitted and claimed listings."); return; }
     const columns = "id,name,address,website,category,discount,offer,poc_name,poc_email,poc_phone,image,image_urls,image_position_x,image_position_y,image_zoom,image_display_mode,status,created_at,created_by,owner_verified_at";
-    const submitted = await supabase.from("local_businesses").select(columns).eq("created_by", currentUser.id).order("created_at", { ascending: false });
-    const managed = await supabase.from("business_managers").select(`role,is_primary,local_businesses(${columns})`).eq("user_id", currentUser.id).eq("active", true);
+    const submitted = await forSite(supabase.from("local_businesses").select(columns), site.id).eq("created_by", currentUser.id).order("created_at", { ascending: false });
+    const managed = await forSite(supabase.from("business_managers").select(`role,is_primary,local_businesses(${columns})`), site.id).eq("user_id", currentUser.id).eq("active", true);
     if (submitted.error) { setMessage(submitted.error.message); return; }
     const map = new Map<string, BusinessRow>(); (submitted.data || []).forEach((row: any) => map.set(row.id, { ...row, access_type: "submitted" }));
     if (!managed.error) (managed.data || []).forEach((manager: any) => { const business = manager.local_businesses; if (business) map.set(business.id, { ...business, access_type: "claimed", manager_role: manager.role }); });
     const next = Array.from(map.values()); setRows(next); setSelectedId((current) => current && next.some((row) => row.id === current) ? current : next[0]?.id || "");
     setMessage(managed.error ? `Submitted listings loaded, but claimed-business access could not be loaded: ${managed.error.message}` : "Submitted and claimed business profiles.");
   }
-  useEffect(() => { void loadRows(); }, []);
+  useEffect(() => { void loadRows(); }, [site.id]);
 
   const filteredRows = useMemo(() => { const q = searchText.trim().toLowerCase(); return rows.filter((row) => (statusFilter === "all" || String(row.status || "pending").toLowerCase() === statusFilter) && (!q || [row.name,row.address,row.website,row.category,row.offer,row.poc_name,row.poc_email,row.poc_phone,row.status,row.access_type].some((v) => String(v || "").toLowerCase().includes(q)))); }, [rows, searchText, statusFilter]);
   const selectedRow = rows.find((row) => row.id === selectedId) || filteredRows[0] || null;
@@ -76,10 +79,10 @@ export default function MyBusinessesPage() {
       if (!payload.name || !payload.address) throw new Error("Business name and address are required.");
       if (row.access_type === "claimed" && row.created_by !== user.id) {
         const suggestion = ["Verified owner profile update:", ...Object.entries(payload).map(([k,v]) => `${k}: ${v || "(remove)"}`)].join("\n");
-        const result = await supabase.from("business_edit_suggestions").insert({ business_id: row.id, submitter_user_id: user.id, submitter_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email, submitter_email: user.email, suggestion, status: "pending" });
+        const result = await supabase.from("business_edit_suggestions").insert({ business_id: row.id, site_id: site.id, submitter_user_id: user.id, submitter_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email, submitter_email: user.email, suggestion, status: "pending" });
         if (result.error) throw result.error; setMessage("Your profile changes were submitted to SDTV for approval.");
       } else {
-        const result = await supabase.from("local_businesses").update({ ...payload, updated_at: new Date().toISOString() }).eq("id", row.id).eq("created_by", user.id);
+        const result = await forSite(supabase.from("local_businesses").update({ ...payload, updated_at: new Date().toISOString() }), site.id).eq("id", row.id).eq("created_by", user.id);
         if (result.error) throw result.error; setMessage("Business listing updated.");
       }
       setEditingId(""); await loadRows();
@@ -92,7 +95,7 @@ export default function MyBusinessesPage() {
       const currentImage = row.image || row.image_urls?.[0] || ""; const imageUrl = imageFile ? await uploadBusinessImage(imageFile) : currentImage;
       if (!imageUrl) throw new Error("Choose an image first.");
       const imageUrls = Array.from(new Set([imageUrl, ...(Array.isArray(row.image_urls) ? row.image_urls : [])]));
-      const result = await supabase.from("local_businesses").update({ image: imageUrl, image_urls: imageUrls, image_position_x: imageCrop.x, image_position_y: imageCrop.y, image_zoom: imageCrop.zoom, image_display_mode: imageCrop.mode || "cover", updated_at: new Date().toISOString() }).eq("id", row.id);
+      const result = await forSite(supabase.from("local_businesses").update({ image: imageUrl, image_urls: imageUrls, image_position_x: imageCrop.x, image_position_y: imageCrop.y, image_zoom: imageCrop.zoom, image_display_mode: imageCrop.mode || "cover", updated_at: new Date().toISOString() }), site.id).eq("id", row.id);
       if (result.error) throw result.error; setImageFile(null); setMessage("Business image presentation saved."); await loadRows();
     } catch (error: any) { setMessage(error?.message || "Could not save the business image."); } finally { setSaving(false); }
   }

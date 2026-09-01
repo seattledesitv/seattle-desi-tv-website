@@ -5,10 +5,13 @@ import { useParams } from "next/navigation";
 import SiteHeader from "../../../components/SiteHeader";
 import SiteFooter from "../../../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../../lib/sites/SiteContext";
+import { forSite } from "../../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
 export default function EventMediaRequestPage() {
+  const site = useCurrentSite();
   const params = useParams();
   const eventId = String(params?.eventId || "");
   const [event, setEvent] = useState<any>(null);
@@ -35,9 +38,9 @@ export default function EventMediaRequestPage() {
       setLoading(false);
       return;
     }
-    const { data, error } = await supabase
+    const { data, error } = await forSite(supabase
       .from("events")
-      .select("id,title,date,location,poc_email")
+      .select("id,title,date,location,poc_email"), site.id)
       .eq("id", eventId)
       .maybeSingle();
     if (error || !data) {
@@ -84,7 +87,7 @@ export default function EventMediaRequestPage() {
     setSaving(false);
   }
 
-  useEffect(() => { loadEvent(); }, [eventId]);
+  useEffect(() => { loadEvent(); }, [eventId, site.id]);
 
   return <main className="min-h-screen bg-slate-950 text-white">
     <SiteHeader />

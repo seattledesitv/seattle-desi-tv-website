@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const RELATIONSHIPS = ["Organizer", "Co-Organizer", "Community Partner", "Educational Partner", "Charity Partner", "Venue Partner", "Media Partner", "Sponsor"];
@@ -13,6 +15,7 @@ function label(value?: string | null) {
 }
 
 export default function EventOrganizationManager({ mode }: { mode: Mode }) {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("Loading events and organizations...");
@@ -35,7 +38,7 @@ export default function EventOrganizationManager({ mode }: { mode: Mode }) {
 
   async function loadLinks(eventId: string) {
     if (!eventId) { setLinks([]); return; }
-    const { data, error } = await supabase.from("event_organizations").select("id,event_id,organization_id,relationship,is_primary,display_order,community_organizations(id,name,organization_type,category,location)").eq("event_id", eventId).order("is_primary", { ascending: false }).order("display_order", { ascending: true });
+    const { data, error } = await forSite(supabase.from("event_organizations").select("id,event_id,organization_id,relationship,is_primary,display_order,community_organizations(id,name,organization_type,category,location)"), site.id).eq("event_id", eventId).order("is_primary", { ascending: false }).order("display_order", { ascending: true });
     setLinks(data || []);
     if (error) setMessage(`Could not load organization links: ${error.message}`);
   }
@@ -47,11 +50,11 @@ export default function EventOrganizationManager({ mode }: { mode: Mode }) {
     setUser(currentUser);
     if (!currentUser?.id) { setMessage("Please login to manage event organizations."); setLoading(false); return; }
 
-    const eventQuery = supabase.from("events").select("id,title,date,location,status,created_by").order("date", { ascending: false }).limit(400);
+    const eventQuery = forSite(supabase.from("events").select("id,title,date,location,status,created_by"), site.id).order("date", { ascending: false }).limit(400);
     if (mode === "owner") eventQuery.eq("created_by", currentUser.id);
     const [eventResult, organizationResult] = await Promise.all([
       eventQuery,
-      supabase.from("community_organizations").select("id,name,organization_type,category,location,status,approved,submitted_by").or(`and(status.eq.approved,approved.eq.true),submitted_by.eq.${currentUser.id}`).order("name", { ascending: true }),
+      forSite(supabase.from("community_organizations").select("id,name,organization_type,category,location,status,approved,submitted_by"), site.id).or(`and(status.eq.approved,approved.eq.true),submitted_by.eq.${currentUser.id}`).order("name", { ascending: true }),
     ]);
 
     const nextEvents = eventResult.data || [];
@@ -64,15 +67,15 @@ export default function EventOrganizationManager({ mode }: { mode: Mode }) {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, [mode]);
-  useEffect(() => { if (selectedEventId) loadLinks(selectedEventId); }, [selectedEventId]);
+  useEffect(() => { load(); }, [mode, site.id]);
+  useEffect(() => { if (selectedEventId) loadLinks(selectedEventId); }, [selectedEventId, site.id]);
 
   async function addLink() {
     if (!selectedEventId || !organizationId) { setMessage("Select an event and organization."); return; }
     setSaving(true);
     setMessage("Adding organization relationship...");
-    if (isPrimary) await supabase.from("event_organizations").update({ is_primary: false }).eq("event_id", selectedEventId).eq("is_primary", true);
-    const { error } = await supabase.from("event_organizations").insert({ event_id: selectedEventId, organization_id: organizationId, relationship, is_primary: isPrimary, display_order: links.length, created_by: user?.id || null });
+    if (isPrimary) await forSite(supabase.from("event_organizations").update({ is_primary: false }), site.id).eq("event_id", selectedEventId).eq("is_primary", true);
+    const { error } = await supabase.from("event_organizations").insert({ event_id: selectedEventId, organization_id: organizationId, site_id: site.id, relationship, is_primary: isPrimary, display_order: links.length, created_by: user?.id || null });
     if (error) setMessage(`Could not add organization: ${error.message}`);
     else { setOrganizationId(""); setRelationship("Organizer"); setIsPrimary(false); setMessage("Organization relationship added."); await loadLinks(selectedEventId); }
     setSaving(false);
@@ -80,8 +83,8 @@ export default function EventOrganizationManager({ mode }: { mode: Mode }) {
 
   async function updateLink(linkId: string, values: any) {
     setSaving(true);
-    if (values.is_primary) await supabase.from("event_organizations").update({ is_primary: false }).eq("event_id", selectedEventId).eq("is_primary", true);
-    const { error } = await supabase.from("event_organizations").update(values).eq("id", linkId).eq("event_id", selectedEventId);
+    if (values.is_primary) await forSite(supabase.from("event_organizations").update({ is_primary: false }), site.id).eq("event_id", selectedEventId).eq("is_primary", true);
+    const { error } = await forSite(supabase.from("event_organizations").update(values), site.id).eq("id", linkId).eq("event_id", selectedEventId);
     setMessage(error ? `Could not update relationship: ${error.message}` : "Organization relationship updated.");
     await loadLinks(selectedEventId);
     setSaving(false);
@@ -90,7 +93,7 @@ export default function EventOrganizationManager({ mode }: { mode: Mode }) {
   async function removeLink(linkId: string) {
     if (!window.confirm("Remove this organization relationship from the event?")) return;
     setSaving(true);
-    const { error } = await supabase.from("event_organizations").delete().eq("id", linkId).eq("event_id", selectedEventId);
+    const { error } = await forSite(supabase.from("event_organizations").delete(), site.id).eq("id", linkId).eq("event_id", selectedEventId);
     setMessage(error ? `Could not remove relationship: ${error.message}` : "Organization relationship removed.");
     await loadLinks(selectedEventId);
     setSaving(false);

@@ -4,10 +4,13 @@ import { useEffect, useState } from "react";
 import SiteHeader from "../../components/SiteHeader";
 import SiteFooter from "../../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
 export default function ClaimBusinessPage() {
+  const site = useCurrentSite();
   const [business, setBusiness] = useState<any>(null), [user, setUser] = useState<any>(null), [message, setMessage] = useState("Loading business...");
   const [businessId, setBusinessId] = useState("");
   const [existingClaim, setExistingClaim] = useState<any>(null);
@@ -19,12 +22,12 @@ export default function ClaimBusinessPage() {
     const auth = await supabase.auth.getUser(); const currentUser = auth.data.user || null; setUser(currentUser);
     if (currentUser) setForm((v) => ({ ...v, name: currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || "", email: currentUser.email || "" }));
     if (!id) return setMessage("Business not specified.");
-    let result = await supabase.from("local_businesses").select("id,name,address,category,owner_verified_at").eq("id", id).eq("status", "approved").maybeSingle();
-    if (result.error && /owner_verified_at/i.test(result.error.message || "")) result = await supabase.from("local_businesses").select("id,name,address,category").eq("id", id).eq("status", "approved").maybeSingle();
+    let result = await forSite(supabase.from("local_businesses").select("id,name,address,category,owner_verified_at").eq("id", id).eq("status", "approved"), site.id).maybeSingle();
+    if (result.error && /owner_verified_at/i.test(result.error.message || "")) result = await forSite(supabase.from("local_businesses").select("id,name,address,category").eq("id", id).eq("status", "approved"), site.id).maybeSingle();
     if (result.error || !result.data) return setMessage("Business not found.");
     setBusiness(result.data);
     if (currentUser) {
-      const claimResult = await supabase.from("business_claim_requests").select("id,status,admin_notes,verification_details,updated_at").eq("business_id", id).eq("requester_user_id", currentUser.id).in("status", ["pending","needs_information","approved"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      const claimResult = await forSite(supabase.from("business_claim_requests").select("id,status,admin_notes,verification_details,updated_at").eq("business_id", id).eq("requester_user_id", currentUser.id).in("status", ["pending","needs_information","approved"]).order("created_at", { ascending: false }).limit(1), site.id).maybeSingle();
       if (!claimResult.error && claimResult.data) { setExistingClaim(claimResult.data); setForm((v)=>({...v,details:claimResult.data.verification_details||v.details})); }
     }
     setMessage("");
@@ -36,8 +39,8 @@ export default function ClaimBusinessPage() {
     setSaving(true); setMessage("");
     const payload = { requester_name: form.name.trim(), requester_email: form.email.trim().toLowerCase(), requester_phone: form.phone.trim() || null, relationship: form.relationship, verification_details: form.details.trim() || null, status: "pending", updated_at: new Date().toISOString() };
     const result = existingClaim?.id
-      ? await supabase.from("business_claim_requests").update(payload).eq("id", existingClaim.id).eq("requester_user_id", user.id).select("id,status,admin_notes,verification_details,updated_at").maybeSingle()
-      : await supabase.from("business_claim_requests").insert({ ...payload, business_id: business.id, requester_user_id: user.id }).select("id,status,admin_notes,verification_details,updated_at").single();
+      ? await forSite(supabase.from("business_claim_requests").update(payload).eq("id", existingClaim.id).eq("requester_user_id", user.id).select("id,status,admin_notes,verification_details,updated_at"), site.id).maybeSingle()
+      : await supabase.from("business_claim_requests").insert({ ...payload, site_id: site.id, business_id: business.id, requester_user_id: user.id }).select("id,status,admin_notes,verification_details,updated_at").single();
     setSaving(false);
     if (result.error) {
       if (result.error.code === "23505") { setMessage("You already have an open claim for this business. Refresh this page to view its status or provide the requested information."); return; }

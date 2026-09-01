@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import MyHubHeader from "../components/MyHubHeader";
 import SiteFooter from "../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 type PortalTab = "overview" | "coverage" | "media" | "contact" | "timeline";
@@ -18,6 +20,7 @@ function whatsappUrl(phone?: string | null, text?: string) { const n = cleanPhon
 function StatBox({ value, label }: { value: number; label: string }) { return <div className="rounded-2xl bg-white/10 p-4"><p className="text-3xl font-black">{value}</p><p className="text-xs font-bold text-slate-300">{label}</p></div>; }
 
 export default function MyEventsV2Page() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading event listing status...");
   const [events, setEvents] = useState<any[]>([]);
@@ -40,7 +43,7 @@ export default function MyEventsV2Page() {
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user || null;
     if (!user?.id) { setEvents([]); setMessage("Please login to view event listing status."); setLoading(false); return; }
-    const { data, error } = await supabase.from("events").select("id,title,date,location,status,created_at,poc_email,poc_phone,description,ticket_url,image,image_urls").eq("created_by", user.id).order("created_at", { ascending: false });
+    const { data, error } = await forSite(supabase.from("events").select("id,title,date,location,status,created_at,poc_email,poc_phone,description,ticket_url,image,image_urls").eq("created_by", user.id).order("created_at", { ascending: false }), site.id);
     const nextEvents = data || [];
     setEvents(nextEvents);
     setSelectedEventId((current) => current || nextEvents[0]?.id || "");
@@ -48,11 +51,11 @@ export default function MyEventsV2Page() {
     const ids = nextEvents.map((event: any) => event.id).filter(Boolean);
     if (ids.length) {
       const [assignmentResult, influencerResult, workflowResult, mediaResult, pocResult] = await Promise.all([
-        supabase.from("event_crew_assignments").select("*").in("event_id", ids).limit(1000),
+        forSite(supabase.from("event_crew_assignments").select("*").in("event_id", ids).limit(1000), site.id),
         supabase.from("event_influencer_intents").select("*").in("event_id", ids).limit(1000),
-        supabase.from("event_video_workflows").select("*").in("event_id", ids).limit(300),
+        forSite(supabase.from("event_video_workflows").select("*").in("event_id", ids).limit(300), site.id),
         supabase.from("event_coverage_sources").select("*").in("event_id", ids).limit(300),
-        supabase.from("event_admin_pocs").select("*").in("event_id", ids),
+        forSite(supabase.from("event_admin_pocs").select("*").in("event_id", ids), site.id),
       ]);
       setAssignments(assignmentResult.data || []); setInfluencers(influencerResult.data || []); setWorkflows(workflowResult.data || []); setMediaSources(mediaResult.data || []);
       const map: Record<string, any> = {}; (pocResult.data || []).forEach((p: any) => { map[p.event_id] = p; }); setPocs(map);

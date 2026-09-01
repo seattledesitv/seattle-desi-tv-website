@@ -2,6 +2,8 @@
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { AUTH_STORAGE_KEY, getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../../lib/sites/SiteContext";
+import { forSite } from "../../../lib/sites/query";
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
 const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
 const supabase = getSupabaseBrowserClient();
@@ -15,6 +17,7 @@ function statusLabel(status?: string | null) { return String(status || "not_star
 function dateText(value?: string | null) { if (!value) return ""; const date = new Date(value); return Number.isNaN(date.getTime()) ? value : date.toLocaleString(); }
 
 export default function EventEditPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -50,8 +53,8 @@ export default function EventEditPage() {
 
   async function loadOrganizations(id: string) {
     const [directoryResult, linksResult] = await Promise.all([
-      supabase.from("community_organizations").select("id,name,organization_type,category,location,website,description").eq("approved", true).eq("status", "approved").order("name"),
-      supabase.from("event_organizations").select("id,event_id,organization_id,relationship,display_order,is_primary,community_organizations(id,name,organization_type,category,location,website,description)").eq("event_id", id).order("display_order")
+      forSite(supabase.from("community_organizations").select("id,name,organization_type,category,location,website,description").eq("approved", true).eq("status", "approved").order("name"), site.id),
+      forSite(supabase.from("event_organizations").select("id,event_id,organization_id,relationship,display_order,is_primary,community_organizations(id,name,organization_type,category,location,website,description)").eq("event_id", id).order("display_order"), site.id)
     ]);
     if (directoryResult.error) setActionMessage(`Could not load organizations: ${directoryResult.error.message}`);
     setOrganizations(directoryResult.data || []);
@@ -60,7 +63,7 @@ export default function EventEditPage() {
 
   async function loadEvent(id: string) {
     if (!id) { setActionMessage("Could not load event: missing event id in URL."); return; }
-    const { data, error } = await supabase.from("events").select("id,title,date,local_start_time,local_end_time,event_timezone,location,description,image,ticket_url,poc_email,poc_phone,status,approved,crew_member_ids").eq("id", id).maybeSingle();
+    const { data, error } = await forSite(supabase.from("events").select("id,title,date,local_start_time,local_end_time,event_timezone,location,description,image,ticket_url,poc_email,poc_phone,status,approved,crew_member_ids").eq("id", id), site.id).maybeSingle();
     if (error) { setActionMessage(`Could not load event: ${error.message}`); return; }
     if (!data) { setActionMessage("Event not found."); return; }
     setForm({ title: data.title || "", date: data.date || "", local_start_time: String(data.local_start_time || "").slice(0, 5), local_end_time: String(data.local_end_time || "").slice(0, 5), event_timezone: data.event_timezone || "America/Los_Angeles", location: data.location || "", description: data.description || "", image: data.image || "", ticket_url: data.ticket_url || "", poc_email: data.poc_email || "", poc_phone: data.poc_phone || "", status: data.status || "pending", approved: Boolean(data.approved) });
@@ -69,11 +72,11 @@ export default function EventEditPage() {
 
   async function loadVideoWorkflow(id: string) {
     if (!id) return;
-    const { data, error } = await supabase.from("event_video_workflows").select("id,status,assigned_editor_email,crew_reviewer_email,updated_at,published_at").eq("event_id", id).maybeSingle();
+    const { data, error } = await forSite(supabase.from("event_video_workflows").select("id,status,assigned_editor_email,crew_reviewer_email,updated_at,published_at").eq("event_id", id), site.id).maybeSingle();
     if (error) { setVideoWorkflow(null); setLatestVideoRevision(null); return; }
     setVideoWorkflow(data || null);
     if (!data?.id) { setLatestVideoRevision(null); return; }
-    const revisionResult = await supabase.from("event_video_revisions").select("id,revision_number,full_video_url,reel_url,created_at,submitted_by_email").eq("workflow_id", data.id).order("revision_number", { ascending: false }).limit(1).maybeSingle();
+    const revisionResult = await forSite(supabase.from("event_video_revisions").select("id,revision_number,full_video_url,reel_url,created_at,submitted_by_email").eq("workflow_id", data.id).order("revision_number", { ascending: false }).limit(1), site.id).maybeSingle();
     setLatestVideoRevision(revisionResult.data || null);
   }
 
@@ -104,27 +107,27 @@ export default function EventEditPage() {
   }
 
   async function addOrganization(organization: any) {
-    const { error } = await supabase.from("event_organizations").insert({ event_id: eventId, organization_id: organization.id, relationship: eventOrganizations.length ? "Community Partner" : "Organizer", display_order: eventOrganizations.length, is_primary: eventOrganizations.length === 0, created_by: user?.id || null });
+    const { error } = await supabase.from("event_organizations").insert({ site_id: site.id, event_id: eventId, organization_id: organization.id, relationship: eventOrganizations.length ? "Community Partner" : "Organizer", display_order: eventOrganizations.length, is_primary: eventOrganizations.length === 0, created_by: user?.id || null });
     if (error) { setActionMessage(`Could not link organization: ${error.message}`); return; }
     setOrganizationSearch(""); await loadOrganizations(eventId); setActionMessage(`${organization.name} linked to this event.`);
   }
 
   async function updateOrganizationLink(link: any, changes: any) {
-    if (changes.is_primary) await supabase.from("event_organizations").update({ is_primary: false }).eq("event_id", eventId);
-    const { error } = await supabase.from("event_organizations").update(changes).eq("id", link.id);
+    if (changes.is_primary) await forSite(supabase.from("event_organizations").update({ is_primary: false }).eq("event_id", eventId), site.id);
+    const { error } = await forSite(supabase.from("event_organizations").update(changes).eq("id", link.id), site.id);
     if (error) { setActionMessage(`Could not update organization: ${error.message}`); return; }
     await loadOrganizations(eventId);
   }
 
   async function removeOrganizationLink(link: any) {
-    const { error } = await supabase.from("event_organizations").delete().eq("id", link.id);
+    const { error } = await forSite(supabase.from("event_organizations").delete().eq("id", link.id), site.id);
     if (error) { setActionMessage(`Could not remove organization: ${error.message}`); return; }
     await loadOrganizations(eventId);
   }
 
   async function createOrganizationInline() {
     if (!newOrganization.name.trim() || !newOrganization.category.trim() || !newOrganization.location.trim()) { setActionMessage("Organization name, category, and location are required."); return; }
-    const { data, error } = await supabase.from("community_organizations").insert({ ...newOrganization, name: newOrganization.name.trim(), category: newOrganization.category.trim(), location: newOrganization.location.trim(), status: "approved", approved: true, approved_by: user?.email || user?.id, approved_at: new Date().toISOString(), submitted_by: user?.id, submitted_email: user?.email }).select("id,name,organization_type,category,location,website,description").single();
+    const { data, error } = await supabase.from("community_organizations").insert({ ...newOrganization, site_id: site.id, name: newOrganization.name.trim(), category: newOrganization.category.trim(), location: newOrganization.location.trim(), status: "approved", approved: true, approved_by: user?.email || user?.id, approved_at: new Date().toISOString(), submitted_by: user?.id, submitted_email: user?.email }).select("id,name,organization_type,category,location,website,description").single();
     if (error || !data) { setActionMessage(`Could not create organization: ${error?.message || "Unknown error"}`); return; }
     setOrganizations((current) => [...current, data].sort((a, b) => a.name.localeCompare(b.name)));
     setNewOrganization({ name: "", organization_type: "", category: "", location: "Seattle Area", website: "", description: "" }); setShowQuickCreate(false); await addOrganization(data);
@@ -137,7 +140,7 @@ export default function EventEditPage() {
     const approved = form.status === "approved" || form.approved;
     const payload: any = { title: form.title.trim(), date: form.date || null, local_start_time: form.local_start_time || null, local_end_time: form.local_end_time || null, event_timezone: form.event_timezone || "America/Los_Angeles", location: form.location.trim(), description: form.description.trim(), image: form.image.trim(), ticket_url: form.ticket_url.trim(), poc_email: form.poc_email.trim(), poc_phone: form.poc_phone.trim(), status: form.status || "pending", approved, crew_member_ids: Array.from(new Set(selectedCrewIds)) };
     if (approved) { payload.approved_by = user?.email || user?.id || null; payload.approved_at = new Date().toISOString(); }
-    const { error } = await supabase.from("events").update(payload).eq("id", eventId);
+    const { error } = await forSite(supabase.from("events").update(payload).eq("id", eventId), site.id);
     if (error) { setActionMessage(`Save failed: ${error.message}`); setSaving(false); return; }
     setActionMessage("Event saved, including assigned crew and organization relationships."); setSaving(false);
   }

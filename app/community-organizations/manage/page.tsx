@@ -4,12 +4,15 @@ import { useEffect, useState } from "react";
 import SiteHeader from "../../components/SiteHeader";
 import SiteFooter from "../../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
 const roles = ["Founder", "President", "Secretary", "Board Member", "Executive Director", "Volunteer Coordinator", "Media Coordinator", "Authorized Representative", "Other"];
 
 export default function ManageOrganizationPage() {
+  const site = useCurrentSite();
   const [organization, setOrganization] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
   const [organizationId, setOrganizationId] = useState("");
@@ -27,13 +30,13 @@ export default function ManageOrganizationPage() {
     if (currentUser) setForm((value) => ({ ...value, name: currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || "", email: currentUser.email || "" }));
     if (!id) return setMessage("Organization not specified.");
 
-    let result = await supabase.from("community_organizations").select("id,name,location,category,manager_verified_at").eq("id", id).eq("status", "approved").maybeSingle();
-    if (result.error && /manager_verified_at/i.test(result.error.message || "")) result = await supabase.from("community_organizations").select("id,name,location,category").eq("id", id).eq("status", "approved").maybeSingle();
+    let result = await forSite(supabase.from("community_organizations").select("id,name,location,category,manager_verified_at").eq("id", id).eq("status", "approved"), site.id).maybeSingle();
+    if (result.error && /manager_verified_at/i.test(result.error.message || "")) result = await forSite(supabase.from("community_organizations").select("id,name,location,category").eq("id", id).eq("status", "approved"), site.id).maybeSingle();
     if (result.error || !result.data) return setMessage("Organization not found.");
     setOrganization(result.data);
 
     if (currentUser) {
-      const requestResult = await supabase.from("organization_claim_requests").select("id,status,admin_notes,verification_details,updated_at").eq("organization_id", id).eq("requester_user_id", currentUser.id).in("status", ["pending", "needs_information", "approved"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      const requestResult = await forSite(supabase.from("organization_claim_requests").select("id,status,admin_notes,verification_details,updated_at").eq("organization_id", id).eq("requester_user_id", currentUser.id).in("status", ["pending", "needs_information", "approved"]).order("created_at", { ascending: false }).limit(1), site.id).maybeSingle();
       if (!requestResult.error && requestResult.data) {
         setExistingRequest(requestResult.data);
         setForm((value) => ({ ...value, details: requestResult.data.verification_details || value.details }));
@@ -52,8 +55,8 @@ export default function ManageOrganizationPage() {
       relationship: form.relationship, verification_details: form.details.trim() || null, status: "pending", updated_at: new Date().toISOString()
     };
     const result = existingRequest?.id
-      ? await supabase.from("organization_claim_requests").update(payload).eq("id", existingRequest.id).eq("requester_user_id", user.id).select("id,status,admin_notes,verification_details,updated_at").maybeSingle()
-      : await supabase.from("organization_claim_requests").insert({ ...payload, organization_id: organization.id, requester_user_id: user.id }).select("id,status,admin_notes,verification_details,updated_at").single();
+      ? await forSite(supabase.from("organization_claim_requests").update(payload).eq("id", existingRequest.id).eq("requester_user_id", user.id).select("id,status,admin_notes,verification_details,updated_at"), site.id).maybeSingle()
+      : await supabase.from("organization_claim_requests").insert({ ...payload, site_id: site.id, organization_id: organization.id, requester_user_id: user.id }).select("id,status,admin_notes,verification_details,updated_at").single();
     setSaving(false);
     if (result.error) return setMessage(result.error.message);
     setExistingRequest(result.data);

@@ -5,6 +5,8 @@ import MyHubHeader from "../components/MyHubHeader";
 import SiteFooter from "../components/SiteFooter";
 import DirectoryImageCropper, { type DirectoryImageCrop, type DirectoryImageMode } from "../components/DirectoryImageCropper";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 import { validateOptionalImageFile } from "../lib/validation";
 
 const supabase = getSupabaseBrowserClient();
@@ -93,6 +95,7 @@ function ImagePreview({ row }: { row: OrganizationRow }) {
 }
 
 export default function MyOrganizationsPage() {
+  const site = useCurrentSite();
   const [rows, setRows] = useState<OrganizationRow[]>([]);
   const [stats, setStats] = useState<Record<string, OrganizationStats>>({});
   const [message, setMessage] = useState("Loading...");
@@ -111,8 +114,8 @@ export default function MyOrganizationsPage() {
     if (!currentUser?.id) { setMessage("Please login to view organizations you submitted or manage."); return; }
     const columns = "id,name,organization_type,category,location,website,description,contact_name,contact_email,contact_phone,image,image_position_x,image_position_y,image_zoom,image_display_mode,status,submitted_by,manager_verified_at,updated_at";
     const [submitted, managed] = await Promise.all([
-      supabase.from("community_organizations").select(columns).eq("submitted_by", currentUser.id).order("created_at", { ascending: false }),
-      supabase.from("organization_managers").select(`role,is_primary,community_organizations(${columns})`).eq("user_id", currentUser.id).eq("active", true)
+      forSite(supabase.from("community_organizations").select(columns), site.id).eq("submitted_by", currentUser.id).order("created_at", { ascending: false }),
+      forSite(supabase.from("organization_managers").select(`role,is_primary,community_organizations(${columns})`), site.id).eq("user_id", currentUser.id).eq("active", true)
     ]);
     if (submitted.error) { setMessage(submitted.error.message); return; }
     const map = new Map<string, OrganizationRow>();
@@ -125,8 +128,8 @@ export default function MyOrganizationsPage() {
     const nextStats: Record<string, OrganizationStats> = {};
     await Promise.all(next.map(async (row) => {
       const [suggestions, links] = await Promise.all([
-        supabase.from("organization_edit_suggestions").select("id", { count: "exact", head: true }).eq("organization_id", row.id).eq("status", "pending"),
-        supabase.from("event_organizations").select("events(date,status,approved)").eq("organization_id", row.id)
+        forSite(supabase.from("organization_edit_suggestions").select("id", { count: "exact", head: true }), site.id).eq("organization_id", row.id).eq("status", "pending"),
+        forSite(supabase.from("event_organizations").select("events(date,status,approved)"), site.id).eq("organization_id", row.id)
       ]);
       const today = new Date().toISOString().split("T")[0];
       const approvedLinks = (links.data || []).filter((link: any) => link.events?.approved || link.events?.status === "approved");
@@ -136,7 +139,7 @@ export default function MyOrganizationsPage() {
     setMessage(managed.error ? `Submitted organizations loaded, but manager access could not be loaded: ${managed.error.message}` : "Manage profile quality, public information and organization activity from one place.");
   }
 
-  useEffect(() => { void loadRows(); }, []);
+  useEffect(() => { void loadRows(); }, [site.id]);
 
   const filtered = useMemo(() => { const q = search.trim().toLowerCase(); return rows.filter((row) => !q || [row.name,row.category,row.organization_type,row.location,row.website,row.contact_name,row.contact_email,row.manager_role].some((value) => String(value || "").toLowerCase().includes(q))); }, [rows, search]);
   const selected = rows.find((row) => row.id === selectedId) || filtered[0] || null;
@@ -165,7 +168,7 @@ export default function MyOrganizationsPage() {
     setSaving(true); setMessage("");
     const payload = { name: form.name?.trim(), organization_type: form.organization_type?.trim() || null, category: form.category?.trim() || null, location: form.location?.trim(), website: form.website?.trim() || null, description: form.description?.trim() || null, contact_name: form.contact_name?.trim() || null, contact_email: form.contact_email?.trim() || null, contact_phone: form.contact_phone?.trim() || null, updated_at: new Date().toISOString() };
     if (!payload.name || !payload.location) { setMessage("Organization name and location are required."); setSaving(false); return; }
-    const result = await supabase.from("community_organizations").update(payload).eq("id", row.id);
+    const result = await forSite(supabase.from("community_organizations").update(payload), site.id).eq("id", row.id);
     setSaving(false);
     if (result.error) { setMessage(result.error.message); return; }
     setMessage("Organization profile updated."); setEditing(false); await loadRows();
@@ -176,7 +179,7 @@ export default function MyOrganizationsPage() {
     try {
       const image = file ? await uploadOrganizationImage(file) : row.image || "";
       if (!image) throw new Error("Choose an image first.");
-      const result = await supabase.from("community_organizations").update({ image, image_position_x: crop.x, image_position_y: crop.y, image_zoom: crop.zoom, image_display_mode: crop.mode || "cover", updated_at: new Date().toISOString() }).eq("id", row.id);
+      const result = await forSite(supabase.from("community_organizations").update({ image, image_position_x: crop.x, image_position_y: crop.y, image_zoom: crop.zoom, image_display_mode: crop.mode || "cover", updated_at: new Date().toISOString() }), site.id).eq("id", row.id);
       if (result.error) throw result.error;
       setFile(null); setMessage("Organization image presentation saved."); setEditing(false); await loadRows();
     } catch (error: any) { setMessage(error?.message || "Could not save the organization image."); }

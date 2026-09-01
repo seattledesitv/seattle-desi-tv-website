@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -14,15 +16,16 @@ function active(row: any) {
 }
 
 export default function PremiumOrganizationCardPolish() {
+  const site = useCurrentSite();
   useEffect(() => {
     if (window.location.pathname !== "/community-organizations") return;
     let cancelled = false;
     const timers: number[] = [];
 
     async function apply() {
-      const { data, error } = await supabase
+      const { data, error } = await forSite(supabase
         .from("community_organizations")
-        .select("id,is_premium,premium_rank,premium_starts_at,premium_ends_at,premium_label")
+        .select("id,is_premium,premium_rank,premium_starts_at,premium_ends_at,premium_label"), site.id)
         .eq("status", "approved")
         .eq("approved", true);
       if (cancelled || error) return;

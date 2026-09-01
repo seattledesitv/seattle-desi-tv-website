@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import StudioHeader from "../../../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../../../lib/supabaseBrowser";
 import { isAdminRole, isTeamRole, resolveUserRole } from "../../../../lib/roles";
+import { useCurrentSite } from "../../../../lib/sites/SiteContext";
+import { forSite } from "../../../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -30,6 +32,7 @@ function shortDate(value?: string | null) {
 }
 
 export default function EventCoverageBriefPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading coverage brief...");
   const [actionMessage, setActionMessage] = useState("");
@@ -43,10 +46,10 @@ export default function EventCoverageBriefPage() {
   const canAccess = Boolean(user && (isAdminRole(role) || isTeamRole(role)));
 
   async function loadEvent(id: string) {
-    const { data, error } = await supabase
+    const { data, error } = await forSite(supabase
       .from("events")
       .select("id,title,date,location,coverage_brief,required_shots,interview_targets,sponsor_requirements,special_instructions")
-      .eq("id", id)
+      .eq("id", id), site.id)
       .maybeSingle();
 
     if (error) {
@@ -127,13 +130,13 @@ export default function EventCoverageBriefPage() {
   async function saveCoverageBrief() {
     if (!eventId) return;
     setActionMessage("Saving coverage brief...");
-    const { error } = await supabase.from("events").update({
+    const { error } = await forSite(supabase.from("events").update({
       coverage_brief: form.coverage_brief.trim(),
       required_shots: form.required_shots.trim(),
       interview_targets: form.interview_targets.trim(),
       sponsor_requirements: form.sponsor_requirements.trim(),
       special_instructions: form.special_instructions.trim(),
-    }).eq("id", eventId);
+    }).eq("id", eventId), site.id);
 
     if (error) {
       setActionMessage(`Save failed: ${error.message}`);
