@@ -5,6 +5,8 @@ import MyHubHeader from "../components/MyHubHeader";
 import SiteFooter from "../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isTeamRole, resolveUserRole } from "../lib/roles";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -16,6 +18,7 @@ function eventImages(row: any) { const urls = Array.isArray(row?.image_urls) ? r
 function FieldRow({ label, value }: { label: string; value: any }) { return <p><b>{label}:</b><br />{value || "—"}</p>; }
 
 export default function MyCoveragePage() {
+  const site = useCurrentSite();
   const [events, setEvents] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [message, setMessage] = useState("Loading coverage opportunities...");
@@ -67,8 +70,8 @@ export default function MyCoveragePage() {
     if (!currentUser?.id) { setMessage("Please login to view coverage opportunities."); return; }
     if (!isTeamRole(currentRole)) { setMessage(`Coverage opportunities are for approved SDTV team members. Current role: ${currentRole}`); return; }
     const [eventsResult, assignmentsResult] = await Promise.all([
-      supabase.from("events").select("id,title,date,location,description,status,poc_email,poc_phone,ticket_url,image,image_urls").eq("status", "approved").order("date", { ascending: true }).limit(200),
-      supabase.from("event_crew_assignments").select("id,event_id,event_title,assignment_type,status,user_id,user_email,created_at").order("created_at", { ascending: false }).limit(1000),
+      forSite(supabase.from("events").select("id,title,date,location,description,status,poc_email,poc_phone,ticket_url,image,image_urls").eq("status", "approved").order("date", { ascending: true }).limit(200), site.id),
+      forSite(supabase.from("event_crew_assignments").select("id,event_id,event_title,assignment_type,status,user_id,user_email,created_at").order("created_at", { ascending: false }).limit(1000), site.id),
     ]);
     if (eventsResult.error) { setMessage(eventsResult.error.message); return; }
     if (assignmentsResult.error) { setMessage(assignmentsResult.error.message); return; }
@@ -81,7 +84,7 @@ export default function MyCoveragePage() {
   async function requestCrew(event: any) {
     if (!user?.id || !user?.email) { setActionMessage("Please login before requesting to join crew."); return; }
     setActionMessage("Submitting crew request...");
-    const { error } = await supabase.from("event_crew_assignments").insert({ event_id: event.id, event_title: event.title, user_id: user.id, user_email: user.email, assignment_type: "team_member_request", status: "pending" });
+    const { error } = await supabase.from("event_crew_assignments").insert({ site_id: site.id, event_id: event.id, event_title: event.title, user_id: user.id, user_email: user.email, assignment_type: "team_member_request", status: "pending" });
     if (error) { setActionMessage(`Request failed: ${error.message}`); return; }
     setActionMessage("Crew request submitted. Admin will review it in Event Ops.");
     await loadRows();

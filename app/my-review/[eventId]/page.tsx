@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import MyHubHeader from "../../components/MyHubHeader";
 import SiteFooter from "../../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
+import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -12,6 +14,7 @@ function label(value?: string | null) {
 }
 
 export default function CrewReviewPage({ params }: { params: { eventId: string } }) {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading review...");
   const [workflow, setWorkflow] = useState<any>(null);
@@ -26,10 +29,10 @@ export default function CrewReviewPage({ params }: { params: { eventId: string }
     const currentUser = auth.data?.user || null;
     setUser(currentUser);
     if (!currentUser) { setMessage("Please login to review the draft."); setLoading(false); return; }
-    const wf = await supabase.from("event_video_workflows").select("*, events(title,date,location)").eq("event_id", params.eventId).maybeSingle();
+    const wf = await forSite(supabase.from("event_video_workflows").select("*, events(title,date,location)").eq("event_id", params.eventId), site.id).maybeSingle();
     if (wf.error || !wf.data) { setMessage("No video workflow found for this event yet."); setLoading(false); return; }
     setWorkflow(wf.data);
-    const rev = await supabase.from("event_video_revisions").select("*").eq("workflow_id", wf.data.id).order("revision_number", { ascending: false }).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    const rev = await forSite(supabase.from("event_video_revisions").select("*").eq("workflow_id", wf.data.id).order("revision_number", { ascending: false }).order("created_at", { ascending: false }).limit(1), site.id).maybeSingle();
     if (!rev.error) setRevision(rev.data || null);
     setMessage("");
     setLoading(false);
@@ -39,7 +42,7 @@ export default function CrewReviewPage({ params }: { params: { eventId: string }
     if (!workflow?.id) return;
     const note = approveNote.trim() || "Looks good.";
     const crewNotes = [workflow.crew_notes, `Crew approved draft (${user?.email || "crew"}):\n${note}`].filter(Boolean).join("\n\n---\n\n");
-    const result = await supabase.from("event_video_workflows").update({ status: "awaiting_admin_approval", crew_notes: crewNotes, crew_approved_at: new Date().toISOString(), updated_by: user?.id || null, updated_at: new Date().toISOString() }).eq("id", workflow.id);
+    const result = await forSite(supabase.from("event_video_workflows").update({ status: "awaiting_admin_approval", crew_notes: crewNotes, crew_approved_at: new Date().toISOString(), updated_by: user?.id || null, updated_at: new Date().toISOString() }).eq("id", workflow.id), site.id);
     setMessage(result.error ? result.error.message : "Draft approved and sent for admin review.");
     await load();
   }
@@ -48,7 +51,7 @@ export default function CrewReviewPage({ params }: { params: { eventId: string }
     if (!workflow?.id) return;
     if (!feedback.trim()) { setMessage("Please describe what needs to change."); return; }
     const crewNotes = [workflow.crew_notes, `Crew requested changes (${user?.email || "crew"}):\n${feedback.trim()}`].filter(Boolean).join("\n\n---\n\n");
-    const result = await supabase.from("event_video_workflows").update({ status: "changes_requested", crew_notes: crewNotes, updated_by: user?.id || null, updated_at: new Date().toISOString() }).eq("id", workflow.id);
+    const result = await forSite(supabase.from("event_video_workflows").update({ status: "changes_requested", crew_notes: crewNotes, updated_by: user?.id || null, updated_at: new Date().toISOString() }).eq("id", workflow.id), site.id);
     setMessage(result.error ? result.error.message : "Feedback sent to the editor.");
     await load();
   }

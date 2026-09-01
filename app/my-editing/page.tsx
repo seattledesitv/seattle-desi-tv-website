@@ -5,6 +5,8 @@ import MyHubHeader from "../components/MyHubHeader";
 import SiteFooter from "../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, isVideoEditorRole, resolveUserRole } from "../lib/roles";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -24,6 +26,7 @@ function emailMatches(a?: string | null, b?: string | null) { return String(a ||
 function isUnassignedReady(row: any) { return row.status === "ready_for_editing" && !String(row.assigned_editor_email || "").trim(); }
 
 export default function MyEditingPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("Loading editing queue...");
   const [actionMessage, setActionMessage] = useState("");
@@ -38,7 +41,7 @@ export default function MyEditingPage() {
     const activeUser = currentUser || user;
     const activeRole = currentRole || role;
     const activeEmail = activeUser?.email || "";
-    const { data, error } = await supabase.from("event_video_workflows").select("*, events(id,title,date,location,image,image_urls)").order("updated_at", { ascending: false });
+    const { data, error } = await forSite(supabase.from("event_video_workflows").select("*, events(id,title,date,location,image,image_urls)").order("updated_at", { ascending: false }), site.id);
     if (error) { setActionMessage(`Could not load editing queue: ${error.message}`); setWorkflows([]); return; }
     const rows = data || [];
     const visibleRows = isAdminRole(activeRole) ? rows : rows.filter((row: any) => emailMatches(row.assigned_editor_email, activeEmail) || isUnassignedReady(row));
@@ -62,7 +65,7 @@ export default function MyEditingPage() {
 
   async function updateWorkflow(workflow: any, payload: any, success: string) {
     setActionMessage("Updating workflow...");
-    const { error } = await supabase.from("event_video_workflows").update({ ...payload, updated_by: user?.id || null, updated_at: new Date().toISOString() }).eq("id", workflow.id);
+    const { error } = await forSite(supabase.from("event_video_workflows").update({ ...payload, updated_by: user?.id || null, updated_at: new Date().toISOString() }).eq("id", workflow.id), site.id);
     if (error) { setActionMessage(`Workflow update failed: ${error.message}`); return; }
     setWorkflows((current) => current.map((item) => item.id === workflow.id ? { ...item, ...payload } : item));
     setActionMessage(success);

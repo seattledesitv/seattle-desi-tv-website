@@ -68,7 +68,7 @@ export default function MyVideoAssignmentsPage() {
     setRole(nextRole);
     if (!(isVideoEditorRole(nextRole) || isAdminRole(nextRole))) { setMessage(`This page is for assigned video editors. Current role: ${nextRole}`); setLoading(false); return; }
 
-    const result = await supabase.from("event_video_workflows").select("*, events(id,title,date,location)").order("priority", { ascending: true }).order("updated_at", { ascending: false });
+    const result = await forSite(supabase.from("event_video_workflows").select("*, events(id,title,date,location)").order("priority", { ascending: true }).order("updated_at", { ascending: false }), site.id);
     if (result.error) { setMessage(result.error.message); setWorkflows([]); } else {
       const rows = result.data || [];
       const visible = isAdminRole(nextRole) ? rows : rows.filter((row: any) => sameEmail(row.assigned_editor_email, currentUser.email));

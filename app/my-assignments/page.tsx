@@ -5,6 +5,8 @@ import MyHubHeader from "../components/MyHubHeader";
 import SiteFooter from "../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isTeamRole, resolveUserRole } from "../lib/roles";
+import { useCurrentSite } from "../lib/sites/SiteContext";
+import { forSite } from "../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const REVIEW_READY_STATUSES = ["awaiting_crew_review"];
@@ -33,6 +35,7 @@ function draftUrl(w?: any) { return w?.draft_video_url || w?.external_media_url 
 function finalUrl(w?: any) { return w?.final_video_url || w?.draft_video_url || w?.external_media_url || ""; }
 
 export default function MyAssignmentsPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true); const [message, setMessage] = useState("Checking assignments..."); const [actionMessage, setActionMessage] = useState(""); const [user, setUser] = useState<any>(null); const [role, setRole] = useState("general_public");
   const [assignments, setAssignments] = useState<any[]>([]); const [eventsById, setEventsById] = useState<Record<string, any>>({}); const [workflowsByEventId, setWorkflowsByEventId] = useState<Record<string, any>>({}); const [forms, setForms] = useState<Record<string, any>>({});
   const [selectedId, setSelectedId] = useState(""); const [searchText, setSearchText] = useState(""); const [monthFilter, setMonthFilter] = useState(""); const [statusFilter, setStatusFilter] = useState("all"); const [reviewNotes, setReviewNotes] = useState("");
@@ -40,15 +43,15 @@ export default function MyAssignmentsPage() {
 
   async function loadAssignments(currentUser: any) {
     if (!currentUser?.id) { setAssignments([]); setEventsById({}); setWorkflowsByEventId({}); return; }
-    const { data, error } = await supabase.from("event_crew_assignments").select("id,event_id,user_id,user_email,assignment_type,status,created_at,crew_confirmed,coverage_completed,coverage_notes,completed_at,event_title").eq("user_id", currentUser.id).eq("status", "approved").order("created_at", { ascending: false });
+    const { data, error } = await forSite(supabase.from("event_crew_assignments").select("id,event_id,user_id,user_email,assignment_type,status,created_at,crew_confirmed,coverage_completed,coverage_notes,completed_at,event_title").eq("user_id", currentUser.id).eq("status", "approved").order("created_at", { ascending: false }), site.id);
     if (error) { setMessage(`Could not load assignments: ${error.message}`); setAssignments([]); return; }
     const rows = data || [];
     setAssignments(rows); setSelectedId((current) => current || rows[0]?.id || "");
     const ids = Array.from(new Set(rows.map((row: any) => row.event_id).filter(Boolean)));
     if (ids.length) {
       const [eventsResult, workflowResult] = await Promise.all([
-        supabase.from("events").select("id,title,date,location,description,image,image_urls,ticket_url,poc_email,poc_phone,status").in("id", ids).order("date", { ascending: true }),
-        supabase.from("event_video_workflows").select("id,event_id,status,assigned_editor_email,crew_reviewer_email,raw_media_url,external_media_url,crew_notes,editor_notes,updated_at,upload_destination_url,crew_shared_folder_url,crew_review_decision,crew_review_notes,crew_reviewed_at,draft_video_url,final_video_url").in("event_id", ids).order("updated_at", { ascending: false }),
+        forSite(supabase.from("events").select("id,title,date,location,description,image,image_urls,ticket_url,poc_email,poc_phone,status").in("id", ids).order("date", { ascending: true }), site.id),
+        forSite(supabase.from("event_video_workflows").select("id,event_id,status,assigned_editor_email,crew_reviewer_email,raw_media_url,external_media_url,crew_notes,editor_notes,updated_at,upload_destination_url,crew_shared_folder_url,crew_review_decision,crew_review_notes,crew_reviewed_at,draft_video_url,final_video_url").in("event_id", ids).order("updated_at", { ascending: false }), site.id),
       ]);
       if (!eventsResult.error) { const map: Record<string, any> = {}; (eventsResult.data || []).forEach((event: any) => { map[event.id] = event; }); setEventsById(map); }
       if (!workflowResult.error) { const map: Record<string, any> = {}; (workflowResult.data || []).forEach((workflow: any) => { if (!map[workflow.event_id]) map[workflow.event_id] = workflow; }); setWorkflowsByEventId(map); }
