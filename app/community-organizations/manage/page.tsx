@@ -70,11 +70,10 @@ export default function ManageOrganizationPage() {
     <p className="font-black uppercase tracking-wide text-pink-600">Organization Management</p>
     <h1 className="mt-2 text-4xl font-black">Manage this organization</h1>
     <p className="mt-3 text-slate-600">To protect community organizations from unauthorized changes, SDTV verifies that you are an authorized representative before granting management access.</p>
-    {organization && <div className="mt-6 rounded-2xl border bg-white p-5"><h2 className="text-2xl font-black">{organization.name}</h2><p className="mt-1 text-slate-500">{organization.location}</p></div>}
+    {organization && <div className="mt-6 rounded-2xl border bg-white p-5"><div className="flex flex-wrap items-center gap-3"><h2 className="text-2xl font-black">{organization.name}</h2>{organization.manager_verified_at && <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-800">✓ Claimed</span>}</div><p className="mt-1 text-slate-500">{organization.location}</p>{organization.manager_verified_at && <p className="mt-3 text-sm font-bold text-emerald-700">This organization already has a verified manager. Additional authorized team members may still request access.</p>}</div>}
     <div className="mt-6 rounded-3xl border bg-white p-6 shadow-sm">
       {message && <div className="mb-5 rounded-xl bg-amber-50 p-4 font-bold text-amber-900">{message}</div>}
-      {organization?.manager_verified_at ? <div><p className="font-bold text-emerald-700">This organization already has a verified manager.</p></div>
-      : !user ? <div><p className="text-slate-600">Please sign in so the request can be connected to your account.</p><a href={`/login?next=${encodeURIComponent(nextPath)}`} className="mt-4 inline-block rounded-xl bg-pink-600 px-5 py-3 font-black text-white">Sign in to continue</a></div>
+      {!user ? <div><p className="text-slate-600">Please sign in so the request can be connected to your account.</p><a href={`/login?next=${encodeURIComponent(nextPath)}`} className="mt-4 inline-block rounded-xl bg-pink-600 px-5 py-3 font-black text-white">Sign in to continue</a></div>
       : existingRequest?.status === "approved" ? <div><p className="font-bold text-emerald-700">Your manager request has been approved.</p></div>
       : existingRequest?.status === "pending" ? <div><p className="font-bold text-blue-700">Your manager request is under SDTV review.</p><p className="mt-2 text-sm text-slate-600">You do not need to submit another request.</p></div>
       : <div className="grid gap-4">
