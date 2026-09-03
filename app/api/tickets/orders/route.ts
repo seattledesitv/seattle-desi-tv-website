@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     const { data, error } = await db()
       .from("ticket_orders")
       .select(
-        "order_number,status,currency,subtotal_cents,fee_cents,total_cents,payment_expires_at,paid_at,refund_policy_snapshot,terms_snapshot,buyer_name,buyer_email,events(title,date,local_start_time,local_end_time,location,image,image_urls),community_organizations(name,image),ticket_order_items(ticket_name,unit_price_cents,quantity,line_total_cents)",
+        "order_number,status,currency,subtotal_cents,fee_cents,total_cents,payment_expires_at,paid_at,refund_policy_snapshot,terms_snapshot,buyer_name,buyer_email,events(title,date,local_start_time,local_end_time,location,image,image_urls),community_organizations(name,image),ticket_order_items(ticket_name,unit_price_cents,quantity,line_total_cents),event_tickets(ticket_code,status,attendee_name,checked_in_at)",
       )
       .eq("site_id", site.id)
       .eq("public_token", token)

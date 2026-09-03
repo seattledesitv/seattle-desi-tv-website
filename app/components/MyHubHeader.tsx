@@ -67,6 +67,7 @@ export default function MyHubHeader() {
       show: Boolean(email),
     },
     { label: "My Events", href: "/my-events", show: true },
+    { label: "My Tickets", href: "/my-tickets", show: Boolean(email) },
     {
       label: "My Event Organizations",
       href: "/my-event-organizations",
@@ -87,6 +88,11 @@ export default function MyHubHeader() {
     {
       label: "Organization Ticketing",
       href: "/my-organizations/ticketing",
+      show: Boolean(email),
+    },
+    {
+      label: "Ticket Check-In",
+      href: "/my-organizations/ticket-check-in",
       show: Boolean(email),
     },
     {

@@ -94,6 +94,30 @@ export default function TicketOrderPage() {
                   ticket-specific payment connection is completed.
                 </p>
               </div>
+              {order.status === "paid" && order.event_tickets?.length > 0 && (
+                <div className="mt-7">
+                  <h2 className="text-2xl font-black">Your Entry Codes</h2>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Keep these codes private and present one code for each
+                    attendee at entry.
+                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {order.event_tickets.map((ticket: any) => (
+                      <div
+                        key={ticket.ticket_code}
+                        className="rounded-2xl border-2 border-pink-200 p-5"
+                      >
+                        <p className="text-xs font-black uppercase text-pink-600">
+                          {ticket.status}
+                        </p>
+                        <p className="mt-2 font-mono text-lg font-black">
+                          {ticket.ticket_code}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="mt-7 grid gap-4 md:grid-cols-2">
                 <details open className="rounded-2xl border p-5">
                   <summary className="font-black">
