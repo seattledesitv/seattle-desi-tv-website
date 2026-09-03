@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/daily-admin-digest",
       "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/ticket-reservations",
+      "schedule": "15 16 * * *"
     }
   ]
 }

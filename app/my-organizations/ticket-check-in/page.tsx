@@ -8,6 +8,31 @@ export default function TicketCheckInPage() {
   const [code, setCode] = useState("");
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  async function scanImage(file: File) {
+    try {
+      const Detector = (window as any).BarcodeDetector;
+      if (!Detector)
+        throw new Error(
+          "Camera QR reading is not supported by this browser. Enter the ticket code instead.",
+        );
+      const bitmap = await createImageBitmap(file);
+      const found = await new Detector({ formats: ["qr_code"] }).detect(bitmap);
+      bitmap.close();
+      if (!found[0]?.rawValue)
+        throw new Error("No ticket QR code was found in that image.");
+      setCode(String(found[0].rawValue).toUpperCase());
+      setResult({
+        status: "ready",
+        message: "QR read successfully. Select Validate and Check In.",
+      });
+    } catch (error) {
+      setResult({
+        status: "error",
+        message:
+          error instanceof Error ? error.message : "QR could not be read.",
+      });
+    }
+  }
   async function checkIn() {
     setLoading(true);
     setResult(null);
@@ -44,6 +69,19 @@ export default function TicketCheckInPage() {
               placeholder="SDTV-TKT-…"
               autoFocus
               className="mt-2 w-full rounded-xl border p-4 font-mono text-lg uppercase"
+            />
+          </label>
+          <label className="mt-4 block cursor-pointer rounded-xl border-2 border-pink-300 p-4 text-center font-black text-pink-700">
+            Scan QR with Camera
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void scanImage(file);
+              }}
+              className="sr-only"
             />
           </label>
           <button
@@ -83,8 +121,8 @@ export default function TicketCheckInPage() {
             </div>
           )}
           <p className="mt-5 text-xs text-slate-500">
-            Camera QR scanning can be connected after the QR format is
-            finalized. Entry staff can safely use the printed ticket code now.
+            Entry staff can scan a QR using a compatible mobile browser or enter
+            the printed code manually.
           </p>
         </div>
       </section>

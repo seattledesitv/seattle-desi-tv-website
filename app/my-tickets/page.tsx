@@ -5,6 +5,7 @@ import SiteFooter from "../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { useCurrentSite } from "../lib/sites/SiteContext";
 import { forSite } from "../lib/sites/query";
+import TicketQrCode from "../components/ticketing/TicketQrCode";
 const supabase = getSupabaseBrowserClient();
 const money = (c: number, currency = "USD") =>
   new Intl.NumberFormat(undefined, { style: "currency", currency }).format(
@@ -92,7 +93,8 @@ export default function MyTicketsPage() {
                       <p className="text-xs font-black uppercase text-pink-600">
                         {ticket.status}
                       </p>
-                      <p className="mt-2 font-mono text-lg font-black">
+                      <TicketQrCode code={ticket.ticket_code} />
+                      <p className="mt-3 text-center font-mono text-lg font-black">
                         {ticket.ticket_code}
                       </p>
                       <p className="mt-2 text-sm text-slate-500">

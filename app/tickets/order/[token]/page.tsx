@@ -3,6 +3,10 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import SiteHeader from "../../../components/SiteHeader";
 import SiteFooter from "../../../components/SiteFooter";
+import { getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
+import TicketQrCode from "../../../components/ticketing/TicketQrCode";
+
+const supabase = getSupabaseBrowserClient();
 
 const money = (c: number, currency = "USD") =>
   new Intl.NumberFormat(undefined, { style: "currency", currency }).format(
@@ -13,6 +17,27 @@ export default function TicketOrderPage() {
   const token = Array.isArray(params.token) ? params.token[0] : params.token;
   const [order, setOrder] = useState<any>(null);
   const [message, setMessage] = useState("Loading your order…");
+  const [testing, setTesting] = useState(false);
+  async function simulatePayment() {
+    setTesting(true);
+    setMessage("Simulating verified payment…");
+    const session = await supabase.auth.getSession();
+    const response = await fetch("/api/tickets/test-payment", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.data.session?.access_token || ""}`,
+      },
+      body: JSON.stringify({ token }),
+    });
+    const body = await response.json();
+    if (!response.ok) {
+      setMessage(body.error || "Test payment failed.");
+      setTesting(false);
+      return;
+    }
+    window.location.reload();
+  }
   useEffect(() => {
     if (!token) return;
     void fetch(`/api/tickets/orders?token=${encodeURIComponent(token)}`, {
@@ -93,6 +118,18 @@ export default function TicketOrderPage() {
                   will place the Swirepay payment component here after the
                   ticket-specific payment connection is completed.
                 </p>
+                {order.testPaymentEnabled &&
+                  order.status === "pending_payment" && (
+                    <button
+                      onClick={simulatePayment}
+                      disabled={testing}
+                      className="mt-4 rounded-xl bg-amber-400 px-5 py-3 font-black text-slate-950 disabled:opacity-40"
+                    >
+                      {testing
+                        ? "Completing Test…"
+                        : "Admin: Simulate Successful Payment"}
+                    </button>
+                  )}
               </div>
               {order.status === "paid" && order.event_tickets?.length > 0 && (
                 <div className="mt-7">
@@ -110,7 +147,8 @@ export default function TicketOrderPage() {
                         <p className="text-xs font-black uppercase text-pink-600">
                           {ticket.status}
                         </p>
-                        <p className="mt-2 font-mono text-lg font-black">
+                        <TicketQrCode code={ticket.ticket_code} />
+                        <p className="mt-3 text-center font-mono text-lg font-black">
                           {ticket.ticket_code}
                         </p>
                       </div>

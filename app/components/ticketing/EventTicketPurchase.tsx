@@ -138,9 +138,15 @@ export default function EventTicketPurchase({
     setSubmitting(true);
     setMessage("Reserving your tickets…");
     try {
+      const session = await supabase.auth.getSession();
       const response = await fetch("/api/tickets/orders", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session.data.session?.access_token
+            ? { Authorization: `Bearer ${session.data.session.access_token}` }
+            : {}),
+        },
         body: JSON.stringify({
           eventId,
           buyerName: buyer.name,

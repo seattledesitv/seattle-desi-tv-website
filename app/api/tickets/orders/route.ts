@@ -30,7 +30,12 @@ export async function GET(request: Request) {
       .eq("public_token", token)
       .maybeSingle();
     if (error || !data) throw new Error("Order not found.");
-    return NextResponse.json(data);
+    return NextResponse.json({
+      ...data,
+      testPaymentEnabled:
+        process.env.VERCEL_ENV !== "production" &&
+        process.env.TICKET_TEST_PAYMENTS_ENABLED === "true",
+    });
   } catch (cause) {
     return NextResponse.json(
       { error: cause instanceof Error ? cause.message : "Order not found." },
@@ -61,6 +66,7 @@ export async function POST(request: Request) {
       ?.replace(/^Bearer\s+/i, "")
       .trim();
     let userId: string | null = null;
+    let userEmail = "";
     if (authorization) {
       const auth = createClient(
         url,
@@ -72,6 +78,40 @@ export async function POST(request: Request) {
       );
       const result = await auth.auth.getUser();
       userId = result.data.user?.id || null;
+      userEmail = result.data.user?.email?.toLowerCase() || "";
+    }
+    const eventId = text(body.eventId, 50);
+    const privateTest = await db()
+      .from("event_ticket_settings")
+      .select("organization_id,test_mode,test_access_emails")
+      .eq("site_id", site.id)
+      .eq("event_id", eventId)
+      .maybeSingle();
+    if (privateTest.data?.test_mode) {
+      if (!userId)
+        throw new Error("Please sign in with an approved testing account.");
+      const [admin, manager] = await Promise.all([
+        db()
+          .from("admins")
+          .select("user_id")
+          .or(`user_id.eq.${userId},email.ilike.${userEmail}`)
+          .maybeSingle(),
+        db()
+          .from("organization_managers")
+          .select("id")
+          .eq("site_id", site.id)
+          .eq("organization_id", privateTest.data.organization_id)
+          .eq("user_id", userId)
+          .eq("active", true)
+          .maybeSingle(),
+      ]);
+      const allowed = (privateTest.data.test_access_emails || [])
+        .map((value: string) => value.toLowerCase())
+        .includes(userEmail);
+      if (!admin.data && !manager.data && !allowed)
+        throw new Error(
+          "This private ticket test is not available to your account.",
+        );
     }
     const forwarded =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
@@ -82,7 +122,7 @@ export async function POST(request: Request) {
       : null;
     const { data, error } = await db().rpc("create_ticket_order_reservation", {
       p_site_id: site.id,
-      p_event_id: text(body.eventId, 50),
+      p_event_id: eventId,
       p_buyer_user_id: userId,
       p_buyer_name: text(body.buyerName, 120),
       p_buyer_email: text(body.buyerEmail, 254),
