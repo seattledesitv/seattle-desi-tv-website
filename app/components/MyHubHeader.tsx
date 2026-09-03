@@ -85,6 +85,11 @@ export default function MyHubHeader() {
       show: Boolean(email),
     },
     {
+      label: "Organization Ticketing",
+      href: "/my-organizations/ticketing",
+      show: Boolean(email),
+    },
+    {
       label: "My Coverage Opportunities",
       href: "/my-coverage",
       show: true,

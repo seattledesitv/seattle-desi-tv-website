@@ -9,6 +9,8 @@ const CONTENT_TABLES = [
   "organization_event_link_requests", "business_edit_suggestions",
   "organization_edit_suggestions", "event_crew_assignments", "event_video_workflows",
   "event_influencer_intents", "event_coverage_sources",
+  "organization_payment_accounts", "event_ticket_settings", "event_ticket_types",
+  "ticket_orders", "ticket_order_items", "event_tickets", "ticket_settlements",
 ];
 const SITE_MARKERS = /useCurrentSite|resolveCurrentSite|resolveSiteForHostname|resolveSiteForCode|forSite\s*\(|site_id/;
 const ALLOWLIST = new Map([
