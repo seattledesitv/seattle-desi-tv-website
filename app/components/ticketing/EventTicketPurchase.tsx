@@ -53,6 +53,8 @@ export default function EventTicketPurchase({
   const [loading, setLoading] = useState(true);
   const [accepted, setAccepted] = useState(false);
   const [message, setMessage] = useState("");
+  const [buyer, setBuyer] = useState({ name: "", email: "", phone: "" });
+  const [submitting, setSubmitting] = useState(false);
   useEffect(() => {
     let active = true;
     void (async () => {
@@ -128,12 +130,46 @@ export default function EventTicketPurchase({
     }));
     setMessage("");
   }
-  function proceed() {
+  async function proceed() {
     if (!selected) return setMessage("Select at least one ticket.");
     if (!accepted) return setMessage("Please accept the policies.");
-    setMessage(
-      "Your selection is ready. Secure Swirepay ticket payment will be enabled after the final connection is verified.",
-    );
+    if (buyer.name.trim().length < 2 || !buyer.email.includes("@"))
+      return setMessage("Enter the ticket purchaser's name and email.");
+    setSubmitting(true);
+    setMessage("Reserving your tickets…");
+    try {
+      const response = await fetch("/api/tickets/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId,
+          buyerName: buyer.name,
+          buyerEmail: buyer.email,
+          buyerPhone: buyer.phone,
+          policyAccepted: true,
+          items: types
+            .filter((type) => (quantities[type.id] || 0) > 0)
+            .map((type) => ({
+              ticketTypeId: type.id,
+              quantity: quantities[type.id],
+            })),
+        }),
+      });
+      const result = (await response.json()) as {
+        token?: string;
+        error?: string;
+      };
+      if (!response.ok || !result.token)
+        throw new Error(result.error || "Tickets could not be reserved.");
+      window.location.assign(`/tickets/order/${result.token}`);
+    } catch (cause) {
+      setMessage(
+        cause instanceof Error
+          ? cause.message
+          : "Tickets could not be reserved.",
+      );
+      setSubmitting(false);
+    }
   }
   return (
     <section
@@ -252,6 +288,37 @@ export default function EventTicketPurchase({
           <p className="text-2xl font-black">
             Subtotal: {money(subtotal, setting.currency)}
           </p>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <label className="text-sm font-black">
+              Purchaser name
+              <input
+                value={buyer.name}
+                onChange={(e) => setBuyer({ ...buyer, name: e.target.value })}
+                autoComplete="name"
+                className="mt-1 w-full rounded-xl border bg-white p-3 font-normal"
+              />
+            </label>
+            <label className="text-sm font-black">
+              Email for tickets
+              <input
+                type="email"
+                value={buyer.email}
+                onChange={(e) => setBuyer({ ...buyer, email: e.target.value })}
+                autoComplete="email"
+                className="mt-1 w-full rounded-xl border bg-white p-3 font-normal"
+              />
+            </label>
+            <label className="text-sm font-black md:col-span-2">
+              Phone (optional)
+              <input
+                type="tel"
+                value={buyer.phone}
+                onChange={(e) => setBuyer({ ...buyer, phone: e.target.value })}
+                autoComplete="tel"
+                className="mt-1 w-full rounded-xl border bg-white p-3 font-normal"
+              />
+            </label>
+          </div>
           <label className="mt-4 flex gap-3 text-sm font-bold">
             <input
               type="checkbox"
@@ -262,11 +329,11 @@ export default function EventTicketPurchase({
             I agree to the ticket terms and refund policy shown above.
           </label>
           <button
-            disabled={!salesOpen || !selected || !accepted}
+            disabled={!salesOpen || !selected || !accepted || submitting}
             onClick={proceed}
             className="mt-5 w-full rounded-xl bg-pink-600 p-4 text-lg font-black text-white disabled:opacity-40"
           >
-            Continue to Secure Payment
+            {submitting ? "Reserving Tickets…" : "Review Secure Payment"}
           </button>
           {message && (
             <p className="mt-3 rounded-xl bg-white p-3 text-sm font-bold">
