@@ -26,6 +26,7 @@ export default function StudioTicketingPage() {
   const [rows, setRows] = useState<any[]>([]),
     [accounts, setAccounts] = useState<any[]>([]),
     [types, setTypes] = useState<any[]>([]),
+    [orders, setOrders] = useState<any[]>([]),
     [filter, setFilter] = useState("pending_review"),
     [search, setSearch] = useState("");
 
@@ -40,7 +41,7 @@ export default function StudioTicketingPage() {
       return;
     }
     setCanAccess(true);
-    const [settingsResult, accountsResult] = await Promise.all([
+    const [settingsResult, accountsResult, ordersResult] = await Promise.all([
       forSite(
         supabase
           .from("event_ticket_settings")
@@ -53,11 +54,19 @@ export default function StudioTicketingPage() {
         supabase.from("organization_payment_accounts").select("*"),
         site.id,
       ),
+      forSite(
+        supabase
+          .from("ticket_orders")
+          .select("id,order_number,event_id,organization_id,buyer_name,buyer_email,buyer_phone,status,currency,subtotal_cents,fee_cents,total_cents,provider_payment_session_gid,provider_payment_gid,paid_at,created_at,ticket_order_items(ticket_name,quantity,line_total_cents)")
+          .order("created_at", { ascending: false }),
+        site.id,
+      ),
     ]);
-    if (settingsResult.error || accountsResult.error) {
+    if (settingsResult.error || accountsResult.error || ordersResult.error) {
       setMessage(
         settingsResult.error?.message ||
           accountsResult.error?.message ||
+          ordersResult.error?.message ||
           "Run the ticketing SQL migration first.",
       );
       setLoading(false);
@@ -66,6 +75,7 @@ export default function StudioTicketingPage() {
     const nextRows = settingsResult.data || [];
     setRows(nextRows);
     setAccounts(accountsResult.data || []);
+    setOrders(ordersResult.data || []);
     const ids = nextRows.map((row: any) => row.id);
     if (ids.length) {
       const result = await forSite(
@@ -151,6 +161,31 @@ export default function StudioTicketingPage() {
     }
   }
 
+  function downloadOrders(row: any, eventOrders: any[]) {
+    const csv = [
+      ["Order", "Swirepay Reference", "Purchased", "Purchaser", "Email", "Phone", "Tickets", "Subtotal", "Fees", "Total", "Status"],
+      ...eventOrders.map((order) => [
+        order.order_number || order.id,
+        order.provider_payment_session_gid || order.provider_payment_gid || (order.total_cents === 0 ? "Free registration" : ""),
+        order.paid_at || order.created_at,
+        order.buyer_name,
+        order.buyer_email,
+        order.buyer_phone || "",
+        (order.ticket_order_items || []).map((item: any) => `${item.ticket_name} x${item.quantity}`).join("; "),
+        (Number(order.subtotal_cents || 0) / 100).toFixed(2),
+        (Number(order.fee_cents || 0) / 100).toFixed(2),
+        (Number(order.total_cents || 0) / 100).toFixed(2),
+        order.status,
+      ]),
+    ].map((line) => line.map((value) => `"${String(value ?? "").replaceAll('"', '""')}"`).join(",")).join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${String(row.events?.title || "event").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-ticket-report.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <StudioHeader />
@@ -226,6 +261,13 @@ export default function StudioTicketingPage() {
                   Boolean(account?.payouts_enabled) ||
                   Boolean(row.test_mode) ||
                   freeOnly;
+                const eventOrders = orders.filter((order) => order.event_id === row.event_id);
+                const paidOrders = eventOrders.filter((order) => order.status === "paid");
+                const ticketsSold = paidOrders.reduce(
+                  (sum, order) => sum + (order.ticket_order_items || []).reduce((count: number, item: any) => count + Number(item.quantity || 0), 0),
+                  0,
+                );
+                const grossSales = paidOrders.reduce((sum, order) => sum + Number(order.total_cents || 0), 0);
                 return (
                   <article
                     key={row.id}
@@ -309,6 +351,34 @@ export default function StudioTicketingPage() {
                         payments will be collected into SDTV's Swirepay account.
                       </p>
                     )}
+                    <details className="mt-5 rounded-2xl border bg-slate-50 p-4">
+                      <summary className="cursor-pointer font-black">
+                        Ticket Sales Report · {ticketsSold} ticket{ticketsSold === 1 ? "" : "s"} · {money(grossSales)}
+                      </summary>
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm text-slate-600">{paidOrders.length} paid/free registration order{paidOrders.length === 1 ? "" : "s"}; {eventOrders.length} total order{eventOrders.length === 1 ? "" : "s"}.</p>
+                        <button onClick={() => downloadOrders(row, eventOrders)} disabled={!eventOrders.length} className="rounded-xl border px-4 py-2 text-sm font-black disabled:opacity-40">Download CSV</button>
+                      </div>
+                      <div className="mt-4 overflow-x-auto rounded-xl border bg-white">
+                        <table className="w-full min-w-[1050px] text-left text-sm">
+                          <thead className="bg-slate-100 text-xs uppercase text-slate-500"><tr><th className="p-3">Order</th><th className="p-3">Purchaser</th><th className="p-3">Tickets</th><th className="p-3">Total</th><th className="p-3">Status</th><th className="p-3">Swirepay reference</th><th className="p-3">Date</th></tr></thead>
+                          <tbody>
+                            {eventOrders.map((order) => (
+                              <tr key={order.id} className="border-t">
+                                <td className="p-3 font-mono text-xs">{order.order_number || order.id}</td>
+                                <td className="p-3"><b>{order.buyer_name}</b><div className="text-xs text-slate-500">{order.buyer_email}{order.buyer_phone ? ` · ${order.buyer_phone}` : ""}</div></td>
+                                <td className="p-3">{(order.ticket_order_items || []).map((item: any) => <div key={`${order.id}-${item.ticket_name}`}>{item.ticket_name} × {item.quantity}</div>)}</td>
+                                <td className="p-3 font-black">{money(order.total_cents)}</td>
+                                <td className="p-3 capitalize">{label(order.status)}</td>
+                                <td className="p-3 font-mono text-xs">{order.provider_payment_session_gid || order.provider_payment_gid || (order.total_cents === 0 && order.status === "paid" ? "Free registration" : "Pending")}</td>
+                                <td className="p-3">{new Date(order.paid_at || order.created_at).toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        {!eventOrders.length && <p className="p-5 text-center font-bold text-slate-500">No ticket orders for this event yet.</p>}
+                      </div>
+                    </details>
                   </article>
                 );
               })}
