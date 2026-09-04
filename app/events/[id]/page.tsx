@@ -128,6 +128,7 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<any>(null);
   const [relatedEvents, setRelatedEvents] = useState<any[]>([]);
   const [eventOrganizations, setEventOrganizations] = useState<any[]>([]);
+  const [hasInternalTickets, setHasInternalTickets] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState("general_public");
   const [coverageRequest, setCoverageRequest] = useState<any>(null);
@@ -200,6 +201,15 @@ export default function EventDetailPage() {
       return null;
     }
     setEvent(data);
+    const internal = await forSite(
+      supabase
+        .from("event_ticket_settings")
+        .select("id")
+        .eq("event_id", data.id)
+        .eq("status", "active"),
+      site.id,
+    ).maybeSingle();
+    setHasInternalTickets(Boolean(internal.data));
     setSelectedDocument(0);
     await Promise.all([loadRelatedEvents(data), loadOrganizations(data.id)]);
     return data;
@@ -392,7 +402,7 @@ export default function EventDetailPage() {
               </a>
               <div className="mt-5 flex flex-wrap gap-2">
                 <span className={`rounded-full px-3 py-1 text-sm font-black ${eventEnded ? "bg-slate-700 text-slate-200" : "bg-pink-600 text-white"}`}>{countdown}</span>
-                {event.ticket_url && !eventEnded && <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-black text-emerald-200 ring-1 ring-emerald-300/40">Tickets / registration</span>}
+                {(hasInternalTickets || event.ticket_url) && !eventEnded && <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-black text-emerald-200 ring-1 ring-emerald-300/40">Tickets / registration</span>}
               </div>
               <h1 className="mt-5 max-w-5xl text-4xl font-black md:text-6xl">{event.title}</h1>
               <p className="mt-4 text-lg text-slate-300">
@@ -406,11 +416,13 @@ export default function EventDetailPage() {
                 ))}
               </div>
               <div className="mt-7 flex flex-wrap gap-3">
-                {event.ticket_url && !eventEnded && (
+                {hasInternalTickets && !eventEnded ? (
+                  <a href="#tickets" className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white">Tickets / Register</a>
+                ) : event.ticket_url && !eventEnded ? (
                   <CheckedExternalLink href={event.ticket_url} notFoundMessage="Page not found. This ticket/register link is not available." className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white">
                     Tickets / Register
                   </CheckedExternalLink>
-                )}
+                ) : null}
                 <a href={`https://www.google.com/maps?q=${encodeURIComponent(event.location || "")}`} target="_blank" rel="noreferrer" className="rounded-xl bg-white px-5 py-3 font-black text-slate-950">
                   Open Map
                 </a>

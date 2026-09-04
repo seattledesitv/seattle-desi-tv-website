@@ -49,6 +49,7 @@ export default function OrganizationTicketingPage() {
     salesEnd: "",
     capacity: "",
     maxPerOrder: "10",
+    parkingInfo: "",
     refundPolicy: "",
     terms: "",
     emailSubject: "",
@@ -128,7 +129,7 @@ export default function OrganizationTicketingPage() {
           supabase
             .from("ticket_orders")
             .select(
-              "id,event_id,organization_id,buyer_name,buyer_email,buyer_phone,status,currency,subtotal_cents,fee_cents,total_cents,paid_at,refunded_at,created_at,ticket_order_items(ticket_name,unit_price_cents,quantity,line_total_cents)",
+              "id,order_number,event_id,organization_id,buyer_name,buyer_email,buyer_phone,status,currency,subtotal_cents,fee_cents,total_cents,provider_payment_session_gid,provider_payment_gid,paid_at,refunded_at,created_at,ticket_order_items(ticket_name,unit_price_cents,quantity,line_total_cents)",
             )
             .in("organization_id", ids)
             .order("created_at", { ascending: false }),
@@ -273,6 +274,7 @@ export default function OrganizationTicketingPage() {
         salesEnd: "",
         capacity: "",
         maxPerOrder: "10",
+        parkingInfo: "",
         refundPolicy: "",
         terms: "",
         emailSubject: "",
@@ -293,6 +295,7 @@ export default function OrganizationTicketingPage() {
         ? String(selectedSetting.venue_capacity)
         : "",
       maxPerOrder: String(selectedSetting.max_tickets_per_order || 10),
+      parkingInfo: selectedSetting.parking_info || "",
       refundPolicy: selectedSetting.refund_policy || "",
       terms: selectedSetting.terms || "",
       emailSubject: selectedSetting.confirmation_email_subject || "",
@@ -329,6 +332,7 @@ export default function OrganizationTicketingPage() {
         : null,
       venue_capacity: config.capacity ? Number(config.capacity) : null,
       max_tickets_per_order: Number(config.maxPerOrder || 10),
+      parking_info: config.parkingInfo.trim() || null,
       refund_policy: config.refundPolicy.trim() || null,
       terms: config.terms.trim() || null,
       confirmation_email_subject: config.emailSubject.trim() || null,
@@ -449,6 +453,7 @@ export default function OrganizationTicketingPage() {
         "Fees",
         "Total",
         "Status",
+        "Swirepay Reference",
       ],
       ...eventOrders.map((row) => [
         row.id,
@@ -463,6 +468,7 @@ export default function OrganizationTicketingPage() {
         (Number(row.fee_cents || 0) / 100).toFixed(2),
         (Number(row.total_cents || 0) / 100).toFixed(2),
         row.status,
+        row.provider_payment_session_gid || row.provider_payment_gid || "",
       ]),
     ]
       .map((row) => row.map(escape).join(","))
@@ -786,6 +792,17 @@ export default function OrganizationTicketingPage() {
                             })
                           }
                           className="mt-1 w-full rounded-xl border p-3 font-normal"
+                        />
+                      </label>
+                      <label className="font-black md:col-span-2">
+                        Parking and arrival details
+                        <textarea
+                          value={config.parkingInfo}
+                          onChange={(e) =>
+                            setConfig({ ...config, parkingInfo: e.target.value })
+                          }
+                          placeholder="Parking location, cost, entrances, accessibility or transit instructions"
+                          className="mt-1 min-h-20 w-full rounded-xl border p-3 font-normal"
                         />
                       </label>
                       <label className="font-black md:col-span-2">
@@ -1178,6 +1195,7 @@ export default function OrganizationTicketingPage() {
                           <thead className="bg-slate-100 text-xs uppercase text-slate-500">
                             <tr>
                               <th className="p-3">Order</th>
+                              <th className="p-3">Swirepay reference</th>
                               <th className="p-3">Purchaser</th>
                               <th className="p-3">Tickets</th>
                               <th className="p-3">Total</th>
@@ -1189,7 +1207,10 @@ export default function OrganizationTicketingPage() {
                             {eventOrders.map((row) => (
                               <tr key={row.id} className="border-t">
                                 <td className="p-3 font-mono text-xs">
-                                  {String(row.id).slice(0, 8).toUpperCase()}
+                                  {row.order_number || String(row.id).slice(0, 8).toUpperCase()}
+                                </td>
+                                <td className="p-3 font-mono text-xs">
+                                  {row.provider_payment_session_gid || row.provider_payment_gid || (row.total_cents === 0 && row.status === "paid" ? "Free registration" : "Pending")}
                                 </td>
                                 <td className="p-3">
                                   <p className="font-black">{row.buyer_name}</p>

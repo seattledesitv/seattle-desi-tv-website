@@ -112,7 +112,9 @@ export default function StudioTicketingPage() {
     const account = accounts.find(
       (item) => item.organization_id === row.organization_id,
     );
-    if (status === "active" && !account?.payouts_enabled && !row.test_mode) {
+    const rowTypes = types.filter((type) => type.ticket_setting_id === row.id && type.status === "active");
+    const freeOnly = rowTypes.length > 0 && rowTypes.every((type) => Number(type.price_cents) === 0);
+    if (status === "active" && !account?.payouts_enabled && !row.test_mode && !freeOnly) {
       setMessage(
         "Ticket sales cannot be activated until Swirepay verifies the organization's payout destination.",
       );
@@ -217,8 +219,13 @@ export default function StudioTicketingPage() {
                 const ticketTypes = types.filter(
                   (item) => item.ticket_setting_id === row.id,
                 );
+                const freeOnly =
+                  ticketTypes.length > 0 &&
+                  ticketTypes.every((type) => Number(type.price_cents) === 0);
                 const ready =
-                  Boolean(account?.payouts_enabled) || Boolean(row.test_mode);
+                  Boolean(account?.payouts_enabled) ||
+                  Boolean(row.test_mode) ||
+                  freeOnly;
                 return (
                   <article
                     key={row.id}
@@ -243,12 +250,9 @@ export default function StudioTicketingPage() {
                           <span
                             className={`rounded-full px-3 py-1 ${ready ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}
                           >
-                            Organizer payout{" "}
-                            {ready
-                              ? "ready"
-                              : label(
-                                  account?.onboarding_status || "not started",
-                                )}
+                            {freeOnly
+                              ? "Free event — no payout needed"
+                              : `Organizer payout ${ready ? "ready" : label(account?.onboarding_status || "not started")}`}
                           </span>
                           <span className="rounded-full bg-slate-100 px-3 py-1">
                             {ticketTypes.length} ticket type

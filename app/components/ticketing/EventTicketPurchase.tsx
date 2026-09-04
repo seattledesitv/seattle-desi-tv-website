@@ -12,6 +12,7 @@ type Setting = {
   sales_start_at: string | null;
   sales_end_at: string | null;
   max_tickets_per_order: number;
+  parking_info: string | null;
   refund_policy: string | null;
   terms: string | null;
 };
@@ -68,7 +69,7 @@ export default function EventTicketPurchase({
         supabase
           .from("event_ticket_settings")
           .select(
-            "id,currency,sales_start_at,sales_end_at,max_tickets_per_order,refund_policy,terms",
+            "id,currency,sales_start_at,sales_end_at,max_tickets_per_order,parking_info,refund_policy,terms",
           )
           .eq("event_id", eventId)
           .eq("status", "active"),
@@ -288,6 +289,12 @@ export default function EventTicketPurchase({
           </p>
         )}
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          {setting.parking_info && (
+            <details open className="rounded-2xl border bg-slate-50 p-5 lg:col-span-2">
+              <summary className="cursor-pointer font-black">Parking & Arrival</summary>
+              <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-600">{setting.parking_info}</p>
+            </details>
+          )}
           <details open className="rounded-2xl border bg-slate-50 p-5">
             <summary className="cursor-pointer font-black">
               Refund Policy
@@ -358,7 +365,13 @@ export default function EventTicketPurchase({
             onClick={proceed}
             className="mt-5 w-full rounded-xl bg-pink-600 p-4 text-lg font-black text-white disabled:opacity-40"
           >
-            {submitting ? "Reserving Tickets…" : "Review Secure Payment"}
+            {submitting
+              ? subtotal === 0
+                ? "Confirming Registration…"
+                : "Reserving Tickets…"
+              : subtotal === 0
+                ? "Complete Free Registration"
+                : "Review Secure Payment"}
           </button>
           {message && (
             <p className="mt-3 rounded-xl bg-white p-3 text-sm font-bold">
@@ -366,8 +379,8 @@ export default function EventTicketPurchase({
             </p>
           )}
           <p className="mt-3 text-center text-xs text-slate-500">
-            Accepted policies are saved with the order. Tickets issue only after
-            verified payment.
+            Accepted policies are saved with the order. Paid tickets issue after
+            verified payment; free tickets issue immediately.
           </p>
         </div>
       </div>

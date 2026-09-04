@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { resolveSiteForHostname } from "../../../lib/sites/siteResolver";
+import { sendTicketConfirmation } from "../../../lib/ticketing/sendTicketConfirmation";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const key =
@@ -137,7 +138,27 @@ export async function POST(request: Request) {
       p_user_agent: text(request.headers.get("user-agent"), 300),
     });
     if (error) throw new Error(error.message);
-    return NextResponse.json(data, { status: 201 });
+    const reservation = data as {
+      token?: string;
+      totalCents?: number;
+      currency?: string;
+    };
+    if (reservation.totalCents === 0 && reservation.token) {
+      const freeReference = `free-${crypto.randomUUID()}`;
+      const fulfilled = await db().rpc("fulfill_paid_ticket_order", {
+        p_order_token: reservation.token,
+        p_payment_session_gid: freeReference,
+        p_payment_gid: freeReference,
+        p_paid_cents: 0,
+        p_currency: reservation.currency || "USD",
+      });
+      if (fulfilled.error || fulfilled.data?.status !== "fulfilled")
+        throw new Error(fulfilled.error?.message || "Free registration could not be confirmed.");
+      const orderId = fulfilled.data?.orderId;
+      if (orderId) await sendTicketConfirmation(db(), orderId).catch(() => undefined);
+      return NextResponse.json({ ...reservation, status: "paid", free: true }, { status: 201 });
+    }
+    return NextResponse.json(reservation, { status: 201 });
   } catch (cause) {
     return NextResponse.json(
       {

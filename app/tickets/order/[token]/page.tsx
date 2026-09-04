@@ -93,15 +93,12 @@ export default function TicketOrderPage() {
               </p>
             </div>
             <div className="p-8">
-              <div className="rounded-2xl bg-amber-50 p-5">
-                <p className="font-black text-amber-900">
-                  Tickets reserved for 15 minutes
-                </p>
-                <p className="mt-1 text-sm text-amber-800">
-                  Your tickets are not confirmed until Swirepay payment succeeds
-                  and SDTV receives its verified payment notification.
-                </p>
-              </div>
+              {order.status === "pending_payment" && (
+                <div className="rounded-2xl bg-amber-50 p-5">
+                  <p className="font-black text-amber-900">Tickets reserved for 15 minutes</p>
+                  <p className="mt-1 text-sm text-amber-800">Your tickets are not confirmed until Swirepay payment succeeds and SDTV receives its verified payment notification.</p>
+                </div>
+              )}
               <h2 className="mt-7 text-2xl font-black">Order Summary</h2>
               <div className="mt-4 divide-y rounded-2xl border">
                 {(order.ticket_order_items || []).map((item: any) => (

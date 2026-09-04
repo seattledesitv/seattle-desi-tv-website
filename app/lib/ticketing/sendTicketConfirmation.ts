@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { ticketConfirmationEmail } from "./ticketConfirmationEmail";
+import QRCode from "qrcode";
 
 export async function sendTicketConfirmation(
   db: any,
@@ -8,7 +9,7 @@ export async function sendTicketConfirmation(
 ) {
   const result = await db
     .from("ticket_orders")
-    .select("*,events(title,date,location),community_organizations(name),ticket_order_items(ticket_name,unit_price_cents,quantity)")
+    .select("*,events(title,date,location,image,image_urls),community_organizations(name,image),ticket_order_items(ticket_name,unit_price_cents,quantity)")
     .eq("id", orderId)
     .maybeSingle();
   const order: any = result.data;
@@ -25,7 +26,7 @@ export async function sendTicketConfirmation(
     db.from("event_tickets").select("ticket_code").eq("order_id", order.id),
     db
       .from("event_ticket_settings")
-      .select("confirmation_email_message,confirmation_email_footer,confirmation_reply_to")
+      .select("confirmation_email_subject,confirmation_email_message,confirmation_email_footer,confirmation_reply_to,parking_info,refund_policy,terms")
       .eq("site_id", order.site_id)
       .eq("event_id", order.event_id)
       .maybeSingle(),
@@ -50,10 +51,27 @@ export async function sendTicketConfirmation(
       unitPriceCents: line.unit_price_cents,
     })),
     ticketCodes: (tickets.data || []).map((row: any) => row.ticket_code),
+    eventImage: event?.image || event?.image_urls?.[0] || null,
+    organizerLogo: organization?.image || null,
+    parkingInfo: settingResult.data?.parking_info,
+    refundPolicy: order.refund_policy_snapshot || settingResult.data?.refund_policy,
+    ticketTerms: order.terms_snapshot || settingResult.data?.terms,
+    mapUrl: event?.location
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`
+      : null,
+    subjectTemplate: settingResult.data?.confirmation_email_subject,
     organizerMessage: settingResult.data?.confirmation_email_message,
     organizerFooter: settingResult.data?.confirmation_email_footer,
   });
   const subject = `${options.test ? "[TEST] " : ""}${email.subject}`;
+  const qrAttachments = await Promise.all(
+    (tickets.data || []).map(async (row: any, index: number) => ({
+      filename: `ticket-${index + 1}.png`,
+      content: await QRCode.toBuffer(row.ticket_code, { width: 360, margin: 2 }),
+      contentType: "image/png",
+      inlineContentId: `ticket-qr-${index}`,
+    })),
+  );
   const archive = await db
     .from("ticket_email_deliveries")
     .insert({
@@ -71,6 +89,7 @@ export async function sendTicketConfirmation(
     replyTo: settingResult.data?.confirmation_reply_to || undefined,
     subject,
     html: email.html,
+    attachments: qrAttachments,
   });
   await db
     .from("ticket_email_deliveries")

@@ -173,6 +173,7 @@ function EventImageSlider({ event }: { event: EventRow }) {
 export default function EventsPage() {
   const site = useCurrentSite();
   const [events, setEvents] = useState<EventRow[]>([]);
+  const [internalTicketEvents, setInternalTicketEvents] = useState<Set<string>>(new Set());
   const [coverageByEvent, setCoverageByEvent] = useState<Record<string, any>>({});
   const [influencerByEvent, setInfluencerByEvent] = useState<Record<string, any>>({});
   const [message, setMessage] = useState("Loading approved events...");
@@ -236,6 +237,18 @@ export default function EventsPage() {
       return;
     }
     setEvents(data || []);
+    const ids = (data || []).map((row) => row.id);
+    if (ids.length) {
+      const internal = await forSite(
+        supabase
+          .from("event_ticket_settings")
+          .select("event_id")
+          .eq("status", "active")
+          .in("event_id", ids),
+        site.id,
+      );
+      setInternalTicketEvents(new Set((internal.data || []).map((row: any) => row.event_id)));
+    } else setInternalTicketEvents(new Set());
     setMessage((data || []).length ? `Showing ${(data || []).length} approved event(s).` : "No approved events found.");
   }
 
@@ -662,11 +675,11 @@ export default function EventsPage() {
             <a href={`/events/${event.id}`} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm">
               Details
             </a>
-            {!isPast && event.ticket_url && (
-              <CheckedExternalLink href={event.ticket_url} notFoundMessage="Page not found. This ticket/register link is not available." className="bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-60">
-                Tickets / Register
-              </CheckedExternalLink>
-            )}
+            {!isPast && internalTicketEvents.has(event.id) ? (
+              <a href={`/events/${event.id}#tickets`} className="bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Tickets / Register</a>
+            ) : !isPast && event.ticket_url ? (
+              <CheckedExternalLink href={event.ticket_url} notFoundMessage="Page not found. This ticket/register link is not available." className="bg-pink-600 text-white px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-60">Tickets / Register</CheckedExternalLink>
+            ) : null}
             {event.location && (
               <a href={`https://www.google.com/maps?q=${encodeURIComponent(event.location)}`} target="_blank" rel="noreferrer" className="border px-4 py-2 rounded-lg font-bold text-sm">
                 Map
