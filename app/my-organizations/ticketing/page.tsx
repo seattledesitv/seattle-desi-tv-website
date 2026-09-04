@@ -6,6 +6,7 @@ import SiteFooter from "../../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { useCurrentSite } from "../../lib/sites/SiteContext";
 import { forSite } from "../../lib/sites/query";
+import SwirepayContactOnboarding from "../../components/ticketing/SwirepayContactOnboarding";
 
 const supabase = getSupabaseBrowserClient();
 const emptyType = {
@@ -556,12 +557,15 @@ export default function OrganizationTicketingPage() {
                       {selectedAccount?.payouts_enabled ? "ready" : "pending"}
                     </span>
                   </div>
-                  <button
-                    disabled
-                    className="mt-4 w-full rounded-xl bg-slate-300 px-4 py-3 font-black text-slate-600"
-                  >
-                    Register Payout Account — SDK pending
-                  </button>
+                  {selectedOrganization && (
+                    <SwirepayContactOnboarding
+                      organizationId={selectedOrganization.id}
+                      organizationName={selectedOrganization.name}
+                      email={selectedOrganization.contact_email || user?.email}
+                      existingContactGid={selectedAccount?.onboarding_reference}
+                      onComplete={load}
+                    />
+                  )}
                 </div>
                 <div className="mt-5 grid gap-2">
                   {visibleEvents.map((row) => (

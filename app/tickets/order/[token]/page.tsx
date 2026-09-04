@@ -1,10 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import SiteHeader from "../../../components/SiteHeader";
 import SiteFooter from "../../../components/SiteFooter";
 import { getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
 import TicketQrCode from "../../../components/ticketing/TicketQrCode";
+import SwirepayTicketCheckout from "../../../components/ticketing/SwirepayTicketCheckout";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -18,6 +19,32 @@ export default function TicketOrderPage() {
   const [order, setOrder] = useState<any>(null);
   const [message, setMessage] = useState("Loading your order…");
   const [testing, setTesting] = useState(false);
+  const loadOrder = useCallback(async () => {
+    if (!token) return null;
+    const response = await fetch(
+      `/api/tickets/orders?token=${encodeURIComponent(token)}`,
+      { cache: "no-store" },
+    );
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error);
+    setOrder(body);
+    return body;
+  }, [token]);
+  const waitForConfirmation = useCallback(() => {
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      void loadOrder()
+        .then((current) => {
+          if (current?.status === "paid" || attempts >= 20) {
+            window.clearInterval(timer);
+            if (current?.status !== "paid")
+              setMessage("Payment was submitted. Ticket confirmation may take another moment; refresh this page shortly.");
+          }
+        })
+        .catch(() => undefined);
+    }, 2000);
+  }, [loadOrder]);
   async function simulatePayment() {
     setTesting(true);
     setMessage("Simulating verified payment…");
@@ -40,16 +67,9 @@ export default function TicketOrderPage() {
   }
   useEffect(() => {
     if (!token) return;
-    void fetch(`/api/tickets/orders?token=${encodeURIComponent(token)}`, {
-      cache: "no-store",
-    })
-      .then(async (response) => {
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error);
-        setOrder(body);
-      })
+    void loadOrder()
       .catch((error) => setMessage(error.message || "Order not found."));
-  }, [token]);
+  }, [token, loadOrder]);
   return (
     <main className="min-h-screen bg-slate-50">
       <SiteHeader />
@@ -109,17 +129,20 @@ export default function TicketOrderPage() {
                   Total: {money(order.total_cents, order.currency)}
                 </p>
               </div>
-              <div className="mt-7 rounded-2xl bg-slate-100 p-5">
-                <h2 className="font-black">
-                  Secure payment connection pending
-                </h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  This order and its inventory reservation are working. SDTV
-                  will place the Swirepay payment component here after the
-                  ticket-specific payment connection is completed.
-                </p>
+              {order.status === "pending_payment" && (
+                <div className="mt-7 rounded-2xl bg-slate-100 p-5">
+                  <h2 className="mb-4 font-black">Pay securely with Swirepay</h2>
+                  {order.checkoutConfigured ? (
+                    <SwirepayTicketCheckout
+                      token={token!}
+                      order={order}
+                      onSubmitted={waitForConfirmation}
+                    />
+                  ) : (
+                    <p className="text-sm text-slate-600">Secure payment is temporarily unavailable. Please contact SDTV.</p>
+                  )}
                 {order.testPaymentEnabled &&
-                  order.status === "pending_payment" && (
+                  (
                     <button
                       onClick={simulatePayment}
                       disabled={testing}
@@ -130,7 +153,11 @@ export default function TicketOrderPage() {
                         : "Admin: Simulate Successful Payment"}
                     </button>
                   )}
-              </div>
+                </div>
+              )}
+              {order.status === "paid" && (
+                <div className="mt-7 rounded-2xl bg-emerald-50 p-5 font-black text-emerald-900">Payment confirmed. Your tickets are ready.</div>
+              )}
               {order.status === "paid" && order.event_tickets?.length > 0 && (
                 <div className="mt-7">
                   <h2 className="text-2xl font-black">Your Entry Codes</h2>

@@ -53,6 +53,15 @@ export function normalizedPaymentEventType(status: string | null) {
   }
 }
 
+function normalizedProviderEventType(value: string | null) {
+  const normalized = value?.toLowerCase().replaceAll("_", ".") || null;
+  if (["payment.succeeded", "payment.success", "payment.captured"].includes(normalized || ""))
+    return "payment.captured";
+  if (["payment.authorized", "payment.require.capture"].includes(normalized || ""))
+    return "payment.authorized";
+  return normalized;
+}
+
 export function sanitizeSwirepayPayload(payload: JsonRecord) {
   return Object.fromEntries(
     Object.entries(payload).filter(([key]) => !REDACTED_TOP_LEVEL_FIELDS.has(key)),
@@ -87,7 +96,9 @@ export function mapSwirepayWebhookPayload(payload: unknown) {
 
   return {
     providerEventId,
-    eventType: providerEventType || normalizedPaymentEventType(status),
+    eventType:
+      normalizedProviderEventType(providerEventType) ||
+      normalizedPaymentEventType(status),
     paymentGid:
       text(entity.gid) ||
       text(entity.paymentGid) ||

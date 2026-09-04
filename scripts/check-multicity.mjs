@@ -15,6 +15,7 @@ const CONTENT_TABLES = [
 const SITE_MARKERS = /useCurrentSite|resolveCurrentSite|resolveSiteForHostname|resolveSiteForCode|forSite\s*\(|site_id/;
 const ALLOWLIST = new Map([
   ["api/business-response/route.ts", "A cryptographically random, globally unique claim token is the access boundary."],
+  ["api/webhooks/swirepay/route.ts", "A verified Swirepay signature plus a globally unique provider payment-session ID is the access boundary; the matched order carries its site ID."],
   ["debug-supabase/page.tsx", "Developer-only diagnostic page; never part of normal content navigation."],
 ]);
 

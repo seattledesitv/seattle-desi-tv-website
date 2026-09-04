@@ -32,6 +32,10 @@ export async function GET(request: Request) {
     if (error || !data) throw new Error("Order not found.");
     return NextResponse.json({
       ...data,
+      checkoutConfigured: Boolean(
+        process.env.SWIREPAY_SECRET_KEY?.trim() &&
+          process.env.SWIREPAY_ACCOUNT_GID?.trim(),
+      ),
       testPaymentEnabled:
         process.env.VERCEL_ENV !== "production" &&
         process.env.TICKET_TEST_PAYMENTS_ENABLED === "true",

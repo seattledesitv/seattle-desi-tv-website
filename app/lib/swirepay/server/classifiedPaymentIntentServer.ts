@@ -25,7 +25,7 @@ export async function authenticatedUser(authorization: string | null) {
   return data.user;
 }
 
-function adminDb() {
+export function adminDb() {
   if (!configured())
     throw new Error("Payment server configuration is incomplete.");
   return createClient(supabaseUrl, serviceKey, {
@@ -33,7 +33,7 @@ function adminDb() {
   });
 }
 
-function swirepayConfiguration() {
+export function swirepayConfiguration() {
   const secretKey = (process.env.SWIREPAY_SECRET_KEY || "").trim();
   const accountGid = (process.env.SWIREPAY_ACCOUNT_GID || "").trim();
   if (!secretKey || !accountGid)
@@ -43,7 +43,7 @@ function swirepayConfiguration() {
   return { secretKey, accountGid };
 }
 
-function acceptedCheckoutOrigin(
+export function acceptedCheckoutOrigin(
   requestOrigin: string,
   primaryHostname: string,
 ) {
@@ -81,7 +81,7 @@ function acceptedCheckoutOrigin(
   return normalized;
 }
 
-function providerMessage(body: unknown) {
+export function providerMessage(body: unknown) {
   if (!body || typeof body !== "object")
     return "Swirepay rejected the checkout session.";
   const source = body as Record<string, unknown>;
@@ -90,7 +90,7 @@ function providerMessage(body: unknown) {
     : "Swirepay rejected the checkout session.";
 }
 
-function providerExpiry(value: unknown) {
+export function providerExpiry(value: unknown) {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
   const date = new Date(value);
   return Number.isNaN(date.valueOf()) ? null : date.toISOString();

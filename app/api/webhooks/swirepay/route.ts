@@ -2,6 +2,7 @@ import { createHmac, createHash, timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { mapSwirepayWebhookPayload } from "../../../lib/swirepay/services/swirepayWebhookPayloadService";
+import { sendTicketConfirmation } from "../../../lib/ticketing/sendTicketConfirmation";
 
 export const runtime = "nodejs";
 
@@ -104,6 +105,49 @@ export async function POST(request: Request) {
     amountReceivedCents !== null &&
     currency
   ) {
+    const { data: ticketOrder } = await db
+      .from("ticket_orders")
+      .select("id,public_token,total_cents,currency")
+      .eq("provider_payment_session_gid", paymentGid)
+      .eq("status", "pending_payment")
+      .maybeSingle();
+    if (ticketOrder) {
+      const paid = Math.max(paidAmountCents, amountReceivedCents);
+      const fulfillment = await db.rpc("fulfill_paid_ticket_order", {
+        p_order_token: ticketOrder.public_token,
+        p_payment_session_gid: paymentGid,
+        p_payment_gid: paymentGid,
+        p_paid_cents: paid,
+        p_currency: currency,
+      });
+      if (fulfillment.error)
+        return NextResponse.json(
+          { error: "Verified ticket payment could not be fulfilled." },
+          { status: 500 },
+        );
+      const fulfilled = ["fulfilled", "duplicate"].includes(
+        fulfillment.data?.status || "",
+      );
+      if (fulfilled) {
+        await sendTicketConfirmation(db, ticketOrder.id).catch(async (cause) => {
+          await db
+            .from("swirepay_webhook_events")
+            .update({ processing_notes: `Tickets issued; confirmation email failed: ${cause instanceof Error ? cause.message.slice(0, 300) : "unknown error"}` })
+            .eq("id", recorded.id);
+        });
+      }
+      await db
+        .from("swirepay_webhook_events")
+        .update({
+          processing_status: fulfilled ? "processed" : "mapped",
+          processing_notes: fulfilled
+            ? "Verified succeeded payment issued event tickets."
+            : `Ticket payment fulfillment returned ${fulfillment.data?.status || "unknown"}.`,
+          processed_at: fulfilled ? new Date().toISOString() : null,
+        })
+        .eq("id", recorded.id);
+      return NextResponse.json({ ok: true, captured: true, fulfillment: fulfillment.data });
+    }
     let resolvedIntentToken = classifiedIntentToken;
     if (!resolvedIntentToken && paymentGid) {
       const { data: checkoutSession } = await db
