@@ -392,7 +392,7 @@ export default function EventDetailPage() {
               </a>
               <div className="mt-5 flex flex-wrap gap-2">
                 <span className={`rounded-full px-3 py-1 text-sm font-black ${eventEnded ? "bg-slate-700 text-slate-200" : "bg-pink-600 text-white"}`}>{countdown}</span>
-                {event.ticket_url && !eventEnded && <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-black text-emerald-200 ring-1 ring-emerald-300/40">Registration open</span>}
+                {event.ticket_url && !eventEnded && <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-black text-emerald-200 ring-1 ring-emerald-300/40">Tickets / registration</span>}
               </div>
               <h1 className="mt-5 max-w-5xl text-4xl font-black md:text-6xl">{event.title}</h1>
               <p className="mt-4 text-lg text-slate-300">

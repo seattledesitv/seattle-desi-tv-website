@@ -38,6 +38,11 @@ const openNow = (start: string | null, end: string | null) => {
     (!end || new Date(end).getTime() > now)
   );
 };
+const dateTime = (value: string) =>
+  new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
 
 export default function EventTicketPurchase({
   eventId,
@@ -106,6 +111,24 @@ export default function EventTicketPurchase({
     !eventEnded &&
     openNow(setting.sales_start_at, setting.sales_end_at),
   );
+  const salesStatus = (() => {
+    if (eventEnded) return "Event ended";
+    if (!setting) return "Tickets unavailable";
+    const now = Date.now();
+    if (
+      setting.sales_start_at &&
+      new Date(setting.sales_start_at).getTime() > now
+    ) {
+      return `Sales begin ${dateTime(setting.sales_start_at)}`;
+    }
+    if (
+      setting.sales_end_at &&
+      new Date(setting.sales_end_at).getTime() <= now
+    ) {
+      return `Sales ended ${dateTime(setting.sales_end_at)}`;
+    }
+    return salesOpen ? "On sale" : "Sales unavailable";
+  })();
   if (loading)
     return (
       <div className="rounded-3xl border bg-white p-6 font-bold text-slate-500">
@@ -196,11 +219,7 @@ export default function EventTicketPurchase({
           <span
             className={`h-fit rounded-full px-3 py-1 text-sm font-black ${salesOpen ? "bg-emerald-500/20 text-emerald-200" : "bg-amber-400/20 text-amber-200"}`}
           >
-            {eventEnded
-              ? "Event ended"
-              : salesOpen
-                ? "On sale"
-                : "Sales closed"}
+            {salesStatus}
           </span>
         </div>
       </div>
