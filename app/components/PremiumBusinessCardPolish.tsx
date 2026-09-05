@@ -7,12 +7,18 @@ function applyPremiumBusinessPolish() {
 
   const cards = Array.from(document.querySelectorAll("article"));
   cards.forEach((card) => {
-    if (!(card instanceof HTMLElement) || card.dataset.sdtvPremiumCard === "true") return;
+    if (!(card instanceof HTMLElement)) return;
 
     const premiumBadge = Array.from(card.querySelectorAll("span")).find((span) =>
       /premium|featured|community partner/i.test((span.textContent || "").trim())
     );
     if (!(premiumBadge instanceof HTMLElement)) return;
+
+    // React can refresh a card after sponsorship data arrives while retaining
+    // the article element. Always restyle the newly rendered badge.
+    premiumBadge.textContent = premiumBadge.textContent?.trim() || "Premium";
+    premiumBadge.className = "absolute left-0 top-0 z-20 rounded-br-2xl bg-gradient-to-r from-amber-400 to-yellow-300 px-4 py-2 text-[11px] font-black uppercase tracking-wide text-amber-950 shadow-lg";
+    if (card.dataset.sdtvPremiumCard === "true") return;
 
     card.dataset.sdtvPremiumCard = "true";
     card.classList.add("relative", "overflow-hidden", "shadow-xl", "hover:-translate-y-1", "hover:shadow-2xl", "duration-300");
@@ -20,9 +26,6 @@ function applyPremiumBusinessPolish() {
     card.style.borderWidth = "2px";
     card.style.background = "linear-gradient(180deg,#fffdf7 0%,#ffffff 44%)";
     card.style.boxShadow = "0 18px 45px rgba(146,96,12,.15)";
-
-    premiumBadge.textContent = premiumBadge.textContent?.trim() || "Premium";
-    premiumBadge.className = "absolute left-0 top-0 z-20 rounded-br-2xl bg-gradient-to-r from-amber-400 to-yellow-300 px-4 py-2 text-[11px] font-black uppercase tracking-wide text-amber-950 shadow-lg";
 
     const imageWrapper = card.firstElementChild;
     if (imageWrapper instanceof HTMLElement) {

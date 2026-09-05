@@ -950,7 +950,7 @@ export default function BusinessesPage() {
                           </div>
                         )}
                         {premium && (
-                          <span className="absolute left-3 top-3 rounded-full bg-amber-400 px-3 py-1 text-xs font-black uppercase text-amber-950 shadow">
+                          <span className="absolute left-3 top-3 z-20 rounded-full bg-amber-400 px-3 py-1 text-xs font-black uppercase text-amber-950 shadow">
                             {business.premium_label || "Premium"}
                           </span>
                         )}
