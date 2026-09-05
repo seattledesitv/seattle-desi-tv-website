@@ -250,14 +250,13 @@ export default function BusinessesPage() {
     });
     rows = rows.map((business) => {
       const sponsor = sponsorTierByBusiness.get(business.id);
-      const currentLabel = String(business.premium_label || "").trim();
       if (!sponsor) return business;
       return {
         ...business,
         is_premium: true,
         premium_starts_at: sponsor.startsAt,
         premium_ends_at: sponsor.endsAt,
-        premium_label: currentLabel && currentLabel.toLowerCase() !== "premium" ? currentLabel : sponsor.tier,
+        premium_label: sponsor.tier,
       };
     });
     setBusinesses(rows);

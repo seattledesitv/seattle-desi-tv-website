@@ -91,7 +91,10 @@ export default function PremiumBusinessSection({ businesses: fallbackBusinesses 
         ? ((await forSite(supabase.from("local_businesses").select(standardSelect), site.id).eq("status", "approved")).data || []) as BusinessRow[]
         : (premiumResult.data || []) as BusinessRow[];
 
-      const reviewResult = await supabase.from("business_reviews").select("business_id,rating").eq("status", "approved");
+      const [reviewResult, sponsorResult] = await Promise.all([
+        supabase.from("business_reviews").select("business_id,rating").eq("status", "approved"),
+        supabase.from("homepage_sponsors").select("business_id,tier,start_date,end_date").eq("site_id", site.id || "").eq("active", true),
+      ]);
       const reviewMap = new Map<string, { total: number; count: number }>();
       if (!reviewResult.error) {
         for (const review of (reviewResult.data || []) as ReviewRow[]) {
@@ -102,9 +105,36 @@ export default function PremiumBusinessSection({ businesses: fallbackBusinesses 
         }
       }
 
+      const now = Date.now();
+      const sponsorByBusiness = new Map<string, { tier: string; startsAt: string | null; endsAt: string | null }>();
+      if (!sponsorResult.error) {
+        for (const sponsor of sponsorResult.data || []) {
+          if (!sponsor.business_id || !sponsor.tier) continue;
+          const starts = sponsor.start_date ? new Date(sponsor.start_date).getTime() : 0;
+          const ends = sponsor.end_date ? new Date(sponsor.end_date).getTime() : Number.POSITIVE_INFINITY;
+          if (starts <= now && now <= ends)
+            sponsorByBusiness.set(String(sponsor.business_id), {
+              tier: String(sponsor.tier),
+              startsAt: sponsor.start_date || null,
+              endsAt: sponsor.end_date || null,
+            });
+        }
+      }
+
       setBusinesses(businessRows.map((business) => {
         const reviews = reviewMap.get(business.id);
-        return { ...business, review_count: reviews?.count || 0, rating_average: reviews?.count ? reviews.total / reviews.count : 0 };
+        const sponsor = sponsorByBusiness.get(business.id);
+        return {
+          ...business,
+          ...(sponsor ? {
+            is_premium: true,
+            premium_starts_at: sponsor.startsAt,
+            premium_ends_at: sponsor.endsAt,
+            premium_label: sponsor.tier,
+          } : {}),
+          review_count: reviews?.count || 0,
+          rating_average: reviews?.count ? reviews.total / reviews.count : 0,
+        };
       }));
     }
     loadFeaturedBusinesses();
