@@ -24,9 +24,9 @@ export default function HeroItemLayoutManager() {
   async function load() {
     const [settings, bannerResult, eventResult, festivalResult] = await Promise.all([
       forSite(supabase.from("homepage_hero_settings").select("layout_style").eq("id", "default"), site.id).maybeSingle(),
-      forSite(supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,theme,hero_layout,active"), site.id).order("display_order", { ascending: true }),
-      forSite(supabase.from("events").select("id,title,date,location,image,image_urls,hero_theme,hero_layout"), site.id).eq("featured", true).order("featured_order", { ascending: true }),
-      forSite(supabase.from("festival_hero_assets").select("id,festival_name,title,subtitle,image_url,theme,hero_layout,active"), site.id).order("start_date", { ascending: true }),
+      forSite(supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,hero_buttons,theme,hero_layout,active"), site.id).order("display_order", { ascending: true }),
+      forSite(supabase.from("events").select("id,title,date,location,image,image_urls,hero_theme,hero_layout,hero_buttons"), site.id).eq("featured", true).order("featured_order", { ascending: true }),
+      forSite(supabase.from("festival_hero_assets").select("id,festival_name,title,subtitle,image_url,hero_buttons,theme,hero_layout,active"), site.id).order("start_date", { ascending: true }),
     ]);
     if (settings.data?.layout_style) setGlobalLayout(settings.data.layout_style as HeroLayoutStyle);
     const error = bannerResult.error || eventResult.error || festivalResult.error;

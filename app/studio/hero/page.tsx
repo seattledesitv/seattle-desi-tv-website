@@ -11,8 +11,14 @@ import { forSite } from "../../lib/sites/query";
 
 const supabase = getSupabaseBrowserClient();
 const THEMES = ["fallback", "gold", "pink", "blue", "festival", "cinematic", "emerald"];
-const emptyBanner = { title: "", subtitle: "", image_url: "", button_text: "", button_url: "", banner_type: "marketing", theme: "fallback", start_date: "", end_date: "", display_order: 0, active: true };
-const emptyFestival = { festival_name: "", festival_key: "", title: "", subtitle: "", image_url: "", theme: "festival", start_date: "", end_date: "", active: true };
+type HeroButton = { label: string; url: string; style: "primary" | "secondary" | "outline" };
+const standardButtons = (label = "", url = ""): HeroButton[] => [
+  ...(label && url ? [{ label, url, style: "primary" as const }] : []),
+  { label: "Listen to Radio", url: "/radio", style: "secondary" },
+  { label: "Local Businesses", url: "/businesses", style: "outline" },
+];
+const emptyBanner = { title: "", subtitle: "", image_url: "", button_text: "", button_url: "", hero_buttons: standardButtons(), banner_type: "marketing", theme: "fallback", start_date: "", end_date: "", display_order: 0, active: true };
+const emptyFestival = { festival_name: "", festival_key: "", title: "", subtitle: "", image_url: "", hero_buttons: standardButtons("Explore Events", "/events"), theme: "festival", start_date: "", end_date: "", active: true };
 
 type HeroTab = "marketing" | "events" | "festivals";
 
@@ -33,6 +39,22 @@ function StatusPill({ active }: { active: boolean }) {
 }
 function EmptyState({ title, text }: { title: string; text: string }) {
   return <div className="rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 p-10 text-center"><h3 className="text-xl font-black text-slate-950">{title}</h3><p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">{text}</p></div>;
+}
+function ButtonEditor({ buttons, onChange }: { buttons: HeroButton[]; onChange: (buttons: HeroButton[]) => void }) {
+  function update(index: number, changes: Partial<HeroButton>) { onChange(buttons.map((button, position) => position === index ? { ...button, ...changes } : button)); }
+  return <div className="rounded-2xl border border-slate-200 bg-white p-4">
+    <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-black">Hero buttons</p><p className="text-xs text-slate-500">Add, remove, rename, and link up to three buttons.</p></div>{buttons.length < 3 && <button type="button" onClick={() => onChange([...buttons, { label: "", url: "", style: buttons.length ? "outline" : "primary" }])} className="rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-white">+ Add</button>}</div>
+    <div className="mt-3 grid gap-3">{buttons.map((button, index) => <div key={index} className="rounded-xl bg-slate-50 p-3">
+      <div className="mb-2 flex items-center justify-between"><span className="text-xs font-black uppercase text-slate-500">Button {index + 1}</span><button type="button" onClick={() => onChange(buttons.filter((_, position) => position !== index))} className="text-xs font-black text-red-600">Remove</button></div>
+      <div className="grid gap-2"><input aria-label={`Button ${index + 1} label`} placeholder="Button label" value={button.label} onChange={(event) => update(index, { label: event.target.value })} className="w-full rounded-lg border p-2 text-sm" /><input aria-label={`Button ${index + 1} URL`} placeholder="/page or https://..." value={button.url} onChange={(event) => update(index, { url: event.target.value })} className="w-full rounded-lg border p-2 text-sm" /><select aria-label={`Button ${index + 1} style`} value={button.style} onChange={(event) => update(index, { style: event.target.value as HeroButton["style"] })} className="w-full rounded-lg border bg-white p-2 text-sm"><option value="primary">Pink</option><option value="secondary">White</option><option value="outline">Outline</option></select></div>
+    </div>)}</div>
+    {buttons.length === 0 && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-xs font-bold text-slate-500">No buttons will appear on this hero.</p>}
+  </div>;
+}
+function EventButtonEditor({ initialButtons, onSave }: { initialButtons: HeroButton[]; onSave: (buttons: HeroButton[]) => Promise<void> }) {
+  const [buttons, setButtons] = useState(initialButtons);
+  const [savingButtons, setSavingButtons] = useState(false);
+  return <div><ButtonEditor buttons={buttons} onChange={setButtons} /><button type="button" disabled={savingButtons} onClick={async () => { setSavingButtons(true); await onSave(buttons); setSavingButtons(false); }} className="mt-2 w-full rounded-lg bg-pink-600 px-3 py-2 text-sm font-black text-white disabled:opacity-50">{savingButtons ? "Saving..." : "Save Buttons"}</button></div>;
 }
 
 export default function HeroCmsPage() {
@@ -61,9 +83,9 @@ export default function HeroCmsPage() {
 
   async function loadContent() {
     const [bannerResult, festivalResult, eventResult] = await Promise.all([
-      forSite(supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,banner_type,theme,start_date,end_date,display_order,active"), site.id).order("display_order", { ascending: true }),
-      forSite(supabase.from("festival_hero_assets").select("id,festival_name,festival_key,title,subtitle,image_url,theme,start_date,end_date,active"), site.id).order("start_date", { ascending: true }),
-      forSite(supabase.from("events").select("id,title,date,location,image,image_urls,featured,featured_order,hero_theme"), site.id).eq("featured", true).order("featured_order", { ascending: true }),
+      forSite(supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,hero_buttons,banner_type,theme,start_date,end_date,display_order,active"), site.id).order("display_order", { ascending: true }),
+      forSite(supabase.from("festival_hero_assets").select("id,festival_name,festival_key,title,subtitle,image_url,hero_buttons,theme,start_date,end_date,active"), site.id).order("start_date", { ascending: true }),
+      forSite(supabase.from("events").select("id,title,date,location,image,image_urls,featured,featured_order,hero_theme,hero_buttons"), site.id).eq("featured", true).order("featured_order", { ascending: true }),
     ]);
     const error = bannerResult.error || festivalResult.error || eventResult.error;
     if (error) setMessage(error.message || "Could not load hero content.");
@@ -96,7 +118,8 @@ export default function HeroCmsPage() {
     try {
       let imageUrl = bannerForm.image_url || "";
       if (bannerFile) imageUrl = await uploadFileToCloudinary(bannerFile);
-      const payload = { ...bannerForm, site_id: site.id, image_url: imageUrl, start_date: bannerForm.start_date || null, end_date: bannerForm.end_date || null, display_order: Number(bannerForm.display_order || 0), updated_at: new Date().toISOString() };
+      const buttons = (bannerForm.hero_buttons || []).filter((button: HeroButton) => button.label.trim() && button.url.trim()).slice(0, 3);
+      const payload = { ...bannerForm, hero_buttons: buttons, button_text: buttons[0]?.label || null, button_url: buttons[0]?.url || null, site_id: site.id, image_url: imageUrl, start_date: bannerForm.start_date || null, end_date: bannerForm.end_date || null, display_order: Number(bannerForm.display_order || 0), updated_at: new Date().toISOString() };
       const result = editingBannerId ? await supabase.from("homepage_hero_banners").update(payload).eq("id", editingBannerId).eq("site_id", site.id || "") : await supabase.from("homepage_hero_banners").insert(payload);
       if (result.error) throw result.error;
       resetBannerForm();
@@ -112,7 +135,8 @@ export default function HeroCmsPage() {
     try {
       let imageUrl = festivalForm.image_url || "";
       if (festivalFile) imageUrl = await uploadFileToCloudinary(festivalFile);
-      const payload = { ...festivalForm, site_id: site.id, image_url: imageUrl, start_date: festivalForm.start_date || null, end_date: festivalForm.end_date || null, updated_at: new Date().toISOString() };
+      const buttons = (festivalForm.hero_buttons || []).filter((button: HeroButton) => button.label.trim() && button.url.trim()).slice(0, 3);
+      const payload = { ...festivalForm, hero_buttons: buttons, site_id: site.id, image_url: imageUrl, start_date: festivalForm.start_date || null, end_date: festivalForm.end_date || null, updated_at: new Date().toISOString() };
       const result = editingFestivalId ? await supabase.from("festival_hero_assets").update(payload).eq("id", editingFestivalId).eq("site_id", site.id || "") : await supabase.from("festival_hero_assets").insert(payload);
       if (result.error) throw result.error;
       resetFestivalForm();
@@ -125,17 +149,22 @@ export default function HeroCmsPage() {
     const { error } = await supabase.from("events").update({ hero_theme }).eq("id", id).eq("site_id", site.id || "");
     if (error) setMessage(`Theme update failed: ${error.message}`); else { setMessage("Featured event theme updated."); await loadContent(); }
   }
+  async function updateEventButtons(row: any, hero_buttons: HeroButton[]) {
+    const buttons = hero_buttons.filter((button) => button.label.trim() && button.url.trim()).slice(0, 3);
+    const { error } = await supabase.from("events").update({ hero_buttons: buttons }).eq("id", row.id).eq("site_id", site.id || "");
+    if (error) setMessage(`Button update failed: ${error.message}`); else { setMessage("Featured event buttons updated."); await loadContent(); }
+  }
 
   function editBanner(row: any) {
     setActiveTab("marketing");
     setEditingBannerId(row.id);
-    setBannerForm({ ...emptyBanner, ...row, start_date: normalizeDate(row.start_date), end_date: normalizeDate(row.end_date) });
+    setBannerForm({ ...emptyBanner, ...row, hero_buttons: Array.isArray(row.hero_buttons) ? row.hero_buttons : standardButtons(row.button_text, row.button_url), start_date: normalizeDate(row.start_date), end_date: normalizeDate(row.end_date) });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   function editFestival(row: any) {
     setActiveTab("festivals");
     setEditingFestivalId(row.id);
-    setFestivalForm({ ...emptyFestival, ...row, start_date: normalizeDate(row.start_date), end_date: normalizeDate(row.end_date) });
+    setFestivalForm({ ...emptyFestival, ...row, hero_buttons: Array.isArray(row.hero_buttons) ? row.hero_buttons : standardButtons("Explore Events", "/events"), start_date: normalizeDate(row.start_date), end_date: normalizeDate(row.end_date) });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   async function toggle(table: string, row: any) {
@@ -207,7 +236,7 @@ export default function HeroCmsPage() {
                   <label className="text-sm font-bold">Upload image<input type="file" accept="image/*" className="mt-1 block w-full text-sm font-normal" onChange={(e) => setBannerFile(e.target.files?.[0] || null)} /></label>
                   <label className="text-sm font-bold">Image URL<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={bannerForm.image_url} onChange={(e) => setBannerForm({ ...bannerForm, image_url: e.target.value })} /></label>
                   <label className="text-sm font-bold">Hero Theme<div className="mt-1"><ThemeSelect value={bannerForm.theme} onChange={(theme) => setBannerForm({ ...bannerForm, theme })} /></div></label>
-                  <div className="grid grid-cols-2 gap-3"><label className="text-sm font-bold">Button text<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={bannerForm.button_text} onChange={(e) => setBannerForm({ ...bannerForm, button_text: e.target.value })} /></label><label className="text-sm font-bold">Button URL<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={bannerForm.button_url} onChange={(e) => setBannerForm({ ...bannerForm, button_url: e.target.value })} /></label></div>
+                  <ButtonEditor buttons={bannerForm.hero_buttons || []} onChange={(hero_buttons) => setBannerForm({ ...bannerForm, hero_buttons })} />
                   <div className="grid grid-cols-2 gap-3"><label className="text-sm font-bold">Start<input type="date" className="mt-1 w-full rounded-xl border p-3 font-normal" value={bannerForm.start_date} onChange={(e) => setBannerForm({ ...bannerForm, start_date: e.target.value })} /></label><label className="text-sm font-bold">End<input type="date" className="mt-1 w-full rounded-xl border p-3 font-normal" value={bannerForm.end_date} onChange={(e) => setBannerForm({ ...bannerForm, end_date: e.target.value })} /></label></div>
                   <label className="text-sm font-bold">Display order<input type="number" className="mt-1 w-full rounded-xl border p-3 font-normal" value={bannerForm.display_order} onChange={(e) => setBannerForm({ ...bannerForm, display_order: Number(e.target.value) })} /></label>
                   <button onClick={saveBanner} disabled={saving} className="rounded-xl bg-pink-600 p-3 font-black text-white disabled:opacity-50">{saving ? "Saving..." : editingBannerId ? "Update Banner" : "Create Banner"}</button>
@@ -221,7 +250,7 @@ export default function HeroCmsPage() {
               </article>)}{filteredBanners.length === 0 && <div className="md:col-span-2"><EmptyState title="No marketing banners found" text={search ? "Try a different search term." : "Create your first banner using the editor on the left."} /></div>}</div>
             </div>}
 
-            {activeTab === "events" && <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filteredEvents.map((row) => { const image = Array.isArray(row.image_urls) && row.image_urls.length ? row.image_urls[0] : row.image; return <article key={row.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="h-40 bg-slate-100">{image ? <img src={image} alt={row.title} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-sm font-bold text-slate-400">No image</div>}</div><div className="p-5"><h3 className="text-xl font-black">{row.title}</h3><p className="mt-1 text-sm text-slate-500">{normalizeDate(row.date)}{row.location ? ` · ${row.location}` : ""}</p><label className="mt-4 block text-sm font-bold">Hero Theme<div className="mt-1"><ThemeSelect value={row.hero_theme || "fallback"} onChange={(theme) => updateEventTheme(row.id, theme)} /></div></label><a href={`/studio/events/${row.id}`} className="mt-4 inline-block rounded-lg bg-slate-950 px-3 py-2 text-sm font-bold text-white">Open Event</a></div></article>; })}{filteredEvents.length === 0 && <div className="md:col-span-2 xl:col-span-3"><EmptyState title="No featured events found" text={search ? "Try a different search term." : "Mark an event as featured in Event Management and it will appear here."} /></div>}</div>}
+            {activeTab === "events" && <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filteredEvents.map((row) => { const image = Array.isArray(row.image_urls) && row.image_urls.length ? row.image_urls[0] : row.image; const buttons = Array.isArray(row.hero_buttons) ? row.hero_buttons : standardButtons("View Event", `/events/${row.id}`); return <article key={row.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="h-40 bg-slate-100">{image ? <img src={image} alt={row.title} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-sm font-bold text-slate-400">No image</div>}</div><div className="p-5"><h3 className="text-xl font-black">{row.title}</h3><p className="mt-1 text-sm text-slate-500">{normalizeDate(row.date)}{row.location ? ` · ${row.location}` : ""}</p><label className="mt-4 block text-sm font-bold">Hero Theme<div className="mt-1"><ThemeSelect value={row.hero_theme || "fallback"} onChange={(theme) => updateEventTheme(row.id, theme)} /></div></label><div className="mt-4"><EventButtonEditor initialButtons={buttons} onSave={(hero_buttons) => updateEventButtons(row, hero_buttons)} /></div><a href={`/studio/events/${row.id}`} className="mt-4 inline-block rounded-lg bg-slate-950 px-3 py-2 text-sm font-bold text-white">Open Event</a></div></article>; })}{filteredEvents.length === 0 && <div className="md:col-span-2 xl:col-span-3"><EmptyState title="No featured events found" text={search ? "Try a different search term." : "Mark an event as featured in Event Management and it will appear here."} /></div>}</div>}
 
             {activeTab === "festivals" && <div className="grid gap-6 xl:grid-cols-[390px_1fr]">
               <div className="h-fit rounded-3xl border border-slate-200 bg-slate-50 p-5 xl:sticky xl:top-6"><div className="flex items-center justify-between gap-3"><h3 className="text-xl font-black">{editingFestivalId ? "Edit Festival Hero" : "New Festival Hero"}</h3>{editingFestivalId && <button onClick={resetFestivalForm} className="text-sm font-black text-slate-500">Cancel</button>}</div><div className="mt-5 grid gap-4">
@@ -232,6 +261,7 @@ export default function HeroCmsPage() {
                 <label className="text-sm font-bold">Upload image<input type="file" accept="image/*" className="mt-1 block w-full text-sm font-normal" onChange={(e) => setFestivalFile(e.target.files?.[0] || null)} /></label>
                 <label className="text-sm font-bold">Image URL<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={festivalForm.image_url} onChange={(e) => setFestivalForm({ ...festivalForm, image_url: e.target.value })} /></label>
                 <label className="text-sm font-bold">Hero Theme<div className="mt-1"><ThemeSelect value={festivalForm.theme} onChange={(theme) => setFestivalForm({ ...festivalForm, theme })} /></div></label>
+                <ButtonEditor buttons={festivalForm.hero_buttons || []} onChange={(hero_buttons) => setFestivalForm({ ...festivalForm, hero_buttons })} />
                 <div className="grid grid-cols-2 gap-3"><label className="text-sm font-bold">Start<input type="date" className="mt-1 w-full rounded-xl border p-3 font-normal" value={festivalForm.start_date} onChange={(e) => setFestivalForm({ ...festivalForm, start_date: e.target.value })} /></label><label className="text-sm font-bold">End<input type="date" className="mt-1 w-full rounded-xl border p-3 font-normal" value={festivalForm.end_date} onChange={(e) => setFestivalForm({ ...festivalForm, end_date: e.target.value })} /></label></div>
                 <button onClick={saveFestival} disabled={saving} className="rounded-xl bg-pink-600 p-3 font-black text-white disabled:opacity-50">{saving ? "Saving..." : editingFestivalId ? "Update Festival Hero" : "Create Festival Hero"}</button>
               </div></div>

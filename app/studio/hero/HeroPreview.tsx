@@ -18,6 +18,10 @@ export default function HeroPreview({ layout, item }: { layout: HeroLayoutStyle;
   const subtitle = item?.subtitle || [item?.date, item?.location].filter(Boolean).join(" · ") || "Community stories, events, culture, interviews, radio, and media coverage across the Pacific Northwest.";
   const reverse = layout === "split_left";
   const split = layout === "split_left" || layout === "split_right" || layout === "classic" || layout === "premium";
+  const buttons = Array.isArray(item?.hero_buttons)
+    ? item.hero_buttons.filter((button: any) => button?.label && button?.url).slice(0, 3)
+    : [{ label: item?.button_text || "Learn More", style: "primary" }];
+  const previewButtons = <div className="mt-4 flex flex-wrap gap-2 sm:mt-5">{buttons.map((button: any, index: number) => <span key={index} className={`rounded-xl px-4 py-2.5 text-sm font-black ${button.style === "outline" ? "border border-white/70 text-white" : button.style === "secondary" ? "bg-white text-slate-950" : "bg-pink-600 text-white"}`}>{button.label}</span>)}</div>;
 
   if (layout === "cinematic" || layout === "spotlight" || layout === "minimal" || layout === "image_focus") {
     return <div className="relative min-h-[330px] overflow-hidden rounded-2xl bg-slate-950 text-white sm:min-h-[360px] sm:rounded-3xl">
@@ -28,7 +32,7 @@ export default function HeroPreview({ layout, item }: { layout: HeroLayoutStyle;
           <span className="inline-flex rounded-full bg-pink-600 px-3 py-1 text-[10px] font-black uppercase tracking-wide sm:text-xs">Live Preview</span>
           <h3 className="mt-3 line-clamp-3 break-words text-2xl font-black leading-tight sm:mt-4 sm:text-5xl">{title}</h3>
           <p className="mt-3 line-clamp-3 break-words text-sm text-slate-200 sm:text-lg">{subtitle}</p>
-          <button className="mt-4 rounded-xl bg-white px-4 py-2.5 text-sm font-black text-slate-950 sm:mt-5 sm:px-5 sm:py-3">Learn More</button>
+          {previewButtons}
         </div>
       </div>
     </div>;
@@ -41,7 +45,7 @@ export default function HeroPreview({ layout, item }: { layout: HeroLayoutStyle;
           <span className="inline-flex rounded-full bg-pink-600 px-3 py-1 text-[10px] font-black uppercase tracking-wide sm:text-xs">Live Preview</span>
           <h3 className="mt-3 line-clamp-3 break-words text-2xl font-black leading-tight sm:mt-4 sm:text-5xl">{title}</h3>
           <p className="mt-3 line-clamp-3 break-words text-sm text-slate-300 sm:text-base">{subtitle}</p>
-          <button className="mt-4 rounded-xl bg-pink-600 px-4 py-2.5 text-sm font-black text-white sm:mt-5 sm:px-5 sm:py-3">Learn More</button>
+          {previewButtons}
         </div>
       </div>
       <div className={`relative min-h-[260px] bg-black sm:min-h-[300px] ${reverse ? "lg:order-1" : ""} ${layout === "premium" ? "m-3 overflow-hidden rounded-2xl border border-white/20 shadow-2xl sm:m-5" : ""}`}>
