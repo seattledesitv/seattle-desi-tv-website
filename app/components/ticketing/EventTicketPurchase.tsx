@@ -54,6 +54,7 @@ export default function EventTicketPurchase({
 }) {
   const site = useCurrentSite();
   const [setting, setSetting] = useState<Setting | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const [types, setTypes] = useState<Ticket[]>([]);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -99,6 +100,14 @@ export default function EventTicketPurchase({
       active = false;
     };
   }, [eventId, site.id]);
+  useEffect(() => {
+    const openFromHash = () => {
+      if (window.location.hash === "#tickets") setExpanded(true);
+    };
+    openFromHash();
+    window.addEventListener("hashchange", openFromHash);
+    return () => window.removeEventListener("hashchange", openFromHash);
+  }, []);
   const selected = Object.values(quantities).reduce((a, b) => a + b, 0);
   const subtotal = useMemo(
     () =>
@@ -138,6 +147,38 @@ export default function EventTicketPurchase({
       </div>
     );
   if (!setting) return null;
+  const minimumPrice = types.length
+    ? Math.min(...types.map((type) => type.price_cents))
+    : null;
+  const pricingLabel =
+    minimumPrice === null
+      ? "Ticket details coming soon"
+      : types.every((type) => type.price_cents === 0)
+        ? "Free registration"
+        : `Tickets from ${money(minimumPrice, setting.currency)}`;
+  if (!expanded)
+    return (
+      <section id="tickets" className="scroll-mt-6 overflow-hidden rounded-3xl border border-pink-200 bg-gradient-to-r from-slate-950 via-slate-900 to-pink-950 p-6 text-white shadow-lg md:p-8">
+        <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[.2em] text-pink-300">Tickets from {site.shortName}</p>
+            <h2 className="mt-2 text-3xl font-black">{pricingLabel}</h2>
+            <p className="mt-2 max-w-2xl text-sm text-slate-300">Reserve securely on {site.name}. No account is required, and ticket details open only when you are ready.</p>
+          </div>
+          <div className="flex min-w-56 flex-col gap-3">
+            <span className={`w-fit rounded-full px-3 py-1 text-sm font-black ${salesOpen ? "bg-emerald-500/20 text-emerald-200" : "bg-amber-400/20 text-amber-200"}`}>{salesStatus}</span>
+            <button
+              type="button"
+              disabled={!salesOpen}
+              onClick={() => setExpanded(true)}
+              className="rounded-xl bg-pink-600 px-6 py-4 text-lg font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              View Tickets & Register
+            </button>
+          </div>
+        </div>
+      </section>
+    );
   function change(type: Ticket, next: number) {
     const available = Math.max(
       0,
@@ -219,14 +260,18 @@ export default function EventTicketPurchase({
               Purchase securely without leaving {site.name}.
             </p>
           </div>
-          <span
-            className={`h-fit rounded-full px-3 py-1 text-sm font-black ${salesOpen ? "bg-emerald-500/20 text-emerald-200" : "bg-amber-400/20 text-amber-200"}`}
-          >
-            {salesStatus}
-          </span>
+          <div className="flex flex-col items-end gap-2">
+            <span className={`h-fit rounded-full px-3 py-1 text-sm font-black ${salesOpen ? "bg-emerald-500/20 text-emerald-200" : "bg-amber-400/20 text-amber-200"}`}>{salesStatus}</span>
+            <button type="button" onClick={() => setExpanded(false)} className="text-sm font-black text-pink-300 hover:text-white">Hide ticket options</button>
+          </div>
         </div>
       </div>
       <div className="p-6 md:p-8">
+        <div className="mb-6 grid gap-2 text-center text-xs font-black uppercase tracking-wide text-slate-500 sm:grid-cols-3">
+          <span className="rounded-xl bg-pink-50 p-3 text-pink-700">1 · Select tickets</span>
+          <span className="rounded-xl bg-slate-100 p-3">2 · Enter attendee details</span>
+          <span className="rounded-xl bg-slate-100 p-3">3 · Confirm registration</span>
+        </div>
         <div className="grid gap-4">
           {types.map((type) => {
             const available = Math.max(
