@@ -58,6 +58,7 @@ export default function EventTicketPurchase({
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [accepted, setAccepted] = useState(false);
+  const [newsletterOptIn, setNewsletterOptIn] = useState(true);
   const [message, setMessage] = useState("");
   const [buyer, setBuyer] = useState({ name: "", email: "", phone: "" });
   const [submitting, setSubmitting] = useState(false);
@@ -177,6 +178,7 @@ export default function EventTicketPurchase({
           buyerEmail: buyer.email,
           buyerPhone: buyer.phone,
           policyAccepted: true,
+          newsletterOptIn,
           items: types
             .filter((type) => (quantities[type.id] || 0) > 0)
             .map((type) => ({
@@ -360,6 +362,15 @@ export default function EventTicketPurchase({
             />
             I agree to the ticket terms and refund policy shown above.
           </label>
+          <label className="mt-3 flex gap-3 text-sm font-bold">
+            <input
+              type="checkbox"
+              checked={newsletterOptIn}
+              onChange={(e) => setNewsletterOptIn(e.target.checked)}
+              className="h-5 w-5 accent-pink-600"
+            />
+            Send me occasional SDTV news, events and community updates. You can uncheck this and still book tickets.
+          </label>
           <button
             disabled={!salesOpen || !selected || !accepted || submitting}
             onClick={proceed}
@@ -382,6 +393,7 @@ export default function EventTicketPurchase({
             Accepted policies are saved with the order. Paid tickets issue after
             verified payment; free tickets issue immediately.
           </p>
+          <p className="mt-1 text-center text-xs font-bold text-slate-500">No SDTV account is required to register or buy tickets.</p>
         </div>
       </div>
     </section>

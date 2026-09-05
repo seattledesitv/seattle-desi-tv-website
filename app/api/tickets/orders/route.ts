@@ -143,6 +143,36 @@ export async function POST(request: Request) {
       totalCents?: number;
       currency?: string;
     };
+    if (reservation.token && body.newsletterOptIn === true) {
+      const consentAt = new Date().toISOString();
+      const email = text(body.buyerEmail, 254).toLowerCase();
+      const name = text(body.buyerName, 120);
+      await db()
+        .from("ticket_orders")
+        .update({ newsletter_opt_in: true, newsletter_opt_in_at: consentAt })
+        .eq("site_id", site.id)
+        .eq("public_token", reservation.token);
+      const existing = await db()
+        .from("newsletter_subscribers")
+        .select("unsubscribe_token")
+        .eq("site_id", site.id)
+        .eq("email", email)
+        .maybeSingle();
+      await db().from("newsletter_subscribers").upsert(
+        {
+          site_id: site.id,
+          email,
+          name: name || null,
+          status: "active",
+          source_page: "event-ticket-checkout",
+          subscribed_at: consentAt,
+          unsubscribe_token:
+            existing.data?.unsubscribe_token ||
+            `${crypto.randomUUID().replaceAll("-", "")}${crypto.randomUUID().replaceAll("-", "")}`,
+        },
+        { onConflict: "site_id,email" },
+      );
+    }
     if (reservation.totalCents === 0 && reservation.token) {
       const freeReference = `free-${crypto.randomUUID()}`;
       const fulfilled = await db().rpc("fulfill_paid_ticket_order", {
