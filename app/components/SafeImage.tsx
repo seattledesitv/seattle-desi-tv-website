@@ -66,7 +66,7 @@ export default function SafeImage({
     );
   }
 
-  const image = <img src={cleanSrc} alt={alt} className={className} loading={loading} decoding="async" fetchPriority={fetchPriority} sizes={sizes} style={{ objectPosition, transform: `scale(${Math.max(1, Number(zoom || 1))})` }} onError={() => setFailed(true)} />;
+  const image = <img src={cleanSrc} alt={alt} width={widthHint} height={Math.round(widthHint * 0.75)} className={className} loading={loading} decoding="async" fetchPriority={fetchPriority} sizes={sizes} style={{ objectPosition, transform: `scale(${Math.max(1, Number(zoom || 1))})` }} onError={() => setFailed(true)} />;
 
   if (!previewEnabled) return image;
 
@@ -78,7 +78,7 @@ export default function SafeImage({
     {open && <div role="dialog" aria-modal="true" aria-label={`Full image for ${alt}`} className="fixed inset-0 z-[1000] grid place-items-center bg-slate-950/90 p-4" onClick={() => setOpen(false)}>
       <button type="button" onClick={() => setOpen(false)} className="absolute right-4 top-4 rounded-full bg-white px-4 py-2 text-sm font-black text-slate-950">Close ×</button>
       <div className="flex max-h-[92vh] max-w-[94vw] items-center justify-center rounded-2xl bg-white p-3 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-        <img src={fullSrc || cleanSrc} alt={alt} className="max-h-[86vh] max-w-[90vw] object-contain" />
+        <img src={fullSrc || cleanSrc} alt={alt} width={1800} height={1350} className="max-h-[86vh] max-w-[90vw] object-contain" />
       </div>
     </div>}
   </>;

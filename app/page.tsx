@@ -11,6 +11,7 @@ import FeaturedSocialSection, {
 import { getSupabaseBrowserClient } from "./lib/supabaseBrowser";
 import { useCurrentSite } from "./lib/sites/SiteContext";
 import { forSite } from "./lib/sites/query";
+import { optimizedImageUrl } from "./components/SafeImage";
 
 const supabase = getSupabaseBrowserClient();
 const SPONSOR_TIERS = [
@@ -287,8 +288,12 @@ function SponsorCard({ sponsor }: { sponsor: SponsorRow }) {
       <div className="h-24 rounded-xl bg-slate-50 grid place-items-center overflow-hidden mb-4">
         {sponsor.logo_url ? (
           <img
-            src={sponsor.logo_url}
+            src={optimizedImageUrl(sponsor.logo_url, 320)}
             alt={sponsor.name}
+            width={320}
+            height={160}
+            loading="lazy"
+            decoding="async"
             className="max-h-20 max-w-full object-contain p-2"
           />
         ) : (
@@ -325,15 +330,24 @@ function HeroCarousel({ items }: { items: HeroItem[] }) {
   }, [heroItems.length]);
   const item = heroItems[current] || fallbackHero[0];
   const image = item.image_url || "/hero-sdtv.png";
+  const optimizedHeroImage = optimizedImageUrl(image, 1440);
   const isEventHero = String(item.id || "").startsWith("event-");
   return (
     <section
       key="home"
       className="relative overflow-hidden bg-slate-950 text-white h-[430px] md:h-[500px]"
     >
-      <div
+      <img
+        src={optimizedHeroImage}
+        alt=""
+        aria-hidden="true"
+        width={1440}
+        height={500}
+        loading="eager"
+        fetchPriority="high"
+        decoding="async"
         className={`absolute inset-0 bg-cover bg-center transition-all duration-700 ${isEventHero ? "opacity-35 blur-sm scale-105" : ""}`}
-        style={{ backgroundImage: `url('${image}')` }}
+        style={{ width: "100%", height: "100%", objectFit: "cover" }}
       />
       <div
         className={`absolute inset-0 ${isEventHero ? "bg-gradient-to-r from-slate-950 via-slate-950/90 to-slate-950/70" : "bg-gradient-to-r from-slate-950 via-slate-950/80 to-slate-950/20"}`}
@@ -383,8 +397,13 @@ function HeroCarousel({ items }: { items: HeroItem[] }) {
             <div className="w-full max-w-[280px] aspect-[4/5] rounded-[1.6rem] border border-white/20 bg-white/10 p-3 shadow-2xl backdrop-blur overflow-hidden">
               <div className="w-full h-full rounded-[1.2rem] bg-white grid place-items-center overflow-hidden">
                 <img
-                  src={image}
+                  src={optimizedHeroImage}
                   alt={item.title}
+                  width={560}
+                  height={700}
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="async"
                   className="w-full h-full object-contain"
                 />
               </div>
@@ -434,6 +453,7 @@ function Bars() {
 }
 function EventCard({ event }: { event: EventRow }) {
   const image = firstImage(event);
+  const cardImage = optimizedImageUrl(image, 640);
   const p = dateParts(event.date);
   return (
     <a
@@ -443,8 +463,12 @@ function EventCard({ event }: { event: EventRow }) {
       <div className="relative h-36 md:h-40 bg-pink-50 overflow-hidden">
         {image ? (
           <img
-            src={image}
+            src={cardImage}
             alt={event.title}
+            width={640}
+            height={360}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
           />
         ) : (
@@ -1055,8 +1079,12 @@ export default function HomePage() {
                   <div className="h-44 bg-white/5 grid place-items-center overflow-hidden">
                     {video.thumbnail ? (
                       <img
-                        src={video.thumbnail}
+                        src={optimizedImageUrl(video.thumbnail, 640)}
                         alt={video.title}
+                        width={640}
+                        height={360}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover"
                       />
                     ) : (
