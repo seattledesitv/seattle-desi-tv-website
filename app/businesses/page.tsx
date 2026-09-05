@@ -230,6 +230,36 @@ export default function BusinessesPage() {
       setMessage(`Could not load businesses: ${loadError.message}`);
       return;
     }
+    const { data: activeSponsors } = await supabase
+      .from("homepage_sponsors")
+      .select("business_id,tier,start_date,end_date")
+      .eq("site_id", site.id || "")
+      .eq("active", true);
+    const now = Date.now();
+    const sponsorTierByBusiness = new Map<string, { tier: string; startsAt: string | null; endsAt: string | null }>();
+    (activeSponsors || []).forEach((sponsor: any) => {
+      if (!sponsor.business_id || !sponsor.tier) return;
+      const starts = sponsor.start_date ? new Date(sponsor.start_date).getTime() : 0;
+      const ends = sponsor.end_date ? new Date(sponsor.end_date).getTime() : Number.POSITIVE_INFINITY;
+      if (starts <= now && now <= ends)
+        sponsorTierByBusiness.set(String(sponsor.business_id), {
+          tier: String(sponsor.tier),
+          startsAt: sponsor.start_date || null,
+          endsAt: sponsor.end_date || null,
+        });
+    });
+    rows = rows.map((business) => {
+      const sponsor = sponsorTierByBusiness.get(business.id);
+      const currentLabel = String(business.premium_label || "").trim();
+      if (!sponsor) return business;
+      return {
+        ...business,
+        is_premium: true,
+        premium_starts_at: sponsor.startsAt,
+        premium_ends_at: sponsor.endsAt,
+        premium_label: currentLabel && currentLabel.toLowerCase() !== "premium" ? currentLabel : sponsor.tier,
+      };
+    });
     setBusinesses(rows);
     setMessage(
       rows.length

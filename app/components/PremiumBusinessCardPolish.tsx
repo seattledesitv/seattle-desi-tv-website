@@ -21,7 +21,7 @@ function applyPremiumBusinessPolish() {
     card.style.background = "linear-gradient(180deg,#fffdf7 0%,#ffffff 44%)";
     card.style.boxShadow = "0 18px 45px rgba(146,96,12,.15)";
 
-    premiumBadge.textContent = `${premiumBadge.textContent?.trim() || "Premium"} · Featured`;
+    premiumBadge.textContent = premiumBadge.textContent?.trim() || "Premium";
     premiumBadge.className = "absolute left-0 top-0 z-20 rounded-br-2xl bg-gradient-to-r from-amber-400 to-yellow-300 px-4 py-2 text-[11px] font-black uppercase tracking-wide text-amber-950 shadow-lg";
 
     const imageWrapper = card.firstElementChild;
