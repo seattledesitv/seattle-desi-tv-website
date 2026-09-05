@@ -11,11 +11,13 @@ export type HomepageHeroItem = {
   image_url?: string | null;
   button_text?: string | null;
   button_url?: string | null;
+  hero_buttons?: HeroButton[] | null;
   badge?: string | null;
   display_order?: number | null;
   theme?: string | null;
   hero_layout?: string | null;
 };
+type HeroButton = { label: string; url: string; style?: "primary" | "secondary" | "outline" };
 
 const themeStyles: Record<string, { accent: string; button: string; glow: string }> = {
   fallback: { accent: "text-white", button: "bg-white text-slate-950", glow: "" },
@@ -37,11 +39,25 @@ function effectiveLayout(item: HomepageHeroItem, globalLayout: HeroLayoutStyle):
   return value && value !== "inherit" ? value as HeroLayoutStyle : globalLayout;
 }
 
-function ActionButtons({ item, theme }: { item: HomepageHeroItem; theme: { button: string } }) {
+function safeHeroUrl(value: string) {
+  const url = String(value || "").trim();
+  return url.startsWith("/") || /^https?:\/\//i.test(url) || /^(mailto|tel):/i.test(url) ? url : "";
+}
+
+function ActionButtons({ item }: { item: HomepageHeroItem }) {
+  const defaults: HeroButton[] = [
+    ...(item.button_text && item.button_url ? [{ label: item.button_text, url: item.button_url, style: "primary" as const }] : []),
+    { label: "Listen to Radio", url: "/radio", style: "secondary" },
+    { label: "Local Businesses", url: "/businesses", style: "outline" },
+  ];
+  const buttons = Array.isArray(item.hero_buttons) ? item.hero_buttons : defaults;
+  const styles = {
+    primary: "bg-pink-600 text-white hover:bg-pink-500",
+    secondary: "bg-white text-slate-950 hover:bg-slate-100",
+    outline: "border border-white/60 text-white hover:bg-white/10",
+  };
   return <div className="mt-6 flex flex-wrap gap-3">
-    {item.button_text && item.button_url && <a href={item.button_url} className={`rounded-xl px-5 py-3 font-black ${theme.button}`}>{item.button_text}</a>}
-    <a href="/radio" className="rounded-xl bg-white/10 px-5 py-3 font-black text-white backdrop-blur hover:bg-white/20">Listen to Radio</a>
-    <a href="/businesses" className="rounded-xl border border-white/60 px-5 py-3 font-black text-white hover:bg-white/10">Local Businesses</a>
+    {buttons.filter((button) => button.label && safeHeroUrl(button.url)).slice(0, 3).map((button, index) => <a key={`${button.url}-${index}`} href={safeHeroUrl(button.url)} className={`rounded-xl px-5 py-3 font-black ${styles[button.style || "primary"]}`}>{button.label}</a>)}
   </div>;
 }
 
@@ -60,7 +76,7 @@ function HeroSlide({ item, globalLayout }: { item: HomepageHeroItem; globalLayou
           <p className={`text-sm font-black uppercase tracking-wide md:text-base ${theme.accent}`}>{item.badge || "Seattle Desi TV"}</p>
           <h1 className="mt-2 text-4xl font-black leading-tight md:text-6xl">{item.title}</h1>
           {item.subtitle && <p className="mt-4 max-w-3xl text-base text-slate-200 md:text-lg">{item.subtitle}</p>}
-          <ActionButtons item={item} theme={theme} />
+          <ActionButtons item={item} />
         </div>
         <div className={`relative min-h-[330px] overflow-hidden bg-black ${layout === "premium" ? "m-3 rounded-[1.75rem] border border-white/20 p-3 shadow-2xl" : "rounded-2xl"}`}>
           <img src={image} alt={item.title} className="absolute inset-0 h-full w-full object-contain" />
@@ -86,7 +102,7 @@ function HeroSlide({ item, globalLayout }: { item: HomepageHeroItem; globalLayou
         <p className={`text-sm font-black uppercase tracking-wide md:text-base ${theme.accent}`}>{item.badge || "Seattle Desi TV"}</p>
         <h1 className="mt-2 text-4xl font-black leading-tight md:text-6xl">{item.title}</h1>
         {item.subtitle && <p className="mt-4 max-w-3xl text-base text-slate-200 md:text-lg">{item.subtitle}</p>}
-        <ActionButtons item={item} theme={theme} />
+        <ActionButtons item={item} />
       </div>
     </div>
   </section>;

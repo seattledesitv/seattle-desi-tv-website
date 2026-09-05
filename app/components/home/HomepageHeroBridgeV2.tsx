@@ -62,9 +62,9 @@ export default function HomepageHeroBridgeV2() {
       const today = new Date().toISOString().slice(0, 10);
       const [settingsResult, bannersResult, eventsResult, festivalsResult] = await Promise.all([
         forSite(supabase.from("homepage_hero_settings").select("layout_style").eq("id", "default"), site.id).maybeSingle(),
-        forSite(supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,banner_type,theme,hero_layout,start_date,end_date,display_order,active"), site.id).eq("active", true).order("display_order", { ascending: true }),
-        forSite(supabase.from("events").select("id,title,date,location,image,image_urls,featured,featured_order,hero_theme,hero_layout,status"), site.id).eq("status", "approved").eq("featured", true).order("featured_order", { ascending: true }).order("date", { ascending: true }).limit(8),
-        forSite(supabase.from("festival_hero_assets").select("id,festival_name,festival_key,title,subtitle,image_url,theme,hero_layout,start_date,end_date,active"), site.id).eq("active", true).order("start_date", { ascending: true }),
+        forSite(supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,hero_buttons,banner_type,theme,hero_layout,start_date,end_date,display_order,active"), site.id).eq("active", true).order("display_order", { ascending: true }),
+        forSite(supabase.from("events").select("id,title,date,location,image,image_urls,featured,featured_order,hero_theme,hero_layout,hero_buttons,status"), site.id).eq("status", "approved").eq("featured", true).order("featured_order", { ascending: true }).order("date", { ascending: true }).limit(8),
+        forSite(supabase.from("festival_hero_assets").select("id,festival_name,festival_key,title,subtitle,image_url,hero_buttons,theme,hero_layout,start_date,end_date,active"), site.id).eq("active", true).order("start_date", { ascending: true }),
       ]);
 
       if (settingsResult.data?.layout_style) setGlobalLayout(settingsResult.data.layout_style as HeroLayoutStyle);
@@ -75,7 +75,8 @@ export default function HomepageHeroBridgeV2() {
         subtitle: row.subtitle,
         image_url: row.image_url,
         button_text: row.button_text,
-        button_url: row.button_url,
+                button_url: row.button_url,
+        hero_buttons: row.hero_buttons,
         badge: row.banner_type ? `${String(row.banner_type).toUpperCase()} FEATURE` : site.name,
         display_order: Number(row.display_order || 0),
         theme: row.theme || "fallback",
@@ -89,6 +90,7 @@ export default function HomepageHeroBridgeV2() {
         image_url: firstImage(row),
         button_text: "View Event",
         button_url: `/events/${row.id}`,
+        hero_buttons: row.hero_buttons,
         badge: "Featured Event",
         display_order: Number(row.featured_order || 0),
         theme: row.hero_theme || "fallback",
@@ -102,6 +104,7 @@ export default function HomepageHeroBridgeV2() {
         image_url: row.image_url,
         button_text: "Explore Events",
         button_url: "/events",
+        hero_buttons: row.hero_buttons,
         badge: row.festival_name,
         display_order: -1,
         theme: row.theme || "festival",
