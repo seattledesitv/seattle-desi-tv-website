@@ -34,6 +34,7 @@ export default function StudioSocialStatsPage() {
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState("general_public");
   const [rows, setRows] = useState<any[]>([]);
+  const [refreshingApis, setRefreshingApis] = useState(false);
   const canAccess = Boolean(user && isAdminRole(role));
 
   async function loadRows() {
@@ -121,6 +122,23 @@ export default function StudioSocialStatsPage() {
     setActionMessage("Social media stats saved. Refresh the homepage to see the latest numbers.");
   }
 
+  async function refreshFromApis() {
+    setRefreshingApis(true);
+    setActionMessage("Refreshing YouTube and Instagram statistics...");
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token || "";
+      const response = await fetch("/api/studio/social-stats/refresh", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.error || "API refresh failed.");
+      await loadRows();
+      const details = (result.results || []).map((entry: any) => `${entry.platform}: ${entry.ok ? "updated" : entry.message}`).join(" · ");
+      setActionMessage(`${result.updated || 0} platform${result.updated === 1 ? "" : "s"} refreshed. ${details}`);
+    } catch (error: any) {
+      setActionMessage(error?.message || "Could not refresh social statistics.");
+    } finally { setRefreshingApis(false); }
+  }
+
   useEffect(() => { init(); }, [site.id]);
 
   return (
@@ -156,9 +174,10 @@ export default function StudioSocialStatsPage() {
             <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <h2 className="text-2xl font-black">Stats Table</h2>
-                <p className="mt-1 text-sm text-slate-600">These values are stored in the <b>social_media_stats</b> table and used by the homepage Social Reach cards.</p>
+                <p className="mt-1 text-sm text-slate-600">YouTube and Instagram can refresh from their APIs. Stored values remain available as a fallback and for manually managed platforms.</p>
               </div>
               <div className="flex flex-wrap gap-2">
+                <button onClick={refreshFromApis} disabled={refreshingApis} className="rounded-xl bg-emerald-600 px-4 py-2 font-black text-white disabled:opacity-50">{refreshingApis ? "Refreshing..." : "Refresh from APIs"}</button>
                 <button onClick={addRow} className="rounded-xl border px-4 py-2 font-black">Add Platform</button>
                 <button onClick={seedDefaults} className="rounded-xl border px-4 py-2 font-black">Seed Defaults</button>
                 <button onClick={saveRows} className="rounded-xl bg-pink-600 px-4 py-2 font-black text-white">Save Social Stats</button>
