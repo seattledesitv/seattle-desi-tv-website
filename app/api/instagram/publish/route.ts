@@ -87,8 +87,9 @@ async function waitForContainer(
     statusUrl.searchParams.set("access_token", accessToken);
 
     const result = await graphRequest(statusUrl);
+    const rawStatus = String(result?.status || "").trim();
     const status = String(
-      result?.status_code || result?.status || "IN_PROGRESS",
+      result?.status_code || rawStatus || "IN_PROGRESS",
     ).toUpperCase();
     lastStatus = status;
 
@@ -101,8 +102,11 @@ async function waitForContainer(
     }
 
     if (["ERROR", "EXPIRED", "FAILED"].includes(status)) {
+      const providerDetail = rawStatus && rawStatus.toUpperCase() !== status
+        ? ` Provider detail: ${rawStatus}`
+        : "";
       throw new Error(
-        `Instagram could not process the media. Container status: ${status}.`,
+        `Instagram could not process the media. Container status: ${status}.${providerDetail} Check that the source is a public MP4/MOV video using a supported video and audio codec.`,
       );
     }
 
@@ -112,6 +116,34 @@ async function waitForContainer(
   throw new Error(
     `Instagram is still processing the media after ${Math.round((MAX_POLL_ATTEMPTS * POLL_INTERVAL_MS) / 1000)} seconds. Container ${creationId} remains ${lastStatus}. Please try publishing again shortly.`,
   );
+}
+
+async function inspectVideoSource(videoUrl: string) {
+  let response: Response;
+  try {
+    response = await fetch(videoUrl, {
+      method: "HEAD",
+      cache: "no-store",
+      redirect: "follow",
+    });
+  } catch {
+    throw new Error("Instagram cannot receive this Reel because the video URL could not be reached from the server.");
+  }
+
+  if (!response.ok) {
+    throw new Error(`Instagram cannot receive this Reel because the video URL returned HTTP ${response.status}.`);
+  }
+
+  const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+  const contentLength = Number(response.headers.get("content-length") || 0);
+  if (contentType && !contentType.startsWith("video/") && contentType !== "application/octet-stream") {
+    throw new Error(`The uploaded Reel URL returned ${contentType} instead of a video content type.`);
+  }
+
+  return {
+    contentType: contentType || "not supplied",
+    contentLength: Number.isFinite(contentLength) && contentLength > 0 ? contentLength : null,
+  };
 }
 
 export async function POST(request: Request) {
@@ -259,7 +291,9 @@ export async function POST(request: Request) {
     }
 
     let creationId = "";
+    let videoSource: Awaited<ReturnType<typeof inspectVideoSource>> | null = null;
     if (mediaType === "video") {
+      videoSource = await inspectVideoSource(imageUrls[0]);
       const createContainerUrl = new URL(`${graphBase}/${actorId}/media`);
       createContainerUrl.searchParams.set("media_type", "REELS");
       createContainerUrl.searchParams.set("video_url", imageUrls[0]);
@@ -357,6 +391,7 @@ export async function POST(request: Request) {
       collaborators,
       imageCount: imageUrls.length,
       mediaType,
+      videoSource,
     });
   } catch (error: unknown) {
     return NextResponse.json(

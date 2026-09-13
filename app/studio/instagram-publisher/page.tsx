@@ -290,7 +290,11 @@ export default function InstagramPublisherPage() {
               <label className="grid gap-2">
                 <span className="text-sm font-black uppercase tracking-wide text-slate-600">Upload {mediaType}</span>
                 <input key={mediaType} type="file" accept={mediaType === "video" ? "video/mp4,video/quicktime,.mp4,.mov" : "image/*"} onChange={uploadMedia} className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-pink-500" />
-                <span className="text-xs font-bold text-slate-500">{canUpload ? `${mediaType === "video" ? "Video" : "Image"} uploads use Cloudinary and provide Instagram with a public HTTPS URL.` : `Cloudinary env vars are missing; paste a public ${mediaType} URL instead.`}</span>
+                <span className="text-xs font-bold text-slate-500">{canUpload
+                  ? mediaType === "video"
+                    ? "Use an MP4 with H.264 video and AAC audio for the most reliable Reel processing. Cloudinary provides Instagram with a public HTTPS URL."
+                    : "Image uploads use Cloudinary and provide Instagram with a public HTTPS URL."
+                  : `Cloudinary env vars are missing; paste a public ${mediaType} URL instead.`}</span>
               </label>
 
               <label className="grid gap-2">
