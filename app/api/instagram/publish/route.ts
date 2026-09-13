@@ -102,7 +102,7 @@ async function waitForContainer(
 
     if (["ERROR", "EXPIRED", "FAILED"].includes(status)) {
       throw new Error(
-        `Instagram could not process the image. Container status: ${status}.`,
+        `Instagram could not process the media. Container status: ${status}.`,
       );
     }
 
@@ -110,7 +110,7 @@ async function waitForContainer(
   }
 
   throw new Error(
-    `Instagram is still processing the image after ${Math.round((MAX_POLL_ATTEMPTS * POLL_INTERVAL_MS) / 1000)} seconds. Container ${creationId} remains ${lastStatus}. Please try publishing again shortly.`,
+    `Instagram is still processing the media after ${Math.round((MAX_POLL_ATTEMPTS * POLL_INTERVAL_MS) / 1000)} seconds. Container ${creationId} remains ${lastStatus}. Please try publishing again shortly.`,
   );
 }
 
@@ -150,6 +150,7 @@ export async function POST(request: Request) {
       );
 
     const body = await request.json().catch(() => ({}));
+    const mediaType = String(body.mediaType || (body.videoUrl ? "video" : "image")).toLowerCase() === "video" ? "video" : "image";
     const publicationId = String(body.publicationId || "").trim();
     const pressReleaseId = String(body.pressReleaseId || "").trim();
     if (publicationId) {
@@ -194,7 +195,7 @@ export async function POST(request: Request) {
           { status: 409 },
         );
     }
-    const requestedUrls = Array.isArray(body.imageUrls)
+    const requestedUrls = mediaType === "video" ? [body.videoUrl] : Array.isArray(body.imageUrls)
       ? body.imageUrls
       : [body.imageUrl];
     const imageUrls = requestedUrls
@@ -214,12 +215,17 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Public HTTPS image URLs are required for Instagram publishing.",
+            `Public HTTPS ${mediaType} URLs are required for Instagram publishing.`,
         },
         { status: 400 },
       );
     }
-    if (imageUrls.length > 10)
+    if (mediaType === "video" && imageUrls.length !== 1)
+      return NextResponse.json(
+        { error: "Publish one video at a time as an Instagram Reel." },
+        { status: 400 },
+      );
+    if (mediaType === "image" && imageUrls.length > 10)
       return NextResponse.json(
         { error: "Instagram carousels support no more than 10 images." },
         { status: 400 },
@@ -253,7 +259,16 @@ export async function POST(request: Request) {
     }
 
     let creationId = "";
-    if (imageUrls.length === 1) {
+    if (mediaType === "video") {
+      const createContainerUrl = new URL(`${graphBase}/${actorId}/media`);
+      createContainerUrl.searchParams.set("media_type", "REELS");
+      createContainerUrl.searchParams.set("video_url", imageUrls[0]);
+      createContainerUrl.searchParams.set("caption", caption);
+      createContainerUrl.searchParams.set("share_to_feed", body.shareToFeed === false ? "false" : "true");
+      createContainerUrl.searchParams.set("access_token", accessToken);
+      const container = await graphRequest(createContainerUrl, "POST");
+      creationId = container?.id || "";
+    } else if (imageUrls.length === 1) {
       const createContainerUrl = new URL(`${graphBase}/${actorId}/media`);
       createContainerUrl.searchParams.set("image_url", imageUrls[0]);
       createContainerUrl.searchParams.set("caption", caption);
@@ -341,6 +356,7 @@ export async function POST(request: Request) {
       recordingWarning,
       collaborators,
       imageCount: imageUrls.length,
+      mediaType,
     });
   } catch (error: unknown) {
     return NextResponse.json(

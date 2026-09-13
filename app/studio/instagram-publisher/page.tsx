@@ -75,6 +75,7 @@ export default function InstagramPublisherPage() {
   const [publishing, setPublishing] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState("general_public");
+  const [mediaType, setMediaType] = useState<"image" | "video">("image");
   const [imageUrl, setImageUrl] = useState("");
   const [imageFileName, setImageFileName] = useState("");
   const [postContext, setPostContext] = useState("");
@@ -110,33 +111,34 @@ export default function InstagramPublisherPage() {
     setLoading(false);
   }
 
-  async function uploadToCloudinary(file: File | Blob, name: string) {
+  async function uploadToCloudinary(file: File | Blob, name: string, resourceType: "image" | "video") {
     if (!canUpload) throw new Error("Cloudinary upload is not configured in Vercel.");
     const formData = new FormData();
     formData.append("file", file, name);
     formData.append("upload_preset", uploadPreset);
     formData.append("folder", appEnv === "staging" ? "sdtv/staging/instagram" : "sdtv/instagram");
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: "POST", body: formData });
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, { method: "POST", body: formData });
     const json = await response.json().catch(() => ({}));
     if (!response.ok || !json.secure_url) throw new Error(json?.error?.message || "Cloudinary upload failed.");
     return json.secure_url as string;
   }
 
-  async function uploadImage(event: ChangeEvent<HTMLInputElement>) {
+  async function uploadMedia(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
     setResult(null);
     setAnalysis(null);
     setMessage("");
     setImageFileName(file.name);
-    if (!file.type.startsWith("image/")) {
-      setMessage("Please choose an image file.");
+    const expectedPrefix = mediaType === "video" ? "video/" : "image/";
+    if (!file.type.startsWith(expectedPrefix)) {
+      setMessage(`Please choose a ${mediaType} file.`);
       return;
     }
     setUploading(true);
     try {
-      setImageUrl(await uploadToCloudinary(file, file.name));
-      setMessage("Image uploaded. Click AI Parse Flyer + Caption.");
+      setImageUrl(await uploadToCloudinary(file, file.name, mediaType));
+      setMessage(mediaType === "image" ? "Image uploaded. Click AI Parse Flyer + Caption." : "Video uploaded. Review your caption and publish it as an Instagram Reel.");
     } catch (error: any) {
       setMessage(error?.message || "Image upload failed.");
     } finally {
@@ -145,6 +147,10 @@ export default function InstagramPublisherPage() {
   }
 
   async function analyzeFlyer() {
+    if (mediaType === "video") {
+      setMessage("AI flyer parsing is available for images only. Use Basic Draft or write the Reel caption directly.");
+      return;
+    }
     if (!imageUrl.trim()) {
       setMessage("Upload an image or paste an image URL first.");
       return;
@@ -191,7 +197,7 @@ export default function InstagramPublisherPage() {
   async function publish() {
     setResult(null);
     setMessage("");
-    if (!imageUrl.trim()) return setMessage("Add a public HTTPS image URL or upload an image first.");
+    if (!imageUrl.trim()) return setMessage(`Add a public HTTPS ${mediaType} URL or upload a ${mediaType} first.`);
     if (!caption.trim()) return setMessage("Add a caption first.");
     if (!confirmed) return setMessage("Please check the confirmation box before publishing live to Instagram.");
     setPublishing(true);
@@ -201,12 +207,12 @@ export default function InstagramPublisherPage() {
       const response = await fetch("/api/instagram/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
-        body: JSON.stringify({ imageUrl: imageUrl.trim(), caption: caption.trim(), collaborators: handles, postContext: postContext.trim() }),
+        body: JSON.stringify(mediaType === "video" ? { mediaType, videoUrl: imageUrl.trim(), caption: caption.trim(), collaborators: handles, postContext: postContext.trim() } : { mediaType, imageUrl: imageUrl.trim(), caption: caption.trim(), collaborators: handles, postContext: postContext.trim() }),
       });
       const json = await response.json().catch(() => ({}));
       if (!response.ok || json.error) throw new Error(json.error || "Instagram publish failed.");
       setResult(json);
-      setMessage("Published to Instagram successfully.");
+      setMessage(mediaType === "video" ? "Published to Instagram as a Reel successfully." : "Published to Instagram successfully.");
     } catch (error: any) {
       setMessage(error?.message || "Instagram publish failed.");
     } finally {
@@ -224,7 +230,7 @@ export default function InstagramPublisherPage() {
           <div>
             <p className="text-sm font-black uppercase tracking-[0.25em] text-pink-300">Instagram Publishing</p>
             <h1 className="mt-2 text-4xl font-black md:text-5xl">Instagram Publisher</h1>
-            <p className="mt-3 max-w-3xl text-slate-300">Upload a flyer, let AI read it, generate a post-ready caption, and add collaborator mentions.</p>
+            <p className="mt-3 max-w-3xl text-slate-300">Publish an image post or upload a video and publish it as a Reel.</p>
             {user?.email && <p className="mt-2 text-sm text-slate-400">Logged in as {user.email} · Role: {role} · Env: {appEnv}</p>}
           </div>
           <a href="/studio/social-diagnostics" className="rounded-xl bg-white/10 px-5 py-3 text-center font-black text-white hover:bg-white/20">Open Diagnostics</a>
@@ -236,23 +242,27 @@ export default function InstagramPublisherPage() {
         {!loading && canAccess && <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
           <section className="rounded-3xl bg-white p-6 text-slate-950 shadow-2xl">
             <div className="mb-6">
-              <h2 className="text-3xl font-black">Create one image post</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">AI parsing uses the configured Gemini key.</p>
+              <h2 className="text-3xl font-black">Create an Instagram post</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">Images support AI flyer parsing. Videos publish as Reels.</p>
             </div>
 
             <div className="grid gap-5">
+              <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-2">
+                <button type="button" onClick={() => { setMediaType("image"); setImageUrl(""); setImageFileName(""); setAnalysis(null); setResult(null); setConfirmed(false); }} className={`rounded-xl px-4 py-3 font-black ${mediaType === "image" ? "bg-white text-pink-700 shadow" : "text-slate-600"}`}>Photo</button>
+                <button type="button" onClick={() => { setMediaType("video"); setImageUrl(""); setImageFileName(""); setAnalysis(null); setResult(null); setConfirmed(false); }} className={`rounded-xl px-4 py-3 font-black ${mediaType === "video" ? "bg-white text-pink-700 shadow" : "text-slate-600"}`}>Video / Reel</button>
+              </div>
               <label className="grid gap-2">
-                <span className="text-sm font-black uppercase tracking-wide text-slate-600">Upload image</span>
-                <input type="file" accept="image/*" onChange={uploadImage} className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-pink-500" />
-                <span className="text-xs font-bold text-slate-500">{canUpload ? "Image uploads use Cloudinary." : "Cloudinary env vars are missing; paste an image URL instead."}</span>
+                <span className="text-sm font-black uppercase tracking-wide text-slate-600">Upload {mediaType}</span>
+                <input key={mediaType} type="file" accept={mediaType === "video" ? "video/mp4,video/quicktime,.mp4,.mov" : "image/*"} onChange={uploadMedia} className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-pink-500" />
+                <span className="text-xs font-bold text-slate-500">{canUpload ? `${mediaType === "video" ? "Video" : "Image"} uploads use Cloudinary and provide Instagram with a public HTTPS URL.` : `Cloudinary env vars are missing; paste a public ${mediaType} URL instead.`}</span>
               </label>
 
               <label className="grid gap-2">
-                <span className="text-sm font-black uppercase tracking-wide text-slate-600">Image URL</span>
-                <input value={imageUrl} onChange={(event) => { setImageUrl(event.target.value); setAnalysis(null); }} placeholder="https://.../image.jpg" className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-pink-500" />
+                <span className="text-sm font-black uppercase tracking-wide text-slate-600">{mediaType === "video" ? "Video" : "Image"} URL</span>
+                <input value={imageUrl} onChange={(event) => { setImageUrl(event.target.value); setAnalysis(null); }} placeholder={mediaType === "video" ? "https://.../video.mp4" : "https://.../image.jpg"} className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-pink-500" />
               </label>
 
-              {imageUrl && <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"><img src={imageUrl} alt="Instagram post preview" className="max-h-[520px] w-full object-contain" /></div>}
+              {imageUrl && <div className="overflow-hidden rounded-2xl border border-slate-200 bg-black">{mediaType === "video" ? <video src={imageUrl} controls playsInline className="max-h-[520px] w-full object-contain">Your browser cannot preview this video.</video> : <img src={imageUrl} alt="Instagram post preview" className="max-h-[520px] w-full object-contain" />}</div>}
 
               <label className="grid gap-2">
                 <span className="text-sm font-black uppercase tracking-wide text-slate-600">Optional post context / prompt</span>
@@ -266,7 +276,7 @@ export default function InstagramPublisherPage() {
               </label>
 
               <div className="flex flex-wrap gap-3">
-                <button type="button" onClick={analyzeFlyer} disabled={busy || uploading} className="rounded-xl bg-slate-950 px-5 py-3 font-black text-white hover:bg-slate-800 disabled:opacity-60">{busy ? "Working..." : "AI Parse Flyer + Caption"}</button>
+                {mediaType === "image" && <button type="button" onClick={analyzeFlyer} disabled={busy || uploading} className="rounded-xl bg-slate-950 px-5 py-3 font-black text-white hover:bg-slate-800 disabled:opacity-60">{busy ? "Working..." : "AI Parse Flyer + Caption"}</button>}
                 <button type="button" onClick={basicDraft} className="rounded-xl bg-slate-100 px-5 py-3 font-black text-slate-950 hover:bg-slate-200">Basic Draft</button>
                 {handles.length > 0 && <div className="rounded-xl bg-pink-50 px-4 py-3 text-sm font-black text-pink-800">Mentions: {handles.join(" ")}</div>}
               </div>
@@ -283,7 +293,7 @@ export default function InstagramPublisherPage() {
 
               {message && <div className={`${result?.ok ? "bg-green-100 text-green-900" : "bg-yellow-100 text-yellow-900"} rounded-2xl p-4 text-sm font-bold`}>{message}</div>}
 
-              <button onClick={publish} disabled={publishing || uploading || busy} className="rounded-xl bg-pink-600 px-5 py-4 text-lg font-black text-white shadow-lg shadow-pink-900/20 disabled:cursor-not-allowed disabled:opacity-60">{uploading ? "Uploading..." : publishing ? "Publishing..." : "Publish to Instagram"}</button>
+              <button onClick={publish} disabled={publishing || uploading || busy} className="rounded-xl bg-pink-600 px-5 py-4 text-lg font-black text-white shadow-lg shadow-pink-900/20 disabled:cursor-not-allowed disabled:opacity-60">{uploading ? "Uploading..." : publishing ? mediaType === "video" ? "Processing & Publishing Reel..." : "Publishing..." : mediaType === "video" ? "Publish Reel to Instagram" : "Publish Photo to Instagram"}</button>
             </div>
           </section>
 
@@ -291,10 +301,10 @@ export default function InstagramPublisherPage() {
             <section className="rounded-3xl border border-white/10 bg-white/[0.06] p-6">
               <h3 className="text-2xl font-black">Workflow</h3>
               <div className="mt-4 space-y-3 text-sm leading-6 text-slate-300">
-                <p>1. Upload flyer.</p>
-                <p>2. Click AI Parse Flyer + Caption.</p>
+                <p>1. Choose Photo or Video / Reel.</p>
+                <p>2. Upload the media and prepare the caption.</p>
                 <p>3. Review the generated caption.</p>
-                <p>4. Publish.</p>
+                <p>4. Confirm and publish.</p>
               </div>
             </section>
 
