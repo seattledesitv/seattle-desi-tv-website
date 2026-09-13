@@ -78,6 +78,7 @@ export default function InstagramPublisherPage() {
   const [mediaType, setMediaType] = useState<"image" | "video">("image");
   const [imageUrl, setImageUrl] = useState("");
   const [imageFileName, setImageFileName] = useState("");
+  const [videoDeleteToken, setVideoDeleteToken] = useState("");
   const [postContext, setPostContext] = useState("");
   const [collaborators, setCollaborators] = useState("");
   const [caption, setCaption] = useState("Seattle Desi TV test post. #SeattleDesiTV #SeattleDesiCommunity");
@@ -116,11 +117,25 @@ export default function InstagramPublisherPage() {
     const formData = new FormData();
     formData.append("file", file, name);
     formData.append("upload_preset", uploadPreset);
-    formData.append("folder", appEnv === "staging" ? "sdtv/staging/instagram" : "sdtv/instagram");
+    const baseFolder = appEnv === "staging" ? "sdtv/staging" : "sdtv";
+    formData.append("folder", resourceType === "video" ? `${baseFolder}/instagram-temp` : `${baseFolder}/instagram`);
     const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, { method: "POST", body: formData });
     const json = await response.json().catch(() => ({}));
     if (!response.ok || !json.secure_url) throw new Error(json?.error?.message || "Cloudinary upload failed.");
-    return json.secure_url as string;
+    return {
+      secureUrl: json.secure_url as string,
+      deleteToken: String(json.delete_token || ""),
+    };
+  }
+
+  async function deleteTemporaryCloudinaryVideo(deleteToken: string) {
+    const response = await fetch("https://api.cloudinary.com/v1_1/delete_by_token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: deleteToken }),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok || json?.result !== "ok") throw new Error(json?.error?.message || "Cloudinary temporary-video cleanup failed.");
   }
 
   async function uploadMedia(event: ChangeEvent<HTMLInputElement>) {
@@ -130,6 +145,7 @@ export default function InstagramPublisherPage() {
     setAnalysis(null);
     setMessage("");
     setImageFileName(file.name);
+    setVideoDeleteToken("");
     const expectedPrefix = mediaType === "video" ? "video/" : "image/";
     if (!file.type.startsWith(expectedPrefix)) {
       setMessage(`Please choose a ${mediaType} file.`);
@@ -137,8 +153,14 @@ export default function InstagramPublisherPage() {
     }
     setUploading(true);
     try {
-      setImageUrl(await uploadToCloudinary(file, file.name, mediaType));
-      setMessage(mediaType === "image" ? "Image uploaded. Click AI Parse Flyer + Caption." : "Video uploaded. Review your caption and publish it as an Instagram Reel.");
+      const upload = await uploadToCloudinary(file, file.name, mediaType);
+      setImageUrl(upload.secureUrl);
+      if (mediaType === "video") setVideoDeleteToken(upload.deleteToken);
+      setMessage(mediaType === "image"
+        ? "Image uploaded. Click AI Parse Flyer + Caption."
+        : upload.deleteToken
+          ? "Video uploaded temporarily. It will be removed from Cloudinary after Instagram confirms the Reel was published."
+          : "Video uploaded. Enable Return deletion token in the Cloudinary unsigned upload preset to remove it automatically after publishing.");
     } catch (error: any) {
       setMessage(error?.message || "Image upload failed.");
     } finally {
@@ -211,8 +233,22 @@ export default function InstagramPublisherPage() {
       });
       const json = await response.json().catch(() => ({}));
       if (!response.ok || json.error) throw new Error(json.error || "Instagram publish failed.");
-      setResult(json);
-      setMessage(mediaType === "video" ? "Published to Instagram as a Reel successfully." : "Published to Instagram successfully.");
+      if (mediaType === "video" && videoDeleteToken) {
+        try {
+          await deleteTemporaryCloudinaryVideo(videoDeleteToken);
+          setResult({ ...json, temporaryVideoCleanup: "deleted" });
+          setVideoDeleteToken("");
+          setMessage("Published to Instagram as a Reel successfully. The temporary Cloudinary video was deleted.");
+        } catch (cleanupError: any) {
+          setResult({ ...json, temporaryVideoCleanup: "failed", cleanupError: cleanupError?.message || "Cleanup failed." });
+          setMessage("The Reel was published, but the temporary Cloudinary video could not be deleted. You can remove it from the instagram-temp folder.");
+        }
+      } else {
+        setResult({ ...json, ...(mediaType === "video" ? { temporaryVideoCleanup: "not_configured" } : {}) });
+        setMessage(mediaType === "video"
+          ? "Published to Instagram as a Reel successfully. Automatic Cloudinary cleanup is not configured for this upload."
+          : "Published to Instagram successfully.");
+      }
     } catch (error: any) {
       setMessage(error?.message || "Instagram publish failed.");
     } finally {
@@ -248,8 +284,8 @@ export default function InstagramPublisherPage() {
 
             <div className="grid gap-5">
               <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-2">
-                <button type="button" onClick={() => { setMediaType("image"); setImageUrl(""); setImageFileName(""); setAnalysis(null); setResult(null); setConfirmed(false); }} className={`rounded-xl px-4 py-3 font-black ${mediaType === "image" ? "bg-white text-pink-700 shadow" : "text-slate-600"}`}>Photo</button>
-                <button type="button" onClick={() => { setMediaType("video"); setImageUrl(""); setImageFileName(""); setAnalysis(null); setResult(null); setConfirmed(false); }} className={`rounded-xl px-4 py-3 font-black ${mediaType === "video" ? "bg-white text-pink-700 shadow" : "text-slate-600"}`}>Video / Reel</button>
+                <button type="button" onClick={() => { setMediaType("image"); setImageUrl(""); setImageFileName(""); setVideoDeleteToken(""); setAnalysis(null); setResult(null); setConfirmed(false); }} className={`rounded-xl px-4 py-3 font-black ${mediaType === "image" ? "bg-white text-pink-700 shadow" : "text-slate-600"}`}>Photo</button>
+                <button type="button" onClick={() => { setMediaType("video"); setImageUrl(""); setImageFileName(""); setVideoDeleteToken(""); setAnalysis(null); setResult(null); setConfirmed(false); }} className={`rounded-xl px-4 py-3 font-black ${mediaType === "video" ? "bg-white text-pink-700 shadow" : "text-slate-600"}`}>Video / Reel</button>
               </div>
               <label className="grid gap-2">
                 <span className="text-sm font-black uppercase tracking-wide text-slate-600">Upload {mediaType}</span>
@@ -259,7 +295,7 @@ export default function InstagramPublisherPage() {
 
               <label className="grid gap-2">
                 <span className="text-sm font-black uppercase tracking-wide text-slate-600">{mediaType === "video" ? "Video" : "Image"} URL</span>
-                <input value={imageUrl} onChange={(event) => { setImageUrl(event.target.value); setAnalysis(null); }} placeholder={mediaType === "video" ? "https://.../video.mp4" : "https://.../image.jpg"} className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-pink-500" />
+                <input value={imageUrl} onChange={(event) => { setImageUrl(event.target.value); setVideoDeleteToken(""); setAnalysis(null); }} placeholder={mediaType === "video" ? "https://.../video.mp4" : "https://.../image.jpg"} className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-pink-500" />
               </label>
 
               {imageUrl && <div className="overflow-hidden rounded-2xl border border-slate-200 bg-black">{mediaType === "video" ? <video src={imageUrl} controls playsInline className="max-h-[520px] w-full object-contain">Your browser cannot preview this video.</video> : <img src={imageUrl} alt="Instagram post preview" className="max-h-[520px] w-full object-contain" />}</div>}
