@@ -1026,19 +1026,33 @@ export default function EventsPage() {
               )}
             </section>
           ) : (
-            <section className="bg-white border rounded-2xl p-4 overflow-x-auto">
-              <div className="grid grid-cols-7 gap-2 min-w-[720px]">
+            <section className="overflow-hidden rounded-2xl border bg-white p-2 sm:p-4">
+              <div className="grid grid-cols-7 gap-1 sm:gap-2">
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                  <div key={day} className="text-center text-xs font-black text-gray-500">
-                    {day}
+                  <div key={day} className="py-1 text-center text-[10px] font-black text-gray-500 sm:text-xs">
+                    <span className="sm:hidden">{day[0]}</span>
+                    <span className="hidden sm:inline">{day}</span>
                   </div>
                 ))}
                 {calendarCells.map((cell, index) => (
-                  <div key={index} className="min-h-32 border rounded-xl p-2 bg-slate-50">
-                    {cell.day && <p className="font-black text-sm">{cell.day}</p>}
+                  <div key={index} className="min-h-20 overflow-hidden rounded-lg border bg-slate-50 p-1 sm:min-h-32 sm:rounded-xl sm:p-2">
+                    {cell.day && <p className="text-xs font-black sm:text-sm">{cell.day}</p>}
                     {cell.events.map((event) => (
-                      <a key={event.id} href={`/events/${event.id}`} className="block mt-2 rounded-lg bg-white p-2 text-xs font-bold text-slate-900 shadow-sm">
-                        {event.title}
+                      <a
+                        key={event.id}
+                        href={`/events/${event.id}`}
+                        aria-label={`View ${event.title}`}
+                        title={event.title}
+                        className="mt-1 block overflow-hidden rounded-md bg-white shadow-sm sm:mt-2 sm:rounded-lg sm:p-2"
+                      >
+                        <span className="sm:hidden">
+                          {eventImages(event)[0] ? (
+                            <SafeImage src={eventImages(event)[0]} alt="" className="aspect-square w-full object-cover" fallbackClassName="grid aspect-square w-full place-items-center bg-pink-100 text-[9px] font-black text-pink-700" fallbackLabel="Event" widthHint={96} />
+                          ) : (
+                            <span className="grid aspect-square w-full place-items-center bg-pink-100 text-[9px] font-black text-pink-700">EVENT</span>
+                          )}
+                        </span>
+                        <span className="hidden text-xs font-bold text-slate-900 sm:block">{event.title}</span>
                       </a>
                     ))}
                   </div>
