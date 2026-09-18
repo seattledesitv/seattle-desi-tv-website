@@ -10,6 +10,7 @@ import type {
   PressReleaseInput,
   PressReleaseStatus,
 } from "../../lib/pressReleases/types";
+import { attachmentMimeType, pressReleaseAttachmentLabel } from "../../lib/pressReleases/attachmentType";
 import { useCurrentSite } from "../../lib/sites/SiteContext";
 
 const blank = (city: string): PressReleaseInput => ({
@@ -136,7 +137,7 @@ export default function PressReleaseForm({
         uploaded.push({
           url: await onUpload(file),
           name: file.name,
-          mime_type: file.type,
+          mime_type: attachmentMimeType(file),
           size_bytes: file.size,
         });
       }
@@ -351,11 +352,11 @@ export default function PressReleaseForm({
           />
         </div>
         <label className="grid gap-2 font-bold md:col-span-2">
-          Documents (up to 6 PDFs or Word files, 20 MB each)
+          Attachments (up to 6 images, PDFs, or Word files, 20 MB each)
           <input
             type="file"
             multiple
-            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,image/jpeg,image/png,image/webp,image/gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             onChange={(e) => void documents(e.target.files)}
             className="rounded-xl border p-3 font-normal"
           />
@@ -370,7 +371,7 @@ export default function PressReleaseForm({
                 <div className="min-w-0">
                   <p className="truncate font-bold">{document.name}</p>
                   <p className="text-xs text-slate-500">
-                    {(document.size_bytes / 1024 / 1024).toFixed(1)} MB
+                    {pressReleaseAttachmentLabel(document)} · {(document.size_bytes / 1024 / 1024).toFixed(1)} MB
                   </p>
                 </div>
                 <button
