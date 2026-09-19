@@ -32,6 +32,7 @@ export async function POST(req: Request) {
     const preferredDate = clean(body.preferredDate);
     const budget = clean(body.budget);
     const notes = clean(body.notes);
+    const preferredInfluencer = clean(body.preferredInfluencer);
 
     if (businessName.length < 2) return NextResponse.json({ success: false, error: "Business name is required." }, { status: 400 });
     if (contactName.length < 2) return NextResponse.json({ success: false, error: "Contact name is required." }, { status: 400 });
@@ -47,6 +48,7 @@ export async function POST(req: Request) {
       website ? `Website/Social: ${website}` : "Website/Social: —",
       preferredDate ? `Preferred date/timing: ${preferredDate}` : "Preferred date/timing: —",
       budget ? `Budget/package: ${budget}` : "Budget/package: —",
+      preferredInfluencer ? `Preferred influencer: ${preferredInfluencer}` : "Preferred influencer: No preference",
       "",
       "Coverage Goal:",
       goal || "—",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SiteHeader from "../components/SiteHeader";
 import SiteFooter from "../components/SiteFooter";
 
@@ -17,7 +17,13 @@ export default function InfluencerCoverageRequestPage() {
     preferredDate: "",
     budget: "",
     notes: "",
+    preferredInfluencer: "",
   });
+
+  useEffect(() => {
+    const preferredInfluencer = new URLSearchParams(window.location.search).get("influencer") || "";
+    if (preferredInfluencer) setForm((current) => ({ ...current, preferredInfluencer }));
+  }, []);
 
   function updateField(field: string, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -36,7 +42,7 @@ export default function InfluencerCoverageRequestPage() {
       setMessage(result.error || "Could not submit the request. Please try again.");
     } else {
       setMessage("Thank you. SDTV received your influencer coverage request and our team will respond with next steps.");
-      setForm({ businessName: "", contactName: "", email: "", phone: "", website: "", goal: "", preferredDate: "", budget: "", notes: "" });
+      setForm({ businessName: "", contactName: "", email: "", phone: "", website: "", goal: "", preferredDate: "", budget: "", notes: "", preferredInfluencer: "" });
     }
     setSaving(false);
   }
@@ -56,6 +62,7 @@ export default function InfluencerCoverageRequestPage() {
         <h2 className="text-3xl font-black">Business Coverage Request</h2>
         <p className="mt-2 text-slate-600">This goes into SDTV Studio Contact Requests so the team can review, respond, and coordinate the right influencer coverage.</p>
         {message && <div className="mt-5 rounded-2xl border border-yellow-200 bg-yellow-50 p-4 font-bold text-yellow-900">{message}</div>}
+        {form.preferredInfluencer && <div className="mt-5 rounded-2xl border border-pink-200 bg-pink-50 p-4"><p className="text-xs font-black uppercase tracking-wide text-pink-700">Preferred influencer</p><p className="mt-1 text-lg font-black">{form.preferredInfluencer}</p><button type="button" onClick={() => updateField("preferredInfluencer", "")} className="mt-2 text-xs font-black text-slate-600 underline">Remove preference</button></div>}
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <label className="font-bold">Business Name *<input className="mt-1 w-full rounded-xl border p-3 font-normal" value={form.businessName} onChange={(event) => updateField("businessName", event.target.value)} /></label>
