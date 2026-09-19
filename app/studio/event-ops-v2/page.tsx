@@ -340,7 +340,7 @@ export default function EventOpsV2Page() {
       await Promise.all([
         forSite(
           supabase.from("events").select(
-            "id,title,date,local_start_time,local_end_time,event_timezone,location,status,created_by,poc_email,poc_phone,ticket_url,description,image,image_urls,featured,created_at",
+            "id,title,date,end_date,local_start_time,local_end_time,event_timezone,location,status,created_by,poc_email,poc_phone,ticket_url,description,image,image_urls,featured,created_at",
           ),
           site.id,
         )
@@ -578,6 +578,7 @@ export default function EventOpsV2Page() {
     setEditForm({
       title: selectedEvent.title || "",
       date: dateInput(selectedEvent.date),
+      end_date: dateInput(selectedEvent.end_date),
       local_start_time: timeInputValue(selectedEvent.local_start_time),
       local_end_time: timeInputValue(selectedEvent.local_end_time),
       event_timezone: selectedEvent.event_timezone || DEFAULT_EVENT_TIMEZONE,
@@ -657,10 +658,15 @@ export default function EventOpsV2Page() {
     }
   }
   async function saveEventEdits() {
+    if (editForm.end_date && editForm.date && editForm.end_date < editForm.date) {
+      setActionMessage("The final event date cannot be before the start date.");
+      return;
+    }
     const urls = (editForm.image_urls || []).filter(Boolean);
     const payload = {
       title: editForm.title || null,
       date: editForm.date || null,
+      end_date: editForm.end_date || null,
       local_start_time: editForm.local_start_time || null,
       local_end_time: editForm.local_end_time || null,
       event_timezone: editForm.event_timezone || DEFAULT_EVENT_TIMEZONE,
@@ -1551,6 +1557,17 @@ export default function EventOpsV2Page() {
                             value={editForm.date || ""}
                             onChange={(e) =>
                               setEditForm({ ...editForm, date: e.target.value })
+                            }
+                          />
+                        </Field>
+                        <Field label="Final date (optional)">
+                          <input
+                            type="date"
+                            min={editForm.date || undefined}
+                            className="rounded-xl border p-3 font-normal"
+                            value={editForm.end_date || ""}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, end_date: e.target.value })
                             }
                           />
                         </Field>

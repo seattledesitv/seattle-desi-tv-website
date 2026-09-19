@@ -9,6 +9,7 @@ import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { canRequestCrew as roleCanRequestCrew, resolveUserRole } from "../lib/roles";
 import { firstError, normalizeUrl, requireText, validateOptionalEmail, validateOptionalImageFile, validateOptionalPhone, validateOptionalUrl } from "../lib/validation";
 import { DEFAULT_EVENT_TIMEZONE, formatEventTime } from "../lib/eventTime";
+import { effectiveEventEnd, eventOccursOn, formatEventDateRange } from "../lib/eventDates";
 import { useCurrentSite } from "../lib/sites/SiteContext";
 import { forSite } from "../lib/sites/query";
 
@@ -21,6 +22,7 @@ type EventRow = {
   id: string;
   title: string;
   date: string;
+  end_date?: string | null;
   location: string;
   description?: string | null;
   image?: string | null;
@@ -197,6 +199,7 @@ export default function EventsPage() {
   const [form, setForm] = useState({
     title: "",
     date: "",
+    end_date: "",
     local_start_time: "",
     local_end_time: "",
     event_timezone: DEFAULT_EVENT_TIMEZONE,
@@ -230,7 +233,7 @@ export default function EventsPage() {
   }, [organizations, organizationSearch]);
 
   async function loadEvents() {
-    const { data, error } = await forSite(supabase.from("events").select("id,title,date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by"), site.id).eq("status", "approved").order("date", { ascending: true });
+    const { data, error } = await forSite(supabase.from("events").select("id,title,date,end_date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by"), site.id).eq("status", "approved").order("date", { ascending: true });
     if (error) {
       setEvents([]);
       setMessage(`Could not load events: ${error.message}`);
@@ -355,9 +358,11 @@ export default function EventsPage() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const dateError = !eventDate ? "Event date is required." : eventDate < today ? "Event date cannot be in the past." : null;
+    const endDate = parseDate(form.end_date);
+    const endDateError = endDate && eventDate && endDate < eventDate ? "The final event date cannot be before the start date." : null;
     const phone = normalizePhone(form.poc_phone);
-    const timeError = !form.local_start_time ? "Event start time is required." : form.local_end_time && form.local_end_time <= form.local_start_time ? "Event end time must be after the start time." : null;
-    const baseError = firstError(requireText(form.title, "Event title", 3), { ok: !dateError, message: dateError || undefined }, { ok: !timeError, message: timeError || undefined }, requireText(form.location, "Venue / location", 3), validateOptionalUrl(form.ticket_url, "Ticket / registration URL"), requireText(form.poc_name, "Organizer contact name", 2), requireText(form.poc_email, "Organizer contact email", 5), validateOptionalEmail(form.poc_email, "Organizer contact email"), requireText(phone, "Organizer contact phone", 10), validateOptionalPhone(phone, "Organizer contact phone"));
+    const timeError = !form.local_start_time ? "Event start time is required." : (!form.end_date || form.end_date === form.date) && form.local_end_time && form.local_end_time <= form.local_start_time ? "Event end time must be after the start time." : null;
+    const baseError = firstError(requireText(form.title, "Event title", 3), { ok: !dateError, message: dateError || undefined }, { ok: !endDateError, message: endDateError || undefined }, { ok: !timeError, message: timeError || undefined }, requireText(form.location, "Venue / location", 3), validateOptionalUrl(form.ticket_url, "Ticket / registration URL"), requireText(form.poc_name, "Organizer contact name", 2), requireText(form.poc_email, "Organizer contact email", 5), validateOptionalEmail(form.poc_email, "Organizer contact email"), requireText(phone, "Organizer contact phone", 10), validateOptionalPhone(phone, "Organizer contact phone"));
     if (baseError) return baseError;
     if (organizationMode === "organization" && !selectedOrganization?.id) return "Select an organization or create a new one before submitting.";
     for (let index = 0; index < imageFiles.length; index++) {
@@ -428,6 +433,7 @@ export default function EventsPage() {
       const imageUrls = imageFiles.length ? await Promise.all(imageFiles.map((file, index) => uploadImage(file, `Event image ${index + 1}`))) : [];
       const eventPayload: any = {
         ...form,
+        end_date: form.end_date || null,
         ticket_url: safeExternalUrl(form.ticket_url) || null,
         image: imageUrls[0] || null,
         image_urls: imageUrls.length ? imageUrls : null,
@@ -458,6 +464,7 @@ export default function EventsPage() {
       setForm({
         title: "",
         date: "",
+        end_date: "",
         local_start_time: "",
         local_end_time: "",
         event_timezone: DEFAULT_EVENT_TIMEZONE,
@@ -604,8 +611,9 @@ export default function EventsPage() {
   const periodEvents = useMemo(() => {
     const today = todayDate();
     const matches = events.filter((event) => {
-      const date = parseDate(event.date);
-      return date && (eventPeriod === "previous" ? date < today : date >= today);
+      const start = parseDate(event.date);
+      const end = effectiveEventEnd(event.date, event.end_date);
+      return start && end && (eventPeriod === "previous" ? end < today : end >= today);
     });
     return eventPeriod === "previous" ? matches.reverse() : matches;
   }, [events, eventPeriod]);
@@ -613,8 +621,11 @@ export default function EventsPage() {
   const filteredEvents = useMemo(
     () =>
       periodEvents.filter((event) => {
-        const date = parseDate(event.date);
-        return date && String(date.getMonth()) === monthFilter && String(date.getFullYear()) === yearFilter;
+        const monthStart = new Date(Number(yearFilter), Number(monthFilter), 1);
+        const monthEnd = new Date(Number(yearFilter), Number(monthFilter) + 1, 0);
+        const start = parseDate(event.date);
+        const end = effectiveEventEnd(event.date, event.end_date);
+        return start && end && start <= monthEnd && end >= monthStart;
       }),
     [periodEvents, monthFilter, yearFilter],
   );
@@ -628,7 +639,7 @@ export default function EventsPage() {
     for (let day = 1; day <= days; day++)
       cells.push({
         day,
-        events: filteredEvents.filter((event) => parseDate(event.date)?.getDate() === day),
+        events: filteredEvents.filter((event) => eventOccursOn(event.date, event.end_date, new Date(Number(yearFilter), Number(monthFilter), day))),
       });
     return cells;
   }, [filteredEvents, monthFilter, yearFilter]);
@@ -637,8 +648,9 @@ export default function EventsPage() {
     setEventPeriod(period);
     const today = todayDate();
     const matching = events.filter((event) => {
-      const date = parseDate(event.date);
-      return date && (period === "previous" ? date < today : date >= today);
+      const start = parseDate(event.date);
+      const end = effectiveEventEnd(event.date, event.end_date);
+      return start && end && (period === "previous" ? end < today : end >= today);
     });
     const target = period === "previous" ? matching.at(-1) : matching[0];
     const targetDate = parseDate(target?.date);
@@ -649,7 +661,7 @@ export default function EventsPage() {
   }
 
   function EventCard({ event }: { event: EventRow }) {
-    const isPast = Boolean(parseDate(event.date) && parseDate(event.date)! < todayDate());
+    const isPast = Boolean(effectiveEventEnd(event.date, event.end_date) && effectiveEventEnd(event.date, event.end_date)! < todayDate());
     const isOwner = Boolean(user?.id && event.created_by === user.id);
     const coverageRequest = coverageByEvent[event.id];
     const influencerRequest = influencerByEvent[event.id];
@@ -662,7 +674,7 @@ export default function EventsPage() {
           {isPast && <span className="mb-3 w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase text-slate-600">Previous event</span>}
           <h2 className="text-xl font-black">{event.title}</h2>
           <p className="mt-1 text-gray-500">
-            {formatDate(event.date)} · {formatEventTime(event.local_start_time, event.local_end_time, event.event_timezone)} · {event.location}
+            {formatEventDateRange(event.date, event.end_date)} · {formatEventTime(event.local_start_time, event.local_end_time, event.event_timezone)} · {event.location}
           </p>
           {event.description && <p className="mt-3 line-clamp-5 whitespace-pre-line text-sm text-gray-600">{event.description}</p>}
           {isOwner && (
@@ -757,6 +769,9 @@ export default function EventsPage() {
                     </Field>
                     <Field label="Event date" required>
                       <input className="w-full border rounded-lg p-3 mt-1" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+                    </Field>
+                    <Field label="Runs through (optional)" help="Leave blank for a one-day event.">
+                      <input className="w-full border rounded-lg p-3 mt-1" type="date" min={form.date || undefined} value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
                     </Field>
                     <Field label="Start time" required>
                       <input className="w-full border rounded-lg p-3 mt-1" type="time" value={form.local_start_time} onChange={(e) => setForm({ ...form, local_start_time: e.target.value })} />

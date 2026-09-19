@@ -6,6 +6,7 @@ import SiteHeader from "../../components/SiteHeader";
 import SiteFooter from "../../components/SiteFooter";
 import CheckedExternalLink from "../../components/CheckedExternalLink";
 import { formatEventTime } from "../../lib/eventTime";
+import { effectiveEventEnd, formatEventDateRange } from "../../lib/eventDates";
 import { entityIdFromParam, seoEntityPath } from "../../lib/seo/urls";
 
 import { AUTH_STORAGE_KEY, getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
@@ -104,13 +105,15 @@ function deriveTags(event: any) {
   const matches = rules.filter(([, words]) => words.some((word) => text.includes(word))).map(([label]) => label);
   return matches.length ? matches.slice(0, 5) : ["Community Event"];
 }
-function countdownLabel(value?: string) {
-  const target = eventDate(value);
-  if (!target) return "Date to be announced";
+function countdownLabel(startValue?: string, endValue?: string) {
+  const target = eventDate(startValue);
+  const finalDay = effectiveEventEnd(startValue, endValue);
+  if (!target || !finalDay) return "Date to be announced";
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  if (finalDay < today) return "Event ended";
+  if (target < today && finalDay >= today) return "Happening now";
   const diff = Math.round((target.getTime() - today.getTime()) / 86400000);
-  if (diff < 0) return "Event ended";
   if (diff === 0) return "Happening today";
   if (diff === 1) return "Starts tomorrow";
   return `Starts in ${diff} days`;
@@ -147,7 +150,7 @@ export default function EventDetailPage() {
   const activeImage = images[selectedDocument] || images[0] || null;
   const eventUrl = `${siteOrigin()}${seoEntityPath("events", event?.title, eventId)}`;
   const tags = useMemo(() => deriveTags(event), [event]);
-  const countdown = countdownLabel(event?.date);
+  const countdown = countdownLabel(event?.date, event?.end_date);
   const eventEnded = countdown === "Event ended";
 
   function clampZoom(value: number) {
@@ -183,7 +186,7 @@ export default function EventDetailPage() {
 
   async function loadRelatedEvents(currentEvent: any) {
     const today = new Date().toISOString().split("T")[0];
-    const { data } = await forSite(supabase.from("events").select("id,title,date,location,image,image_urls,ticket_url,status"), site.id).neq("id", currentEvent.id).gte("date", today).order("date", { ascending: true }).limit(3);
+    const { data } = await forSite(supabase.from("events").select("id,title,date,end_date,location,image,image_urls,ticket_url,status"), site.id).neq("id", currentEvent.id).gte("date", today).order("date", { ascending: true }).limit(3);
     setRelatedEvents(data || []);
   }
   async function loadOrganizations(id: string) {
@@ -191,7 +194,7 @@ export default function EventDetailPage() {
     setEventOrganizations(data || []);
   }
   async function loadEvent() {
-    const { data, error } = await forSite(supabase.from("events").select("id,title,date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by,status,crew_member_ids"), site.id).eq("id", eventId).maybeSingle();
+    const { data, error } = await forSite(supabase.from("events").select("id,title,date,end_date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by,status,crew_member_ids"), site.id).eq("id", eventId).maybeSingle();
     if (error) {
       setMessage(`Could not load event: ${error.message}`);
       return null;
@@ -317,7 +320,7 @@ export default function EventDetailPage() {
   function downloadIcs() {
     if (!event) return;
     const start = calendarStamp(event.date);
-    const endDate = eventDate(event.date);
+    const endDate = effectiveEventEnd(event.date, event.end_date);
     if (!start || !endDate) return;
     endDate.setDate(endDate.getDate() + 1);
     const end = endDate
@@ -378,7 +381,9 @@ export default function EventDetailPage() {
 
   const calendarText = encodeURIComponent(event ? `${event.title}\n${event.description || ""}\n${eventUrl}` : "");
   const calendarLocation = encodeURIComponent(event?.location || "");
-  const calendarDates = event ? `${calendarStamp(event.date)}/${calendarStamp(event.date)}` : "";
+  const calendarEnd = event ? effectiveEventEnd(event.date, event.end_date) : null;
+  if (calendarEnd) calendarEnd.setDate(calendarEnd.getDate() + 1);
+  const calendarDates = event ? `${calendarStamp(event.date)}/${calendarEnd ? calendarStamp(calendarEnd.toISOString()) : ""}` : "";
   const googleCalendarUrl = event ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${calendarDates}&details=${calendarText}&location=${calendarLocation}` : "#";
   const outlookCalendarUrl = event ? `https://outlook.live.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(event.title)}&startdt=${eventDate(event.date)?.toISOString() || ""}&body=${calendarText}&location=${calendarLocation}` : "#";
 
@@ -406,7 +411,7 @@ export default function EventDetailPage() {
               </div>
               <h1 className="mt-5 max-w-5xl text-4xl font-black md:text-6xl">{event.title}</h1>
               <p className="mt-4 text-lg text-slate-300">
-                {dateText(event.date)} · {formatEventTime(event.local_start_time, event.local_end_time, event.event_timezone)} · {event.location}
+                {formatEventDateRange(event.date, event.end_date)} · {formatEventTime(event.local_start_time, event.local_end_time, event.event_timezone)} · {event.location}
               </p>
               <div className="mt-5 flex flex-wrap gap-2">
                 {tags.map((tag) => (
@@ -566,7 +571,7 @@ export default function EventDetailPage() {
                   <div className="space-y-4 p-6 text-slate-700">
                     <div>
                       <p className="text-xs font-black uppercase tracking-wide text-slate-400">Date</p>
-                      <p className="mt-1 font-bold">{dateText(event.date)}</p>
+                      <p className="mt-1 font-bold">{formatEventDateRange(event.date, event.end_date)}</p>
                     </div>
                     <div>
                       <p className="text-xs font-black uppercase tracking-wide text-slate-400">Time</p>
@@ -683,7 +688,7 @@ export default function EventDetailPage() {
                       <a key={related.id} href={`/events/${related.id}`} className="overflow-hidden rounded-2xl border bg-slate-50 transition hover:-translate-y-1 hover:shadow-lg">
                         {relatedImage ? <img src={relatedImage} alt={related.title} className="h-44 w-full object-cover" /> : <div className="grid h-44 place-items-center bg-slate-900 font-black text-pink-200">Seattle Desi TV</div>}
                         <div className="p-4">
-                          <p className="text-xs font-black uppercase tracking-wide text-pink-600">{compactDate(related.date)}</p>
+                          <p className="text-xs font-black uppercase tracking-wide text-pink-600">{formatEventDateRange(related.date, related.end_date)}</p>
                           <h3 className="mt-2 line-clamp-2 font-black">{related.title}</h3>
                           <p className="mt-2 line-clamp-1 text-sm text-slate-600">{related.location}</p>
                         </div>

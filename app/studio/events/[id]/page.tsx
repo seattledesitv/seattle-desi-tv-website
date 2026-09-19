@@ -11,7 +11,7 @@ const supabase = getSupabaseBrowserClient();
 const RELATIONSHIPS = ["Organizer", "Co-Organizer", "Community Partner", "Venue Partner", "Media Partner", "Sponsor", "Charity Partner", "Educational Partner"];
 function roleContainsAdmin(role: string) { return String(role || "").toLowerCase().trim().includes("admin"); }
 function isCrewAssignableRole(role: string) { const normalized = String(role || "").toLowerCase().trim(); return normalized === "team_member" || normalized.includes("admin"); }
-function emptyForm() { return { title: "", date: "", local_start_time: "", local_end_time: "", event_timezone: "America/Los_Angeles", location: "", description: "", image: "", ticket_url: "", poc_email: "", poc_phone: "", status: "pending", approved: false }; }
+function emptyForm() { return { title: "", date: "", end_date: "", local_start_time: "", local_end_time: "", event_timezone: "America/Los_Angeles", location: "", description: "", image: "", ticket_url: "", poc_email: "", poc_phone: "", status: "pending", approved: false }; }
 function getEventIdFromPath() { if (typeof window === "undefined") return ""; const parts = window.location.pathname.split("/").filter(Boolean); const last = parts[parts.length - 1] || ""; return last === "events" ? "" : last; }
 function statusLabel(status?: string | null) { return String(status || "not_started").replaceAll("_", " "); }
 function dateText(value?: string | null) { if (!value) return ""; const date = new Date(value); return Number.isNaN(date.getTime()) ? value : date.toLocaleString(); }
@@ -63,10 +63,10 @@ export default function EventEditPage() {
 
   async function loadEvent(id: string) {
     if (!id) { setActionMessage("Could not load event: missing event id in URL."); return; }
-    const { data, error } = await forSite(supabase.from("events").select("id,title,date,local_start_time,local_end_time,event_timezone,location,description,image,ticket_url,poc_email,poc_phone,status,approved,crew_member_ids").eq("id", id), site.id).maybeSingle();
+    const { data, error } = await forSite(supabase.from("events").select("id,title,date,end_date,local_start_time,local_end_time,event_timezone,location,description,image,ticket_url,poc_email,poc_phone,status,approved,crew_member_ids").eq("id", id), site.id).maybeSingle();
     if (error) { setActionMessage(`Could not load event: ${error.message}`); return; }
     if (!data) { setActionMessage("Event not found."); return; }
-    setForm({ title: data.title || "", date: data.date || "", local_start_time: String(data.local_start_time || "").slice(0, 5), local_end_time: String(data.local_end_time || "").slice(0, 5), event_timezone: data.event_timezone || "America/Los_Angeles", location: data.location || "", description: data.description || "", image: data.image || "", ticket_url: data.ticket_url || "", poc_email: data.poc_email || "", poc_phone: data.poc_phone || "", status: data.status || "pending", approved: Boolean(data.approved) });
+    setForm({ title: data.title || "", date: data.date || "", end_date: data.end_date || "", local_start_time: String(data.local_start_time || "").slice(0, 5), local_end_time: String(data.local_end_time || "").slice(0, 5), event_timezone: data.event_timezone || "America/Los_Angeles", location: data.location || "", description: data.description || "", image: data.image || "", ticket_url: data.ticket_url || "", poc_email: data.poc_email || "", poc_phone: data.poc_phone || "", status: data.status || "pending", approved: Boolean(data.approved) });
     setSelectedCrewIds(Array.isArray(data.crew_member_ids) ? data.crew_member_ids : []);
   }
 
@@ -136,9 +136,10 @@ export default function EventEditPage() {
   async function saveEvent() {
     if (!eventId) { setActionMessage("Save failed: missing event id in URL."); return; }
     if (!form.title.trim()) { setActionMessage("Event title is required."); return; }
+    if (form.end_date && form.date && form.end_date < form.date) { setActionMessage("The final event date cannot be before the start date."); return; }
     setSaving(true); setActionMessage("Saving event...");
     const approved = form.status === "approved" || form.approved;
-    const payload: any = { title: form.title.trim(), date: form.date || null, local_start_time: form.local_start_time || null, local_end_time: form.local_end_time || null, event_timezone: form.event_timezone || "America/Los_Angeles", location: form.location.trim(), description: form.description.trim(), image: form.image.trim(), ticket_url: form.ticket_url.trim(), poc_email: form.poc_email.trim(), poc_phone: form.poc_phone.trim(), status: form.status || "pending", approved, crew_member_ids: Array.from(new Set(selectedCrewIds)) };
+    const payload: any = { title: form.title.trim(), date: form.date || null, end_date: form.end_date || null, local_start_time: form.local_start_time || null, local_end_time: form.local_end_time || null, event_timezone: form.event_timezone || "America/Los_Angeles", location: form.location.trim(), description: form.description.trim(), image: form.image.trim(), ticket_url: form.ticket_url.trim(), poc_email: form.poc_email.trim(), poc_phone: form.poc_phone.trim(), status: form.status || "pending", approved, crew_member_ids: Array.from(new Set(selectedCrewIds)) };
     if (approved) { payload.approved_by = user?.email || user?.id || null; payload.approved_at = new Date().toISOString(); }
     const { error } = await forSite(supabase.from("events").update(payload).eq("id", eventId), site.id);
     if (error) { setActionMessage(`Save failed: ${error.message}`); setSaving(false); return; }

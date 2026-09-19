@@ -62,6 +62,7 @@ create table if not exists public.events (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   date date not null,
+  end_date date,
   location text not null,
   description text,
   ticket_url text,
@@ -72,6 +73,9 @@ create table if not exists public.events (
   created_by uuid references auth.users(id),
   created_at timestamptz default now()
 );
+
+alter table public.events drop constraint if exists events_end_date_not_before_start;
+alter table public.events add constraint events_end_date_not_before_start check (end_date is null or end_date >= date);
 
 alter table public.events enable row level security;
 drop policy if exists "Anyone can view events" on public.events;
