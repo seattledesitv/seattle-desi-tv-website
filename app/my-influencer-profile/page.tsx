@@ -8,6 +8,8 @@ import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { useCurrentSite } from "../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
+const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
+const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
 
 type FormState = {
   full_name: string;
@@ -71,6 +73,7 @@ export default function MyInfluencerProfilePage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [status, setStatus] = useState("Loading influencer profile...");
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [existingId, setExistingId] = useState<string>("");
   const [approvalStatus, setApprovalStatus] = useState("pending");
 
@@ -168,6 +171,39 @@ export default function MyInfluencerProfilePage() {
       );
     }
     setSaving(false);
+  }
+
+  async function uploadProfilePhoto(file?: File) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setStatus("Please choose an image file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setStatus("Profile photo must be 5 MB or smaller.");
+      return;
+    }
+    if (!cloudName || !uploadPreset) {
+      setStatus("Image upload is not configured. You can paste a public image URL instead.");
+      return;
+    }
+    setUploading(true);
+    setStatus("Uploading profile photo...");
+    const body = new FormData();
+    body.append("file", file);
+    body.append("upload_preset", uploadPreset);
+    body.append("folder", `sdtv/${site.code.toLowerCase()}/influencer-profiles`);
+    try {
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: "POST", body });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.secure_url) throw new Error(result?.error?.message || "Photo upload failed.");
+      setForm((current) => ({ ...current, photo_url: result.secure_url }));
+      setStatus("Profile photo uploaded. Click Save Influencer Profile to keep it.");
+    } catch (error: any) {
+      setStatus(error?.message || "Profile photo upload failed.");
+    } finally {
+      setUploading(false);
+    }
   }
 
   useEffect(() => {
@@ -285,17 +321,10 @@ export default function MyInfluencerProfilePage() {
                   />
                 </Field>
                 <div className="md:col-span-2">
-                  <Field
-                    label="Profile photo URL"
-                    help="Use a public image URL for now. Upload support can be added later."
-                  >
-                    <input
-                      className="mt-1 w-full rounded-xl border p-3"
-                      value={form.photo_url}
-                      onChange={(e) =>
-                        setForm({ ...form, photo_url: e.target.value })
-                      }
-                    />
+                  <Field label="Profile photo" help="Upload JPG, PNG, WebP, or another image up to 5 MB. A square or portrait photo works best.">
+                    <input type="file" accept="image/*" disabled={uploading} onChange={(e) => void uploadProfilePhoto(e.target.files?.[0])} className="mt-1 w-full rounded-xl border p-3 font-normal disabled:opacity-60" />
+                    <input className="mt-2 w-full rounded-xl border p-3 font-normal" value={form.photo_url} onChange={(e) => setForm({ ...form, photo_url: e.target.value })} placeholder="Or paste a public image URL" />
+                    {uploading && <span className="mt-2 block text-xs font-bold text-pink-700">Uploading photo...</span>}
                   </Field>
                 </div>
                 <div className="md:col-span-2">
@@ -326,10 +355,10 @@ export default function MyInfluencerProfilePage() {
               </label>
               <button
                 onClick={save}
-                disabled={saving}
+                disabled={saving || uploading}
                 className="mt-5 w-full rounded-xl bg-pink-600 px-5 py-4 font-black text-white disabled:opacity-60"
               >
-                {saving ? "Saving..." : "Save Influencer Profile"}
+                {uploading ? "Uploading Photo..." : saving ? "Saving..." : "Save Influencer Profile"}
               </button>
               {status && (
                 <p className="mt-4 text-sm font-bold text-orange-700">
