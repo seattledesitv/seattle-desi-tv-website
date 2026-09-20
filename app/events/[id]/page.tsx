@@ -12,6 +12,7 @@ import { entityIdFromParam, seoEntityPath } from "../../lib/seo/urls";
 import { AUTH_STORAGE_KEY, getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { useCurrentSite } from "../../lib/sites/SiteContext";
 import { forSite } from "../../lib/sites/query";
+import { canManageEventThroughOrganization } from "../../lib/organizationEventAccess";
 import EventTicketPurchase from "../../components/ticketing/EventTicketPurchase";
 const supabase = getSupabaseBrowserClient();
 
@@ -142,8 +143,9 @@ export default function EventDetailPage() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxZoom, setLightboxZoom] = useState(1);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [organizationManagerAccess, setOrganizationManagerAccess] = useState(false);
 
-  const isOwner = Boolean(user?.id && event?.created_by === user.id);
+  const isOwner = Boolean(user?.id && (event?.created_by === user.id || organizationManagerAccess));
   const canRequestCrew = Boolean(user && isTeamRole(role));
   const canAdmin = Boolean(user && isAdminRole(role));
   const images = getImages(event);
@@ -237,6 +239,12 @@ export default function EventDetailPage() {
     setUser(currentUser);
     await loadRole(currentUser);
     const loadedEvent = await loadEvent();
+    if (loadedEvent && currentUser?.id) {
+      const managesOrganization = loadedEvent.created_by !== currentUser.id
+        ? await canManageEventThroughOrganization(supabase, currentUser.id, loadedEvent.id, site.id).catch(() => false)
+        : false;
+      setOrganizationManagerAccess(managesOrganization);
+    } else setOrganizationManagerAccess(false);
     if (loadedEvent) await loadRequests(currentUser);
     setLoading(false);
   }
