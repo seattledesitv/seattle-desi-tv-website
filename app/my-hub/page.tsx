@@ -12,6 +12,7 @@ import {
   resolveUserRole,
 } from "../lib/roles";
 import { useCurrentSite } from "../lib/sites/SiteContext";
+import { getManagedEventIds } from "../lib/organizationEventAccess";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -76,6 +77,21 @@ export default function MyHubPage() {
       return;
     }
     const today = new Date().toISOString().split("T")[0];
+    let managedEventIds: string[] = [];
+    try {
+      managedEventIds = await getManagedEventIds(supabase, user.id, site.id);
+    } catch {
+      // Keep the rest of My Hub available if organization access cannot be loaded.
+    }
+    let eventsQuery = supabase
+      .from("events")
+      .select("id", { count: "exact", head: true })
+      .eq("site_id", site.id);
+    eventsQuery = managedEventIds.length
+      ? eventsQuery.or(
+          `created_by.eq.${user.id},id.in.(${managedEventIds.join(",")})`,
+        )
+      : eventsQuery.eq("created_by", user.id);
     const [
       events,
       businesses,
@@ -88,13 +104,7 @@ export default function MyHubPage() {
       editing,
       influencer,
     ] = await Promise.all([
-      countQuery(
-        supabase
-          .from("events")
-          .select("id", { count: "exact", head: true })
-          .eq("site_id", site.id)
-          .eq("created_by", user.id),
-      ),
+      countQuery(eventsQuery),
       countQuery(
         supabase
           .from("local_businesses")
@@ -247,7 +257,7 @@ export default function MyHubPage() {
     },
     {
       title: "My Events",
-      note: "Events submitted from your account.",
+      note: "Events submitted by you or linked to organizations you manage.",
       href: "/my-events",
       value: counts.events,
       show: true,

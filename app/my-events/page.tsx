@@ -78,7 +78,10 @@ export default function MyEventsPage() {
   const [searchText, setSearchText] = useState("");
   const [monthFilter, setMonthFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [managedEventIds, setManagedEventIds] = useState<Set<string>>(new Set());
+  const [managedEventIds, setManagedEventIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [pendingUpdates, setPendingUpdates] = useState<Record<string, any>>({});
   async function loadRows() {
     setLoading(true);
     const { data: auth } = await supabase.auth.getUser();
@@ -93,9 +96,15 @@ export default function MyEventsPage() {
     }
     let organizationEventIds: string[] = [];
     try {
-      organizationEventIds = await getManagedEventIds(supabase, user.id, site.id);
+      organizationEventIds = await getManagedEventIds(
+        supabase,
+        user.id,
+        site.id,
+      );
     } catch (accessError: any) {
-      setMessage(`Could not load organization events: ${accessError.message || accessError}`);
+      setMessage(
+        `Could not load organization events: ${accessError.message || accessError}`,
+      );
     }
     setManagedEventIds(new Set(organizationEventIds));
     let eventQuery = supabase
@@ -105,7 +114,9 @@ export default function MyEventsPage() {
       )
       .order("created_at", { ascending: false });
     eventQuery = organizationEventIds.length
-      ? eventQuery.or(`created_by.eq.${user.id},id.in.(${organizationEventIds.join(",")})`)
+      ? eventQuery.or(
+          `created_by.eq.${user.id},id.in.(${organizationEventIds.join(",")})`,
+        )
       : eventQuery.eq("created_by", user.id);
     const { data, error } = await forSite(eventQuery, site.id);
     const managedIds = new Set(organizationEventIds);
@@ -113,10 +124,32 @@ export default function MyEventsPage() {
       ...row,
       organizationManaged: row.created_by !== user.id && managedIds.has(row.id),
     }));
+    const eventIds = nextRows.map((row: any) => row.id);
+    let nextPendingUpdates: Record<string, any> = {};
+    if (eventIds.length) {
+      const { data: requests } = await supabase
+        .from("listing_management_requests")
+        .select("id,entity_id,status,admin_notes,updated_at")
+        .eq("site_id", site.id)
+        .eq("requester_user_id", user.id)
+        .eq("entity_type", "event")
+        .eq("request_type", "correction")
+        .in("entity_id", eventIds)
+        .in("status", ["pending", "needs_information"])
+        .order("updated_at", { ascending: false });
+      for (const request of requests || []) {
+        if (!nextPendingUpdates[request.entity_id]) {
+          nextPendingUpdates[request.entity_id] = request;
+        }
+      }
+    }
+    setPendingUpdates(nextPendingUpdates);
     setRows(nextRows);
     setSelectedId((current) => current || nextRows[0]?.id || "");
     setMessage(
-      error ? error.message : "Events you submitted or manage through a verified organization.",
+      error
+        ? error.message
+        : "Events you submitted or manage through a verified organization.",
     );
     setLoading(false);
   }
@@ -203,7 +236,10 @@ export default function MyEventsPage() {
     setSaving(true);
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user || null;
-    if (!user?.id || (row.created_by !== user.id && !managedEventIds.has(row.id))) {
+    if (
+      !user?.id ||
+      (row.created_by !== user.id && !managedEventIds.has(row.id))
+    ) {
       setSaving(false);
       setMessage(
         "You can only edit events you submitted or manage through a verified organization.",
@@ -234,6 +270,69 @@ export default function MyEventsPage() {
         image_urls: imageUrls.length ? imageUrls : null,
         updated_at: new Date().toISOString(),
       };
+      if (row.organizationManaged) {
+        const existingRequest = pendingUpdates[row.id];
+        if (existingRequest?.status === "pending") {
+          throw new Error(
+            "An update for this event is already awaiting SDTV approval.",
+          );
+        }
+        const currentSnapshot = {
+          title: row.title,
+          date: row.date,
+          end_date: row.end_date,
+          local_start_time: row.local_start_time,
+          local_end_time: row.local_end_time,
+          event_timezone: row.event_timezone,
+          location: row.location,
+          description: row.description,
+          ticket_url: row.ticket_url,
+          poc_email: row.poc_email,
+          poc_phone: row.poc_phone,
+          image: row.image,
+          image_urls: row.image_urls,
+        };
+        const requestPayload = {
+          site_id: site.id,
+          entity_type: "event",
+          entity_id: row.id,
+          entity_name: row.title,
+          request_type: "correction",
+          requester_user_id: user.id,
+          requester_name:
+            user.user_metadata?.full_name ||
+            user.email ||
+            "Organization manager",
+          requester_email: user.email || "",
+          relationship: "Verified organization manager",
+          details:
+            "A verified organization manager submitted changes to this linked event. Review the before-and-after fields below.",
+          proposed_changes: payload,
+          current_snapshot: currentSnapshot,
+          status: "pending",
+          updated_at: new Date().toISOString(),
+        };
+        if (existingRequest?.status === "needs_information") {
+          const { error } = await supabase
+            .from("listing_management_requests")
+            .update(requestPayload)
+            .eq("id", existingRequest.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from("listing_management_requests")
+            .insert(requestPayload);
+          if (error) throw error;
+        }
+        setEditingId("");
+        setEditForm({});
+        setImageFiles([]);
+        setMessage(
+          "Changes submitted for SDTV approval. The live event remains unchanged until an admin approves them.",
+        );
+        await loadRows();
+        return;
+      }
       const { error } = await supabase
         .from("events")
         .update(payload)
@@ -358,6 +457,13 @@ export default function MyEventsPage() {
                       {formatDate(row.date)}
                       {row.location ? ` · ${row.location}` : ""}
                     </p>
+                    {pendingUpdates[row.id] && (
+                      <p className="mt-2 text-xs font-black text-amber-700">
+                        {pendingUpdates[row.id].status === "needs_information"
+                          ? "Admin requested more information"
+                          : "Update pending approval"}
+                      </p>
+                    )}
                     {row.organizationManaged && (
                       <span className="mt-2 inline-block rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-700">
                         Organization event
@@ -431,7 +537,10 @@ export default function MyEventsPage() {
                             min={editForm.date || undefined}
                             value={editForm.end_date || ""}
                             onChange={(e) =>
-                              setEditForm({ ...editForm, end_date: e.target.value })
+                              setEditForm({
+                                ...editForm,
+                                end_date: e.target.value,
+                              })
                             }
                           />
                         </Field>

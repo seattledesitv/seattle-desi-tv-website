@@ -1,6 +1,7 @@
 export type ManagedListingType = "event" | "influencer" | "community_group";
 export type ListingRequestType = "claim" | "correction" | "removal";
-export type ListingRequestStatus = "pending" | "needs_information" | "approved" | "rejected";
+export type ListingRequestStatus =
+  "pending" | "needs_information" | "approved" | "rejected";
 
 export type ListingManagementRequest = {
   id: string;
@@ -17,11 +18,23 @@ export type ListingManagementRequest = {
   details: string;
   status: ListingRequestStatus;
   admin_notes?: string | null;
+  proposed_changes?: Record<string, unknown> | null;
+  current_snapshot?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 };
 
-export type CreateListingRequest = Pick<ListingManagementRequest, "entity_type" | "entity_id" | "entity_name" | "request_type" | "requester_user_id" | "requester_name" | "requester_email" | "details"> & {
+export type CreateListingRequest = Pick<
+  ListingManagementRequest,
+  | "entity_type"
+  | "entity_id"
+  | "entity_name"
+  | "request_type"
+  | "requester_user_id"
+  | "requester_name"
+  | "requester_email"
+  | "details"
+> & {
   requester_phone?: string;
   relationship?: string;
 };
