@@ -13,6 +13,7 @@ import HomeSponsorCardPolish from "./components/HomeSponsorCardPolish";
 import HomepageHeroBridgeV2 from "./components/home/HomepageHeroBridgeV2";
 import PremiumBusinessCardPolish from "./components/PremiumBusinessCardPolish";
 import PremiumOrganizationCardPolish from "./components/PremiumOrganizationCardPolish";
+import PasswordRecoveryRedirect from "./components/PasswordRecoveryRedirect";
 import { FloatingWhatsAppButton } from "./components/SdtvContactLinks";
 import { safeJsonLd, SITE_URL } from "./lib/seo/service";
 import { SiteProvider } from "./lib/sites/SiteContext";
@@ -43,6 +44,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <SiteProvider site={site}>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd({ "@context": "https://schema.org", "@graph": [{ "@type": "Organization", "@id": `${siteUrl}/#organization`, name: "Seattle Desi TV", alternateName: "SDTV", url: siteUrl, logo: { "@type": "ImageObject", url: `${siteUrl}/sdtv-logo.png` }, description: "A 501(c)(3) nonprofit community media organization serving the South Asian and Desi community in Seattle and the Pacific Northwest.", nonprofitStatus: "Nonprofit501c3", areaServed: ["Seattle", "Washington", "Pacific Northwest"], sameAs: ["https://www.youtube.com/@SeattleDesiTV", "https://instagram.com/seattledesitv", "https://facebook.com/seattledesitv"] }, { "@type": "WebSite", "@id": `${siteUrl}/#website`, url: siteUrl, name: "Seattle Desi TV", publisher: { "@id": `${siteUrl}/#organization` }, inLanguage: "en-US" }] }) }} />
     <EngagementTracker />
+    <PasswordRecoveryRedirect />
     <AccessibilityFixes />
     <BusinessDirectoryOfferClamp />
     <BusinessOwnershipActions />

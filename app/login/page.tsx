@@ -101,7 +101,7 @@ export default function LoginPage() {
     setMessage("");
     if (!email) { setMessage("Please enter your email to reset your password."); return; }
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/update-password` });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/update-password?recovery=1` });
     setLoading(false);
     if (error) { setMessage(error.message); return; }
     setMessage("Password reset email sent. Please check your inbox.");
@@ -154,6 +154,12 @@ export default function LoginPage() {
     let cancelled = false;
     async function init() {
       try {
+        const query = new URLSearchParams(window.location.search);
+        const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        if (query.get("recovery") === "1" || query.get("type") === "recovery" || hash.get("type") === "recovery") {
+          window.location.replace(`/update-password?recovery=1${window.location.hash}`);
+          return;
+        }
         const { data } = await withTimeout(supabase.auth.getUser(), 2500);
         if (cancelled) return;
         const user = data?.user || null;
