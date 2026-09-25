@@ -256,6 +256,13 @@ export default function MyHubPage() {
       show: true,
     },
     {
+      title: "My Expense Claims",
+      note: "Submit bills and mileage claims and track their approval or payment status.",
+      href: "/my-expense-claims",
+      value: "Claims",
+      show: team,
+    },
+    {
       title: "My Events",
       note: "Events submitted by you or linked to organizations you manage.",
       href: "/my-events",

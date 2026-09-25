@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { cleanRole, resolveUserRole } from "../../../../lib/roles";
+import { cleanRole, isTeamRole, resolveUserRole } from "../../../../lib/roles";
 import { resolveCurrentSite } from "../../../../lib/sites/siteResolver";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -64,7 +64,7 @@ function r2Client() {
     },
   });
 }
-async function requireSuperAdmin(request: Request) {
+async function requireFinanceAccess(request: Request) {
   if (!supabaseUrl || !anonKey)
     return { error: jsonError("Supabase is not configured.", 500) };
   const authHeader = request.headers.get("authorization") || "";
@@ -76,10 +76,10 @@ async function requireSuperAdmin(request: Request) {
   const user = userData?.user || null;
   if (userError || !user) return { error: jsonError("Login required.", 401) };
   const role = await resolveUserRole(sessionClient, user);
-  if (!isSuperAdmin(role))
+  if (!isTeamRole(role))
     return {
       error: jsonError(
-        `Super admin access required. Resolved role: ${role}.`,
+        `Approved team-member access required. Resolved role: ${role}.`,
         403,
       ),
     };
@@ -90,12 +90,17 @@ async function requireSuperAdmin(request: Request) {
         500,
       ),
     };
-  return { user, role, db: createClient(supabaseUrl, serviceKey) };
+  return {
+    user,
+    role,
+    isSuperAdmin: isSuperAdmin(role),
+    db: createClient(supabaseUrl, serviceKey),
+  };
 }
 
 export async function GET(request: Request) {
   try {
-    const auth = await requireSuperAdmin(request);
+    const auth = await requireFinanceAccess(request);
     if (auth.error) return auth.error;
     const site = await resolveCurrentSite();
     if (!site.id) return jsonError("Site context is not configured.", 500);
@@ -109,6 +114,7 @@ export async function GET(request: Request) {
       .order("expense_date", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(500);
+    if (!auth.isSuperAdmin) query = query.eq("created_by", auth.user.id);
     if (month && /^\d{4}-\d{2}$/.test(month)) {
       const startDate = `${month}-01`;
       const endDate = nextMonthStart(month);
@@ -131,7 +137,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const auth = await requireSuperAdmin(request);
+    const auth = await requireFinanceAccess(request);
     if (auth.error) return auth.error;
     const site = await resolveCurrentSite();
     if (!site.id) return jsonError("Site context is not configured.", 500);
@@ -154,9 +160,12 @@ export async function POST(request: Request) {
         ? Number((mileageMiles * mileageRate).toFixed(2))
         : enteredAmount;
     const paymentMethod = String(formData.get("payment_method") || "").trim();
-    const reimbursementStatus =
+    const requestedStatus =
       String(formData.get("reimbursement_status") || "submitted").trim() ||
       "submitted";
+    const reimbursementStatus = auth.isSuperAdmin
+      ? requestedStatus
+      : "submitted";
     const reimbursedTo = String(formData.get("reimbursed_to") || "").trim();
     const description = String(formData.get("description") || "").trim();
     const file = formData.get("bill_file");
@@ -218,7 +227,7 @@ export async function POST(request: Request) {
       vendor_name: vendorName,
       category,
       amount,
-      payment_method: paymentMethod || null,
+      payment_method: auth.isSuperAdmin ? paymentMethod || null : null,
       reimbursement_status: reimbursementStatus,
       reimbursed_to: reimbursedTo || null,
       mileage_miles: expenseType === "mileage" ? mileageMiles : null,
@@ -250,8 +259,13 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const auth = await requireSuperAdmin(request);
+    const auth = await requireFinanceAccess(request);
     if (auth.error) return auth.error;
+    if (!auth.isSuperAdmin)
+      return jsonError(
+        "Only finance administrators can edit or review claims.",
+        403,
+      );
     const site = await resolveCurrentSite();
     if (!site.id) return jsonError("Site context is not configured.", 500);
 
