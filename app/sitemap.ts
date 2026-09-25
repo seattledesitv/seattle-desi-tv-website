@@ -5,6 +5,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const publicRoutes = [
     "",
     "/about",
+    "/community-disclaimer",
     "/events",
     "/businesses",
     "/offers",
