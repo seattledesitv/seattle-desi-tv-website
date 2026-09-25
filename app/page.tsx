@@ -1160,7 +1160,7 @@ export default function HomePage() {
                   Submit Content
                 </a>
                 <a
-                  href="/coverage"
+                  href="/contact?interest=coverage"
                   className="bg-white/10 border border-white/20 px-5 py-4 rounded-xl font-black text-center"
                 >
                   Request Coverage
