@@ -1,5 +1,6 @@
 import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
+import { SDTV_ORGANIZATION_EMAIL } from "../lib/organizationDetails";
 
 type LegalSection = {
   title: string;
@@ -51,7 +52,7 @@ export default function LegalPageLayout({
           <div className="rounded-3xl border border-pink-200 bg-pink-50 p-6 md:p-8">
             <h2 className="text-2xl font-black">Questions or notices</h2>
             <p className="mt-3 leading-7 text-slate-700">
-              Contact Seattle Desi TV at <a className="font-black text-pink-700 underline" href="mailto:abharathkumar@gmail.com">abharathkumar@gmail.com</a>.
+              Contact Seattle Desi TV at <a className="font-black text-pink-700 underline" href={`mailto:${SDTV_ORGANIZATION_EMAIL}`}>{SDTV_ORGANIZATION_EMAIL}</a>.
             </p>
           </div>
         </div>

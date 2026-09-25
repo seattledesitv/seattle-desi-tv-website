@@ -4,6 +4,7 @@ import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 import { SdtvContactButtons } from "./SdtvContactLinks";
 import { useCurrentSite } from "../lib/sites/SiteContext";
+import { SDTV_EIN, SDTV_ORGANIZATION_EMAIL, SDTV_PHYSICAL_ADDRESS } from "../lib/organizationDetails";
 
 const requestTypes = ["General Inquiry", "Volunteer", "Internship", "RJ / Radio Host", "VJ / Anchor", "Sponsorship", "Event Coverage", "Business Listing", "Partnership"];
 const interestAliases: Record<string, string> = { volunteer: "Volunteer", intern: "Internship", internship: "Internship", "rj-vj": "RJ / Radio Host", rj: "RJ / Radio Host", radio: "RJ / Radio Host", "radio-host": "RJ / Radio Host", vj: "VJ / Anchor", anchor: "VJ / Anchor", sponsorship: "Sponsorship", sponsor: "Sponsorship", coverage: "Event Coverage", "event-coverage": "Event Coverage", business: "Business Listing", "business-listing": "Business Listing", partnership: "Partnership" };
@@ -72,6 +73,7 @@ export default function ContactSection({ compact = false, initialInterest = "" }
             </div>
             <div className="grid gap-3 mt-8">{ctaCards.map(([title, note, interest]) => <button key={title} type="button" onClick={() => chooseInterest(interest)} className="bg-white/10 rounded-2xl p-4 text-left hover:bg-white/15"><span className="block font-black">{title}</span><span className="block text-sm text-slate-300 mt-1">{note}</span></button>)}</div>
             <div className="grid gap-3 mt-8 text-sm">{site.settings.contact_email && <a href={`mailto:${String(site.settings.contact_email)}`} className="bg-white/10 rounded-2xl p-4 font-bold hover:bg-white/15">{String(site.settings.contact_email)}</a>}{site.settings.youtube_url && <a href={String(site.settings.youtube_url)} target="_blank" rel="noreferrer" className="bg-white/10 rounded-2xl p-4 font-bold hover:bg-white/15">YouTube</a>}{site.settings.instagram_url && <a href={String(site.settings.instagram_url)} target="_blank" rel="noreferrer" className="bg-white/10 rounded-2xl p-4 font-bold hover:bg-white/15">Instagram</a>}</div>
+            <address className="mt-6 rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-sm not-italic leading-6 text-slate-300"><span className="block font-black text-white">Seattle Desi TV</span><span className="block">501(c)(3) nonprofit · EIN {SDTV_EIN}</span><span className="block">{SDTV_PHYSICAL_ADDRESS}</span><a className="font-bold text-pink-300 underline" href={`mailto:${SDTV_ORGANIZATION_EMAIL}`}>{SDTV_ORGANIZATION_EMAIL}</a></address>
           </div>
           <form id="contact-form" onSubmit={submit} className="bg-white text-slate-950 border rounded-3xl p-6 md:p-8 shadow-xl" noValidate={false}>
             <div className="grid md:grid-cols-2 gap-4">

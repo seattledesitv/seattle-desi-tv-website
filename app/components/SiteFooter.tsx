@@ -7,6 +7,7 @@ import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { isAdminRole, isTeamRole, resolveUserRole } from "../lib/roles";
 import { SdtvContactButtons } from "./SdtvContactLinks";
 import { useCurrentSite } from "../lib/sites/SiteContext";
+import { SDTV_EIN, SDTV_ORGANIZATION_EMAIL, SDTV_PHYSICAL_ADDRESS } from "../lib/organizationDetails";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -84,6 +85,12 @@ export default function SiteFooter() {
                 `Community media, culture, events, radio, interviews, and stories for ${site.city} and the surrounding region.`,
             )}
           </p>
+          <address className="mt-4 text-sm not-italic leading-6 text-slate-300">
+            <span className="block font-black text-white">501(c)(3) nonprofit organization</span>
+            <span className="block">Charity ID / EIN: {SDTV_EIN}</span>
+            <span className="block">{SDTV_PHYSICAL_ADDRESS}</span>
+            <a className="text-pink-300 underline" href={`mailto:${SDTV_ORGANIZATION_EMAIL}`}>{SDTV_ORGANIZATION_EMAIL}</a>
+          </address>
           <a
             href="/submit-content"
             className="mt-4 inline-flex rounded-xl bg-pink-600 px-4 py-3 text-sm font-black text-white"
@@ -140,9 +147,7 @@ export default function SiteFooter() {
             </a>
           </div>
           <div className="mt-6 border-t border-white/10 pt-5 text-sm text-slate-300">
-            <p className="font-black text-white">
-              Platform designed &amp; developed by
-            </p>
+            <p className="font-black text-white">Platform designed &amp; developed by</p>
             <p className="mt-1">Bharath Kumar Arekapudi</p>
             <a
               className="mt-2 inline-block text-pink-300 underline"

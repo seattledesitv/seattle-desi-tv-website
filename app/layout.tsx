@@ -16,6 +16,7 @@ import PremiumBusinessCardPolish from "./components/PremiumBusinessCardPolish";
 import PremiumOrganizationCardPolish from "./components/PremiumOrganizationCardPolish";
 import PasswordRecoveryRedirect from "./components/PasswordRecoveryRedirect";
 import { FloatingWhatsAppButton } from "./components/SdtvContactLinks";
+import { SDTV_EIN, SDTV_ORGANIZATION_EMAIL } from "./lib/organizationDetails";
 import { safeJsonLd, SITE_URL } from "./lib/seo/service";
 import { SiteProvider } from "./lib/sites/SiteContext";
 import { resolveCurrentSite } from "./lib/sites/siteResolver";
@@ -127,6 +128,15 @@ export default async function RootLayout({
                     description:
                       "A 501(c)(3) nonprofit community media organization serving the South Asian and Desi community in Seattle and the Pacific Northwest.",
                     nonprofitStatus: "Nonprofit501c3",
+                    taxID: SDTV_EIN,
+                    email: SDTV_ORGANIZATION_EMAIL,
+                    address: {
+                      "@type": "PostalAddress",
+                      streetAddress: "15050 127th Pl NE",
+                      addressLocality: "Woodinville",
+                      addressRegion: "WA",
+                      addressCountry: "US",
+                    },
                     areaServed: ["Seattle", "Washington", "Pacific Northwest"],
                     sameAs: [
                       "https://www.youtube.com/@SeattleDesiTV",

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import SiteFooter from "../components/SiteFooter";
 import SiteHeader from "../components/SiteHeader";
+import { SDTV_EIN, SDTV_ORGANIZATION_EMAIL, SDTV_PHYSICAL_ADDRESS } from "../lib/organizationDetails";
 
 const programs = [
   { title: "Events to Excitement", description: "We capture the spirit of community celebrations, live and recorded." },
@@ -29,6 +30,15 @@ export default function AboutPage() {
     </section>
 
     <section className="mx-auto max-w-6xl px-5 py-12 md:px-10 md:py-16">
+      <section className="mb-8 rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm md:p-10">
+        <p className="text-xs font-black uppercase tracking-[.2em] text-pink-700">Official organization information</p>
+        <h2 className="mt-3 text-3xl font-black">Seattle Desi TV</h2>
+        <dl className="mt-5 grid gap-5 text-slate-700 md:grid-cols-3">
+          <div><dt className="text-sm font-black uppercase tracking-wide text-slate-500">Charity ID / EIN</dt><dd className="mt-1 text-lg font-bold">{SDTV_EIN}</dd></div>
+          <div><dt className="text-sm font-black uppercase tracking-wide text-slate-500">Physical address</dt><dd className="mt-1 text-lg font-bold">{SDTV_PHYSICAL_ADDRESS}</dd></div>
+          <div><dt className="text-sm font-black uppercase tracking-wide text-slate-500">Organization contact</dt><dd className="mt-1 text-lg font-bold"><a className="text-pink-700 underline" href={`mailto:${SDTV_ORGANIZATION_EMAIL}`}>{SDTV_ORGANIZATION_EMAIL}</a></dd></div>
+        </dl>
+      </section>
       <div className="grid gap-6 lg:grid-cols-2">
         <article className="rounded-[2rem] border border-amber-200 bg-amber-50 p-7 md:p-10"><p className="text-xs font-black uppercase tracking-[.2em] text-amber-700">Our vision</p><h2 className="mt-3 text-3xl font-black md:text-4xl">A community that thrives together</h2><p className="mt-5 text-lg leading-8 text-slate-700">To be the leading platform that celebrates and fosters cultural integration, empowering the Desi community in Seattle to thrive while sharing its diverse heritage with the world.</p></article>
         <article className="rounded-[2rem] bg-pink-700 p-7 text-white shadow-xl md:p-10"><p className="text-xs font-black uppercase tracking-[.2em] text-pink-200">Our mission</p><h2 className="mt-3 text-3xl font-black md:text-4xl">Elevating culture, talent and voices</h2><p className="mt-5 text-lg leading-8 text-pink-50">Through engaging and impactful programming, we highlight the richness of Indian heritage while addressing community needs and aspirations. We create a dynamic platform for storytelling, cultural expression, and meaningful dialogue—empowering individuals and organizations to share their contributions, celebrate diversity, and build lasting connections.</p></article>
