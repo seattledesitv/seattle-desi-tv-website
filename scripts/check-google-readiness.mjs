@@ -25,6 +25,9 @@ const placeholderPatterns = [
   /loading approved businesses/i,
   /loading team/i,
   /loading radio hosts/i,
+  /no upcoming approved events yet/i,
+  /no approved businesses yet/i,
+  /loading latest videos/i,
 ];
 
 async function fetchPage(path) {

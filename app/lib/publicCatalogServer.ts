@@ -60,3 +60,50 @@ export async function getInitialPublicBusinesses(siteId: string | null) {
     return [];
   }
 }
+
+export async function getInitialHomepageData(siteId: string | null) {
+  const db = publicClient();
+  const empty = {
+    events: [],
+    businesses: [],
+    socialRows: [],
+    counts: { events: 0, businesses: 0, coverage: 0, team: 0, radio: 0 },
+  };
+  if (!db) return empty;
+  try {
+    const today = new Date().toISOString().split("T")[0];
+    const eventsQuery = forSite(
+      db.from("events").select("id,title,date,location,image,image_urls").eq("status", "approved").gte("date", today).order("date", { ascending: true }).limit(12),
+      siteId,
+    );
+    const businessesQuery = forSite(
+      db.from("local_businesses").select("id,name,category,offer,discount,image,image_urls").eq("status", "approved").limit(6),
+      siteId,
+    );
+    const socialQuery = siteId
+      ? db.from("social_media_stats").select("platform,followers,views,videos,href").eq("site_id", siteId).order("platform")
+      : Promise.resolve({ data: [], error: null });
+    const count = async (query: any) => {
+      const result = await query;
+      return result.error ? 0 : result.count || 0;
+    };
+    const [eventsResult, businessesResult, socialResult, events, businesses, coverage, team, radio] = await Promise.all([
+      eventsQuery,
+      businessesQuery,
+      socialQuery,
+      count(forSite(db.from("events").select("id", { count: "exact", head: true }).eq("status", "approved"), siteId)),
+      count(forSite(db.from("local_businesses").select("id", { count: "exact", head: true }).eq("status", "approved"), siteId)),
+      count(forSite(db.from("event_crew_assignments").select("id", { count: "exact", head: true }).eq("assignment_type", "owner_coverage_request"), siteId)),
+      count(forSite(db.from("team_members").select("id", { count: "exact", head: true }), siteId)),
+      count(forSite(db.from("radio_team_members").select("id", { count: "exact", head: true }), siteId)),
+    ]);
+    return {
+      events: eventsResult.error ? [] : eventsResult.data || [],
+      businesses: businessesResult.error ? [] : businessesResult.data || [],
+      socialRows: socialResult.error ? [] : socialResult.data || [],
+      counts: { events, businesses, coverage, team, radio },
+    };
+  } catch {
+    return empty;
+  }
+}
