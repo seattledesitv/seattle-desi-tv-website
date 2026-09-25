@@ -167,6 +167,8 @@ export async function POST(request: Request) {
       ? requestedStatus
       : "submitted";
     const reimbursedTo = String(formData.get("reimbursed_to") || "").trim();
+    const payoutMethod = String(formData.get("payout_method") || "").trim();
+    const payoutDetails = String(formData.get("payout_details") || "").trim();
     const description = String(formData.get("description") || "").trim();
     const file = formData.get("bill_file");
 
@@ -189,6 +191,10 @@ export async function POST(request: Request) {
       return jsonError("Mileage rate must be greater than zero.");
     if (!Number.isFinite(amount) || amount <= 0)
       return jsonError("Amount must be greater than zero.");
+    if (!auth.isSuperAdmin && !payoutMethod)
+      return jsonError("Please select how SDTV should reimburse you.");
+    if (!auth.isSuperAdmin && !payoutDetails)
+      return jsonError("Please enter the payout instructions for finance.");
 
     const id = crypto.randomUUID();
     let billFilePath: string | null = null;
@@ -230,6 +236,8 @@ export async function POST(request: Request) {
       payment_method: auth.isSuperAdmin ? paymentMethod || null : null,
       reimbursement_status: reimbursementStatus,
       reimbursed_to: reimbursedTo || null,
+      payout_method: payoutMethod || null,
+      payout_details: payoutDetails || null,
       mileage_miles: expenseType === "mileage" ? mileageMiles : null,
       mileage_rate: expenseType === "mileage" ? mileageRate : null,
       description: description || null,
@@ -298,6 +306,8 @@ export async function PATCH(request: Request) {
         formData.get("reimbursement_status") || "submitted",
       ).trim();
       const reimbursedTo = String(formData.get("reimbursed_to") || "").trim();
+      const payoutMethod = String(formData.get("payout_method") || "").trim();
+      const payoutDetails = String(formData.get("payout_details") || "").trim();
       const description = String(formData.get("description") || "").trim();
       const file = formData.get("bill_file");
 
@@ -346,6 +356,8 @@ export async function PATCH(request: Request) {
         payment_method: paymentMethod || null,
         reimbursement_status: reimbursementStatus,
         reimbursed_to: reimbursedTo || null,
+        payout_method: payoutMethod || null,
+        payout_details: payoutDetails || null,
         mileage_miles: expenseType === "mileage" ? mileageMiles : null,
         mileage_rate: expenseType === "mileage" ? mileageRate : null,
         description: description || null,

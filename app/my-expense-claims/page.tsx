@@ -27,6 +27,8 @@ function blankForm() {
     expense_date: new Date().toISOString().slice(0, 10),
     vendor_name: "",
     reimbursed_to: "",
+    payout_method: "zelle",
+    payout_details: "",
     category: "event",
     amount: "",
     mileage_miles: "",
@@ -317,6 +319,52 @@ export default function MyExpenseClaimsPage() {
                     className="min-h-28 rounded-xl border p-3 font-normal"
                   />
                 </label>
+                <fieldset className="grid gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 md:col-span-2 md:grid-cols-2">
+                  <legend className="px-2 font-black text-blue-900">
+                    How should SDTV reimburse you?
+                  </legend>
+                  <label className="grid gap-1 font-bold">
+                    Preferred payout method
+                    <select
+                      required
+                      value={form.payout_method}
+                      onChange={(e) =>
+                        setForm({ ...form, payout_method: e.target.value })
+                      }
+                      className="rounded-xl border p-3 font-normal"
+                    >
+                      <option value="zelle">Zelle</option>
+                      <option value="check">Check</option>
+                      <option value="bank_contact">
+                        Bank transfer — contact me privately
+                      </option>
+                      <option value="other">Other</option>
+                    </select>
+                  </label>
+                  <label className="grid gap-1 font-bold">
+                    Payout instructions
+                    <input
+                      required
+                      value={form.payout_details}
+                      onChange={(e) =>
+                        setForm({ ...form, payout_details: e.target.value })
+                      }
+                      placeholder={
+                        form.payout_method === "zelle"
+                          ? "Zelle email address or phone number"
+                          : form.payout_method === "check"
+                            ? "Payee name and mailing instructions"
+                            : "How finance should contact or pay you"
+                      }
+                      className="rounded-xl border p-3 font-normal"
+                    />
+                  </label>
+                  <p className="text-xs font-bold text-blue-800 md:col-span-2">
+                    Do not enter a complete bank-account or routing number here.
+                    For a bank transfer, select “contact me privately” and
+                    finance will arrange a secure exchange.
+                  </p>
+                </fieldset>
                 <label className="grid gap-1 font-bold md:col-span-2">
                   Receipt or mileage proof
                   <input
@@ -369,6 +417,12 @@ export default function MyExpenseClaimsPage() {
                       <div>
                         <p className="text-sm text-slate-600">
                           {row.description || "No details provided."}
+                        </p>
+                        <p className="mt-1 text-xs font-bold text-slate-500">
+                          Payout:{" "}
+                          {String(
+                            row.payout_method || "not specified",
+                          ).replaceAll("_", " ")}
                         </p>
                         {row.bill_file_path && (
                           <button

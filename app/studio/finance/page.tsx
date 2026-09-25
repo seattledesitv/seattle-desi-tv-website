@@ -46,6 +46,8 @@ type FinanceRow = {
   mileage_miles?: number | string | null;
   mileage_rate?: number | string | null;
   payment_method?: string | null;
+  payout_method?: string | null;
+  payout_details?: string | null;
   reimbursement_status?: string | null;
   description?: string | null;
   bill_file_path?: string | null;
@@ -64,6 +66,8 @@ function emptyForm() {
     mileage_miles: "",
     mileage_rate: DEFAULT_MILEAGE_RATE,
     payment_method: "",
+    payout_method: "",
+    payout_details: "",
     reimbursement_status: "submitted",
     description: "",
   };
@@ -231,6 +235,8 @@ export default function StudioFinancePage() {
           ? DEFAULT_MILEAGE_RATE
           : String(row.mileage_rate),
       payment_method: String(row.payment_method || ""),
+      payout_method: String(row.payout_method || ""),
+      payout_details: String(row.payout_details || ""),
       reimbursement_status: String(row.reimbursement_status || "submitted"),
       description: String(row.description || ""),
     });
@@ -556,6 +562,36 @@ export default function StudioFinancePage() {
                     </select>
                   </label>
                 </div>
+                <div className="grid grid-cols-2 gap-3 rounded-xl border border-blue-200 bg-blue-50 p-3">
+                  <label className="grid gap-1 text-sm font-black">
+                    Requested payout method
+                    <select
+                      value={form.payout_method}
+                      onChange={(e) =>
+                        setForm({ ...form, payout_method: e.target.value })
+                      }
+                      className="rounded-xl border p-3 font-normal"
+                    >
+                      <option value="">Not provided</option>
+                      <option value="zelle">Zelle</option>
+                      <option value="check">Check</option>
+                      <option value="bank_contact">
+                        Bank transfer — contact privately
+                      </option>
+                      <option value="other">Other</option>
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-sm font-black">
+                    Payout instructions
+                    <input
+                      value={form.payout_details}
+                      onChange={(e) =>
+                        setForm({ ...form, payout_details: e.target.value })
+                      }
+                      className="rounded-xl border p-3 font-normal"
+                    />
+                  </label>
+                </div>
                 <label className="grid gap-1 text-sm font-black">
                   Bill / receipt / mileage proof
                   <input
@@ -749,7 +785,19 @@ export default function StudioFinancePage() {
                               ))}
                             </select>
                           </td>
-                          <td>{label(row.payment_method)}</td>
+                          <td>
+                            {label(row.payment_method)}
+                            {row.payout_method && (
+                              <p className="text-xs font-normal text-slate-500">
+                                Requested: {label(row.payout_method)}
+                              </p>
+                            )}
+                            {row.payout_details && (
+                              <p className="max-w-48 break-words text-xs font-normal text-slate-500">
+                                {row.payout_details}
+                              </p>
+                            )}
+                          </td>
                           <td>
                             {row.bill_file_path ? (
                               <button
