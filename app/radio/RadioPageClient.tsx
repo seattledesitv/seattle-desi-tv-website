@@ -218,9 +218,12 @@ export default function RadioPageClient() {
           )}
         </div>
         {loading ? (
-          <div className="bg-white border rounded-2xl p-8 text-gray-500">
-            Loading radio hosts...
-          </div>
+          <section className="bg-white border rounded-2xl p-8 text-slate-700" aria-label={`${site.city} Desi Radio hosts`}>
+            <h3 className="text-2xl font-black text-slate-950">Community voices on Desi Radio</h3>
+            <p className="mt-2 max-w-3xl">
+              Meet the volunteer hosts, producers, and community storytellers behind our interviews, music, culture, and public-interest programming.
+            </p>
+          </section>
         ) : hosts.length === 0 ? (
           <div className="bg-white border rounded-2xl p-8 text-gray-500">
             Radio host profiles will appear here after they are added in Studio.

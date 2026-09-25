@@ -313,7 +313,14 @@ export default function PublicTeamPage() {
             <h1 className="text-4xl md:text-6xl font-black mt-3">{pageText.title}</h1>
             <p className="text-slate-300 max-w-2xl mx-auto mt-4">{pageText.subtitle}</p>
           </div>
-          {loading && <div className="bg-white/10 border border-white/10 rounded-2xl p-6">Loading team...</div>}
+          {loading && (
+            <section className="bg-white/10 border border-white/10 rounded-2xl p-6" aria-label="Seattle Desi TV team profiles">
+              <h2 className="text-2xl font-black">Community-powered media</h2>
+              <p className="mt-2 max-w-3xl text-slate-300">
+                Seattle Desi TV is supported by volunteers, hosts, producers, creators, and community members who help document events and share local stories.
+              </p>
+            </section>
+          )}
           {error && <div className="bg-red-100 text-red-800 rounded-2xl p-6 mb-8">{error}</div>}
           {!loading && (
             <div className="space-y-12">
