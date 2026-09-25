@@ -48,6 +48,7 @@ type FinanceRow = {
   payment_method?: string | null;
   payout_method?: string | null;
   payout_details?: string | null;
+  event_financial_type?: string | null;
   reimbursement_status?: string | null;
   description?: string | null;
   bill_file_path?: string | null;
@@ -68,6 +69,7 @@ function emptyForm() {
     payment_method: "",
     payout_method: "",
     payout_details: "",
+    event_financial_type: "",
     reimbursement_status: "submitted",
     description: "",
   };
@@ -111,6 +113,7 @@ export default function StudioFinancePage() {
   const [rows, setRows] = useState<FinanceRow[]>([]);
   const [monthFilter, setMonthFilter] = useState(monthNow());
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [eventContextFilter, setEventContextFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -136,6 +139,8 @@ export default function StudioFinancePage() {
     if (monthFilter) params.set("month", monthFilter);
     if (categoryFilter && categoryFilter !== "all")
       params.set("category", categoryFilter);
+    if (eventContextFilter && eventContextFilter !== "all")
+      params.set("event_context", eventContextFilter);
     const response = await fetch(
       `/api/studio/finance/expenses?${params.toString()}`,
       { headers },
@@ -237,6 +242,7 @@ export default function StudioFinancePage() {
       payment_method: String(row.payment_method || ""),
       payout_method: String(row.payout_method || ""),
       payout_details: String(row.payout_details || ""),
+      event_financial_type: String(row.event_financial_type || ""),
       reimbursement_status: String(row.reimbursement_status || "submitted"),
       description: String(row.description || ""),
     });
@@ -296,13 +302,13 @@ export default function StudioFinancePage() {
     if (canAccess) loadRows();
     // loadRows intentionally follows the current access and filter values.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canAccess, monthFilter, categoryFilter]);
+  }, [canAccess, monthFilter, categoryFilter, eventContextFilter]);
 
   const visibleRows = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter((row) =>
-      `${row.vendor_name || ""} ${row.reimbursed_to || ""} ${row.expense_type || ""} ${row.category || ""} ${row.payment_method || ""} ${row.reimbursement_status || ""} ${row.description || ""} ${row.created_by_email || ""}`
+      `${row.vendor_name || ""} ${row.reimbursed_to || ""} ${row.expense_type || ""} ${row.category || ""} ${row.event_financial_type || ""} ${row.payment_method || ""} ${row.reimbursement_status || ""} ${row.description || ""} ${row.created_by_email || ""}`
         .toLowerCase()
         .includes(q),
     );
@@ -593,6 +599,24 @@ export default function StudioFinancePage() {
                   </label>
                 </div>
                 <label className="grid gap-1 text-sm font-black">
+                  Event financial context
+                  <select
+                    value={form.event_financial_type}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        event_financial_type: e.target.value,
+                      })
+                    }
+                    className="rounded-xl border p-3 font-normal"
+                  >
+                    <option value="">Not provided</option>
+                    <option value="paid_event">Paid event</option>
+                    <option value="free_event">Free event</option>
+                    <option value="not_event">Not related to an event</option>
+                  </select>
+                </label>
+                <label className="grid gap-1 text-sm font-black">
                   Bill / receipt / mileage proof
                   <input
                     id="finance-bill-file"
@@ -719,6 +743,16 @@ export default function StudioFinancePage() {
                         </option>
                       ))}
                     </select>
+                    <select
+                      value={eventContextFilter}
+                      onChange={(e) => setEventContextFilter(e.target.value)}
+                      className="rounded-xl border p-3 text-sm"
+                    >
+                      <option value="all">All event contexts</option>
+                      <option value="paid_event">Paid events</option>
+                      <option value="free_event">Free events</option>
+                      <option value="not_event">Not event-related</option>
+                    </select>
                   </div>
                 </div>
                 {byCategory.length > 0 && (
@@ -741,6 +775,7 @@ export default function StudioFinancePage() {
                         <th>Type</th>
                         <th>Vendor/Person</th>
                         <th>Category</th>
+                        <th>Event context</th>
                         <th>Amount</th>
                         <th>Miles</th>
                         <th>Status</th>
@@ -764,6 +799,7 @@ export default function StudioFinancePage() {
                             ) : null}
                           </td>
                           <td>{label(row.category)}</td>
+                          <td>{label(row.event_financial_type)}</td>
                           <td className="font-black">{money(row.amount)}</td>
                           <td>
                             {row.expense_type === "mileage"
@@ -830,7 +866,7 @@ export default function StudioFinancePage() {
                       {visibleRows.length === 0 && (
                         <tr>
                           <td
-                            colSpan={11}
+                            colSpan={12}
                             className="py-8 text-center text-slate-500"
                           >
                             No finance items found.

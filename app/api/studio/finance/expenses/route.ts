@@ -107,6 +107,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const month = String(searchParams.get("month") || "").trim();
     const category = String(searchParams.get("category") || "").trim();
+    const eventContext = String(searchParams.get("event_context") || "").trim();
     let query = auth.db
       .from("finance_expenses")
       .select("*")
@@ -124,6 +125,8 @@ export async function GET(request: Request) {
           .lt("expense_date", endDate);
     }
     if (category && category !== "all") query = query.eq("category", category);
+    if (eventContext && eventContext !== "all")
+      query = query.eq("event_financial_type", eventContext);
     const { data, error } = await query;
     if (error) return jsonError(error.message, 500);
     return NextResponse.json({ ok: true, rows: data || [] });
@@ -169,6 +172,9 @@ export async function POST(request: Request) {
     const reimbursedTo = String(formData.get("reimbursed_to") || "").trim();
     const payoutMethod = String(formData.get("payout_method") || "").trim();
     const payoutDetails = String(formData.get("payout_details") || "").trim();
+    const eventFinancialType = String(
+      formData.get("event_financial_type") || "",
+    ).trim();
     const description = String(formData.get("description") || "").trim();
     const file = formData.get("bill_file");
 
@@ -195,6 +201,13 @@ export async function POST(request: Request) {
       return jsonError("Please select how SDTV should reimburse you.");
     if (!auth.isSuperAdmin && !payoutDetails)
       return jsonError("Please enter the payout instructions for finance.");
+    if (
+      !auth.isSuperAdmin &&
+      !["paid_event", "free_event", "not_event"].includes(eventFinancialType)
+    )
+      return jsonError(
+        "Please select whether this claim is for a paid event, free event, or is not event-related.",
+      );
 
     const id = crypto.randomUUID();
     let billFilePath: string | null = null;
@@ -238,6 +251,7 @@ export async function POST(request: Request) {
       reimbursed_to: reimbursedTo || null,
       payout_method: payoutMethod || null,
       payout_details: payoutDetails || null,
+      event_financial_type: eventFinancialType || null,
       mileage_miles: expenseType === "mileage" ? mileageMiles : null,
       mileage_rate: expenseType === "mileage" ? mileageRate : null,
       description: description || null,
@@ -308,6 +322,9 @@ export async function PATCH(request: Request) {
       const reimbursedTo = String(formData.get("reimbursed_to") || "").trim();
       const payoutMethod = String(formData.get("payout_method") || "").trim();
       const payoutDetails = String(formData.get("payout_details") || "").trim();
+      const eventFinancialType = String(
+        formData.get("event_financial_type") || "",
+      ).trim();
       const description = String(formData.get("description") || "").trim();
       const file = formData.get("bill_file");
 
@@ -358,6 +375,7 @@ export async function PATCH(request: Request) {
         reimbursed_to: reimbursedTo || null,
         payout_method: payoutMethod || null,
         payout_details: payoutDetails || null,
+        event_financial_type: eventFinancialType || null,
         mileage_miles: expenseType === "mileage" ? mileageMiles : null,
         mileage_rate: expenseType === "mileage" ? mileageRate : null,
         description: description || null,

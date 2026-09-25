@@ -29,6 +29,7 @@ function blankForm() {
     reimbursed_to: "",
     payout_method: "zelle",
     payout_details: "",
+    event_financial_type: "",
     category: "event",
     amount: "",
     mileage_miles: "",
@@ -319,6 +320,26 @@ export default function MyExpenseClaimsPage() {
                     className="min-h-28 rounded-xl border p-3 font-normal"
                   />
                 </label>
+                <label className="grid gap-1 font-bold md:col-span-2">
+                  Was this claim related to a paid or free event?
+                  <select
+                    required
+                    value={form.event_financial_type}
+                    onChange={(e) =>
+                      setForm({ ...form, event_financial_type: e.target.value })
+                    }
+                    className="rounded-xl border p-3 font-normal"
+                  >
+                    <option value="">Select event context</option>
+                    <option value="paid_event">Paid event</option>
+                    <option value="free_event">Free event</option>
+                    <option value="not_event">Not related to an event</option>
+                  </select>
+                  <span className="text-xs font-normal text-slate-500">
+                    This helps finance report spending for paid events, free
+                    community events, and general operations.
+                  </span>
+                </label>
                 <fieldset className="grid gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 md:col-span-2 md:grid-cols-2">
                   <legend className="px-2 font-black text-blue-900">
                     How should SDTV reimburse you?
@@ -405,6 +426,12 @@ export default function MyExpenseClaimsPage() {
                         <p className="mt-1 text-sm text-slate-500">
                           {String(row.expense_date || "").split("T")[0]} ·{" "}
                           {row.category}
+                        </p>
+                        <p className="mt-1 text-xs font-bold text-slate-500">
+                          Context:{" "}
+                          {String(
+                            row.event_financial_type || "not specified",
+                          ).replaceAll("_", " ")}
                         </p>
                       </div>
                       <span
