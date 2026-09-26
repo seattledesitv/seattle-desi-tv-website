@@ -14,6 +14,7 @@ import HomeSponsorCardPolish from "./components/HomeSponsorCardPolish";
 import HomepageHeroBridgeV2 from "./components/home/HomepageHeroBridgeV2";
 import PremiumBusinessCardPolish from "./components/PremiumBusinessCardPolish";
 import PremiumOrganizationCardPolish from "./components/PremiumOrganizationCardPolish";
+import PublicHelpAssistant from "./components/PublicHelpAssistant";
 import PasswordRecoveryRedirect from "./components/PasswordRecoveryRedirect";
 import { FloatingWhatsAppButton } from "./components/SdtvContactLinks";
 import { SDTV_EIN, SDTV_ORGANIZATION_EMAIL } from "./lib/organizationDetails";
@@ -171,6 +172,7 @@ export default async function RootLayout({
           <HomeSponsorCardPolish />
           {children}
           <HomeCommunityCallouts />
+          <PublicHelpAssistant />
           <FloatingWhatsAppButton />
         </SiteProvider>
       </body>
