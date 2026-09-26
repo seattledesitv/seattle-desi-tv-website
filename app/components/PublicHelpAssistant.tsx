@@ -94,6 +94,28 @@ function isWeeklyEventQuestion(text: string) {
   return /events?.*(?:this week|today|weekend|upcoming)|(?:what|which).*(?:events?|happening)|(?:show|list|find).*(?:events?)/.test(text);
 }
 
+function questionCategory(text: string) {
+  if (isSensitiveInformationRequest(text)) return "sensitive";
+  if (isReadOnlyViolation(text)) return "write_request";
+  if (isWeeklyEventQuestion(text)) return "events";
+  if (wantsBusinessResults(text)) return "businesses";
+  if (wantsOrganizationResults(text)) return "organizations";
+  if (/volunteer|join.*team|help sdtv/.test(text)) return "volunteer";
+  if (/sponsor|sponsorship|partner|package|advertis/.test(text)) return "sponsorship";
+  if (/mission|about|nonprofit|501|ein|charity/.test(text)) return "about";
+  if (/contact|email|phone|whatsapp/.test(text)) return "contact";
+  return "other";
+}
+
+function recordQuestion(question: string, category: string, outcome: string) {
+  void fetch("/api/assistant/questions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question, category, outcome, pagePath: window.location.pathname, humanConfirmed: true }),
+    keepalive: true,
+  }).catch(() => undefined);
+}
+
 async function directorySearch(question: string): Promise<AssistantMessage> {
   const clean = question.toLowerCase();
   const terms = searchTerms(clean);
@@ -305,8 +327,11 @@ export default function PublicHelpAssistant() {
     setQuestion("");
     setBusy(true);
     const normalized = clean.toLowerCase();
+    const category = questionCategory(normalized);
+    let outcome = "answered";
     let response: AssistantMessage;
     if (isSensitiveInformationRequest(normalized)) {
+      outcome = "refused_sensitive";
       response = {
         id: Date.now(),
         role: "assistant",
@@ -314,6 +339,7 @@ export default function PublicHelpAssistant() {
         links: [{ label: "Contact SDTV", href: "/contact" }],
       };
     } else if (isReadOnlyViolation(normalized)) {
+      outcome = "refused_write";
       response = {
         id: Date.now(),
         role: "assistant",
@@ -326,7 +352,9 @@ export default function PublicHelpAssistant() {
       response = await directorySearch(clean);
     } else {
       response = standardAnswer(clean, site.name);
+      if (category === "other") outcome = "contact_sdtv";
     }
+    recordQuestion(clean, category, outcome);
     setMessages((current) => [...current, { ...response, id: exchangeId + 1 }]);
     setBusy(false);
   }
@@ -369,7 +397,7 @@ export default function PublicHelpAssistant() {
           <div className="border-t bg-white p-4">
             <div className="mb-3 flex gap-2 overflow-x-auto pb-1">{quickQuestions.map((item) => <button key={item} type="button" onClick={() => void ask(item)} className="shrink-0 rounded-full border border-pink-200 bg-pink-50 px-3 py-2 text-xs font-black text-pink-700">{item}</button>)}</div>
             <form onSubmit={submit} className="flex gap-2"><label htmlFor="sdtv-assistant-question" className="sr-only">Ask SDTV a question</label><input id="sdtv-assistant-question" value={question} maxLength={300} onChange={(event) => setQuestion(event.target.value)} placeholder="Ask about events, volunteering…" className="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-3 text-sm" /><button disabled={busy || !question.trim()} className="rounded-xl bg-pink-600 px-4 py-3 text-sm font-black text-white disabled:opacity-50">Send</button></form>
-            <p className="mt-2 text-[11px] leading-4 text-slate-500">Read-only: this assistant searches approved public information and cannot create, edit, approve, publish, or delete records.</p>
+            <p className="mt-2 text-[11px] leading-4 text-slate-500">Read-only: this assistant searches approved public information and cannot create, edit, approve, publish, or delete records. Questions are recorded anonymously to improve this service; contact details are redacted and sensitive questions are not retained.</p>
           </div>
           </>}
         </section>
