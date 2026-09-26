@@ -84,6 +84,12 @@ function isReadOnlyViolation(text: string) {
   return /\b(delete|remove|update|edit|change|approve|reject|publish|unpublish|create|add)\b/.test(text);
 }
 
+function isSensitiveInformationRequest(text: string) {
+  return /\b(personal|private|password|passcode|token|secret|api key|bank|routing|account number|card number|cvv|ssn|social security|date of birth|dob|home address|user data|customer data|ticket buyer|attendee|registered users?)\b/.test(text)
+    || /(?:give|show|find|tell).*(?:email|phone|address|contact details?).*(?:person|user|owner|manager|member|volunteer)/.test(text)
+    || /(?:who owns|who manages).*(?:account|business|organization)/.test(text);
+}
+
 function isWeeklyEventQuestion(text: string) {
   return /events?.*(?:this week|today|weekend|upcoming)|(?:what|which).*(?:events?|happening)|(?:show|list|find).*(?:events?)/.test(text);
 }
@@ -281,6 +287,7 @@ function standardAnswer(question: string, siteName: string): AssistantMessage {
 export default function PublicHelpAssistant() {
   const site = useCurrentSite();
   const [open, setOpen] = useState(false);
+  const [humanConfirmed, setHumanConfirmed] = useState(false);
   const [question, setQuestion] = useState("");
   const [busy, setBusy] = useState(false);
   const initialMessage = useMemo<AssistantMessage>(() => ({
@@ -299,7 +306,14 @@ export default function PublicHelpAssistant() {
     setBusy(true);
     const normalized = clean.toLowerCase();
     let response: AssistantMessage;
-    if (isReadOnlyViolation(normalized)) {
+    if (isSensitiveInformationRequest(normalized)) {
+      response = {
+        id: Date.now(),
+        role: "assistant",
+        text: `For privacy and safety, I cannot provide personal, account, payment, attendee, or other sensitive information. I only use information intentionally published on ${site.name}'s public website. For anything unclear or requiring verification, please contact SDTV directly.`,
+        links: [{ label: "Contact SDTV", href: "/contact" }],
+      };
+    } else if (isReadOnlyViolation(normalized)) {
       response = {
         id: Date.now(),
         role: "assistant",
@@ -330,6 +344,19 @@ export default function PublicHelpAssistant() {
             <div><p className="text-xs font-black uppercase tracking-[.18em] text-pink-300">Read-only website assistant</p><h2 className="mt-1 text-xl font-black">Ask {site.shortName}</h2><p className="mt-1 text-xs text-slate-300">Approved public events, businesses, and organizations</p></div>
             <button type="button" onClick={() => setOpen(false)} className="rounded-full bg-white/10 px-3 py-2 font-black" aria-label="Close website assistant">×</button>
           </header>
+          {!humanConfirmed ? (
+            <div className="flex-1 bg-slate-50 p-5">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-xs font-black uppercase tracking-[.16em] text-pink-600">Human check</p>
+                <h3 className="mt-2 text-lg font-black">Please confirm before continuing</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">This assistant is read-only and uses only approved public information. It does not provide private or personally identifiable information.</p>
+                <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-bold">
+                  <input type="checkbox" checked={humanConfirmed} onChange={(event) => setHumanConfirmed(event.target.checked)} className="h-5 w-5 accent-pink-600" />
+                  I am human
+                </label>
+              </div>
+            </div>
+          ) : <>
           <div className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4" aria-live="polite">
             {messages.map((message) => (
               <div key={message.id} className={message.role === "user" ? "ml-10 rounded-2xl bg-pink-600 p-3 text-sm font-bold text-white" : "mr-5 rounded-2xl border bg-white p-3 text-sm leading-6 shadow-sm"}>
@@ -344,6 +371,7 @@ export default function PublicHelpAssistant() {
             <form onSubmit={submit} className="flex gap-2"><label htmlFor="sdtv-assistant-question" className="sr-only">Ask SDTV a question</label><input id="sdtv-assistant-question" value={question} maxLength={300} onChange={(event) => setQuestion(event.target.value)} placeholder="Ask about events, volunteering…" className="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-3 text-sm" /><button disabled={busy || !question.trim()} className="rounded-xl bg-pink-600 px-4 py-3 text-sm font-black text-white disabled:opacity-50">Send</button></form>
             <p className="mt-2 text-[11px] leading-4 text-slate-500">Read-only: this assistant searches approved public information and cannot create, edit, approve, publish, or delete records.</p>
           </div>
+          </>}
         </section>
       )}
       <button type="button" onClick={() => setOpen((current) => !current)} className="flex items-center gap-2 rounded-full border border-white/20 bg-pink-600 px-4 py-3 text-sm font-black text-white shadow-2xl shadow-black/30 transition hover:-translate-y-0.5 hover:bg-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-300" aria-expanded={open} aria-label={open ? "Close SDTV website assistant" : "Open SDTV website assistant"}>
