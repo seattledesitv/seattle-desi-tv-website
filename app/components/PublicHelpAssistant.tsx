@@ -20,12 +20,128 @@ type PublicEvent = {
   location?: string;
 };
 
+type PublicBusiness = {
+  id?: string;
+  name?: string;
+  address?: string;
+  category?: string;
+  offer?: string;
+  discount?: string;
+};
+
+type PublicOrganization = {
+  id?: string;
+  name?: string;
+  type?: string;
+  category?: string;
+  location?: string;
+  description?: string;
+};
+
 const quickQuestions = [
   "Events this week",
+  "Find businesses",
+  "Find organizations",
   "Become a volunteer",
   "Sponsorship packages",
   "About SDTV",
 ];
+
+const searchStopWords = new Set([
+  "a", "an", "and", "are", "can", "do", "find", "for", "give", "i", "in", "is",
+  "list", "looking", "me", "near", "of", "or", "please", "show", "the", "to", "want",
+  "business", "businesses", "organization", "organizations", "community", "local",
+]);
+
+function searchTerms(question: string) {
+  return question
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .map((term) => term.replace(/ies$/, "y").replace(/s$/, ""))
+    .filter((term) => term.length > 1 && !searchStopWords.has(term));
+}
+
+function relevanceScore(values: Array<string | undefined>, terms: string[]) {
+  if (!terms.length) return 1;
+  const searchable = values.join(" ").toLowerCase();
+  return terms.reduce((score, term) => score + (searchable.includes(term) ? 1 : 0), 0);
+}
+
+function wantsBusinessResults(text: string) {
+  return /business|restaurant|food|realtor|real estate|doctor|medical|health|beauty|salon|service|shop|store|vendor|professional/.test(text);
+}
+
+function wantsOrganizationResults(text: string) {
+  return /organization|nonprofit|non-profit|temple|association|group|club|cultural|charity|religious|community center/.test(text);
+}
+
+function isDirectoryQuestion(text: string) {
+  return wantsBusinessResults(text) || wantsOrganizationResults(text) || /(?:find|show|list|looking for).*(?:business|organization|service|group)/.test(text);
+}
+
+function isReadOnlyViolation(text: string) {
+  return /\b(delete|remove|update|edit|change|approve|reject|publish|unpublish|create|add)\b/.test(text);
+}
+
+function isWeeklyEventQuestion(text: string) {
+  return /events?.*(?:this week|today|weekend|upcoming)|(?:what|which).*(?:events?|happening)|(?:show|list|find).*(?:events?)/.test(text);
+}
+
+async function directorySearch(question: string): Promise<AssistantMessage> {
+  const clean = question.toLowerCase();
+  const terms = searchTerms(clean);
+  const businessOnly = wantsBusinessResults(clean) && !wantsOrganizationResults(clean);
+  const organizationOnly = wantsOrganizationResults(clean) && !wantsBusinessResults(clean);
+
+  try {
+    const [businessResponse, organizationResponse] = await Promise.all([
+      organizationOnly ? Promise.resolve(null) : fetch("/api/mobile/v1/businesses?limit=100", { cache: "no-store" }),
+      businessOnly ? Promise.resolve(null) : fetch("/api/mobile/v1/organizations?limit=100", { cache: "no-store" }),
+    ]);
+    if (businessResponse && !businessResponse.ok) throw new Error("Businesses are unavailable");
+    if (organizationResponse && !organizationResponse.ok) throw new Error("Organizations are unavailable");
+
+    const businessPayload = businessResponse ? await businessResponse.json() : null;
+    const organizationPayload = organizationResponse ? await organizationResponse.json() : null;
+    const businesses = (Array.isArray(businessPayload?.items) ? businessPayload.items : [])
+      .map((item: PublicBusiness) => ({ item, score: relevanceScore([item.name, item.category, item.address, item.offer, item.discount], terms) }))
+      .filter(({ score }: { score: number }) => score > 0)
+      .sort((a: { score: number }, b: { score: number }) => b.score - a.score)
+      .slice(0, 6);
+    const organizations = (Array.isArray(organizationPayload?.items) ? organizationPayload.items : [])
+      .map((item: PublicOrganization) => ({ item, score: relevanceScore([item.name, item.type, item.category, item.location, item.description], terms) }))
+      .filter(({ score }: { score: number }) => score > 0)
+      .sort((a: { score: number }, b: { score: number }) => b.score - a.score)
+      .slice(0, 6);
+
+    const lines = [
+      ...businesses.map(({ item }: { item: PublicBusiness }) => `• ${item.name || "Local business"}${item.category ? ` — ${item.category}` : ""}${item.address ? ` — ${item.address}` : ""}`),
+      ...organizations.map(({ item }: { item: PublicOrganization }) => `• ${item.name || "Community organization"}${item.category || item.type ? ` — ${item.category || item.type}` : ""}${item.location ? ` — ${item.location}` : ""}`),
+    ];
+    if (!lines.length) {
+      return {
+        id: Date.now(), role: "assistant",
+        text: "I could not find an approved public listing matching that request. Try a broader category, service, organization type, or location.",
+        links: [{ label: "Browse businesses", href: "/businesses" }, { label: "Browse organizations", href: "/community-organizations" }],
+      };
+    }
+    return {
+      id: Date.now(), role: "assistant",
+      text: `Here are approved public listings that match your request:\n\n${lines.join("\n")}`,
+      links: [
+        ...businesses.filter(({ item }: { item: PublicBusiness }) => item.id).map(({ item }: { item: PublicBusiness }) => ({ label: String(item.name || "View business"), href: `/businesses/${item.id}` })),
+        ...organizations.filter(({ item }: { item: PublicOrganization }) => item.id).map(({ item }: { item: PublicOrganization }) => ({ label: String(item.name || "View organization"), href: `/community-organizations/${item.id}` })),
+      ].slice(0, 8),
+    };
+  } catch {
+    return {
+      id: Date.now(), role: "assistant",
+      text: "I could not load the approved public directories right now. You can browse them directly using the links below.",
+      links: [{ label: "Browse businesses", href: "/businesses" }, { label: "Browse organizations", href: "/community-organizations" }],
+    };
+  }
+}
 
 function localDate(value: Date) {
   return new Intl.DateTimeFormat("en-CA", {
@@ -181,9 +297,22 @@ export default function PublicHelpAssistant() {
     setMessages((current) => [...current, { id: exchangeId, role: "user", text: clean }]);
     setQuestion("");
     setBusy(true);
-    const response = /event|what.*happening|this week/i.test(clean)
-      ? await eventsThisWeek()
-      : standardAnswer(clean, site.name);
+    const normalized = clean.toLowerCase();
+    let response: AssistantMessage;
+    if (isReadOnlyViolation(normalized)) {
+      response = {
+        id: Date.now(),
+        role: "assistant",
+        text: "I’m a read-only assistant and cannot create, edit, approve, publish, or delete anything. I can safely show approved public information or direct you to the appropriate account page or SDTV contact.",
+        links: [{ label: "Open My Hub", href: "/my-hub" }, { label: "Contact SDTV", href: "/contact" }],
+      };
+    } else if (isWeeklyEventQuestion(normalized)) {
+      response = await eventsThisWeek();
+    } else if (isDirectoryQuestion(normalized)) {
+      response = await directorySearch(clean);
+    } else {
+      response = standardAnswer(clean, site.name);
+    }
     setMessages((current) => [...current, { ...response, id: exchangeId + 1 }]);
     setBusy(false);
   }
@@ -198,7 +327,7 @@ export default function PublicHelpAssistant() {
       {open && (
         <section className="mb-3 flex max-h-[min(680px,78vh)] w-[min(390px,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white text-slate-950 shadow-2xl" aria-label={`${site.shortName} website assistant`}>
           <header className="flex items-start justify-between bg-slate-950 p-5 text-white">
-            <div><p className="text-xs font-black uppercase tracking-[.18em] text-pink-300">Website assistant</p><h2 className="mt-1 text-xl font-black">Ask {site.shortName}</h2><p className="mt-1 text-xs text-slate-300">Live events and approved SDTV information</p></div>
+            <div><p className="text-xs font-black uppercase tracking-[.18em] text-pink-300">Read-only website assistant</p><h2 className="mt-1 text-xl font-black">Ask {site.shortName}</h2><p className="mt-1 text-xs text-slate-300">Approved public events, businesses, and organizations</p></div>
             <button type="button" onClick={() => setOpen(false)} className="rounded-full bg-white/10 px-3 py-2 font-black" aria-label="Close website assistant">×</button>
           </header>
           <div className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4" aria-live="polite">
@@ -213,7 +342,7 @@ export default function PublicHelpAssistant() {
           <div className="border-t bg-white p-4">
             <div className="mb-3 flex gap-2 overflow-x-auto pb-1">{quickQuestions.map((item) => <button key={item} type="button" onClick={() => void ask(item)} className="shrink-0 rounded-full border border-pink-200 bg-pink-50 px-3 py-2 text-xs font-black text-pink-700">{item}</button>)}</div>
             <form onSubmit={submit} className="flex gap-2"><label htmlFor="sdtv-assistant-question" className="sr-only">Ask SDTV a question</label><input id="sdtv-assistant-question" value={question} maxLength={300} onChange={(event) => setQuestion(event.target.value)} placeholder="Ask about events, volunteering…" className="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-3 text-sm" /><button disabled={busy || !question.trim()} className="rounded-xl bg-pink-600 px-4 py-3 text-sm font-black text-white disabled:opacity-50">Send</button></form>
-            <p className="mt-2 text-[11px] leading-4 text-slate-500">Answers use public SDTV information. Confirm important details on the linked page or with SDTV.</p>
+            <p className="mt-2 text-[11px] leading-4 text-slate-500">Read-only: this assistant searches approved public information and cannot create, edit, approve, publish, or delete records.</p>
           </div>
         </section>
       )}
