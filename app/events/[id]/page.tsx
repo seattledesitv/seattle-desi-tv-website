@@ -129,6 +129,7 @@ export default function EventDetailPage() {
   const [message, setMessage] = useState("Loading event...");
   const [actionMessage, setActionMessage] = useState("");
   const [shareMessage, setShareMessage] = useState("");
+  const [mediaPartnerMessage, setMediaPartnerMessage] = useState("");
   const [event, setEvent] = useState<any>(null);
   const [relatedEvents, setRelatedEvents] = useState<any[]>([]);
   const [eventOrganizations, setEventOrganizations] = useState<any[]>([]);
@@ -443,12 +444,14 @@ export default function EventDetailPage() {
                 <button onClick={shareNative} className="rounded-xl border border-white/70 px-5 py-3 font-black">
                   Share Event
                 </button>
+                {isOwner ? <a href={`/events/media-partner?event=${event.id}`} className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white">Invite SDTV as Media Partner</a> : <button type="button" onClick={() => setMediaPartnerMessage(user ? "Only the event organizer or a verified manager of its linked organization can invite SDTV as a media partner." : "Please sign in as the event organizer or a verified organization manager to invite SDTV as a media partner.")} className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white">Invite SDTV as Media Partner</button>}
                 {canAdmin && (
                   <a href={`/studio/events/${event.id}`} className="rounded-xl border border-pink-300 px-5 py-3 font-black text-pink-200">
                     Open in Studio
                   </a>
                 )}
               </div>
+              {mediaPartnerMessage && <p className="mt-4 max-w-3xl rounded-xl border border-amber-300/40 bg-amber-200/10 px-4 py-3 text-sm font-bold text-amber-100" role="status">{mediaPartnerMessage}</p>}
             </div>
           </section>
 
@@ -646,11 +649,6 @@ export default function EventDetailPage() {
                 <div className="rounded-3xl border bg-white p-6 text-center shadow-sm">
                   <h2 className="text-xl font-black">Scan to Share</h2>
                   <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(eventUrl)}`} alt={`QR code for ${event.title}`} className="mx-auto mt-4 h-40 w-40 rounded-xl border bg-white p-2" />
-                </div>
-                <div className="rounded-3xl border border-pink-200 bg-pink-50 p-6 shadow-sm">
-                  <h2 className="text-xl font-black text-pink-950">Invite SDTV for Media Coverage</h2>
-                  <p className="mt-2 text-sm leading-6 text-pink-900">Request an SDTV media partnership, Instagram promotion, and consideration for radio or in-person coverage.</p>
-                  {isOwner ? <a href={`/events/media-partner?event=${event.id}`} className="mt-4 block rounded-xl bg-pink-600 px-4 py-3 text-center font-black text-white">Request Media Partnership</a> : <button type="button" onClick={() => setActionMessage(user ? "Only the event organizer or a verified manager of its linked organization can request media coverage for this event." : "Please sign in as the event organizer or a verified organization manager to request media coverage.")} className="mt-4 w-full rounded-xl bg-pink-600 px-4 py-3 font-black text-white">Invite SDTV for Media Coverage</button>}
                 </div>
                 {isOwner && (
                   <div className="rounded-3xl border bg-white p-6 shadow-sm">

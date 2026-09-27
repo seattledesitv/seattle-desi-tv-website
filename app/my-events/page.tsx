@@ -726,7 +726,7 @@ export default function MyEventsPage() {
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <a href={`/events/media-partner?event=${selectedRow.id}`} className="rounded-xl border border-pink-600 px-5 py-3 font-black text-pink-700">Invite SDTV for Media Coverage</a>
+                          <a href={`/events/media-partner?event=${selectedRow.id}`} className="rounded-xl border border-pink-600 px-5 py-3 font-black text-pink-700">Invite SDTV as Media Partner</a>
                           <button
                             onClick={() => startEdit(selectedRow)}
                             className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white"
