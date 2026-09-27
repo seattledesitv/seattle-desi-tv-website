@@ -740,6 +740,7 @@ export default function EventsPageClient({ initialEvents = [] }: { initialEvents
               )}
             </div>
             <div className="flex flex-wrap gap-3">
+              <a href="/events/media-partner" className="rounded-xl bg-slate-950 px-5 py-3 font-bold text-white">Invite SDTV as Media Partner</a>
               <button type="button" onClick={() => selectEventPeriod(eventPeriod === "upcoming" ? "previous" : "upcoming")} className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-800">
                 {eventPeriod === "upcoming" ? "Previous Events" : "Upcoming Events"}
               </button>
