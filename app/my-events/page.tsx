@@ -725,12 +725,15 @@ export default function MyEventsPage() {
                             · {selectedRow.location || "No location"}
                           </p>
                         </div>
-                        <button
-                          onClick={() => startEdit(selectedRow)}
-                          className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white"
-                        >
-                          Edit
-                        </button>
+                        <div className="flex flex-wrap gap-2">
+                          <a href={`/events/media-partner?event=${selectedRow.id}`} className="rounded-xl border border-pink-600 px-5 py-3 font-black text-pink-700">Invite SDTV for Media Coverage</a>
+                          <button
+                            onClick={() => startEdit(selectedRow)}
+                            className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white"
+                          >
+                            Edit
+                          </button>
+                        </div>
                       </div>
                       {eventImages(selectedRow).length > 0 && (
                         <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3">

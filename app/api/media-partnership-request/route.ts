@@ -35,6 +35,7 @@ export async function POST(request: Request) {
     const site = await resolveCurrentSite();
     if (!site.id) return NextResponse.json({ ok: false, error: "Site context is not configured." }, { status: 500 });
     const organizationId = clean(form.get("organization_id")); const eventId = clean(form.get("event_id"));
+    if ((organizationId && !/^[0-9a-f-]{36}$/i.test(organizationId)) || (eventId && !/^[0-9a-f-]{36}$/i.test(eventId))) return NextResponse.json({ ok: false, error: "The selected organization or event is invalid." }, { status: 400 });
     const organizationName = clean(form.get("organization_name")); const contactName = clean(form.get("contact_name")); const contactEmail = clean(form.get("contact_email")).toLowerCase();
     const organizationCategory = clean(form.get("organization_category")); const organizationLocation = clean(form.get("organization_location")); const organizationWebsite = clean(form.get("organization_website")); const organizationDescription = clean(form.get("organization_description"));
     const contactPhone = clean(form.get("contact_phone")); const eventTitle = clean(form.get("event_title")); const eventDate = clean(form.get("event_date"));
@@ -46,16 +47,46 @@ export async function POST(request: Request) {
     if (!(flyer instanceof File) || !flyer.size) return NextResponse.json({ ok: false, error: "Upload the event flyer showing the SDTV media-partner logo." }, { status: 400 });
     if (flyer.size > MAX_FILE_SIZE || !allowedTypes.has(flyer.type)) return NextResponse.json({ ok: false, error: "Flyer must be a PDF, JPG, PNG, or WebP file no larger than 10 MB." }, { status: 400 });
     const organizationImage = form.get("organization_image");
-    if (!organizationId && (!(organizationImage instanceof File) || !organizationImage.size)) return NextResponse.json({ ok: false, error: "Upload an organization logo or image when adding a new organization." }, { status: 400 });
+    if (!organizationId && !eventId && (!(organizationImage instanceof File) || !organizationImage.size)) return NextResponse.json({ ok: false, error: "Upload an organization logo or image when adding a new organization." }, { status: 400 });
     if (organizationImage instanceof File && (organizationImage.size > MAX_FILE_SIZE || !new Set(["image/jpeg", "image/png", "image/webp"]).has(organizationImage.type))) return NextResponse.json({ ok: false, error: "Organization image must be a JPG, PNG, or WebP file no larger than 10 MB." }, { status: 400 });
-    if (!organizationId && (!organizationCategory || !organizationLocation)) return NextResponse.json({ ok: false, error: "Enter a category and location for the new organization." }, { status: 400 });
+    if (!organizationId && !eventId && (!organizationCategory || !organizationLocation)) return NextResponse.json({ ok: false, error: "Enter a category and location for the new organization." }, { status: 400 });
     if (!eventId && !flyer.type.startsWith("image/")) return NextResponse.json({ ok: false, error: "A new event needs a JPG, PNG, or WebP flyer so it can appear on the Events page." }, { status: 400 });
+
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ""; const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || ""; const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+    if (!url || !key || !anonKey) throw new Error("Database service is not configured.");
+    const db = createClient(url, key, { auth: { persistSession: false } });
+    if (eventId) {
+      const sessionClient = createClient(url, anonKey, { global: { headers: { Authorization: request.headers.get("authorization") || "" } } });
+      const userResult = await sessionClient.auth.getUser(); const user = userResult.data?.user || null;
+      if (!user) return NextResponse.json({ ok: false, error: "Please sign in as the event organizer to request media coverage for this event." }, { status: 401 });
+      const ownedEvent = await db.from("events").select("id,created_by").eq("id", eventId).eq("site_id", site.id).maybeSingle();
+      if (ownedEvent.error) throw ownedEvent.error;
+      if (!ownedEvent.data) return NextResponse.json({ ok: false, error: "The selected event is not available for this site." }, { status: 400 });
+      let mayManage = ownedEvent.data.created_by === user.id;
+      if (!mayManage) {
+        const links = await db.from("event_organizations").select("organization_id").eq("site_id", site.id).eq("event_id", eventId);
+        if (links.error) throw links.error;
+        const organizationIds = (links.data || []).map((row: any) => row.organization_id).filter(Boolean);
+        if (organizationIds.length) {
+          const manager = await db.from("organization_managers").select("id").eq("site_id", site.id).eq("user_id", user.id).eq("active", true).in("organization_id", organizationIds).limit(1).maybeSingle();
+          if (manager.error) throw manager.error;
+          mayManage = Boolean(manager.data);
+        }
+      }
+      if (!mayManage) return NextResponse.json({ ok: false, error: "Only the event organizer or a verified manager of its linked organization can request media coverage for this event." }, { status: 403 });
+      if (organizationId) {
+        const linkedOrganization = await db.from("event_organizations").select("id").eq("site_id", site.id).eq("event_id", eventId).eq("organization_id", organizationId).maybeSingle();
+        if (linkedOrganization.error) throw linkedOrganization.error;
+        if (!linkedOrganization.data) {
+          const managedOrganization = await db.from("organization_managers").select("id").eq("site_id", site.id).eq("organization_id", organizationId).eq("user_id", user.id).eq("active", true).maybeSingle();
+          if (managedOrganization.error) throw managedOrganization.error;
+          if (!managedOrganization.data) return NextResponse.json({ ok: false, error: "You can only attach an organization you are verified to manage." }, { status: 403 });
+        }
+      }
+    }
 
     const id = crypto.randomUUID(); const fileName = safeName(flyer.name); const filePath = `media-partnerships/${site.code}/${eventDate.slice(0, 4)}/${id}-${fileName}`;
     await r2().send(new PutObjectCommand({ Bucket: process.env.R2_BUCKET_NAME || "sdtv-private", Key: filePath, Body: Buffer.from(await flyer.arrayBuffer()), ContentType: flyer.type, Metadata: { requestId: id } }));
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ""; const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "";
-    if (!url || !key) throw new Error("Database service is not configured.");
-    const db = createClient(url, key, { auth: { persistSession: false } });
     const flyerPublicUrl = flyer.type.startsWith("image/") ? await publicImage(flyer, `sdtv/${site.code}/media-partnership-events`) : null;
     let resolvedOrganizationId = /^[0-9a-f-]{36}$/i.test(organizationId) ? organizationId : ""; let organizationImageUrl: string | null = null;
     if (resolvedOrganizationId) {
@@ -70,7 +101,7 @@ export async function POST(request: Request) {
     }
     let resolvedEventId = /^[0-9a-f-]{36}$/i.test(eventId) ? eventId : "";
     if (resolvedEventId) {
-      const selectedEvent = await db.from("events").select("id").eq("id", resolvedEventId).eq("site_id", site.id).eq("status", "approved").maybeSingle();
+      const selectedEvent = await db.from("events").select("id").eq("id", resolvedEventId).eq("site_id", site.id).maybeSingle();
       if (selectedEvent.error) throw selectedEvent.error;
       if (!selectedEvent.data) return NextResponse.json({ ok: false, error: "The selected event is not available for this site." }, { status: 400 });
     }
