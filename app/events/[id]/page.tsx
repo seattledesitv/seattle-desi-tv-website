@@ -129,7 +129,6 @@ export default function EventDetailPage() {
   const [message, setMessage] = useState("Loading event...");
   const [actionMessage, setActionMessage] = useState("");
   const [shareMessage, setShareMessage] = useState("");
-  const [mediaPartnerMessage, setMediaPartnerMessage] = useState("");
   const [event, setEvent] = useState<any>(null);
   const [relatedEvents, setRelatedEvents] = useState<any[]>([]);
   const [eventOrganizations, setEventOrganizations] = useState<any[]>([]);
@@ -444,14 +443,13 @@ export default function EventDetailPage() {
                 <button onClick={shareNative} className="rounded-xl border border-white/70 px-5 py-3 font-black">
                   Share Event
                 </button>
-                {isOwner ? <a href={`/events/media-partner?event=${event.id}`} className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white">Invite SDTV as Media Partner</a> : <button type="button" onClick={() => setMediaPartnerMessage(user ? "Only the event organizer or a verified manager of its linked organization can invite SDTV as a media partner." : "Please sign in as the event organizer or a verified organization manager to invite SDTV as a media partner.")} className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white">Invite SDTV as Media Partner</button>}
+                {isOwner && <a href={`/events/media-partner?event=${event.id}`} className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white">Invite SDTV as Media Partner</a>}
                 {canAdmin && (
                   <a href={`/studio/events/${event.id}`} className="rounded-xl border border-pink-300 px-5 py-3 font-black text-pink-200">
                     Open in Studio
                   </a>
                 )}
               </div>
-              {mediaPartnerMessage && <p className="mt-4 max-w-3xl rounded-xl border border-amber-300/40 bg-amber-200/10 px-4 py-3 text-sm font-bold text-amber-100" role="status">{mediaPartnerMessage}</p>}
             </div>
           </section>
 
