@@ -196,7 +196,7 @@ export default function EventDetailPage() {
     setEventOrganizations(data || []);
   }
   async function loadEvent() {
-    const { data, error } = await forSite(supabase.from("events").select("id,title,date,end_date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by,status,crew_member_ids"), site.id).eq("id", eventId).maybeSingle();
+    const { data, error } = await forSite(supabase.from("events").select("id,title,date,end_date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by,status,crew_member_ids,media_partner_status"), site.id).eq("id", eventId).maybeSingle();
     if (error) {
       setMessage(`Could not load event: ${error.message}`);
       return null;
@@ -416,6 +416,7 @@ export default function EventDetailPage() {
               <div className="mt-5 flex flex-wrap gap-2">
                 <span className={`rounded-full px-3 py-1 text-sm font-black ${eventEnded ? "bg-slate-700 text-slate-200" : "bg-pink-600 text-white"}`}>{countdown}</span>
                 {(hasInternalTickets || event.ticket_url) && !eventEnded && <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-black text-emerald-200 ring-1 ring-emerald-300/40">Tickets / registration</span>}
+                {event.media_partner_status === "approved" && <span className="rounded-full bg-pink-500/20 px-3 py-1 text-sm font-black text-pink-100 ring-1 ring-pink-300/40">SDTV Media Partner</span>}
               </div>
               <h1 className="mt-5 max-w-5xl text-4xl font-black md:text-6xl">{event.title}</h1>
               <p className="mt-4 text-lg text-slate-300">

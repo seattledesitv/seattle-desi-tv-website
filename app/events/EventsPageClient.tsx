@@ -32,6 +32,7 @@ type EventRow = {
   local_end_time?: string | null;
   event_timezone?: string | null;
   created_by?: string | null;
+  media_partner_status?: string | null;
 };
 type InsertedEvent = {
   id: string;
@@ -237,7 +238,7 @@ export default function EventsPageClient({ initialEvents = [] }: { initialEvents
   }, [organizations, organizationSearch]);
 
   async function loadEvents() {
-    const { data, error } = await forSite(supabase.from("events").select("id,title,date,end_date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by"), site.id).eq("status", "approved").order("date", { ascending: true });
+    const { data, error } = await forSite(supabase.from("events").select("id,title,date,end_date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by,media_partner_status"), site.id).eq("status", "approved").order("date", { ascending: true });
     if (error) {
       setEvents([]);
       setMessage(`Could not load events: ${error.message}`);
@@ -675,7 +676,7 @@ export default function EventsPageClient({ initialEvents = [] }: { initialEvents
       <article className="flex h-full flex-col overflow-hidden rounded-2xl border bg-white shadow-sm">
         <EventImageSlider event={event} />
         <div className="flex flex-1 flex-col p-5">
-          {isPast && <span className="mb-3 w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase text-slate-600">Previous event</span>}
+          <div className="mb-3 flex flex-wrap gap-2">{isPast && <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase text-slate-600">Previous event</span>}{event.media_partner_status === "approved" && <span className="w-fit rounded-full bg-pink-100 px-3 py-1 text-xs font-black uppercase text-pink-800">SDTV Media Partner</span>}</div>
           <h2 className="text-xl font-black">{event.title}</h2>
           <p className="mt-1 text-gray-500">
             {formatEventDateRange(event.date, event.end_date)} · {formatEventTime(event.local_start_time, event.local_end_time, event.event_timezone)} · {event.location}

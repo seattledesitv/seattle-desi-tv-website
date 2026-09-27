@@ -24,7 +24,18 @@ create table if not exists public.media_partnership_requests (
 
 alter table public.media_partnership_requests
   add column if not exists organization_id uuid references public.community_organizations(id) on delete set null,
-  add column if not exists event_id uuid references public.events(id) on delete set null;
+  add column if not exists event_id uuid references public.events(id) on delete set null,
+  add column if not exists organization_image_url text,
+  add column if not exists event_flyer_public_url text;
+
+alter table public.events
+  add column if not exists media_partner_status text not null default 'none',
+  add column if not exists media_partner_flyer_url text,
+  add column if not exists media_partner_approved_at timestamptz,
+  add column if not exists media_partner_approved_by text;
+
+create index if not exists events_site_media_partner_idx
+  on public.events (site_id, media_partner_status, date desc);
 
 create index if not exists media_partnership_requests_site_status_idx
   on public.media_partnership_requests (site_id, status, created_at desc);

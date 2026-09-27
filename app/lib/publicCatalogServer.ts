@@ -21,7 +21,7 @@ export async function getInitialPublicEvents(siteId: string | null) {
   try {
     const query = db
       .from("events")
-      .select("id,title,date,end_date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by")
+      .select("id,title,date,end_date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by,media_partner_status")
       .eq("status", "approved")
       .order("date", { ascending: true });
     const { data, error } = await forSite(query, siteId);
