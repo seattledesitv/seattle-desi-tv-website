@@ -4,6 +4,6 @@ import { resolveCurrentSite } from "./lib/sites/siteResolver";
 
 export default async function HomePage() {
   const site = await resolveCurrentSite();
-  const initialData = await getInitialHomepageData(site.id);
+  const initialData = await getInitialHomepageData(site.id, site.timezone);
   return <HomePageClient initialData={initialData} />;
 }

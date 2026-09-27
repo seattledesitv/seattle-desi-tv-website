@@ -61,7 +61,13 @@ export async function getInitialPublicBusinesses(siteId: string | null) {
   }
 }
 
-export async function getInitialHomepageData(siteId: string | null) {
+function dateInTimeZone(timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: timezone || "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
+export async function getInitialHomepageData(siteId: string | null, timezone = "America/Los_Angeles") {
   const db = publicClient();
   const empty = {
     events: [],
@@ -71,9 +77,9 @@ export async function getInitialHomepageData(siteId: string | null) {
   };
   if (!db) return empty;
   try {
-    const today = new Date().toISOString().split("T")[0];
+    const today = dateInTimeZone(timezone);
     const eventsQuery = forSite(
-      db.from("events").select("id,title,date,location,image,image_urls").eq("status", "approved").gte("date", today).order("date", { ascending: true }).limit(12),
+      db.from("events").select("id,title,date,end_date,location,image,image_urls").eq("status", "approved").or(`date.gte.${today},end_date.gte.${today}`).order("date", { ascending: true }).limit(12),
       siteId,
     );
     const businessesQuery = forSite(

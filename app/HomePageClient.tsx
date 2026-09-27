@@ -12,6 +12,7 @@ import { getSupabaseBrowserClient } from "./lib/supabaseBrowser";
 import { useCurrentSite } from "./lib/sites/SiteContext";
 import { forSite } from "./lib/sites/query";
 import { optimizedImageUrl } from "./components/SafeImage";
+import { effectiveEventEnd, parseEventDate } from "./lib/eventDates";
 
 const supabase = getSupabaseBrowserClient();
 const SPONSOR_TIERS = [
@@ -101,6 +102,7 @@ type EventRow = {
   id: string;
   title: string;
   date: string;
+  end_date?: string | null;
   location: string;
   image?: string | null;
   image_urls?: string[] | null;
@@ -225,8 +227,13 @@ function isWithinDateWindow(row: any, today: string) {
     (!row.end_date || row.end_date >= today)
   );
 }
-function currentWeekBounds() {
-  const today = new Date();
+function dateInTimeZone(timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: timezone || "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+function currentWeekBounds(timezone: string) {
+  const today = parseEventDate(dateInTimeZone(timezone)) || new Date();
   today.setHours(0, 0, 0, 0);
   const monday = new Date(today);
   monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
@@ -585,7 +592,7 @@ export default function HomePageClient({ initialData = {} }: { initialData?: Ini
     };
   }
   async function loadHomepageHeroes() {
-    const today = new Date().toISOString().split("T")[0];
+    const today = dateInTimeZone(site.timezone);
     const [featuredEventsResult, heroBannerResult, festivalResult, featuredOfferResult] = await Promise.all([
       forSite(
         supabase.from("events").select("id,title,date,location,image,image_urls,featured,featured_order,hero_buttons"),
@@ -634,11 +641,11 @@ export default function HomePageClient({ initialData = {} }: { initialData?: Ini
       forSite(
         supabase
           .from("events")
-          .select("id,title,date,location,image,image_urls"),
+          .select("id,title,date,end_date,location,image,image_urls"),
         site.id,
       )
         .eq("status", "approved")
-        .gte("date", today)
+        .or(`date.gte.${today},end_date.gte.${today}`)
         .order("date", { ascending: true })
         .limit(12),
       forSite(
@@ -834,17 +841,18 @@ export default function HomePageClient({ initialData = {} }: { initialData?: Ini
     [sectionSettings],
   );
   const groupedEvents = useMemo(() => {
-    const { monday, sunday } = currentWeekBounds();
+    const { monday, sunday } = currentWeekBounds(site.timezone);
     return {
       thisWeek: events.filter((event) => {
-        const date = new Date(`${event.date}T00:00:00`);
-        return date >= monday && date <= sunday;
+        const start = parseEventDate(event.date);
+        const end = effectiveEventEnd(event.date, event.end_date);
+        return Boolean(start && end && start <= sunday && end >= monday);
       }),
       later: events.filter(
-        (event) => new Date(`${event.date}T00:00:00`) > sunday,
+        (event) => Boolean(parseEventDate(event.date) && parseEventDate(event.date)! > sunday),
       ),
     };
-  }, [events]);
+  }, [events, site.timezone]);
   function renderSection(key: string) {
     if (key === "home") return <HeroCarousel key="home" items={heroItems} />;
     if (key === "stats")
