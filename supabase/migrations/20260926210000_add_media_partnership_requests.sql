@@ -1,6 +1,8 @@
 create table if not exists public.media_partnership_requests (
   id uuid primary key default gen_random_uuid(),
   site_id uuid not null references public.sites(id) on delete restrict,
+  organization_id uuid references public.community_organizations(id) on delete set null,
+  event_id uuid references public.events(id) on delete set null,
   organization_name text not null,
   contact_name text not null,
   contact_email text not null,
@@ -19,6 +21,10 @@ create table if not exists public.media_partnership_requests (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.media_partnership_requests
+  add column if not exists organization_id uuid references public.community_organizations(id) on delete set null,
+  add column if not exists event_id uuid references public.events(id) on delete set null;
 
 create index if not exists media_partnership_requests_site_status_idx
   on public.media_partnership_requests (site_id, status, created_at desc);

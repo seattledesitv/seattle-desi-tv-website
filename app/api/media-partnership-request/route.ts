@@ -26,6 +26,7 @@ export async function POST(request: Request) {
 
     const site = await resolveCurrentSite();
     if (!site.id) return NextResponse.json({ ok: false, error: "Site context is not configured." }, { status: 500 });
+    const organizationId = clean(form.get("organization_id")); const eventId = clean(form.get("event_id"));
     const organizationName = clean(form.get("organization_name")); const contactName = clean(form.get("contact_name")); const contactEmail = clean(form.get("contact_email")).toLowerCase();
     const contactPhone = clean(form.get("contact_phone")); const eventTitle = clean(form.get("event_title")); const eventDate = clean(form.get("event_date"));
     const eventLocation = clean(form.get("event_location")); const eventUrl = clean(form.get("event_url")); const eventType = clean(form.get("event_type")); const notes = clean(form.get("notes"));
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ""; const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "";
     if (!url || !key) throw new Error("Database service is not configured.");
     const db = createClient(url, key, { auth: { persistSession: false } });
-    const { error } = await db.from("media_partnership_requests").insert({ id, site_id: site.id, organization_name: organizationName, contact_name: contactName, contact_email: contactEmail, contact_phone: contactPhone || null, event_title: eventTitle, event_date: eventDate, event_location: eventLocation, event_url: eventUrl || null, event_type: eventType, notes: notes || null, flyer_file_path: filePath, flyer_file_name: fileName, flyer_mime_type: flyer.type, flyer_file_size: flyer.size });
+    const { error } = await db.from("media_partnership_requests").insert({ id, site_id: site.id, organization_id: /^[0-9a-f-]{36}$/i.test(organizationId) ? organizationId : null, event_id: /^[0-9a-f-]{36}$/i.test(eventId) ? eventId : null, organization_name: organizationName, contact_name: contactName, contact_email: contactEmail, contact_phone: contactPhone || null, event_title: eventTitle, event_date: eventDate, event_location: eventLocation, event_url: eventUrl || null, event_type: eventType, notes: notes || null, flyer_file_path: filePath, flyer_file_name: fileName, flyer_mime_type: flyer.type, flyer_file_size: flyer.size });
     if (error) throw error;
 
     if (process.env.RESEND_API_KEY) {
