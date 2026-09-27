@@ -26,7 +26,10 @@ alter table public.media_partnership_requests
   add column if not exists organization_id uuid references public.community_organizations(id) on delete set null,
   add column if not exists event_id uuid references public.events(id) on delete set null,
   add column if not exists organization_image_url text,
-  add column if not exists event_flyer_public_url text;
+  add column if not exists event_flyer_public_url text,
+  add column if not exists media_consent_accepted boolean not null default false,
+  add column if not exists media_consent_accepted_at timestamptz,
+  add column if not exists media_consent_version text;
 
 alter table public.events
   add column if not exists media_partner_status text not null default 'none',

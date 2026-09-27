@@ -40,9 +40,11 @@ export async function POST(request: Request) {
     const organizationCategory = clean(form.get("organization_category")); const organizationLocation = clean(form.get("organization_location")); const organizationWebsite = clean(form.get("organization_website")); const organizationDescription = clean(form.get("organization_description"));
     const contactPhone = clean(form.get("contact_phone")); const eventTitle = clean(form.get("event_title")); const eventDate = clean(form.get("event_date"));
     const eventLocation = clean(form.get("event_location")); const eventUrl = clean(form.get("event_url")); const eventType = clean(form.get("event_type")); const notes = clean(form.get("notes"));
+    const mediaConsentAccepted = clean(form.get("media_consent_accepted")) === "yes";
     if (!organizationName || !contactName || !eventTitle || !eventDate || !eventLocation) return NextResponse.json({ ok: false, error: "Please complete all required event and contact fields." }, { status: 400 });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) return NextResponse.json({ ok: false, error: "Enter a valid contact email." }, { status: 400 });
     if (!new Set(["nonprofit_community", "private_ticketed"]).has(eventType)) return NextResponse.json({ ok: false, error: "Select the event type." }, { status: 400 });
+    if (!mediaConsentAccepted) return NextResponse.json({ ok: false, error: "Please review and accept the Media Coverage & Consent terms." }, { status: 400 });
     const flyer = form.get("flyer");
     if (!(flyer instanceof File) || !flyer.size) return NextResponse.json({ ok: false, error: "Upload the event flyer showing the SDTV media-partner logo." }, { status: 400 });
     if (flyer.size > MAX_FILE_SIZE || !allowedTypes.has(flyer.type)) return NextResponse.json({ ok: false, error: "Flyer must be a PDF, JPG, PNG, or WebP file no larger than 10 MB." }, { status: 400 });
@@ -120,7 +122,7 @@ export async function POST(request: Request) {
         if (linkResult.error) throw linkResult.error;
       }
     }
-    const { error } = await db.from("media_partnership_requests").insert({ id, site_id: site.id, organization_id: resolvedOrganizationId || null, event_id: resolvedEventId || null, organization_name: organizationName, organization_image_url: organizationImageUrl, event_flyer_public_url: flyerPublicUrl, contact_name: contactName, contact_email: contactEmail, contact_phone: contactPhone || null, event_title: eventTitle, event_date: eventDate, event_location: eventLocation, event_url: eventUrl || null, event_type: eventType, notes: notes || null, flyer_file_path: filePath, flyer_file_name: fileName, flyer_mime_type: flyer.type, flyer_file_size: flyer.size });
+    const { error } = await db.from("media_partnership_requests").insert({ id, site_id: site.id, organization_id: resolvedOrganizationId || null, event_id: resolvedEventId || null, organization_name: organizationName, organization_image_url: organizationImageUrl, event_flyer_public_url: flyerPublicUrl, contact_name: contactName, contact_email: contactEmail, contact_phone: contactPhone || null, event_title: eventTitle, event_date: eventDate, event_location: eventLocation, event_url: eventUrl || null, event_type: eventType, notes: notes || null, flyer_file_path: filePath, flyer_file_name: fileName, flyer_mime_type: flyer.type, flyer_file_size: flyer.size, media_consent_accepted: true, media_consent_accepted_at: new Date().toISOString(), media_consent_version: "2026-09-26" });
     if (error) throw error;
 
     if (process.env.RESEND_API_KEY) {
