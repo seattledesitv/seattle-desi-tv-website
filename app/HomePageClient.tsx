@@ -645,9 +645,8 @@ export default function HomePageClient({ initialData = {} }: { initialData?: Ini
         site.id,
       )
         .eq("status", "approved")
-        .or(`date.gte.${today},end_date.gte.${today}`)
         .order("date", { ascending: true })
-        .limit(12),
+        .limit(250),
       forSite(
         supabase
           .from("local_businesses")
@@ -732,7 +731,7 @@ export default function HomePageClient({ initialData = {} }: { initialData?: Ini
         ),
       ),
     ]);
-    setEvents(eventsResult.data || []);
+    setEvents((eventsResult.data || []).filter((event: EventRow) => String(event.end_date || event.date || "") >= today).slice(0, 12));
     setBusinesses(businessesResult.data || []);
     setTeam(teamResult.data || []);
     if (!featuredSocialResult.error && Array.isArray(featuredSocialResult.data))

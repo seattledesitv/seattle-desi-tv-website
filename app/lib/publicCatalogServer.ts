@@ -79,7 +79,7 @@ export async function getInitialHomepageData(siteId: string | null, timezone = "
   try {
     const today = dateInTimeZone(timezone);
     const eventsQuery = forSite(
-      db.from("events").select("id,title,date,end_date,location,image,image_urls").eq("status", "approved").or(`date.gte.${today},end_date.gte.${today}`).order("date", { ascending: true }).limit(12),
+      db.from("events").select("id,title,date,end_date,location,image,image_urls").eq("status", "approved").order("date", { ascending: true }).limit(250),
       siteId,
     );
     const businessesQuery = forSite(
@@ -104,7 +104,7 @@ export async function getInitialHomepageData(siteId: string | null, timezone = "
       count(forSite(db.from("radio_team_members").select("id", { count: "exact", head: true }), siteId)),
     ]);
     return {
-      events: eventsResult.error ? [] : eventsResult.data || [],
+      events: eventsResult.error ? [] : (eventsResult.data || []).filter((event: any) => String(event.end_date || event.date || "") >= today).slice(0, 12),
       businesses: businessesResult.error ? [] : businessesResult.data || [],
       socialRows: socialResult.error ? [] : socialResult.data || [],
       counts: { events, businesses, coverage, team, radio },
