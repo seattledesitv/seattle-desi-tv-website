@@ -621,7 +621,7 @@ export default function HomePageClient({ initialData = {} }: { initialData?: Ini
   }
   async function loadDynamicHomepage() {
     setLoadingDynamic(true);
-    const today = new Date().toISOString().split("T")[0];
+    const today = dateInTimeZone(site.timezone);
     const [
       eventsResult,
       businessesResult,
