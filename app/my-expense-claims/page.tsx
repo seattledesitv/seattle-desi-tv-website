@@ -59,7 +59,9 @@ export default function MyExpenseClaimsPage() {
   const [message, setMessage] = useState("Checking team access...");
   const [rows, setRows] = useState<any[]>([]);
   const [form, setForm] = useState(blankForm);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [editingId, setEditingId] = useState("");
+  const [updateNote, setUpdateNote] = useState("");
   const isMileage = form.expense_type === "mileage";
   const calculatedMileage =
     Number(form.mileage_miles || 0) * Number(form.mileage_rate || 0);
@@ -117,18 +119,21 @@ export default function MyExpenseClaimsPage() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!allowed || saving) return;
-    if (file && file.size > MAX_FILE_SIZE) {
-      setMessage("The receipt or proof must be 5 MB or smaller.");
+    if (files.some((file) => file.size > MAX_FILE_SIZE)) {
+      setMessage("Each receipt or proof must be 5 MB or smaller.");
       return;
     }
+    if (files.length > 10) { setMessage("Upload no more than 10 files per submission."); return; }
     setSaving(true);
     setMessage("Submitting your claim...");
     const body = new FormData();
     Object.entries(form).forEach(([key, value]) => body.append(key, value));
     body.append("reimbursement_status", "submitted");
-    if (file) body.append("bill_file", file);
+    if (editingId) body.append("id", editingId);
+    if (updateNote) body.append("update_note", updateNote);
+    files.forEach((file) => body.append("bill_files", file));
     const response = await fetch("/api/studio/finance/expenses", {
-      method: "POST",
+      method: editingId ? "PATCH" : "POST",
       headers: await authHeader(),
       body,
     });
@@ -138,22 +143,25 @@ export default function MyExpenseClaimsPage() {
       setMessage(result.error || "Could not submit your claim.");
       return;
     }
+    const wasEditing = Boolean(editingId);
     setForm(blankForm());
-    setFile(null);
+    setFiles([]);
+    setEditingId("");
+    setUpdateNote("");
     const input = document.getElementById(
       "claim-proof",
     ) as HTMLInputElement | null;
     if (input) input.value = "";
-    setMessage("Claim submitted for finance review.");
+    setMessage(wasEditing ? "Claim update saved and returned for finance review." : "Claim submitted for finance review.");
     await loadClaims();
   }
 
-  async function openProof(row: any) {
+  async function openProof(row: any, attachmentId?: string) {
     setMessage("Creating a private proof link...");
     const response = await fetch("/api/studio/finance/receipt-url", {
       method: "POST",
       headers: { ...(await authHeader()), "Content-Type": "application/json" },
-      body: JSON.stringify({ expense_id: row.id }),
+      body: JSON.stringify({ expense_id: row.id, attachment_id: attachmentId || null }),
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -163,6 +171,25 @@ export default function MyExpenseClaimsPage() {
     setMessage("Private proof link opened. It expires in 10 minutes.");
     window.open(result.url, "_blank", "noopener,noreferrer");
   }
+
+  function editClaim(row: any) {
+    setEditingId(row.id);
+    setUpdateNote("");
+    setFiles([]);
+    setForm({
+      expense_type: row.expense_type === "mileage" ? "mileage" : "expense",
+      expense_date: String(row.expense_date || "").split("T")[0],
+      vendor_name: String(row.vendor_name || ""), reimbursed_to: String(row.reimbursed_to || ""),
+      payout_method: String(row.payout_method || "zelle"), payout_details: String(row.payout_details || ""),
+      event_financial_type: String(row.event_financial_type || ""), category: String(row.category || "event"),
+      amount: String(row.amount || ""), mileage_miles: String(row.mileage_miles || ""),
+      mileage_rate: String(row.mileage_rate || DEFAULT_MILEAGE_RATE), description: String(row.description || ""),
+    });
+    setMessage("Editing your submitted claim. Saving creates a new revision and preserves the original.");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function cancelEdit() { setEditingId(""); setUpdateNote(""); setFiles([]); setForm(blankForm()); setMessage("Claim editing cancelled."); }
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -184,7 +211,8 @@ export default function MyExpenseClaimsPage() {
               onSubmit={submit}
               className="h-fit rounded-3xl bg-white p-6 text-slate-950 shadow-xl"
             >
-              <h2 className="text-2xl font-black">Submit a claim</h2>
+              <div className="flex items-center justify-between gap-3"><h2 className="text-2xl font-black">{editingId ? "Update claim" : "Submit a claim"}</h2>{editingId && <button type="button" onClick={cancelEdit} className="rounded-xl border px-3 py-2 text-sm font-black">Cancel</button>}</div>
+              {editingId && <div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm font-bold text-amber-900">Your original submission remains in the revision history. This update will be added as a new revision and returned to finance for review.</div>}
               <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-2">
                 {[
                   ["expense", "Bill / expense"],
@@ -387,24 +415,26 @@ export default function MyExpenseClaimsPage() {
                   </p>
                 </fieldset>
                 <label className="grid gap-1 font-bold md:col-span-2">
-                  Receipt or mileage proof
+                  Supporting files
                   <input
                     id="claim-proof"
                     type="file"
+                    multiple
                     accept="application/pdf,image/jpeg,image/png,image/webp"
-                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    onChange={(e) => setFiles(Array.from(e.target.files || []))}
                     className="rounded-xl border p-3 font-normal"
                   />
                   <span className="text-xs font-normal text-slate-500">
-                    PDF, JPG, PNG, or WebP; maximum 5 MB.
+                    Select up to 10 PDF, JPG, PNG, or WebP files; maximum 5 MB each and 25 MB combined. New files are added without removing earlier proofs.
                   </span>
                 </label>
+                {editingId && <label className="grid gap-1 font-bold md:col-span-2">What changed?<textarea required value={updateNote} onChange={(e) => setUpdateNote(e.target.value)} placeholder="Explain the correction or additional information" className="min-h-20 rounded-xl border p-3 font-normal" /></label>}
               </div>
               <button
                 disabled={saving}
                 className="mt-5 w-full rounded-xl bg-pink-600 px-5 py-4 font-black text-white disabled:opacity-60"
               >
-                {saving ? "Submitting..." : "Submit Claim for Approval"}
+                {saving ? "Saving..." : editingId ? "Save Update for Review" : "Submit Claim for Approval"}
               </button>
             </form>
 
@@ -451,7 +481,7 @@ export default function MyExpenseClaimsPage() {
                             row.payout_method || "not specified",
                           ).replaceAll("_", " ")}
                         </p>
-                        {row.bill_file_path && (
+                        {Array.isArray(row.attachments) && row.attachments.length > 0 ? <div className="mt-3"><p className="text-xs font-black uppercase text-slate-500">Supporting files ({row.attachments.length})</p><div className="mt-1 flex flex-wrap gap-2">{row.attachments.map((attachment: any) => <button key={attachment.id} type="button" onClick={() => openProof(row, attachment.id)} className="rounded-full bg-pink-50 px-3 py-2 text-xs font-black text-pink-700">{attachment.file_name}</button>)}</div></div> : row.bill_file_path && (
                           <button
                             type="button"
                             onClick={() => openProof(row)}
@@ -460,9 +490,11 @@ export default function MyExpenseClaimsPage() {
                             View uploaded proof
                           </button>
                         )}
+                        {Array.isArray(row.revisions) && row.revisions.length > 0 && <p className="mt-3 text-xs font-bold text-slate-500">Revision history: {row.revisions.length} version{row.revisions.length === 1 ? "" : "s"} · Last update {new Date(row.revisions[row.revisions.length - 1].created_at).toLocaleString()}</p>}
                       </div>
                       <strong className="text-lg">{money(row.amount)}</strong>
                     </div>
+                    {row.reimbursement_status !== "paid" && <button type="button" onClick={() => editClaim(row)} className="mt-4 rounded-xl border border-slate-300 px-4 py-2 text-sm font-black">Edit / add information</button>}
                   </article>
                 ))}
                 {!rows.length && (

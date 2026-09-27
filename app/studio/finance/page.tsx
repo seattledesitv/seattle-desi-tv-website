@@ -52,6 +52,8 @@ type FinanceRow = {
   reimbursement_status?: string | null;
   description?: string | null;
   bill_file_path?: string | null;
+  attachments?: Array<{ id: string; file_name: string; mime_type: string; file_size: number; created_at: string }>;
+  revisions?: Array<{ id: string; revision_number: number; change_note?: string | null; created_by_email?: string | null; created_at: string }>;
   bill_file_name?: string | null;
   created_by_email?: string | null;
 };
@@ -254,8 +256,8 @@ export default function StudioFinancePage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function openReceipt(row: FinanceRow) {
-    if (!row.bill_file_path) {
+  async function openReceipt(row: FinanceRow, attachmentId?: string) {
+    if (!row.bill_file_path && !attachmentId) {
       setActionMessage("No bill uploaded for this expense.");
       return;
     }
@@ -264,7 +266,7 @@ export default function StudioFinancePage() {
     const response = await fetch("/api/studio/finance/receipt-url", {
       method: "POST",
       headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ expense_id: row.id }),
+      body: JSON.stringify({ expense_id: row.id, attachment_id: attachmentId || null }),
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -323,7 +325,7 @@ export default function StudioFinancePage() {
   const mileageTotal = visibleRows
     .filter((row) => row.expense_type === "mileage")
     .reduce((sum, row) => sum + Number(row.amount || 0), 0);
-  const withBills = visibleRows.filter((row) => row.bill_file_path).length;
+  const withBills = visibleRows.filter((row) => row.bill_file_path || row.attachments?.length).length;
   const byCategory = CATEGORIES.map((category) => ({
     category,
     amount: visibleRows
@@ -835,13 +837,10 @@ export default function StudioFinancePage() {
                             )}
                           </td>
                           <td>
-                            {row.bill_file_path ? (
-                              <button
-                                onClick={() => openReceipt(row)}
-                                className="rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-white"
-                              >
-                                Open bill
-                              </button>
+                            {row.attachments?.length ? (
+                              <div className="grid gap-1">{row.attachments.map((attachment) => <button key={attachment.id} onClick={() => openReceipt(row, attachment.id)} title={attachment.file_name} className="max-w-36 truncate rounded-lg bg-slate-950 px-3 py-2 text-left text-xs font-black text-white">{attachment.file_name}</button>)}{row.revisions?.length ? <span className="text-xs font-bold text-slate-500">{row.revisions.length} revision{row.revisions.length === 1 ? "" : "s"}</span> : null}</div>
+                            ) : row.bill_file_path ? (
+                              <button onClick={() => openReceipt(row)} className="rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-white">Open bill</button>
                             ) : (
                               <span className="text-slate-400">No bill</span>
                             )}

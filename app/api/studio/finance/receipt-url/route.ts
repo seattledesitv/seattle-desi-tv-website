@@ -73,6 +73,7 @@ export async function POST(request: Request) {
     if (!site.id) return jsonError("Site context is not configured.", 500);
     const body = await request.json();
     const expenseId = String(body.expense_id || "").trim();
+    const attachmentId = String(body.attachment_id || "").trim();
     if (!expenseId) return jsonError("expense_id is required.");
     let query = auth.db
       .from("finance_expenses")
@@ -82,18 +83,27 @@ export async function POST(request: Request) {
     if (!auth.isSuperAdmin) query = query.eq("created_by", auth.user.id);
     const { data, error } = await query.maybeSingle();
     if (error) return jsonError(error.message, 500);
-    if (!data?.bill_file_path)
-      return jsonError("No bill file found for this expense.", 404);
+    if (!data) return jsonError("Expense not found.", 404);
+    let filePath = data.bill_file_path;
+    let fileName = data.bill_file_name || "receipt";
+    if (attachmentId) {
+      const attachmentResult = await auth.db.from("finance_expense_attachments").select("file_path,file_name").eq("id", attachmentId).eq("expense_id", expenseId).eq("site_id", site.id).maybeSingle();
+      if (attachmentResult.error) return jsonError(attachmentResult.error.message, 500);
+      if (!attachmentResult.data) return jsonError("Attachment not found.", 404);
+      filePath = attachmentResult.data.file_path;
+      fileName = attachmentResult.data.file_name;
+    }
+    if (!filePath) return jsonError("No bill file found for this expense.", 404);
     const url = await getSignedUrl(
       r2Client(),
-      new GetObjectCommand({ Bucket: r2BucketName, Key: data.bill_file_path }),
+      new GetObjectCommand({ Bucket: r2BucketName, Key: filePath }),
       { expiresIn: 600 },
     );
     return NextResponse.json({
       ok: true,
       url,
       expires_in_seconds: 600,
-      file_name: data.bill_file_name || "receipt",
+      file_name: fileName,
     });
   } catch (error: any) {
     return jsonError(error?.message || "Could not create receipt link.", 500);
