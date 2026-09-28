@@ -12,16 +12,23 @@ function cleanEnv(value: string) {
   return value.trim().replace(/^["']|["']$/g, "");
 }
 
-function getInstagramConfig() {
+type InstagramAccountKey = "sdtv" | "radio";
+
+function getInstagramConfig(account: InstagramAccountKey) {
+  const radioAccount = account === "radio";
   const accessToken = cleanEnv(
-    process.env.INSTAGRAM_ACCESS_TOKEN ||
-      process.env.META_INSTAGRAM_ACCESS_TOKEN ||
-      "",
+    radioAccount
+      ? process.env.INSTAGRAM_RADIO_ACCESS_TOKEN || ""
+      : process.env.INSTAGRAM_ACCESS_TOKEN ||
+          process.env.META_INSTAGRAM_ACCESS_TOKEN ||
+          "",
   );
   const instagramBusinessAccountId = cleanEnv(
-    process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID ||
-      process.env.META_INSTAGRAM_BUSINESS_ACCOUNT_ID ||
-      "",
+    radioAccount
+      ? process.env.INSTAGRAM_RADIO_BUSINESS_ACCOUNT_ID || ""
+      : process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID ||
+          process.env.META_INSTAGRAM_BUSINESS_ACCOUNT_ID ||
+          "",
   );
   const isInstagramLoginToken = accessToken.startsWith("IG");
   const graphBase = isInstagramLoginToken
@@ -34,6 +41,8 @@ function getInstagramConfig() {
     isInstagramLoginToken,
     graphBase,
     actorId,
+    account,
+    accountLabel: radioAccount ? "Seattle Desi Radio" : "Seattle Desi TV",
   };
 }
 
@@ -182,6 +191,7 @@ export async function POST(request: Request) {
       );
 
     const body = await request.json().catch(() => ({}));
+    const account: InstagramAccountKey = body.account === "radio" ? "radio" : "sdtv";
     const mediaType = String(body.mediaType || (body.videoUrl ? "video" : "image")).toLowerCase() === "video" ? "video" : "image";
     const publicationId = String(body.publicationId || "").trim();
     const pressReleaseId = String(body.pressReleaseId || "").trim();
@@ -274,17 +284,18 @@ export async function POST(request: Request) {
       isInstagramLoginToken,
       graphBase,
       actorId,
-    } = getInstagramConfig();
+      accountLabel,
+    } = getInstagramConfig(account);
     if (!accessToken)
       return NextResponse.json(
-        { error: "Instagram access token is not configured in Vercel." },
+        { error: `${accountLabel} Instagram access token is not configured in Vercel.` },
         { status: 500 },
       );
     if (!isInstagramLoginToken && !instagramBusinessAccountId) {
       return NextResponse.json(
         {
           error:
-            "INSTAGRAM_BUSINESS_ACCOUNT_ID is required for Facebook Graph tokens.",
+            `${account === "radio" ? "INSTAGRAM_RADIO_BUSINESS_ACCOUNT_ID" : "INSTAGRAM_BUSINESS_ACCOUNT_ID"} is required for Facebook Graph tokens.`,
         },
         { status: 500 },
       );
@@ -379,7 +390,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      message: "Published to Instagram.",
+      message: `Published to ${accountLabel} on Instagram.`,
+      account,
+      accountLabel,
       source: isInstagramLoginToken ? "instagram-login" : "facebook-graph",
       creationId,
       containerStatus: processing.status,

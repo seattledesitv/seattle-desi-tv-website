@@ -86,6 +86,8 @@ export default function InstagramPublisherPage() {
   const [confirmed, setConfirmed] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [analysis, setAnalysis] = useState<any>(null);
+  const [publishToSdtv, setPublishToSdtv] = useState(true);
+  const [publishToRadio, setPublishToRadio] = useState(false);
 
   const handles = useMemo(() => parseHandles(collaborators), [collaborators]);
   const canAccess = Boolean(user && isAdminRole(role));
@@ -221,34 +223,50 @@ export default function InstagramPublisherPage() {
     setMessage("");
     if (!imageUrl.trim()) return setMessage(`Add a public HTTPS ${mediaType} URL or upload a ${mediaType} first.`);
     if (!caption.trim()) return setMessage("Add a caption first.");
+    if (!publishToSdtv && !publishToRadio) return setMessage("Select at least one Instagram account.");
     if (!confirmed) return setMessage("Please check the confirmation box before publishing live to Instagram.");
     setPublishing(true);
     try {
       const { data } = await supabase.auth.getSession();
       const token = data?.session?.access_token || "";
-      const response = await fetch("/api/instagram/publish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
-        body: JSON.stringify(mediaType === "video" ? { mediaType, videoUrl: imageUrl.trim(), caption: caption.trim(), collaborators: handles, postContext: postContext.trim() } : { mediaType, imageUrl: imageUrl.trim(), caption: caption.trim(), collaborators: handles, postContext: postContext.trim() }),
-      });
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok || json.error) throw new Error(json.error || "Instagram publish failed.");
-      if (mediaType === "video" && videoDeleteToken) {
+      const accounts = [
+        ...(publishToSdtv ? [{ key: "sdtv", label: "Seattle Desi TV" }] : []),
+        ...(publishToRadio ? [{ key: "radio", label: "Seattle Desi Radio" }] : []),
+      ];
+      const publishResults: any[] = [];
+      for (const account of accounts) {
+        try {
+          const response = await fetch("/api/instagram/publish", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
+            body: JSON.stringify(mediaType === "video"
+              ? { account: account.key, mediaType, videoUrl: imageUrl.trim(), caption: caption.trim(), collaborators: handles, postContext: postContext.trim() }
+              : { account: account.key, mediaType, imageUrl: imageUrl.trim(), caption: caption.trim(), collaborators: handles, postContext: postContext.trim() }),
+          });
+          const json = await response.json().catch(() => ({}));
+          if (!response.ok || json.error) throw new Error(json.error || "Instagram publish failed.");
+          publishResults.push({ ...json, ok: true, account: account.key, accountLabel: account.label });
+        } catch (error: any) {
+          publishResults.push({ ok: false, account: account.key, accountLabel: account.label, error: error?.message || "Instagram publish failed." });
+        }
+      }
+      const successes = publishResults.filter((item) => item.ok);
+      const failures = publishResults.filter((item) => !item.ok);
+      let cleanup: Record<string, string> = {};
+      if (mediaType === "video" && videoDeleteToken && successes.length > 0) {
         try {
           await deleteTemporaryCloudinaryVideo(videoDeleteToken);
-          setResult({ ...json, temporaryVideoCleanup: "deleted" });
+          cleanup = { temporaryVideoCleanup: "deleted" };
           setVideoDeleteToken("");
-          setMessage("Published to Instagram as a Reel successfully. The temporary Cloudinary video was deleted.");
         } catch (cleanupError: any) {
-          setResult({ ...json, temporaryVideoCleanup: "failed", cleanupError: cleanupError?.message || "Cleanup failed." });
-          setMessage("The Reel was published, but the temporary Cloudinary video could not be deleted. You can remove it from the instagram-temp folder.");
+          cleanup = { temporaryVideoCleanup: "failed", cleanupError: cleanupError?.message || "Cleanup failed." };
         }
-      } else {
-        setResult({ ...json, ...(mediaType === "video" ? { temporaryVideoCleanup: "not_configured" } : {}) });
-        setMessage(mediaType === "video"
-          ? "Published to Instagram as a Reel successfully. Automatic Cloudinary cleanup is not configured for this upload."
-          : "Published to Instagram successfully.");
       }
+      setResult({ ok: successes.length > 0, results: publishResults, ...cleanup });
+      const successNames = successes.map((item) => item.accountLabel).join(" and ");
+      const failureText = failures.map((item) => `${item.accountLabel}: ${item.error}`).join(" | ");
+      if (!successes.length) throw new Error(failureText || "Instagram publishing failed.");
+      setMessage(`${mediaType === "video" ? "Reel" : "Post"} published to ${successNames}.${failureText ? ` Could not publish to ${failureText}` : ""}`);
     } catch (error: any) {
       setMessage(error?.message || "Instagram publish failed.");
     } finally {
@@ -297,6 +315,20 @@ export default function InstagramPublisherPage() {
                   : `Cloudinary env vars are missing; paste a public ${mediaType} URL instead.`}</span>
               </label>
 
+              <fieldset className="rounded-2xl border border-slate-200 p-4">
+                <legend className="px-2 text-sm font-black uppercase tracking-wide text-slate-600">Publish to</legend>
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                  <label className="flex items-center gap-3 rounded-xl bg-pink-50 p-4 font-black text-pink-900">
+                    <input type="checkbox" checked={publishToSdtv} onChange={(event) => setPublishToSdtv(event.target.checked)} className="h-5 w-5" />
+                    <span>Seattle Desi TV <span className="block text-xs font-bold text-pink-700">@seattledesitv · default</span></span>
+                  </label>
+                  <label className="flex items-center gap-3 rounded-xl bg-slate-100 p-4 font-black text-slate-900">
+                    <input type="checkbox" checked={publishToRadio} onChange={(event) => setPublishToRadio(event.target.checked)} className="h-5 w-5" />
+                    <span>Seattle Desi Radio <span className="block text-xs font-bold text-slate-600">@seattledesiradio · optional</span></span>
+                  </label>
+                </div>
+              </fieldset>
+
               <label className="grid gap-2">
                 <span className="text-sm font-black uppercase tracking-wide text-slate-600">{mediaType === "video" ? "Video" : "Image"} URL</span>
                 <input value={imageUrl} onChange={(event) => { setImageUrl(event.target.value); setVideoDeleteToken(""); setAnalysis(null); }} placeholder={mediaType === "video" ? "https://.../video.mp4" : "https://.../image.jpg"} className="rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-pink-500" />
@@ -328,7 +360,7 @@ export default function InstagramPublisherPage() {
 
               <label className="flex items-start gap-3 rounded-2xl bg-yellow-50 p-4 text-sm font-bold text-yellow-900">
                 <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} className="mt-1 h-4 w-4" />
-                <span>I understand this will publish live to the connected Instagram account.</span>
+                <span>I understand this will publish live to the selected Instagram account{publishToSdtv && publishToRadio ? "s" : ""}.</span>
               </label>
 
               {message && <div className={`${result?.ok ? "bg-green-100 text-green-900" : "bg-yellow-100 text-yellow-900"} rounded-2xl p-4 text-sm font-bold`}>{message}</div>}
@@ -359,9 +391,11 @@ export default function InstagramPublisherPage() {
             {result && <section className="rounded-3xl bg-white p-6 text-slate-950 shadow-2xl">
               <h3 className="text-2xl font-black">Publish Result</h3>
               <div className="mt-4 grid gap-3 text-sm">
-                <div className="rounded-xl bg-slate-50 p-3"><p className="font-black text-slate-500">Source</p><p className="break-words font-bold">{result.source || "—"}</p></div>
-                <div className="rounded-xl bg-slate-50 p-3"><p className="font-black text-slate-500">Media ID</p><p className="break-words font-bold">{result.mediaId || "—"}</p></div>
-                {result.permalink && <a href={result.permalink} target="_blank" rel="noreferrer" className="rounded-xl bg-slate-950 px-4 py-3 text-center font-black text-white">Open Instagram Post</a>}
+                {(result.results || [result]).map((item: any) => <div key={item.account || item.mediaId} className={`rounded-xl p-3 ${item.ok === false ? "bg-red-50" : "bg-slate-50"}`}>
+                  <p className="font-black text-slate-500">{item.accountLabel || "Instagram"}</p>
+                  <p className={`break-words font-bold ${item.ok === false ? "text-red-700" : "text-slate-950"}`}>{item.ok === false ? item.error : `Published · ${item.mediaId || "Media created"}`}</p>
+                  {item.permalink && <a href={item.permalink} target="_blank" rel="noreferrer" className="mt-3 block rounded-xl bg-slate-950 px-4 py-3 text-center font-black text-white">Open {item.accountLabel || "Instagram"} Post</a>}
+                </div>)}
               </div>
             </section>}
           </aside>
