@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { isAdminRole, resolveUserRole } from "../../../lib/roles";
+import { resolveUserRole } from "../../../lib/roles";
+import { hasInstagramPublisherAccess } from "../../../lib/instagramPublisherAccess";
+import { resolveSiteForHostname } from "../../../lib/sites/siteResolver";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -116,7 +118,8 @@ export async function POST(request: Request) {
     const user = userData?.user || null;
     if (userError || !user) return NextResponse.json({ error: "Login required." }, { status: 401 });
     const role = await resolveUserRole(client, user);
-    if (!isAdminRole(role)) return NextResponse.json({ error: `Studio admin access required. Resolved role: ${role}.` }, { status: 403 });
+    const site = await resolveSiteForHostname(request.headers.get("x-forwarded-host") || request.headers.get("host"));
+    if (!site.id || !(await hasInstagramPublisherAccess(client, user, role, site.id))) return NextResponse.json({ error: "Instagram publishing access has not been granted to this account." }, { status: 403 });
     if (!geminiKey && !openAiKey) return NextResponse.json({ error: "GEMINI_API_KEY is not configured in Vercel." }, { status: 500 });
     const body = await request.json().catch(() => ({}));
     const imageUrl = String(body.imageUrl || "").trim();

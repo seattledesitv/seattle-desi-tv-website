@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { isAdminRole, resolveUserRole } from "../../../lib/roles";
+import { resolveUserRole } from "../../../lib/roles";
 import { resolveSiteForHostname } from "../../../lib/sites/siteResolver";
+import { hasInstagramPublisherAccess } from "../../../lib/instagramPublisherAccess";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -174,13 +175,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Login required." }, { status: 401 });
 
     const resolvedRole = await resolveUserRole(sessionClient, user);
-    if (!isAdminRole(resolvedRole))
-      return NextResponse.json(
-        {
-          error: `Studio admin access required. Resolved role: ${resolvedRole}.`,
-        },
-        { status: 403 },
-      );
     const site = await resolveSiteForHostname(
       request.headers.get("x-forwarded-host") || request.headers.get("host"),
     );
@@ -188,6 +182,11 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "The active site could not be resolved." },
         { status: 400 },
+      );
+    if (!(await hasInstagramPublisherAccess(sessionClient, user, resolvedRole, site.id)))
+      return NextResponse.json(
+        { error: "Instagram publishing access has not been granted to this account." },
+        { status: 403 },
       );
 
     const body = await request.json().catch(() => ({}));

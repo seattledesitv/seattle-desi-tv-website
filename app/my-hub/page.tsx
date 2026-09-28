@@ -13,6 +13,7 @@ import {
 } from "../lib/roles";
 import { useCurrentSite } from "../lib/sites/SiteContext";
 import { getManagedEventIds } from "../lib/organizationEventAccess";
+import { hasInstagramPublisherAccess } from "../lib/instagramPublisherAccess";
 
 const supabase = getSupabaseBrowserClient();
 
@@ -48,6 +49,7 @@ export default function MyHubPage() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("general_public");
   const [counts, setCounts] = useState<Counts>(emptyCounts);
+  const [instagramPublisher, setInstagramPublisher] = useState(false);
   const team = isTeamRole(role);
   const admin = isAdminRole(role);
   const videoEditor = isVideoEditorRole(role);
@@ -76,6 +78,7 @@ export default function MyHubPage() {
       setLoading(false);
       return;
     }
+    setInstagramPublisher(await hasInstagramPublisherAccess(supabase, user, nextRole, site.id));
     const today = new Date().toISOString().split("T")[0];
     let managedEventIds: string[] = [];
     try {
@@ -317,6 +320,13 @@ export default function MyHubPage() {
       href: "/login",
       value: email ? "Signed in" : "Login",
       show: true,
+    },
+    {
+      title: "Instagram Publisher",
+      note: "Publish approved photos and Reels to authorized SDTV Instagram accounts.",
+      href: "/studio/instagram-publisher",
+      value: "Publish",
+      show: instagramPublisher,
     },
     {
       title: "Studio",

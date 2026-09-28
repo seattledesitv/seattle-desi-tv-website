@@ -3,7 +3,9 @@
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
-import { isAdminRole, resolveUserRole } from "../../lib/roles";
+import { resolveUserRole } from "../../lib/roles";
+import { hasInstagramPublisherAccess } from "../../lib/instagramPublisherAccess";
+import { useCurrentSite } from "../../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
@@ -69,6 +71,7 @@ function captionFromResponse(data: any, handles: string[]) {
 }
 
 export default function InstagramPublisherPage() {
+  const site = useCurrentSite();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -86,11 +89,12 @@ export default function InstagramPublisherPage() {
   const [confirmed, setConfirmed] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [analysis, setAnalysis] = useState<any>(null);
+  const [hasPublisherAccess, setHasPublisherAccess] = useState(false);
   const [publishToSdtv, setPublishToSdtv] = useState(true);
   const [publishToRadio, setPublishToRadio] = useState(false);
 
   const handles = useMemo(() => parseHandles(collaborators), [collaborators]);
-  const canAccess = Boolean(user && isAdminRole(role));
+  const canAccess = Boolean(user && hasPublisherAccess);
   const canUpload = Boolean(cloudName && uploadPreset);
 
   async function init() {
@@ -105,8 +109,10 @@ export default function InstagramPublisherPage() {
     }
     const nextRole = await resolveUserRole(supabase, currentUser);
     setRole(nextRole);
-    if (!isAdminRole(nextRole)) {
-      setMessage(`Instagram publishing requires admin access. Current role: ${nextRole}`);
+    const publisherAccess = await hasInstagramPublisherAccess(supabase, currentUser, nextRole, site.id);
+    setHasPublisherAccess(publisherAccess);
+    if (!publisherAccess) {
+      setMessage("This account has not been granted Instagram publishing access.");
       setLoading(false);
       return;
     }
@@ -274,7 +280,7 @@ export default function InstagramPublisherPage() {
     }
   }
 
-  useEffect(() => { init(); }, []);
+  useEffect(() => { init(); }, [site.id]);
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
