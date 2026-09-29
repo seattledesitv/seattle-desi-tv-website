@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { resolveUserRole } from "../../../lib/roles";
+import { cleanRole, resolveUserRole } from "../../../lib/roles";
 import { resolveSiteForHostname } from "../../../lib/sites/siteResolver";
 import { hasInstagramPublisherAccess } from "../../../lib/instagramPublisherAccess";
 
@@ -112,9 +112,10 @@ async function waitForContainer(
     }
 
     if (["ERROR", "EXPIRED", "FAILED"].includes(status)) {
-      const providerDetail = rawStatus && rawStatus.toUpperCase() !== status
-        ? ` Provider detail: ${rawStatus}`
-        : "";
+      const providerDetail =
+        rawStatus && rawStatus.toUpperCase() !== status
+          ? ` Provider detail: ${rawStatus}`
+          : "";
       throw new Error(
         `Instagram could not process the media. Container status: ${status}.${providerDetail} Check that the source is a public MP4/MOV video using a supported video and audio codec.`,
       );
@@ -137,22 +138,37 @@ async function inspectVideoSource(videoUrl: string) {
       redirect: "follow",
     });
   } catch {
-    throw new Error("Instagram cannot receive this Reel because the video URL could not be reached from the server.");
+    throw new Error(
+      "Instagram cannot receive this Reel because the video URL could not be reached from the server.",
+    );
   }
 
   if (!response.ok) {
-    throw new Error(`Instagram cannot receive this Reel because the video URL returned HTTP ${response.status}.`);
+    throw new Error(
+      `Instagram cannot receive this Reel because the video URL returned HTTP ${response.status}.`,
+    );
   }
 
-  const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+  const contentType = String(
+    response.headers.get("content-type") || "",
+  ).toLowerCase();
   const contentLength = Number(response.headers.get("content-length") || 0);
-  if (contentType && !contentType.startsWith("video/") && contentType !== "application/octet-stream") {
-    throw new Error(`The uploaded Reel URL returned ${contentType} instead of a video content type.`);
+  if (
+    contentType &&
+    !contentType.startsWith("video/") &&
+    contentType !== "application/octet-stream"
+  ) {
+    throw new Error(
+      `The uploaded Reel URL returned ${contentType} instead of a video content type.`,
+    );
   }
 
   return {
     contentType: contentType || "not supplied",
-    contentLength: Number.isFinite(contentLength) && contentLength > 0 ? contentLength : null,
+    contentLength:
+      Number.isFinite(contentLength) && contentLength > 0
+        ? contentLength
+        : null,
   };
 }
 
@@ -183,17 +199,64 @@ export async function POST(request: Request) {
         { error: "The active site could not be resolved." },
         { status: 400 },
       );
-    if (!(await hasInstagramPublisherAccess(sessionClient, user, resolvedRole, site.id)))
+    if (
+      !(await hasInstagramPublisherAccess(
+        sessionClient,
+        user,
+        resolvedRole,
+        site.id,
+      ))
+    )
       return NextResponse.json(
-        { error: "Instagram publishing access has not been granted to this account." },
+        {
+          error:
+            "Instagram publishing access has not been granted to this account.",
+        },
         { status: 403 },
       );
 
     const body = await request.json().catch(() => ({}));
-    const account: InstagramAccountKey = body.account === "radio" ? "radio" : "sdtv";
-    const mediaType = String(body.mediaType || (body.videoUrl ? "video" : "image")).toLowerCase() === "video" ? "video" : "image";
+    const account: InstagramAccountKey =
+      body.account === "radio" ? "radio" : "sdtv";
+    const mediaType =
+      String(
+        body.mediaType || (body.videoUrl ? "video" : "image"),
+      ).toLowerCase() === "video"
+        ? "video"
+        : "image";
     const publicationId = String(body.publicationId || "").trim();
     const pressReleaseId = String(body.pressReleaseId || "").trim();
+    const communityStoryId = String(body.communityStoryId || "").trim();
+    if (communityStoryId) {
+      if (cleanRole(resolvedRole) !== "super_admin")
+        return NextResponse.json(
+          {
+            error:
+              "Only a super administrator can publish community stories to Instagram.",
+          },
+          { status: 403 },
+        );
+      const { data: communityStory, error: communityStoryError } =
+        await sessionClient
+          .from("community_stories")
+          .select("status")
+          .eq("id", communityStoryId)
+          .eq("site_id", site.id)
+          .single();
+      if (communityStoryError)
+        return NextResponse.json(
+          { error: communityStoryError.message },
+          { status: 400 },
+        );
+      if (String(communityStory?.status) !== "published")
+        return NextResponse.json(
+          {
+            error:
+              "Publish this story to the Newsroom before posting it to Instagram.",
+          },
+          { status: 409 },
+        );
+    }
     if (publicationId) {
       const { data: publication, error: publicationError } = await sessionClient
         .from("publications")
@@ -236,9 +299,12 @@ export async function POST(request: Request) {
           { status: 409 },
         );
     }
-    const requestedUrls = mediaType === "video" ? [body.videoUrl] : Array.isArray(body.imageUrls)
-      ? body.imageUrls
-      : [body.imageUrl];
+    const requestedUrls =
+      mediaType === "video"
+        ? [body.videoUrl]
+        : Array.isArray(body.imageUrls)
+          ? body.imageUrls
+          : [body.imageUrl];
     const imageUrls = requestedUrls
       .map((value: unknown) => String(value || "").trim())
       .filter(Boolean);
@@ -255,8 +321,7 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json(
         {
-          error:
-            `Public HTTPS ${mediaType} URLs are required for Instagram publishing.`,
+          error: `Public HTTPS ${mediaType} URLs are required for Instagram publishing.`,
         },
         { status: 400 },
       );
@@ -287,28 +352,33 @@ export async function POST(request: Request) {
     } = getInstagramConfig(account);
     if (!accessToken)
       return NextResponse.json(
-        { error: `${accountLabel} Instagram access token is not configured in Vercel.` },
+        {
+          error: `${accountLabel} Instagram access token is not configured in Vercel.`,
+        },
         { status: 500 },
       );
     if (!isInstagramLoginToken && !instagramBusinessAccountId) {
       return NextResponse.json(
         {
-          error:
-            `${account === "radio" ? "INSTAGRAM_RADIO_BUSINESS_ACCOUNT_ID" : "INSTAGRAM_BUSINESS_ACCOUNT_ID"} is required for Facebook Graph tokens.`,
+          error: `${account === "radio" ? "INSTAGRAM_RADIO_BUSINESS_ACCOUNT_ID" : "INSTAGRAM_BUSINESS_ACCOUNT_ID"} is required for Facebook Graph tokens.`,
         },
         { status: 500 },
       );
     }
 
     let creationId = "";
-    let videoSource: Awaited<ReturnType<typeof inspectVideoSource>> | null = null;
+    let videoSource: Awaited<ReturnType<typeof inspectVideoSource>> | null =
+      null;
     if (mediaType === "video") {
       videoSource = await inspectVideoSource(imageUrls[0]);
       const createContainerUrl = new URL(`${graphBase}/${actorId}/media`);
       createContainerUrl.searchParams.set("media_type", "REELS");
       createContainerUrl.searchParams.set("video_url", imageUrls[0]);
       createContainerUrl.searchParams.set("caption", caption);
-      createContainerUrl.searchParams.set("share_to_feed", body.shareToFeed === false ? "false" : "true");
+      createContainerUrl.searchParams.set(
+        "share_to_feed",
+        body.shareToFeed === false ? "false" : "true",
+      );
       createContainerUrl.searchParams.set("access_token", accessToken);
       const container = await graphRequest(createContainerUrl, "POST");
       creationId = container?.id || "";
@@ -384,6 +454,22 @@ export async function POST(request: Request) {
         .eq("site_id", site.id);
       if (recordingError) {
         recordingWarning = `Instagram published successfully, but the permalink could not be saved: ${recordingError.message}`;
+      }
+    }
+    if (communityStoryId) {
+      const { error: recordingError } = await sessionClient
+        .from("community_stories")
+        .update({
+          instagram_permalink: permalink || null,
+          instagram_media_id: mediaId,
+          instagram_published_at: new Date().toISOString(),
+          instagram_published_by: user.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", communityStoryId)
+        .eq("site_id", site.id);
+      if (recordingError) {
+        recordingWarning = `Instagram published successfully, but the story permalink could not be saved: ${recordingError.message}`;
       }
     }
 

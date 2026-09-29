@@ -48,6 +48,7 @@ export default function CommunityContentPage() {
   const [rows, setRows] = useState<any[]>([]);
   const [editors, setEditors] = useState<any[]>([]);
   const [storyDrafts, setStoryDrafts] = useState<Record<string, any>>({});
+  const [instagramBusy, setInstagramBusy] = useState("");
   const [filter, setFilter] = useState("open");
   const [search, setSearch] = useState("");
   const canAccess = Boolean(user && isAdminRole(role));
@@ -200,6 +201,90 @@ export default function CommunityContentPage() {
     await requestFinalApprovalNotification(supabase, "story", result.story?.id);
     setActionMessage(`Story published. Public page: ${result.url}`);
     await loadContent();
+  }
+
+  async function publishStoryToInstagram(row: any) {
+    if (String(role).toLowerCase() !== "super_admin") {
+      setActionMessage(
+        "Only a super administrator can publish community content to Instagram.",
+      );
+      return;
+    }
+    setInstagramBusy(row.id);
+    setActionMessage("Preparing the published story for Instagram...");
+    const storyResult = await forSite(
+      supabase
+        .from("community_stories")
+        .select(
+          "id,title,summary,slug,image_urls,video_url,instagram_permalink,status",
+        )
+        .eq("source_request_id", row.id),
+      site.id,
+    ).maybeSingle();
+    if (storyResult.error || !storyResult.data) {
+      setActionMessage(
+        storyResult.error?.message ||
+          "Publish this story to the Newsroom first.",
+      );
+      setInstagramBusy("");
+      return;
+    }
+    const story: any = storyResult.data;
+    if (story.instagram_permalink) {
+      setActionMessage(
+        `This story is already on Instagram: ${story.instagram_permalink}`,
+      );
+      setInstagramBusy("");
+      return;
+    }
+    const images = Array.isArray(story.image_urls)
+      ? story.image_urls.filter(Boolean)
+      : [];
+    const videoUrl = String(story.video_url || "").trim();
+    if (!images.length && !videoUrl) {
+      setActionMessage(
+        "Add a public image or video to the story before publishing it to Instagram.",
+      );
+      setInstagramBusy("");
+      return;
+    }
+    if (
+      !window.confirm(
+        `Publish “${story.title}” live to the Seattle Desi TV Instagram account?`,
+      )
+    ) {
+      setInstagramBusy("");
+      setActionMessage("");
+      return;
+    }
+    const token =
+      (await supabase.auth.getSession()).data.session?.access_token || "";
+    const publicUrl = `${window.location.origin}/news/stories/${story.slug}`;
+    const caption = `${story.title}\n\n${story.summary || "Read this community story from Seattle Desi TV."}\n\nRead more: ${publicUrl}\n\n#SeattleDesiTV #SeattleCommunity`;
+    const response = await fetch("/api/instagram/publish", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        communityStoryId: story.id,
+        account: "sdtv",
+        mediaType: images.length ? "image" : "video",
+        imageUrls: images,
+        videoUrl: images.length ? "" : videoUrl,
+        caption,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    setInstagramBusy("");
+    if (!response.ok || result.error) {
+      setActionMessage(result.error || "Instagram publishing failed.");
+      return;
+    }
+    setActionMessage(
+      `Community story published to Instagram.${result.permalink ? ` ${result.permalink}` : ""}`,
+    );
   }
 
   const visibleRows = rows.filter((row) => {
@@ -385,14 +470,28 @@ export default function CommunityContentPage() {
                   : "Admin Approve & Publish Story"}
               </button>
               {row.final_website_url && (
-                <a
-                  href={row.final_website_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-black text-pink-700"
-                >
-                  View public story →
-                </a>
+                <div className="flex flex-wrap gap-3">
+                  <a
+                    href={row.final_website_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-black text-pink-700"
+                  >
+                    View public story →
+                  </a>
+                  {String(role).toLowerCase() === "super_admin" && (
+                    <button
+                      type="button"
+                      disabled={instagramBusy === row.id}
+                      onClick={() => publishStoryToInstagram(row)}
+                      className="rounded-xl bg-gradient-to-r from-fuchsia-600 to-orange-500 px-4 py-2 text-sm font-black text-white disabled:opacity-50"
+                    >
+                      {instagramBusy === row.id
+                        ? "Publishing to Instagram..."
+                        : "Publish to Instagram"}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </section>
