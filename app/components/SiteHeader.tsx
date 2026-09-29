@@ -128,6 +128,7 @@ export default function SiteHeader() {
 
   const canSeeStudio = Boolean(isLoggedIn && isAdminRole(role));
   const communityLinks: HeaderLink[] = [
+    { label: "Newsroom", href: "/news", show: true },
     { label: "Groups", href: "/community-groups", show: true },
     { label: "Organizations", href: "/community-organizations", show: true },
     { label: "Classifieds", href: "/classifieds", show: true },

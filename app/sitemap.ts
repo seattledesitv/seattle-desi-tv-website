@@ -13,6 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/community-groups",
     "/community-organizations",
     "/influencers",
+    "/news",
     "/press-releases",
     "/publications",
     "/subscribe",
