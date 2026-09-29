@@ -49,6 +49,7 @@ export default function CommunityContentPage() {
   const [editors, setEditors] = useState<any[]>([]);
   const [storyDrafts, setStoryDrafts] = useState<Record<string, any>>({});
   const [instagramBusy, setInstagramBusy] = useState("");
+  const [instagramPreview, setInstagramPreview] = useState<any>(null);
   const [filter, setFilter] = useState("open");
   const [search, setSearch] = useState("");
   const canAccess = Boolean(user && isAdminRole(role));
@@ -203,7 +204,7 @@ export default function CommunityContentPage() {
     await loadContent();
   }
 
-  async function publishStoryToInstagram(row: any) {
+  async function prepareInstagramPreview(row: any) {
     if (String(role).toLowerCase() !== "super_admin") {
       setActionMessage(
         "Only a super administrator can publish community content to Instagram.",
@@ -248,19 +249,34 @@ export default function CommunityContentPage() {
       setInstagramBusy("");
       return;
     }
-    if (
-      !window.confirm(
-        `Publish “${story.title}” live to the Seattle Desi TV Instagram account?`,
-      )
-    ) {
-      setInstagramBusy("");
-      setActionMessage("");
-      return;
-    }
-    const token =
-      (await supabase.auth.getSession()).data.session?.access_token || "";
     const publicUrl = `${window.location.origin}/news/stories/${story.slug}`;
     const caption = `${story.title}\n\n${story.summary || "Read this community story from Seattle Desi TV."}\n\nRead more: ${publicUrl}\n\n#SeattleDesiTV #SeattleCommunity`;
+    setInstagramPreview({
+      rowId: row.id,
+      story,
+      images,
+      videoUrl,
+      caption,
+      confirmed: false,
+    });
+    setInstagramBusy("");
+    setActionMessage(
+      "Instagram preview is ready. Review it below before publishing live.",
+    );
+  }
+
+  async function confirmInstagramPublish() {
+    const preview = instagramPreview;
+    if (!preview?.confirmed) {
+      setActionMessage(
+        "Confirm that you reviewed the Instagram preview before publishing.",
+      );
+      return;
+    }
+    setInstagramBusy(preview.rowId);
+    setActionMessage("Publishing the approved story live to Instagram...");
+    const token =
+      (await supabase.auth.getSession()).data.session?.access_token || "";
     const response = await fetch("/api/instagram/publish", {
       method: "POST",
       headers: {
@@ -268,12 +284,12 @@ export default function CommunityContentPage() {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        communityStoryId: story.id,
+        communityStoryId: preview.story.id,
         account: "sdtv",
-        mediaType: images.length ? "image" : "video",
-        imageUrls: images,
-        videoUrl: images.length ? "" : videoUrl,
-        caption,
+        mediaType: preview.images.length ? "image" : "video",
+        imageUrls: preview.images,
+        videoUrl: preview.images.length ? "" : preview.videoUrl,
+        caption: preview.caption,
       }),
     });
     const result = await response.json().catch(() => ({}));
@@ -282,6 +298,7 @@ export default function CommunityContentPage() {
       setActionMessage(result.error || "Instagram publishing failed.");
       return;
     }
+    setInstagramPreview(null);
     setActionMessage(
       `Community story published to Instagram.${result.permalink ? ` ${result.permalink}` : ""}`,
     );
@@ -483,15 +500,100 @@ export default function CommunityContentPage() {
                     <button
                       type="button"
                       disabled={instagramBusy === row.id}
-                      onClick={() => publishStoryToInstagram(row)}
+                      onClick={() => prepareInstagramPreview(row)}
                       className="rounded-xl bg-gradient-to-r from-fuchsia-600 to-orange-500 px-4 py-2 text-sm font-black text-white disabled:opacity-50"
                     >
                       {instagramBusy === row.id
-                        ? "Publishing to Instagram..."
-                        : "Publish to Instagram"}
+                        ? "Preparing Instagram preview..."
+                        : "Preview Instagram Post"}
                     </button>
                   )}
                 </div>
+              )}
+              {instagramPreview?.rowId === row.id && (
+                <section className="overflow-hidden rounded-2xl border-2 border-fuchsia-200 bg-white">
+                  <div className="border-b bg-gradient-to-r from-fuchsia-50 to-orange-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-widest text-fuchsia-700">
+                      Instagram Preview · Seattle Desi TV
+                    </p>
+                    <h4 className="mt-1 text-xl font-black">
+                      Review before publishing live
+                    </h4>
+                  </div>
+                  <div className="grid gap-4 p-4 md:grid-cols-2">
+                    <div className="overflow-hidden rounded-xl bg-black">
+                      {instagramPreview.images.length ? (
+                        <img
+                          src={instagramPreview.images[0]}
+                          alt="Instagram preview"
+                          className="aspect-square h-full w-full object-contain"
+                        />
+                      ) : (
+                        <video
+                          src={instagramPreview.videoUrl}
+                          controls
+                          playsInline
+                          className="aspect-square h-full w-full object-contain"
+                        />
+                      )}
+                      {instagramPreview.images.length > 1 && (
+                        <p className="bg-black p-2 text-center text-xs font-bold text-white">
+                          Carousel · {instagramPreview.images.length} images
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <textarea
+                        value={instagramPreview.caption}
+                        onChange={(e) =>
+                          setInstagramPreview((current: any) => ({
+                            ...current,
+                            caption: e.target.value,
+                          }))
+                        }
+                        className="min-h-64 w-full rounded-xl border p-3 text-sm"
+                        aria-label="Instagram caption"
+                      />
+                      <label className="mt-3 flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-950">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(instagramPreview.confirmed)}
+                          onChange={(e) =>
+                            setInstagramPreview((current: any) => ({
+                              ...current,
+                              confirmed: e.target.checked,
+                            }))
+                          }
+                          className="mt-1"
+                        />
+                        I reviewed the image/video and caption. Publish this
+                        live to Seattle Desi TV Instagram.
+                      </label>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={
+                            !instagramPreview.confirmed ||
+                            instagramBusy === row.id
+                          }
+                          onClick={confirmInstagramPublish}
+                          className="rounded-xl bg-fuchsia-700 px-4 py-3 font-black text-white disabled:opacity-50"
+                        >
+                          {instagramBusy === row.id
+                            ? "Publishing..."
+                            : "Confirm & Publish Live"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setInstagramPreview(null)}
+                          className="rounded-xl border px-4 py-3 font-black"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
               )}
             </div>
           </section>
