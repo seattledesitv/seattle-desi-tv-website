@@ -304,6 +304,44 @@ export default function CommunityContentPage() {
     );
   }
 
+  async function changePublishedStoryStatus(
+    row: any,
+    action: "hold" | "archive",
+  ) {
+    if (String(role).toLowerCase() !== "super_admin") {
+      setActionMessage(
+        "Only a super administrator can hide or remove a published community story.",
+      );
+      return;
+    }
+    const wording =
+      action === "hold"
+        ? "temporarily hide this story from the Newsroom"
+        : "remove this story from the Newsroom and archive it";
+    if (!window.confirm(`Are you sure you want to ${wording}?`)) return;
+    setActionMessage(
+      action === "hold" ? "Putting story on hold..." : "Archiving story...",
+    );
+    const token =
+      (await supabase.auth.getSession()).data.session?.access_token || "";
+    const response = await fetch("/api/studio/community-stories/status", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ requestId: row.id, action }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setActionMessage(result.error || "Story status update failed.");
+      return;
+    }
+    setInstagramPreview(null);
+    setActionMessage(result.message);
+    await loadContent();
+  }
+
   const visibleRows = rows.filter((row) => {
     const status = String(row.status || "new");
     if (
@@ -497,16 +535,34 @@ export default function CommunityContentPage() {
                     View public story →
                   </a>
                   {String(role).toLowerCase() === "super_admin" && (
-                    <button
-                      type="button"
-                      disabled={instagramBusy === row.id}
-                      onClick={() => prepareInstagramPreview(row)}
-                      className="rounded-xl bg-gradient-to-r from-fuchsia-600 to-orange-500 px-4 py-2 text-sm font-black text-white disabled:opacity-50"
-                    >
-                      {instagramBusy === row.id
-                        ? "Preparing Instagram preview..."
-                        : "Preview Instagram Post"}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        disabled={instagramBusy === row.id}
+                        onClick={() => prepareInstagramPreview(row)}
+                        className="rounded-xl bg-gradient-to-r from-fuchsia-600 to-orange-500 px-4 py-2 text-sm font-black text-white disabled:opacity-50"
+                      >
+                        {instagramBusy === row.id
+                          ? "Preparing Instagram preview..."
+                          : "Preview Instagram Post"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => changePublishedStoryStatus(row, "hold")}
+                        className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-black text-white"
+                      >
+                        Put On Hold
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          changePublishedStoryStatus(row, "archive")
+                        }
+                        className="rounded-xl border border-red-600 px-4 py-2 text-sm font-black text-red-700"
+                      >
+                        Remove from Newsroom
+                      </button>
+                    </>
                   )}
                 </div>
               )}
