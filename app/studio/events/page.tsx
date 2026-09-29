@@ -5,17 +5,52 @@ import StudioHeader from "../../components/StudioHeader";
 import CheckedExternalLink from "../../components/CheckedExternalLink";
 import { formatEventTime } from "../../lib/eventTime";
 
-import { AUTH_STORAGE_KEY, getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
+import {
+  AUTH_STORAGE_KEY,
+  getSupabaseBrowserClient,
+} from "../../lib/supabaseBrowser";
 import { useCurrentSite } from "../../lib/sites/SiteContext";
 import { forSite } from "../../lib/sites/query";
+import { requestFinalApprovalNotification } from "../../lib/notifications/client";
 const supabase = getSupabaseBrowserClient();
 const STATUSES = ["all", "pending", "approved", "on_hold", "rejected"];
 
-function roleContainsAdmin(role: string) { return String(role || "").toLowerCase().trim().includes("admin"); }
-function statusClass(status?: string | null) { const normalized = String(status || "pending").toLowerCase(); if (normalized === "approved") return "bg-green-100 text-green-800"; if (normalized === "rejected") return "bg-red-100 text-red-800"; if (normalized === "on_hold") return "bg-yellow-100 text-yellow-800"; return "bg-gray-100 text-gray-800"; }
-function formatDate(value?: string | null) { if (!value) return ""; const parsed = new Date(`${String(value).split("T")[0]}T00:00:00`); return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString(); }
-function getImage(row: any) { if (Array.isArray(row?.image_urls) && row.image_urls.length > 0) return row.image_urls[0]; return row?.image || ""; }
-function ImageThumb({ src, label }: { src?: string; label: string }) { return src ? <img src={src} alt={label} className="w-28 h-28 rounded-xl object-cover bg-gray-100 border" /> : <div className="w-28 h-28 rounded-xl bg-pink-50 grid place-items-center text-pink-600 font-black text-xs text-center px-2">No image</div>; }
+function roleContainsAdmin(role: string) {
+  return String(role || "")
+    .toLowerCase()
+    .trim()
+    .includes("admin");
+}
+function statusClass(status?: string | null) {
+  const normalized = String(status || "pending").toLowerCase();
+  if (normalized === "approved") return "bg-green-100 text-green-800";
+  if (normalized === "rejected") return "bg-red-100 text-red-800";
+  if (normalized === "on_hold") return "bg-yellow-100 text-yellow-800";
+  return "bg-gray-100 text-gray-800";
+}
+function formatDate(value?: string | null) {
+  if (!value) return "";
+  const parsed = new Date(`${String(value).split("T")[0]}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString();
+}
+function getImage(row: any) {
+  if (Array.isArray(row?.image_urls) && row.image_urls.length > 0)
+    return row.image_urls[0];
+  return row?.image || "";
+}
+function ImageThumb({ src, label }: { src?: string; label: string }) {
+  return src ? (
+    <img
+      src={src}
+      alt={label}
+      className="w-28 h-28 rounded-xl object-cover bg-gray-100 border"
+    />
+  ) : (
+    <div className="w-28 h-28 rounded-xl bg-pink-50 grid place-items-center text-pink-600 font-black text-xs text-center px-2">
+      No image
+    </div>
+  );
+}
 
 export default function StudioEventsPage() {
   const site = useCurrentSite();
@@ -30,8 +65,18 @@ export default function StudioEventsPage() {
   const canAccess = Boolean(user && roleContainsAdmin(role));
 
   async function loadEvents() {
-    const { data, error } = await forSite(supabase.from("events").select("id,title,date,local_start_time,local_end_time,event_timezone,location,description,status,image,image_urls,ticket_url,poc_email,poc_phone,created_at,featured,featured_order,media_partner_status,media_partner_flyer_url,media_partner_approved_at"), site.id).order("date", { ascending: true });
-    if (error) { setActionMessage(`Could not load events: ${error.message}`); return; }
+    const { data, error } = await forSite(
+      supabase
+        .from("events")
+        .select(
+          "id,title,date,local_start_time,local_end_time,event_timezone,location,description,status,image,image_urls,ticket_url,poc_email,poc_phone,created_at,featured,featured_order,media_partner_status,media_partner_flyer_url,media_partner_approved_at",
+        ),
+      site.id,
+    ).order("date", { ascending: true });
+    if (error) {
+      setActionMessage(`Could not load events: ${error.message}`);
+      return;
+    }
     setEvents(data || []);
   }
 
@@ -41,11 +86,27 @@ export default function StudioEventsPage() {
     const sessionResult = await supabase.auth.getSession();
     const currentUser = sessionResult.data?.session?.user || null;
     setUser(currentUser);
-    if (!currentUser) { setRole(""); setEvents([]); setMessage("Please login to access Studio Events."); setLoading(false); return; }
-    const adminResult = await supabase.from("admins").select("role").or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`).maybeSingle();
+    if (!currentUser) {
+      setRole("");
+      setEvents([]);
+      setMessage("Please login to access Studio Events.");
+      setLoading(false);
+      return;
+    }
+    const adminResult = await supabase
+      .from("admins")
+      .select("role")
+      .or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
+      .maybeSingle();
     const nextRole = adminResult.data?.role || "";
     setRole(nextRole);
-    if (!roleContainsAdmin(nextRole)) { setMessage("You are logged in, but this account does not have admin access."); setLoading(false); return; }
+    if (!roleContainsAdmin(nextRole)) {
+      setMessage(
+        "You are logged in, but this account does not have admin access.",
+      );
+      setLoading(false);
+      return;
+    }
     await loadEvents();
     setMessage("");
     setLoading(false);
@@ -54,46 +115,395 @@ export default function StudioEventsPage() {
   async function updateEventStatus(id: string, status: string) {
     setActionMessage("Updating event...");
     const payload: any = { status, approved: status === "approved" };
-    if (status === "approved") { payload.approved_by = user?.email || user?.id || null; payload.approved_at = new Date().toISOString(); }
-    const { error } = await forSite(supabase.from("events").update(payload), site.id).eq("id", id);
-    if (error) { setActionMessage(`Event update failed: ${error.message}`); return; }
-    setActionMessage(`Event marked ${status}.`);
+    if (status === "approved") {
+      payload.approved_by = user?.email || user?.id || null;
+      payload.approved_at = new Date().toISOString();
+    }
+    const { error } = await forSite(
+      supabase.from("events").update(payload),
+      site.id,
+    ).eq("id", id);
+    if (error) {
+      setActionMessage(`Event update failed: ${error.message}`);
+      return;
+    }
+    const notice =
+      status === "approved"
+        ? await requestFinalApprovalNotification(supabase, "event", id)
+        : null;
+    setActionMessage(
+      `Event marked ${status}.${notice?.skipped === false ? " The submitter was emailed the public link." : ""}`,
+    );
     await loadEvents();
   }
 
-  async function updateFeatured(id: string, featured: boolean, featuredOrder: number = 0) {
+  async function updateFeatured(
+    id: string,
+    featured: boolean,
+    featuredOrder: number = 0,
+  ) {
     setActionMessage("Updating featured event...");
-    const { error } = await forSite(supabase.from("events").update({ featured, featured_order: Number(featuredOrder || 0) }), site.id).eq("id", id);
-    if (error) { setActionMessage(`Featured update failed: ${error.message}`); return; }
-    setActionMessage(featured ? "Event added to homepage hero." : "Event removed from homepage hero.");
+    const { error } = await forSite(
+      supabase
+        .from("events")
+        .update({ featured, featured_order: Number(featuredOrder || 0) }),
+      site.id,
+    ).eq("id", id);
+    if (error) {
+      setActionMessage(`Featured update failed: ${error.message}`);
+      return;
+    }
+    setActionMessage(
+      featured
+        ? "Event added to homepage hero."
+        : "Event removed from homepage hero.",
+    );
     await loadEvents();
   }
 
   async function updateMediaPartner(event: any, approved: boolean) {
-    setActionMessage(approved ? "Approving SDTV media partnership…" : "Removing SDTV media partner status…");
+    setActionMessage(
+      approved
+        ? "Approving SDTV media partnership…"
+        : "Removing SDTV media partner status…",
+    );
     const session = await supabase.auth.getSession();
     const token = session.data?.session?.access_token || "";
-    const response = await fetch("/api/studio/events/media-partner", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ event_id: event.id, approved }) });
+    const response = await fetch("/api/studio/events/media-partner", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ event_id: event.id, approved }),
+    });
     const result = await response.json().catch(() => ({}));
-    if (!response.ok) { setActionMessage(result?.error || "Media partner update failed."); return; }
-    setActionMessage(approved ? `Media partnership approved.${result.flyerApplied ? " The submitted flyer is now the event's primary image." : ""}` : "Media partner status removed.");
+    if (!response.ok) {
+      setActionMessage(result?.error || "Media partner update failed.");
+      return;
+    }
+    setActionMessage(
+      approved
+        ? `Media partnership approved.${result.flyerApplied ? " The submitted flyer is now the event's primary image." : ""}`
+        : "Media partner status removed.",
+    );
     await loadEvents();
   }
 
   async function deleteEvent(id: string, title: string) {
-    if (!window.confirm(`Delete event: ${title}? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete event: ${title}? This cannot be undone.`))
+      return;
     setActionMessage("Deleting event...");
-    const { error } = await forSite(supabase.from("events").delete(), site.id).eq("id", id);
-    if (error) { setActionMessage(`Event delete failed: ${error.message}`); return; }
+    const { error } = await forSite(
+      supabase.from("events").delete(),
+      site.id,
+    ).eq("id", id);
+    if (error) {
+      setActionMessage(`Event delete failed: ${error.message}`);
+      return;
+    }
     setActionMessage("Event deleted.");
     await loadEvents();
   }
 
-  async function logout() { await supabase.auth.signOut(); window.location.href = "/login"; }
-  useEffect(() => { init(); }, [site.id]);
+  async function logout() {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  }
+  useEffect(() => {
+    init();
+  }, [site.id]);
 
-  const counts = useMemo(() => { const base: Record<string, number> = { all: events.length, pending: 0, approved: 0, on_hold: 0, rejected: 0 }; events.forEach((event) => { const status = String(event.status || "pending").toLowerCase(); base[status] = (base[status] || 0) + 1; }); return base; }, [events]);
-  const filteredEvents = useMemo(() => { const search = searchText.trim().toLowerCase(); return events.filter((event) => { const status = String(event.status || "pending").toLowerCase(); const matchesStatus = statusFilter === "all" || status === statusFilter; const matchesSearch = !search || [event.title, event.location, event.description, event.poc_email].filter(Boolean).join(" ").toLowerCase().includes(search); return matchesStatus && matchesSearch; }); }, [events, statusFilter, searchText]);
+  const counts = useMemo(() => {
+    const base: Record<string, number> = {
+      all: events.length,
+      pending: 0,
+      approved: 0,
+      on_hold: 0,
+      rejected: 0,
+    };
+    events.forEach((event) => {
+      const status = String(event.status || "pending").toLowerCase();
+      base[status] = (base[status] || 0) + 1;
+    });
+    return base;
+  }, [events]);
+  const filteredEvents = useMemo(() => {
+    const search = searchText.trim().toLowerCase();
+    return events.filter((event) => {
+      const status = String(event.status || "pending").toLowerCase();
+      const matchesStatus = statusFilter === "all" || status === statusFilter;
+      const matchesSearch =
+        !search ||
+        [event.title, event.location, event.description, event.poc_email]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(search);
+      return matchesStatus && matchesSearch;
+    });
+  }, [events, statusFilter, searchText]);
 
-  return <main className="min-h-screen bg-slate-950 text-white"><StudioHeader /><div className="max-w-7xl mx-auto px-6 py-10"><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8"><div><h1 className="text-4xl md:text-5xl font-black">Events Management</h1><p className="text-slate-300 mt-2">{user?.email ? `Logged in as ${user.email} · Role: ${role || "none"}` : "Studio events"}</p></div><div className="flex flex-wrap gap-3"><button onClick={init} className="bg-white text-slate-950 px-5 py-3 rounded-xl font-bold">Refresh</button>{user && <button onClick={logout} className="border border-red-400 text-red-300 px-5 py-3 rounded-xl font-bold">Logout</button>}</div></div>{loading && <div className="bg-white/10 border border-white/10 rounded-2xl p-6">{message}</div>}{!loading && !canAccess && <div className="bg-white text-slate-950 rounded-2xl p-8 max-w-xl"><h2 className="text-2xl font-black">Access Required</h2><p className="text-gray-600 mt-3">{message}</p><a href="/login" className="inline-block bg-pink-600 text-white px-5 py-3 rounded-xl font-bold mt-5">Go to Login</a></div>}{!loading && canAccess && <div className="space-y-8">{actionMessage && <div className="bg-yellow-100 text-yellow-900 rounded-2xl p-4 font-bold">{actionMessage}</div>}<div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">{STATUSES.map((status) => <button key={status} type="button" onClick={() => setStatusFilter(status)} className={`text-left rounded-2xl p-5 border ${statusFilter === status ? "bg-pink-600 border-pink-600 text-white" : "bg-white/10 border-white/10 text-white"}`}><p className="text-sm opacity-80 capitalize">{status === "all" ? "All Events" : status.replace("_", " ")}</p><p className="text-3xl font-black">{counts[status] || 0}</p></button>)}</div><section className="bg-white text-slate-950 rounded-2xl p-6"><div className="grid md:grid-cols-[1fr_auto] gap-3 mb-5"><input className="border rounded-lg p-3" placeholder="Search title, location, description, POC..." value={searchText} onChange={(event) => setSearchText(event.target.value)} /><button type="button" onClick={() => { setStatusFilter("all"); setSearchText(""); }} className="border px-4 py-3 rounded-lg font-bold">Reset</button></div><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4"><h2 className="text-2xl font-black">Filtered Events</h2><p className="text-sm text-gray-500">Showing {filteredEvents.length} of {events.length} event(s)</p></div><div className="grid gap-4">{filteredEvents.map((event) => <article key={event.id} className="border rounded-xl p-4 grid md:grid-cols-[112px_1fr_auto] gap-4 items-center"><ImageThumb src={getImage(event)} label={event.title} /><div><h3 className="text-xl font-black">{event.title}</h3><p className="text-sm text-gray-600">{formatDate(event.date)} · {formatEventTime(event.local_start_time, event.local_end_time, event.event_timezone)} · {event.location}</p>{event.description && <p className="text-sm text-gray-700 mt-2 line-clamp-2">{event.description}</p>}{event.ticket_url && <CheckedExternalLink href={event.ticket_url} notFoundMessage="Page not found. This ticket/register link is not available." className="inline-block text-sm text-pink-600 font-bold mt-2 disabled:opacity-60">Ticket link</CheckedExternalLink>}<div className="flex flex-wrap gap-2 mt-3"><span className={`inline-block text-sm font-bold px-3 py-1 rounded-full ${statusClass(event.status)}`}>{event.status || "pending"}</span>{event.featured && <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-bold">Homepage Hero</span>}{event.media_partner_status === "requested" && <span className="bg-amber-100 text-amber-900 px-3 py-1 rounded-full text-xs font-bold">Media Partner Requested</span>}{event.media_partner_status === "approved" && <span className="bg-pink-100 text-pink-800 px-3 py-1 rounded-full text-xs font-bold">SDTV Media Partner</span>}{event.poc_email && <span className="text-xs bg-gray-100 px-2 py-1 rounded">POC: {event.poc_email}</span>}</div>{event.featured && <div className="mt-3 flex items-center gap-2"><span className="text-xs font-bold">Hero Order</span><input type="number" min="0" defaultValue={event.featured_order || 0} className="border rounded px-2 py-1 w-24" onBlur={(e) => updateFeatured(event.id, true, Number(e.target.value || 0))} /></div>}</div><div className="flex flex-wrap gap-2 md:justify-end md:items-center"><a href={`/studio/events/${event.id}`} className="bg-slate-900 text-white px-3 py-2 rounded-lg font-bold text-sm">Edit</a>{event.featured ? <button onClick={() => updateFeatured(event.id, false, event.featured_order || 0)} className="bg-purple-700 text-white px-3 py-2 rounded-lg font-bold text-sm">Remove Hero</button> : <button onClick={() => updateFeatured(event.id, true, event.featured_order || 0)} className="bg-purple-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Feature Hero</button>}{event.media_partner_status === "approved" ? <button onClick={() => updateMediaPartner(event, false)} className="border border-pink-600 text-pink-700 px-3 py-2 rounded-lg font-bold text-sm">Remove Media Partner</button> : <button onClick={() => updateMediaPartner(event, true)} className="bg-pink-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve Media Partner</button>}<button onClick={() => updateEventStatus(event.id, "approved")} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve</button><button onClick={() => updateEventStatus(event.id, "on_hold")} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">On Hold</button><button onClick={() => updateEventStatus(event.id, "rejected")} className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Reject</button><button onClick={() => deleteEvent(event.id, event.title)} className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm">Delete</button></div></article>)}{filteredEvents.length === 0 && <p className="text-gray-500">No events match the selected filters.</p>}</div></section></div>}</div></main>;
+  return (
+    <main className="min-h-screen bg-slate-950 text-white">
+      <StudioHeader />
+      <div className="max-w-7xl mx-auto px-6 py-10">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-4xl md:text-5xl font-black">
+              Events Management
+            </h1>
+            <p className="text-slate-300 mt-2">
+              {user?.email
+                ? `Logged in as ${user.email} · Role: ${role || "none"}`
+                : "Studio events"}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={init}
+              className="bg-white text-slate-950 px-5 py-3 rounded-xl font-bold"
+            >
+              Refresh
+            </button>
+            {user && (
+              <button
+                onClick={logout}
+                className="border border-red-400 text-red-300 px-5 py-3 rounded-xl font-bold"
+              >
+                Logout
+              </button>
+            )}
+          </div>
+        </div>
+        {loading && (
+          <div className="bg-white/10 border border-white/10 rounded-2xl p-6">
+            {message}
+          </div>
+        )}
+        {!loading && !canAccess && (
+          <div className="bg-white text-slate-950 rounded-2xl p-8 max-w-xl">
+            <h2 className="text-2xl font-black">Access Required</h2>
+            <p className="text-gray-600 mt-3">{message}</p>
+            <a
+              href="/login"
+              className="inline-block bg-pink-600 text-white px-5 py-3 rounded-xl font-bold mt-5"
+            >
+              Go to Login
+            </a>
+          </div>
+        )}
+        {!loading && canAccess && (
+          <div className="space-y-8">
+            {actionMessage && (
+              <div className="bg-yellow-100 text-yellow-900 rounded-2xl p-4 font-bold">
+                {actionMessage}
+              </div>
+            )}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              {STATUSES.map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => setStatusFilter(status)}
+                  className={`text-left rounded-2xl p-5 border ${statusFilter === status ? "bg-pink-600 border-pink-600 text-white" : "bg-white/10 border-white/10 text-white"}`}
+                >
+                  <p className="text-sm opacity-80 capitalize">
+                    {status === "all" ? "All Events" : status.replace("_", " ")}
+                  </p>
+                  <p className="text-3xl font-black">{counts[status] || 0}</p>
+                </button>
+              ))}
+            </div>
+            <section className="bg-white text-slate-950 rounded-2xl p-6">
+              <div className="grid md:grid-cols-[1fr_auto] gap-3 mb-5">
+                <input
+                  className="border rounded-lg p-3"
+                  placeholder="Search title, location, description, POC..."
+                  value={searchText}
+                  onChange={(event) => setSearchText(event.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter("all");
+                    setSearchText("");
+                  }}
+                  className="border px-4 py-3 rounded-lg font-bold"
+                >
+                  Reset
+                </button>
+              </div>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                <h2 className="text-2xl font-black">Filtered Events</h2>
+                <p className="text-sm text-gray-500">
+                  Showing {filteredEvents.length} of {events.length} event(s)
+                </p>
+              </div>
+              <div className="grid gap-4">
+                {filteredEvents.map((event) => (
+                  <article
+                    key={event.id}
+                    className="border rounded-xl p-4 grid md:grid-cols-[112px_1fr_auto] gap-4 items-center"
+                  >
+                    <ImageThumb src={getImage(event)} label={event.title} />
+                    <div>
+                      <h3 className="text-xl font-black">{event.title}</h3>
+                      <p className="text-sm text-gray-600">
+                        {formatDate(event.date)} ·{" "}
+                        {formatEventTime(
+                          event.local_start_time,
+                          event.local_end_time,
+                          event.event_timezone,
+                        )}{" "}
+                        · {event.location}
+                      </p>
+                      {event.description && (
+                        <p className="text-sm text-gray-700 mt-2 line-clamp-2">
+                          {event.description}
+                        </p>
+                      )}
+                      {event.ticket_url && (
+                        <CheckedExternalLink
+                          href={event.ticket_url}
+                          notFoundMessage="Page not found. This ticket/register link is not available."
+                          className="inline-block text-sm text-pink-600 font-bold mt-2 disabled:opacity-60"
+                        >
+                          Ticket link
+                        </CheckedExternalLink>
+                      )}
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        <span
+                          className={`inline-block text-sm font-bold px-3 py-1 rounded-full ${statusClass(event.status)}`}
+                        >
+                          {event.status || "pending"}
+                        </span>
+                        {event.featured && (
+                          <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-bold">
+                            Homepage Hero
+                          </span>
+                        )}
+                        {event.media_partner_status === "requested" && (
+                          <span className="bg-amber-100 text-amber-900 px-3 py-1 rounded-full text-xs font-bold">
+                            Media Partner Requested
+                          </span>
+                        )}
+                        {event.media_partner_status === "approved" && (
+                          <span className="bg-pink-100 text-pink-800 px-3 py-1 rounded-full text-xs font-bold">
+                            SDTV Media Partner
+                          </span>
+                        )}
+                        {event.poc_email && (
+                          <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                            POC: {event.poc_email}
+                          </span>
+                        )}
+                      </div>
+                      {event.featured && (
+                        <div className="mt-3 flex items-center gap-2">
+                          <span className="text-xs font-bold">Hero Order</span>
+                          <input
+                            type="number"
+                            min="0"
+                            defaultValue={event.featured_order || 0}
+                            className="border rounded px-2 py-1 w-24"
+                            onBlur={(e) =>
+                              updateFeatured(
+                                event.id,
+                                true,
+                                Number(e.target.value || 0),
+                              )
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2 md:justify-end md:items-center">
+                      <a
+                        href={`/studio/events/${event.id}`}
+                        className="bg-slate-900 text-white px-3 py-2 rounded-lg font-bold text-sm"
+                      >
+                        Edit
+                      </a>
+                      {event.featured ? (
+                        <button
+                          onClick={() =>
+                            updateFeatured(
+                              event.id,
+                              false,
+                              event.featured_order || 0,
+                            )
+                          }
+                          className="bg-purple-700 text-white px-3 py-2 rounded-lg font-bold text-sm"
+                        >
+                          Remove Hero
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() =>
+                            updateFeatured(
+                              event.id,
+                              true,
+                              event.featured_order || 0,
+                            )
+                          }
+                          className="bg-purple-600 text-white px-3 py-2 rounded-lg font-bold text-sm"
+                        >
+                          Feature Hero
+                        </button>
+                      )}
+                      {event.media_partner_status === "approved" ? (
+                        <button
+                          onClick={() => updateMediaPartner(event, false)}
+                          className="border border-pink-600 text-pink-700 px-3 py-2 rounded-lg font-bold text-sm"
+                        >
+                          Remove Media Partner
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => updateMediaPartner(event, true)}
+                          className="bg-pink-600 text-white px-3 py-2 rounded-lg font-bold text-sm"
+                        >
+                          Approve Media Partner
+                        </button>
+                      )}
+                      <button
+                        onClick={() => updateEventStatus(event.id, "approved")}
+                        className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => updateEventStatus(event.id, "on_hold")}
+                        className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm"
+                      >
+                        On Hold
+                      </button>
+                      <button
+                        onClick={() => updateEventStatus(event.id, "rejected")}
+                        className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm"
+                      >
+                        Reject
+                      </button>
+                      <button
+                        onClick={() => deleteEvent(event.id, event.title)}
+                        className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </article>
+                ))}
+                {filteredEvents.length === 0 && (
+                  <p className="text-gray-500">
+                    No events match the selected filters.
+                  </p>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
+      </div>
+    </main>
+  );
 }

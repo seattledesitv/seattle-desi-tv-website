@@ -5,11 +5,14 @@ import { getSupabaseBrowserClient } from "../../../lib/supabaseBrowser";
 import { formatEventTime } from "../../../lib/eventTime";
 import { useCurrentSite } from "../../../lib/sites/SiteContext";
 import { forSite } from "../../../lib/sites/query";
+import { requestFinalApprovalNotification } from "../../../lib/notifications/client";
 
 const supabase = getSupabaseBrowserClient();
 
 function roleContainsAdmin(role: string) {
-  return String(role || "").toLowerCase().includes("admin");
+  return String(role || "")
+    .toLowerCase()
+    .includes("admin");
 }
 
 function dateText(value?: string) {
@@ -19,7 +22,8 @@ function dateText(value?: string) {
 }
 
 function getImage(row: any) {
-  if (Array.isArray(row?.image_urls) && row.image_urls.length > 0) return row.image_urls[0];
+  if (Array.isArray(row?.image_urls) && row.image_urls.length > 0)
+    return row.image_urls[0];
   return row?.image || "";
 }
 
@@ -35,13 +39,19 @@ export default function PendingEventsPage() {
   const canAccess = Boolean(user && roleContainsAdmin(role));
 
   async function loadEvents() {
-    const { data, error } = await forSite(supabase
-      .from("events")
-      .select("id,title,date,local_start_time,local_end_time,event_timezone,location,description,status,image,image_urls,ticket_url,poc_email,created_at")
-      .or("status.is.null,status.eq.pending")
-      .order("created_at", { ascending: false }), site.id);
+    const { data, error } = await forSite(
+      supabase
+        .from("events")
+        .select(
+          "id,title,date,local_start_time,local_end_time,event_timezone,location,description,status,image,image_urls,ticket_url,poc_email,created_at",
+        )
+        .or("status.is.null,status.eq.pending")
+        .order("created_at", { ascending: false }),
+      site.id,
+    );
 
-    if (error) setActionMessage(`Could not load pending events: ${error.message}`);
+    if (error)
+      setActionMessage(`Could not load pending events: ${error.message}`);
     else setEvents(data || []);
   }
 
@@ -85,17 +95,29 @@ export default function PendingEventsPage() {
       payload.approved_at = new Date().toISOString();
     }
 
-    const { error } = await forSite(supabase.from("events").update(payload).eq("id", id), site.id);
+    const { error } = await forSite(
+      supabase.from("events").update(payload).eq("id", id),
+      site.id,
+    );
     if (error) setActionMessage(`Update failed: ${error.message}`);
     else {
-      setActionMessage(`Event marked ${status}.`);
+      const notice =
+        status === "approved"
+          ? await requestFinalApprovalNotification(supabase, "event", id)
+          : null;
+      setActionMessage(
+        `Event marked ${status}.${notice?.skipped === false ? " The submitter was emailed the public link." : ""}`,
+      );
       await loadEvents();
     }
   }
 
   async function deleteEvent(id: string, title: string) {
     if (!window.confirm(`Delete event: ${title}?`)) return;
-    const { error } = await forSite(supabase.from("events").delete().eq("id", id), site.id);
+    const { error } = await forSite(
+      supabase.from("events").delete().eq("id", id),
+      site.id,
+    );
     if (error) setActionMessage(`Delete failed: ${error.message}`);
     else {
       setActionMessage("Event deleted.");
@@ -103,42 +125,119 @@ export default function PendingEventsPage() {
     }
   }
 
-  useEffect(() => { init(); }, []);
+  useEffect(() => {
+    init();
+  }, []);
 
   return (
     <main className="min-h-screen bg-slate-950 text-white px-6 py-10">
       <div className="max-w-6xl mx-auto">
-        <a href="/studio" className="text-pink-300 font-bold">← Back to Studio</a>
+        <a href="/studio" className="text-pink-300 font-bold">
+          ← Back to Studio
+        </a>
         <h1 className="text-4xl md:text-5xl font-black mt-3">Pending Events</h1>
-        <p className="text-slate-300 mt-2 mb-8">Review new event submissions waiting for approval.</p>
+        <p className="text-slate-300 mt-2 mb-8">
+          Review new event submissions waiting for approval.
+        </p>
 
-        {loading && <div className="bg-white/10 rounded-2xl p-6">{message}</div>}
-        {!loading && !canAccess && <div className="bg-white text-slate-950 rounded-2xl p-8">{message}</div>}
+        {loading && (
+          <div className="bg-white/10 rounded-2xl p-6">{message}</div>
+        )}
+        {!loading && !canAccess && (
+          <div className="bg-white text-slate-950 rounded-2xl p-8">
+            {message}
+          </div>
+        )}
 
         {!loading && canAccess && (
           <div className="space-y-5">
-            {actionMessage && <div className="bg-yellow-100 text-yellow-900 rounded-2xl p-4 font-bold">{actionMessage}</div>}
-            <div className="bg-white/10 rounded-2xl p-5"><p className="text-slate-300">Pending Events</p><p className="text-4xl font-black">{events.length}</p></div>
+            {actionMessage && (
+              <div className="bg-yellow-100 text-yellow-900 rounded-2xl p-4 font-bold">
+                {actionMessage}
+              </div>
+            )}
+            <div className="bg-white/10 rounded-2xl p-5">
+              <p className="text-slate-300">Pending Events</p>
+              <p className="text-4xl font-black">{events.length}</p>
+            </div>
             <div className="grid gap-4">
               {events.map((event) => (
-                <article key={event.id} className="bg-white text-slate-950 rounded-2xl p-4 grid md:grid-cols-[112px_1fr_auto] gap-4 items-center">
-                  {getImage(event) ? <img src={getImage(event)} alt={event.title} className="w-28 h-28 rounded-xl object-cover" /> : <div className="w-28 h-28 bg-pink-50 rounded-xl grid place-items-center text-pink-600 font-black text-xs">No image</div>}
+                <article
+                  key={event.id}
+                  className="bg-white text-slate-950 rounded-2xl p-4 grid md:grid-cols-[112px_1fr_auto] gap-4 items-center"
+                >
+                  {getImage(event) ? (
+                    <img
+                      src={getImage(event)}
+                      alt={event.title}
+                      className="w-28 h-28 rounded-xl object-cover"
+                    />
+                  ) : (
+                    <div className="w-28 h-28 bg-pink-50 rounded-xl grid place-items-center text-pink-600 font-black text-xs">
+                      No image
+                    </div>
+                  )}
                   <div>
                     <h2 className="text-xl font-black">{event.title}</h2>
-                    <p className="text-sm text-gray-600">{dateText(event.date)} · {formatEventTime(event.local_start_time, event.local_end_time, event.event_timezone)} · {event.location}</p>
-                    {event.description && <p className="text-sm text-gray-700 mt-2 line-clamp-2">{event.description}</p>}
-                    {event.poc_email && <p className="text-xs text-gray-500 mt-2">POC: {event.poc_email}</p>}
+                    <p className="text-sm text-gray-600">
+                      {dateText(event.date)} ·{" "}
+                      {formatEventTime(
+                        event.local_start_time,
+                        event.local_end_time,
+                        event.event_timezone,
+                      )}{" "}
+                      · {event.location}
+                    </p>
+                    {event.description && (
+                      <p className="text-sm text-gray-700 mt-2 line-clamp-2">
+                        {event.description}
+                      </p>
+                    )}
+                    {event.poc_email && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        POC: {event.poc_email}
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2 md:justify-end">
-                    <a href={`/studio/events/${event.id}`} className="bg-slate-900 text-white px-3 py-2 rounded-lg font-bold text-sm">Edit</a>
-                    <button onClick={() => updateEventStatus(event.id, "approved")} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Approve</button>
-                    <button onClick={() => updateEventStatus(event.id, "on_hold")} className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm">On Hold</button>
-                    <button onClick={() => updateEventStatus(event.id, "rejected")} className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm">Reject</button>
-                    <button onClick={() => deleteEvent(event.id, event.title)} className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm">Delete</button>
+                    <a
+                      href={`/studio/events/${event.id}`}
+                      className="bg-slate-900 text-white px-3 py-2 rounded-lg font-bold text-sm"
+                    >
+                      Edit
+                    </a>
+                    <button
+                      onClick={() => updateEventStatus(event.id, "approved")}
+                      className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-sm"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => updateEventStatus(event.id, "on_hold")}
+                      className="bg-yellow-500 text-white px-3 py-2 rounded-lg font-bold text-sm"
+                    >
+                      On Hold
+                    </button>
+                    <button
+                      onClick={() => updateEventStatus(event.id, "rejected")}
+                      className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-sm"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      onClick={() => deleteEvent(event.id, event.title)}
+                      className="border border-red-600 text-red-600 px-3 py-2 rounded-lg font-bold text-sm"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </article>
               ))}
-              {events.length === 0 && <div className="bg-white text-slate-950 rounded-2xl p-8">No pending events.</div>}
+              {events.length === 0 && (
+                <div className="bg-white text-slate-950 rounded-2xl p-8">
+                  No pending events.
+                </div>
+              )}
             </div>
           </div>
         )}

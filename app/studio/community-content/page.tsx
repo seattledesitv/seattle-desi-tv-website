@@ -6,6 +6,7 @@ import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
 import { useCurrentSite } from "../../lib/sites/SiteContext";
 import { forSite } from "../../lib/sites/query";
+import { requestFinalApprovalNotification } from "../../lib/notifications/client";
 
 const supabase = getSupabaseBrowserClient();
 const CONTENT_STATUSES = [
@@ -196,6 +197,7 @@ export default function CommunityContentPage() {
       setActionMessage(result.error || "Story publishing failed.");
       return;
     }
+    await requestFinalApprovalNotification(supabase, "story", result.story?.id);
     setActionMessage(`Story published. Public page: ${result.url}`);
     await loadContent();
   }
