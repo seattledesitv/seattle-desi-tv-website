@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-type FinalEntityType = "story" | "event" | "organization" | "business";
+type FinalEntityType =
+  "story" | "story_instagram" | "event" | "organization" | "business";
 
 export async function requestFinalApprovalNotification(
   supabase: SupabaseClient,
@@ -16,10 +17,8 @@ export async function requestFinalApprovalNotification(
     },
     body: JSON.stringify({ entityType, entityId }),
   });
-  return response
-    .json()
-    .catch(() => ({
-      ok: false,
-      error: "Notification response could not be read.",
-    }));
+  return response.json().catch(() => ({
+    ok: false,
+    error: "Notification response could not be read.",
+  }));
 }

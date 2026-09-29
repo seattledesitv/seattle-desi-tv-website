@@ -3,7 +3,8 @@ import { Resend } from "resend";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { seoEntityPath } from "../seo/urls";
 
-export type FinalEntityType = "story" | "event" | "organization" | "business";
+export type FinalEntityType =
+  "story" | "story_instagram" | "event" | "organization" | "business";
 const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL || "https://seattledesitv.com"
 ).replace(/\/$/, "");
@@ -26,14 +27,15 @@ async function details(
   type: FinalEntityType,
   id: string,
 ) {
-  if (type === "story") {
+  if (type === "story" || type === "story_instagram") {
     const { data } = await db
       .from("community_stories")
-      .select("id,title,slug,status,source_request_id")
+      .select("id,title,slug,status,source_request_id,instagram_permalink")
       .eq("site_id", siteId)
       .eq("id", id)
       .maybeSingle();
     if (!data || data.status !== "published") return null;
+    if (type === "story_instagram" && !data.instagram_permalink) return null;
     const { data: source } = await db
       .from("public_content_requests")
       .select("submitter_email,submitter_name")
@@ -44,7 +46,11 @@ async function details(
       recipient: email(source?.submitter_email),
       name: source?.submitter_name,
       path: `/news/stories/${data.slug}`,
-      label: "story",
+      url:
+        type === "story_instagram"
+          ? String(data.instagram_permalink)
+          : undefined,
+      label: type === "story_instagram" ? "story on Instagram" : "story",
     };
   }
   if (type === "event") {
@@ -126,7 +132,7 @@ export async function sendFinalApprovalNotification(
     return { ok: true, skipped: true, reason: "no_recipient" };
   if (!process.env.RESEND_API_KEY)
     return { ok: true, skipped: true, reason: "email_not_configured" };
-  const publicUrl = `${SITE_URL}${item.path}`;
+  const publicUrl = ("url" in item && item.url) || `${SITE_URL}${item.path}`;
   const resend = new Resend(process.env.RESEND_API_KEY);
   const result = await resend.emails.send({
     from:
@@ -137,22 +143,20 @@ export async function sendFinalApprovalNotification(
     html: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;max-width:640px"><h2>Your ${esc(item.label)} is now live</h2><p>Hello ${esc(item.name || "there")},</p><p><b>${esc(item.title)}</b> has been approved and published on ${esc(input.siteName)}.</p><p><a href="${esc(publicUrl)}" style="display:inline-block;background:#db2777;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:bold">View published page</a></p><p style="color:#64748b;font-size:13px">${esc(publicUrl)}</p></div>`,
   });
   const status = result.error ? "failed" : "sent";
-  await db
-    .from("final_approval_notifications")
-    .upsert(
-      {
-        site_id: input.siteId,
-        entity_type: input.entityType,
-        entity_id: input.entityId,
-        recipient_email: item.recipient,
-        public_url: publicUrl,
-        provider_message_id: result.data?.id || null,
-        status,
-        error_message: result.error?.message || null,
-        sent_at: new Date().toISOString(),
-      },
-      { onConflict: "site_id,entity_type,entity_id" },
-    );
+  await db.from("final_approval_notifications").upsert(
+    {
+      site_id: input.siteId,
+      entity_type: input.entityType,
+      entity_id: input.entityId,
+      recipient_email: item.recipient,
+      public_url: publicUrl,
+      provider_message_id: result.data?.id || null,
+      status,
+      error_message: result.error?.message || null,
+      sent_at: new Date().toISOString(),
+    },
+    { onConflict: "site_id,entity_type,entity_id" },
+  );
   return result.error
     ? { ok: false, error: result.error.message }
     : { ok: true, skipped: false };

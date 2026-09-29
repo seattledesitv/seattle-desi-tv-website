@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { cleanRole, resolveUserRole } from "../../../lib/roles";
 import { resolveSiteForHostname } from "../../../lib/sites/siteResolver";
 import { hasInstagramPublisherAccess } from "../../../lib/instagramPublisherAccess";
+import { sendFinalApprovalNotification } from "../../../lib/notifications/finalApproval";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -470,6 +471,31 @@ export async function POST(request: Request) {
         .eq("site_id", site.id);
       if (recordingError) {
         recordingWarning = `Instagram published successfully, but the story permalink could not be saved: ${recordingError.message}`;
+      } else {
+        const serviceKey =
+          process.env.SUPABASE_SERVICE_ROLE_KEY ||
+          process.env.SUPABASE_SECRET_KEY ||
+          "";
+        if (serviceKey) {
+          try {
+            const serviceClient = createClient(supabaseUrl, serviceKey, {
+              auth: { persistSession: false },
+            });
+            const notification = await sendFinalApprovalNotification(
+              serviceClient,
+              {
+                siteId: site.id,
+                siteName: site.name,
+                entityType: "story_instagram",
+                entityId: communityStoryId,
+              },
+            );
+            if (!notification.ok && "error" in notification)
+              recordingWarning = `Instagram published successfully, but the owner email failed: ${notification.error}`;
+          } catch (notificationError) {
+            recordingWarning = `Instagram published successfully, but the owner email failed: ${notificationError instanceof Error ? notificationError.message : "unknown error"}`;
+          }
+        }
       }
     }
 

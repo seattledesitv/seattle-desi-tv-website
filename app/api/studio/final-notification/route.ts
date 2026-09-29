@@ -15,6 +15,7 @@ const service =
   "";
 const allowed = new Set<FinalEntityType>([
   "story",
+  "story_instagram",
   "event",
   "organization",
   "business",
