@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useParams } from "next/navigation";
 import SiteHeader from "../../components/SiteHeader";
 import SiteFooter from "../../components/SiteFooter";
@@ -144,6 +144,10 @@ export default function EventDetailPage() {
   const [lightboxZoom, setLightboxZoom] = useState(1);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [organizationManagerAccess, setOrganizationManagerAccess] = useState(false);
+  const [rsvpName, setRsvpName] = useState("");
+  const [rsvpWebsite, setRsvpWebsite] = useState("");
+  const [rsvpMessage, setRsvpMessage] = useState("");
+  const [rsvpSaving, setRsvpSaving] = useState(false);
 
   const isOwner = Boolean(user?.id && (event?.created_by === user.id || organizationManagerAccess));
   const canRequestCrew = Boolean(user && isTeamRole(role));
@@ -188,7 +192,7 @@ export default function EventDetailPage() {
 
   async function loadRelatedEvents(currentEvent: any) {
     const today = new Date().toISOString().split("T")[0];
-    const { data } = await forSite(supabase.from("events").select("id,title,date,end_date,location,image,image_urls,ticket_url,status"), site.id).neq("id", currentEvent.id).gte("date", today).order("date", { ascending: true }).limit(3);
+    const { data } = await forSite(supabase.from("events").select("id,title,date,end_date,location,image,image_urls,ticket_url,status"), site.id).neq("id", currentEvent.id).eq("visibility", "public").gte("date", today).order("date", { ascending: true }).limit(3);
     setRelatedEvents(data || []);
   }
   async function loadOrganizations(id: string) {
@@ -196,7 +200,7 @@ export default function EventDetailPage() {
     setEventOrganizations(data || []);
   }
   async function loadEvent() {
-    const { data, error } = await forSite(supabase.from("events").select("id,title,date,end_date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by,status,crew_member_ids,media_partner_status"), site.id).eq("id", eventId).maybeSingle();
+    const { data, error } = await forSite(supabase.from("events").select("id,title,date,end_date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by,status,crew_member_ids,media_partner_status,visibility,simple_rsvp_enabled"), site.id).eq("id", eventId).maybeSingle();
     if (error) {
       setMessage(`Could not load event: ${error.message}`);
       return null;
@@ -225,6 +229,18 @@ export default function EventDetailPage() {
     setCrewRequests(rows);
     const ownerCoverage = rows.find((r: any) => r.assignment_type === "owner_coverage_request" && (!currentUser?.id || r.user_id === currentUser.id));
     setCoverageRequest(ownerCoverage || rows.find((r: any) => r.assignment_type === "owner_coverage_request") || null);
+  }
+  async function submitRsvp(eventSubmit: FormEvent<HTMLFormElement>) {
+    eventSubmit.preventDefault();
+    if (!rsvpName.trim()) { setRsvpMessage("Please enter your name."); return; }
+    setRsvpSaving(true); setRsvpMessage("Recording your response...");
+    try {
+      const response = await fetch("/api/events/rsvp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: event.id, name: rsvpName, website: rsvpWebsite }) });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "RSVP could not be recorded.");
+      setRsvpMessage(result.message || "Thank you. We recorded that you are coming."); setRsvpName("");
+    } catch (error: any) { setRsvpMessage(error?.message || "RSVP could not be recorded."); }
+    finally { setRsvpSaving(false); }
   }
   async function init() {
     if (!eventId || eventId === "undefined") {
@@ -417,6 +433,7 @@ export default function EventDetailPage() {
                 <span className={`rounded-full px-3 py-1 text-sm font-black ${eventEnded ? "bg-slate-700 text-slate-200" : "bg-pink-600 text-white"}`}>{countdown}</span>
                 {(hasInternalTickets || event.ticket_url) && !eventEnded && <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-black text-emerald-200 ring-1 ring-emerald-300/40">Tickets / registration</span>}
                 {event.media_partner_status === "approved" && <span className="rounded-full bg-pink-500/20 px-3 py-1 text-sm font-black text-pink-100 ring-1 ring-pink-300/40">SDTV Media Partner</span>}
+                {event.visibility === "unlisted" && <span className="rounded-full bg-amber-400/20 px-3 py-1 text-sm font-black text-amber-100 ring-1 ring-amber-300/40">Private SDTV event · link only</span>}
               </div>
               <h1 className="mt-5 max-w-5xl text-4xl font-black md:text-6xl">{event.title}</h1>
               <p className="mt-4 text-lg text-slate-300">
@@ -454,6 +471,7 @@ export default function EventDetailPage() {
           </section>
 
           <section className="mx-auto max-w-7xl px-6 py-10 md:px-10">
+            {event.simple_rsvp_enabled && !eventEnded && <section className="mb-8 overflow-hidden rounded-3xl border border-pink-200 bg-white shadow-sm"><div className="bg-slate-950 p-6 text-white md:p-8"><p className="text-xs font-black uppercase tracking-[.2em] text-pink-300">Quick RSVP</p><h2 className="mt-2 text-3xl font-black">Will you be joining us?</h2><p className="mt-2 text-slate-300">No account is needed. Just enter your name to let the SDTV team know.</p></div><form onSubmit={submitRsvp} className="grid gap-4 p-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:p-8"><label className="grid gap-2 font-bold">Your name<input value={rsvpName} onChange={(input) => setRsvpName(input.target.value)} maxLength={100} autoComplete="name" required className="rounded-xl border p-4 font-normal" placeholder="Enter your name" /></label><label className="hidden" aria-hidden="true">Website<input value={rsvpWebsite} onChange={(input) => setRsvpWebsite(input.target.value)} tabIndex={-1} autoComplete="off" /></label><button disabled={rsvpSaving} className="rounded-xl bg-pink-600 px-7 py-4 font-black text-white disabled:opacity-60">{rsvpSaving ? "Saving..." : "Yes, I’m coming"}</button>{rsvpMessage && <p className="rounded-xl bg-pink-50 p-4 font-bold text-slate-700 md:col-span-2" role="status">{rsvpMessage}</p>}</form></section>}
             <EventTicketPurchase eventId={event.id} eventEnded={eventEnded} />
             <div className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_350px]">
               <div className="space-y-6">

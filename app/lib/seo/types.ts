@@ -17,6 +17,7 @@ export type SeoEntity = {
   website: string | null;
   category: string | null;
   offer: string | null;
+  unlisted?: boolean;
 };
 
 export type SeoSitemapEntry = Pick<SeoEntity, "path" | "modifiedAt">;

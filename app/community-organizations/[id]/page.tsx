@@ -31,10 +31,10 @@ export default function CommunityOrganizationProfilePage() {
     const basicColumns = "id,name,organization_type,category,location,website,description,contact_name,contact_email,contact_phone,image,image_position_x,image_position_y,image_zoom,image_display_mode";
     let organizationResult = await forSite(supabase.from("community_organizations").select(richColumns), site.id).eq("id", organizationId).eq("approved", true).eq("status", "approved").maybeSingle();
     if (organizationResult.error && /manager_verified_at/i.test(organizationResult.error.message || "")) organizationResult = await forSite(supabase.from("community_organizations").select(basicColumns), site.id).eq("id", organizationId).eq("approved", true).eq("status", "approved").maybeSingle();
-    const linksResult = await supabase.from("event_organizations").select("id,relationship,is_primary,events(id,title,date,location,description,image,image_urls,ticket_url,status,approved)").eq("organization_id", organizationId).order("display_order");
+    const linksResult = await supabase.from("event_organizations").select("id,relationship,is_primary,events(id,title,date,location,description,image,image_urls,ticket_url,status,approved,visibility)").eq("organization_id", organizationId).order("display_order");
     if (organizationResult.error || !organizationResult.data) { setMessage(organizationResult.error?.message || "Organization not found."); setLoading(false); return; }
     setOrganization(organizationResult.data);
-    setEventLinks((linksResult.data || []).filter((link: any) => link.events?.approved || link.events?.status === "approved"));
+    setEventLinks((linksResult.data || []).filter((link: any) => (link.events?.approved || link.events?.status === "approved") && link.events?.visibility !== "unlisted"));
     setLoading(false);
   }
 

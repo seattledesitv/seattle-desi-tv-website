@@ -52,6 +52,8 @@ function emptyForm() {
     poc_phone: "",
     status: "pending",
     approved: false,
+    visibility: "public",
+    simple_rsvp_enabled: false,
   };
 }
 function getEventIdFromPath() {
@@ -86,6 +88,7 @@ export default function EventEditPage() {
   const [latestVideoRevision, setLatestVideoRevision] = useState<any>(null);
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [eventOrganizations, setEventOrganizations] = useState<any[]>([]);
+  const [rsvps, setRsvps] = useState<any[]>([]);
   const [organizationSearch, setOrganizationSearch] = useState("");
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [newOrganization, setNewOrganization] = useState({
@@ -175,7 +178,7 @@ export default function EventEditPage() {
       supabase
         .from("events")
         .select(
-          "id,title,date,end_date,local_start_time,local_end_time,event_timezone,location,description,image,ticket_url,poc_email,poc_phone,status,approved,crew_member_ids",
+          "id,title,date,end_date,local_start_time,local_end_time,event_timezone,location,description,image,ticket_url,poc_email,poc_phone,status,approved,crew_member_ids,visibility,simple_rsvp_enabled",
         )
         .eq("id", id),
       site.id,
@@ -203,10 +206,14 @@ export default function EventEditPage() {
       poc_phone: data.poc_phone || "",
       status: data.status || "pending",
       approved: Boolean(data.approved),
+      visibility: data.visibility || "public",
+      simple_rsvp_enabled: Boolean(data.simple_rsvp_enabled),
     });
     setSelectedCrewIds(
       Array.isArray(data.crew_member_ids) ? data.crew_member_ids : [],
     );
+    const rsvpResult = await forSite(supabase.from("event_rsvps").select("id,attendee_name,source,created_at").eq("event_id", id).order("created_at", { ascending: false }), site.id);
+    setRsvps(rsvpResult.error ? [] : rsvpResult.data || []);
   }
 
   async function loadVideoWorkflow(id: string) {
@@ -458,6 +465,8 @@ export default function EventEditPage() {
       poc_phone: form.poc_phone.trim(),
       status: form.status || "pending",
       approved,
+      visibility: form.visibility || "public",
+      simple_rsvp_enabled: Boolean(form.simple_rsvp_enabled),
       crew_member_ids: Array.from(new Set(selectedCrewIds)),
     };
     if (approved) {
@@ -640,6 +649,18 @@ export default function EventEditPage() {
                 />
               </label>
               <label className="grid gap-2 text-sm font-bold">
+                Event visibility
+                <select className="rounded-lg border p-3 font-normal" value={form.visibility} onChange={(e) => setForm({ ...form, visibility: e.target.value })}>
+                  <option value="public">Public — show in event listings</option>
+                  <option value="unlisted">Unlisted — direct link only</option>
+                </select>
+                <span className="text-xs font-normal text-slate-500">Unlisted events stay out of the homepage, event directory, newsletters, and sitemap. Anyone with the direct link can view the page.</span>
+              </label>
+              <label className="flex items-start gap-3 rounded-xl border bg-slate-50 p-4 text-sm font-bold md:col-span-2">
+                <input type="checkbox" className="mt-1 h-5 w-5 accent-pink-600" checked={form.simple_rsvp_enabled} onChange={(e) => setForm({ ...form, simple_rsvp_enabled: e.target.checked })} />
+                <span>Enable simple RSVP<span className="mt-1 block text-xs font-normal text-slate-500">Guests enter only their name and select “Yes, I’m coming.” No account is required.</span></span>
+              </label>
+              <label className="grid gap-2 text-sm font-bold">
                 POC Phone
                 <input
                   className="rounded-lg border p-3 font-normal"
@@ -674,6 +695,8 @@ export default function EventEditPage() {
               )}
             </div>
           </section>
+
+          {form.simple_rsvp_enabled && <section className="rounded-2xl bg-white p-6 text-slate-950"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm font-black uppercase tracking-wide text-pink-600">Attendance confirmations</p><h2 className="mt-1 text-2xl font-black">RSVPs ({rsvps.length})</h2></div><a href={`/events/${eventId}`} className="rounded-xl border px-4 py-2 text-sm font-black">Open guest page</a></div><div className="mt-5 overflow-hidden rounded-xl border">{rsvps.length ? rsvps.map((rsvp) => <div key={rsvp.id} className="flex items-center justify-between gap-4 border-b px-4 py-3 last:border-b-0"><p className="font-bold">{rsvp.attendee_name}</p><p className="text-xs text-slate-500">{rsvp.source} · {dateText(rsvp.created_at)}</p></div>) : <p className="p-5 text-sm font-bold text-slate-500">No confirmations yet.</p>}</div></section>}
 
           <section className="rounded-2xl bg-white p-6 text-slate-950">
             <div className="flex flex-wrap items-start justify-between gap-3">

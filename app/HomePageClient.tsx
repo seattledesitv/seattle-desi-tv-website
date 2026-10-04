@@ -597,7 +597,7 @@ export default function HomePageClient({ initialData = {} }: { initialData?: Ini
       forSite(
         supabase.from("events").select("id,title,date,location,image,image_urls,featured,featured_order,hero_buttons"),
         site.id,
-      ).eq("status", "approved").eq("featured", true).order("featured_order", { ascending: true }).order("date", { ascending: true }).limit(5),
+      ).eq("status", "approved").eq("visibility", "public").eq("featured", true).order("featured_order", { ascending: true }).order("date", { ascending: true }).limit(5),
       supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,hero_buttons,banner_type,start_date,end_date,display_order,active").eq("site_id", site.id || "").eq("active", true).order("display_order", { ascending: true }),
       supabase.from("festival_hero_assets").select("id,festival_name,festival_key,title,subtitle,image_url,hero_buttons,start_date,end_date,active").eq("site_id", site.id || "").eq("active", true).order("start_date", { ascending: true }),
       supabase.from("business_offers").select("id,title,description,image_url,homepage_rank,destination_url,local_businesses(name,image,image_urls)").eq("site_id", site.id || "").eq("status", "approved").eq("is_homepage_hero", true).lte("starts_at", today).or(`ends_at.is.null,ends_at.gte.${today}`).order("homepage_rank").limit(4),
@@ -645,6 +645,7 @@ export default function HomePageClient({ initialData = {} }: { initialData?: Ini
         site.id,
       )
         .eq("status", "approved")
+        .eq("visibility", "public")
         .order("date", { ascending: true })
         .limit(250),
       forSite(
@@ -701,7 +702,7 @@ export default function HomePageClient({ initialData = {} }: { initialData?: Ini
         forSite(
           supabase.from("events").select("id", { count: "exact", head: true }),
           site.id,
-        ).eq("status", "approved"),
+        ).eq("status", "approved").eq("visibility", "public"),
       ),
       countQuery(
         forSite(

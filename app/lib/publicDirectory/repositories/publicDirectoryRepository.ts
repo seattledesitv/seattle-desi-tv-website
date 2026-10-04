@@ -59,6 +59,7 @@ export async function listApproved(
     query = query.eq("site_id", page.siteId);
   if (resource === "organizations" || resource === "groups")
     query = query.eq("approved", true);
+  if (resource === "events") query = query.eq("visibility", "public");
   if (resource === "influencers") query = query.eq("public_listing", true);
   if (resource === "classifieds")
     query = query

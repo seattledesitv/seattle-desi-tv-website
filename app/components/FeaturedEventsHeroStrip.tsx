@@ -41,6 +41,7 @@ export default function FeaturedEventsHeroStrip() {
         site.id,
       )
         .eq("status", "approved")
+        .eq("visibility", "public")
         .eq("featured", true)
         .gte("date", today)
         .order("featured_order", { ascending: true })

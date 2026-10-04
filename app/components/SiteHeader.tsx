@@ -53,7 +53,7 @@ async function loadHeroThemeMap(siteId: string | null) {
   const [bannerResult, festivalResult, eventResult] = await Promise.all([
     forSite(supabase.from("homepage_hero_banners").select("image_url,theme"), siteId).eq("active", true),
     forSite(supabase.from("festival_hero_assets").select("image_url,theme"), siteId).eq("active", true),
-    forSite(supabase.from("events").select("image,image_urls,hero_theme"), siteId).eq("featured", true).eq("status", "approved"),
+    forSite(supabase.from("events").select("image,image_urls,hero_theme"), siteId).eq("featured", true).eq("status", "approved").eq("visibility", "public"),
   ]);
   const next: Record<string, string> = {};
   [...(bannerResult.data || []), ...(festivalResult.data || [])].forEach((row: any) => {

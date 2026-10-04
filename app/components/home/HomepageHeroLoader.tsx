@@ -29,7 +29,7 @@ export default function HomepageHeroLoader() {
     async function load() {
       const today = new Date().toISOString().slice(0, 10);
       const [eventsResult, bannersResult, festivalsResult] = await Promise.all([
-        forSite(supabase.from("events").select("id,title,date,location,image,image_urls,featured_order,hero_theme"), site.id).eq("status", "approved").eq("featured", true).order("featured_order", { ascending: true }).limit(8),
+        forSite(supabase.from("events").select("id,title,date,location,image,image_urls,featured_order,hero_theme"), site.id).eq("status", "approved").eq("visibility", "public").eq("featured", true).order("featured_order", { ascending: true }).limit(8),
         forSite(supabase.from("homepage_hero_banners").select("id,title,subtitle,image_url,button_text,button_url,banner_type,theme,start_date,end_date,display_order,active"), site.id).eq("active", true).order("display_order", { ascending: true }),
         forSite(supabase.from("festival_hero_assets").select("id,festival_name,title,subtitle,image_url,theme,start_date,end_date,active"), site.id).eq("active", true).order("start_date", { ascending: true }),
       ]);

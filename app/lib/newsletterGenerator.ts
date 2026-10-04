@@ -45,6 +45,7 @@ async function tableItems(sectionKey: string, limit: number, siteId: string) {
   if (!config) return [];
   let query = supabase.from(config[0]).select(config[1]).eq("site_id", siteId).limit(limit).order(config[3], { ascending: sectionKey === "events" });
   if (["events", "groups", "organizations"].includes(sectionKey)) query = query.eq("status", "approved");
+  if (sectionKey === "events") query = query.eq("visibility", "public");
   const { data, error } = await query;
   if (error || !Array.isArray(data)) return [];
   return data.map((row: any) => itemFrom({ ...row, meta: row.date ? `${dateLabel(row.date)}${row.location ? ` · ${row.location}` : ""}` : row.category || row.platform || "" }, config[2]));

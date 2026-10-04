@@ -238,7 +238,7 @@ export default function EventsPageClient({ initialEvents = [] }: { initialEvents
   }, [organizations, organizationSearch]);
 
   async function loadEvents() {
-    const { data, error } = await forSite(supabase.from("events").select("id,title,date,end_date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by,media_partner_status"), site.id).eq("status", "approved").order("date", { ascending: true });
+    const { data, error } = await forSite(supabase.from("events").select("id,title,date,end_date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by,media_partner_status"), site.id).eq("status", "approved").eq("visibility", "public").order("date", { ascending: true });
     if (error) {
       setEvents([]);
       setMessage(`Could not load events: ${error.message}`);

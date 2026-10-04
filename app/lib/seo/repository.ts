@@ -11,7 +11,7 @@ function client() {
 }
 
 const entityColumns: Record<SeoEntityKind, string> = {
-  event: "id,title,description,date,location,image,image_urls,created_at",
+  event: "id,title,description,date,location,image,image_urls,created_at,visibility",
   business:
     "id,name,address,website,category,discount,offer,image,image_urls,created_at",
   classified:
@@ -75,7 +75,7 @@ async function list(table: string, columns: string, siteId?: string | null) {
   )
     query = query.eq("site_id", siteId);
   if (table === "events")
-    query = query.or("approved.eq.true,status.eq.approved");
+    query = query.or("approved.eq.true,status.eq.approved").eq("visibility", "public");
   if (table === "local_businesses") query = query.eq("status", "approved");
   const { data, error } = await query;
   return error

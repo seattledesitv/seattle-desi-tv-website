@@ -23,6 +23,7 @@ export async function getInitialPublicEvents(siteId: string | null) {
       .from("events")
       .select("id,title,date,end_date,local_start_time,local_end_time,event_timezone,location,description,image,image_urls,ticket_url,created_by,media_partner_status")
       .eq("status", "approved")
+      .eq("visibility", "public")
       .order("date", { ascending: true });
     const { data, error } = await forSite(query, siteId);
     return error ? [] : data || [];
@@ -79,7 +80,7 @@ export async function getInitialHomepageData(siteId: string | null, timezone = "
   try {
     const today = dateInTimeZone(timezone);
     const eventsQuery = forSite(
-      db.from("events").select("id,title,date,end_date,location,image,image_urls").eq("status", "approved").order("date", { ascending: true }).limit(250),
+      db.from("events").select("id,title,date,end_date,location,image,image_urls").eq("status", "approved").eq("visibility", "public").order("date", { ascending: true }).limit(250),
       siteId,
     );
     const businessesQuery = forSite(
@@ -97,7 +98,7 @@ export async function getInitialHomepageData(siteId: string | null, timezone = "
       eventsQuery,
       businessesQuery,
       socialQuery,
-      count(forSite(db.from("events").select("id", { count: "exact", head: true }).eq("status", "approved"), siteId)),
+      count(forSite(db.from("events").select("id", { count: "exact", head: true }).eq("status", "approved").eq("visibility", "public"), siteId)),
       count(forSite(db.from("local_businesses").select("id", { count: "exact", head: true }).eq("status", "approved"), siteId)),
       count(forSite(db.from("event_crew_assignments").select("id", { count: "exact", head: true }).eq("assignment_type", "owner_coverage_request"), siteId)),
       count(forSite(db.from("team_members").select("id", { count: "exact", head: true }), siteId)),

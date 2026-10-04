@@ -89,8 +89,8 @@ export default function CommunityDirectoryPage({ kind }: { kind: Kind }) {
     }
     setItems(listingResult.data || []);
     if (kind === "organizations") {
-      const linksResult = await supabase.from("event_organizations").select("id,organization_id,relationship,is_primary,display_order,events(id,title,date,location,image,image_urls,status,approved)").order("display_order", { ascending: true });
-      setEventLinks((linksResult.data || []).filter((link: any) => link.events?.approved || link.events?.status === "approved"));
+      const linksResult = await supabase.from("event_organizations").select("id,organization_id,relationship,is_primary,display_order,events(id,title,date,location,image,image_urls,status,approved,visibility)").order("display_order", { ascending: true });
+      setEventLinks((linksResult.data || []).filter((link: any) => (link.events?.approved || link.events?.status === "approved") && link.events?.visibility !== "unlisted"));
       if (linksResult.error && !listingResult.error) setMessage(`Organizations loaded, but linked events could not be loaded: ${linksResult.error.message}`);
     } else {
       setEventLinks([]);

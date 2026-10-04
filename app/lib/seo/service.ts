@@ -46,6 +46,7 @@ export const getEntity = cache(async (kind: SeoEntityKind, id: string): Promise<
     priceCents: row.price_cents == null ? null : Number(row.price_cents),
     website: text(row.website) || null, category: text(row.category) || null,
     offer: text(row.offer || row.discount) || null,
+    unlisted: kind === "event" && text(row.visibility) === "unlisted",
   };
 });
 
@@ -59,6 +60,7 @@ export function entityMetadata(entity: SeoEntity | null, fallbackTitle: string):
     alternates: { canonical: entity.path },
     openGraph: { title: entity.title, description: entity.description, url, siteName: "Seattle Desi TV", type: entity.kind === "event" ? "website" : "article", images: [{ url: imageUrl, alt: entity.title }] },
     twitter: { card: "summary_large_image", title: entity.title, description: entity.description, images: [imageUrl] },
+    robots: entity.unlisted ? { index: false, follow: false } : undefined,
   };
 }
 
