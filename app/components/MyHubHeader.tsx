@@ -119,6 +119,12 @@ export default function MyHubHeader() {
       show: true,
       tone: canSeeTeamTools ? "default" : "team",
     },
+    {
+      label: "Team Quick Forms",
+      href: "/studio/quick-forms",
+      show: canSeeTeamTools,
+      tone: "default",
+    },
     { label: "My Contact Requests", href: "/my-contact-requests", show: true },
     {
       label: "My SDTV Journey",
