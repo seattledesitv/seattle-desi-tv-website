@@ -27,6 +27,14 @@ export async function POST(request: Request) {
         { error: "Please enter your name." },
         { status: 400 },
       );
+    const guestNames = (Array.isArray(body.guestNames) ? body.guestNames : [])
+      .map((name: unknown) => String(name || "").replace(/\s+/g, " ").trim())
+      .filter(Boolean);
+    if (guestNames.length > 10 || guestNames.some((name: string) => name.length > 100))
+      return NextResponse.json(
+        { error: "You can add up to 10 guests, and each guest name must be 100 characters or fewer." },
+        { status: 400 },
+      );
 
     const site = await resolveSiteForHostname(
       request.headers.get("x-forwarded-host") || request.headers.get("host"),
@@ -62,6 +70,8 @@ export async function POST(request: Request) {
         site_id: site.id,
         event_id: eventId,
         attendee_name: attendeeName,
+        guest_names: guestNames,
+        party_size: 1 + guestNames.length,
         response: "attending",
         source: "website",
       });
@@ -72,7 +82,9 @@ export async function POST(request: Request) {
       );
     return NextResponse.json({
       ok: true,
-      message: `Thank you, ${attendeeName}. We recorded that you are coming.`,
+      message: guestNames.length
+        ? `Thank you, ${attendeeName}. We recorded your RSVP for ${guestNames.length + 1} people.`
+        : `Thank you, ${attendeeName}. We recorded that you are coming.`,
     });
   } catch (error: any) {
     return NextResponse.json(
