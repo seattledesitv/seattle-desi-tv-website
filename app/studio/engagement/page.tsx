@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
@@ -9,6 +9,21 @@ import { useCurrentSite } from "../../lib/sites/SiteContext";
 const supabase = getSupabaseBrowserClient();
 const ranges = [7, 30, 90];
 const emptyMetrics = { total: 0, views: 0, clicks: 0, counts: {} as Record<string, number>, trend: [] as [string, number][], top: [] as any[] };
+type ChartMode = "daily" | "weekly" | "monthly";
+
+function periodKey(dateText: string, mode: ChartMode) {
+  if (mode === "daily") return dateText;
+  if (mode === "monthly") return dateText.slice(0, 7);
+  const date = new Date(`${dateText}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+  return date.toISOString().slice(0, 10);
+}
+
+function periodLabel(key: string, mode: ChartMode) {
+  if (mode === "daily") return key.slice(5);
+  if (mode === "weekly") return `Week of ${new Date(`${key}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}`;
+  return new Date(`${key}-01T00:00:00Z`).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+}
 
 function title(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -25,6 +40,7 @@ export default function EngagementAnalyticsPage() {
   const [allowed, setAllowed] = useState(false);
   const [days, setDays] = useState(30);
   const [metrics, setMetrics] = useState(emptyMetrics);
+  const [chartMode, setChartMode] = useState<ChartMode>("daily");
 
   async function load(selectedDays = days) {
     setLoading(true);
@@ -81,7 +97,17 @@ export default function EngagementAnalyticsPage() {
     setMessage(`Exported ${rows.length.toLocaleString()} interactions.`);
   }
 
-  const maxTrend = Math.max(1, ...metrics.trend.map(([, count]) => count));
+  const chartTrend = useMemo(() => {
+    const grouped: Record<string, number> = {};
+    metrics.trend.forEach(([date, count]) => { const key = periodKey(date, chartMode); grouped[key] = (grouped[key] || 0) + Number(count || 0); });
+    return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+  }, [metrics.trend, chartMode]);
+  const maxTrend = Math.max(1, ...chartTrend.map(([, count]) => count));
+  const currentPeriod = chartTrend.at(-1);
+  const previousPeriod = chartTrend.at(-2);
+  const periodChange = currentPeriod && previousPeriod
+    ? previousPeriod[1] === 0 ? null : Math.round(((currentPeriod[1] - previousPeriod[1]) / previousPeriod[1]) * 100)
+    : null;
 
   return <main className="min-h-screen bg-slate-950 text-white"><StudioHeader /><section className="mx-auto max-w-7xl px-4 py-8 md:px-6">
     <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><p className="text-sm font-black uppercase tracking-[0.25em] text-pink-300">{site.name} Analytics</p><h1 className="mt-2 text-4xl font-black">Engagement Statistics</h1><p className="mt-2 max-w-3xl text-slate-300">Views and meaningful clicks for businesses, organizations and events in {site.city}. Tracking is asynchronous and does not block navigation.</p></div><div className="flex flex-wrap gap-2">{ranges.map((range) => <button key={range} onClick={() => changeRange(range)} className={`rounded-xl px-4 py-3 font-black ${days === range ? "bg-pink-600" : "bg-white/10"}`}>{range} days</button>)}<button onClick={() => void exportCsv()} disabled={!metrics.total} className="rounded-xl bg-white px-4 py-3 font-black text-slate-950 disabled:opacity-40">Export CSV</button></div></div>
@@ -94,7 +120,7 @@ export default function EngagementAnalyticsPage() {
         ["Website Clicks", metrics.counts.website_click || 0], ["WhatsApp Clicks", metrics.counts.whatsapp_click || 0], ["Phone + Email", (metrics.counts.phone_click || 0) + (metrics.counts.email_click || 0)], ["Directions", metrics.counts.directions_click || 0]
       ].map(([label, value]) => <div key={String(label)} className="rounded-2xl bg-white p-5 text-slate-950 shadow-xl"><p className="text-xs font-black uppercase tracking-wide text-slate-500">{label}</p><p className="mt-2 text-4xl font-black text-pink-600">{value}</p></div>)}</section>
 
-      <section className="rounded-3xl bg-white p-6 text-slate-950 shadow-xl"><h2 className="text-2xl font-black">Daily Activity</h2><div className="mt-5 flex min-h-52 items-end gap-2 overflow-x-auto border-b border-slate-200 pb-2">{metrics.trend.map(([date, count]) => <div key={date} className="flex min-w-12 flex-1 flex-col items-center justify-end"><span className="mb-2 text-xs font-black">{count}</span><div className="w-full rounded-t-lg bg-pink-500" style={{ height: `${Math.max(8, (count / maxTrend) * 150)}px` }} /><span className="mt-2 text-[10px] font-bold text-slate-500">{date.slice(5)}</span></div>)}{metrics.trend.length === 0 && <p className="m-auto text-slate-500">No engagement has been recorded yet.</p>}</div></section>
+      <section className="rounded-3xl bg-white p-6 text-slate-950 shadow-xl"><div className="flex flex-wrap items-end justify-between gap-4"><div><h2 className="text-2xl font-black">Activity Trends</h2><p className="mt-1 text-sm text-slate-500">Compare daily activity, week over week, or month over month.</p></div><div className="flex flex-wrap gap-2">{([['daily','Daily'],['weekly','Week over Week'],['monthly','Month over Month']] as [ChartMode,string][]).map(([mode,label]) => <button key={mode} onClick={() => setChartMode(mode)} className={`rounded-xl px-4 py-2 text-sm font-black ${chartMode === mode ? "bg-pink-600 text-white" : "bg-slate-100 text-slate-700"}`}>{label}</button>)}</div></div>{chartMode !== "daily" && currentPeriod && <div className="mt-5 grid gap-3 sm:grid-cols-3"><div className="rounded-2xl bg-pink-50 p-4"><p className="text-xs font-black uppercase text-pink-700">{periodLabel(currentPeriod[0], chartMode)}</p><p className="mt-1 text-3xl font-black">{currentPeriod[1].toLocaleString()}</p></div><div className="rounded-2xl bg-slate-100 p-4"><p className="text-xs font-black uppercase text-slate-500">Previous period</p><p className="mt-1 text-3xl font-black">{previousPeriod ? previousPeriod[1].toLocaleString() : "—"}</p></div><div className={`rounded-2xl p-4 ${periodChange === null ? "bg-slate-100" : periodChange >= 0 ? "bg-emerald-50" : "bg-red-50"}`}><p className="text-xs font-black uppercase text-slate-500">Change</p><p className={`mt-1 text-3xl font-black ${periodChange === null ? "text-slate-500" : periodChange >= 0 ? "text-emerald-700" : "text-red-700"}`}>{periodChange === null ? "—" : `${periodChange >= 0 ? "+" : ""}${periodChange}%`}</p></div></div>}<div className="mt-5 flex min-h-52 items-end gap-2 overflow-x-auto border-b border-slate-200 pb-2">{chartTrend.map(([date, count]) => <div key={date} className={`flex flex-1 flex-col items-center justify-end ${chartMode === "daily" ? "min-w-12" : "min-w-28"}`}><span className="mb-2 text-xs font-black">{count.toLocaleString()}</span><div className="w-full rounded-t-lg bg-pink-500" style={{ height: `${Math.max(8, (count / maxTrend) * 150)}px` }} /><span className="mt-2 text-center text-[10px] font-bold text-slate-500">{periodLabel(date, chartMode)}</span></div>)}{chartTrend.length === 0 && <p className="m-auto text-slate-500">No engagement has been recorded yet.</p>}</div>{chartMode !== "daily" && <p className="mt-3 text-xs text-slate-500">The newest week or month may be a partial period. Comparison uses the two most recent periods visible in the selected {days}-day range.</p>}</section>
 
       <section className="rounded-3xl bg-white p-6 text-slate-950 shadow-xl"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wide text-pink-600">Top Content</p><h2 className="mt-1 text-2xl font-black">Most Engaged Listings</h2></div><button onClick={() => load(days)} className="rounded-xl bg-slate-100 px-4 py-3 font-black">Refresh</button></div><div className="mt-5 overflow-x-auto"><table className="w-full min-w-[720px] text-left"><thead><tr className="border-b text-xs uppercase text-slate-500"><th className="p-3">Listing</th><th className="p-3">Type</th><th className="p-3 text-right">Views</th><th className="p-3 text-right">Clicks</th><th className="p-3 text-right">Total</th><th className="p-3 text-right">CTR</th></tr></thead><tbody>{metrics.top.map((item) => <tr key={item.key} className="border-b last:border-0"><td className="p-3 font-black">{item.name}</td><td className="p-3"><span className="rounded-full bg-pink-50 px-3 py-1 text-xs font-black text-pink-700">{title(item.type)}</span></td><td className="p-3 text-right font-bold">{item.views}</td><td className="p-3 text-right font-bold">{item.clicks}</td><td className="p-3 text-right font-black">{item.total}</td><td className="p-3 text-right font-bold">{item.views ? `${Math.round((item.clicks / item.views) * 100)}%` : "—"}</td></tr>)}{metrics.top.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-slate-500">No engagement data yet.</td></tr>}</tbody></table></div></section>
 
