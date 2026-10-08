@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import { getSupabaseBrowserClient } from "../../lib/supabaseBrowser";
 import { isAdminRole, resolveUserRole } from "../../lib/roles";
@@ -8,6 +8,7 @@ import { useCurrentSite } from "../../lib/sites/SiteContext";
 
 const supabase = getSupabaseBrowserClient();
 const ranges = [7, 30, 90];
+const emptyMetrics = { total: 0, views: 0, clicks: 0, counts: {} as Record<string, number>, trend: [] as [string, number][], top: [] as any[] };
 
 function title(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -23,24 +24,19 @@ export default function EngagementAnalyticsPage() {
   const [message, setMessage] = useState("Loading engagement analytics...");
   const [allowed, setAllowed] = useState(false);
   const [days, setDays] = useState(30);
-  const [rows, setRows] = useState<any[]>([]);
+  const [metrics, setMetrics] = useState(emptyMetrics);
 
   async function load(selectedDays = days) {
     setLoading(true);
     const since = new Date(Date.now() - selectedDays * 86400000).toISOString();
-    const { data, error } = await supabase
-      .from("engagement_events")
-      .select("id,entity_type,entity_id,entity_name,action_type,page_path,target_url,session_id,created_at")
-      .eq("site_id", site.id || "")
-      .gte("created_at", since)
-      .order("created_at", { ascending: false })
-      .limit(10000);
+    const { data, error } = await supabase.rpc("get_engagement_analytics", { p_site_id: site.id || "", p_since: since });
     if (error) {
-      setRows([]);
+      setMetrics(emptyMetrics);
       setMessage(`Could not load engagement analytics: ${error.message}`);
     } else {
-      setRows(data || []);
-      setMessage((data || []).length === 10000 ? "Showing the latest 10,000 interactions in this date range." : "");
+      const result: any = data || {};
+      setMetrics({ total: Number(result.total || 0), views: Number(result.views || 0), clicks: Number(result.clicks || 0), counts: result.counts || {}, trend: result.trend || [], top: result.top || [] });
+      setMessage("");
     }
     setLoading(false);
   }
@@ -58,33 +54,21 @@ export default function EngagementAnalyticsPage() {
 
   useEffect(() => { void init(); }, []);
 
-  const metrics = useMemo(() => {
-    const counts: Record<string, number> = {};
-    const entities: Record<string, { key: string; type: string; name: string; views: number; clicks: number; total: number }> = {};
-    const daily: Record<string, number> = {};
-    rows.forEach((row) => {
-      counts[row.action_type] = (counts[row.action_type] || 0) + 1;
-      const key = `${row.entity_type}:${row.entity_id || row.entity_name || "unknown"}`;
-      if (!entities[key]) entities[key] = { key, type: row.entity_type, name: row.entity_name || row.entity_id || "Unknown", views: 0, clicks: 0, total: 0 };
-      entities[key].total += 1;
-      if (row.action_type === "page_view") entities[key].views += 1;
-      else entities[key].clicks += 1;
-      const date = String(row.created_at || "").slice(0, 10);
-      daily[date] = (daily[date] || 0) + 1;
-    });
-    const totalViews = counts.page_view || 0;
-    const totalClicks = rows.length - totalViews;
-    const top = Object.values(entities).sort((a, b) => b.total - a.total).slice(0, 25);
-    const trend = Object.entries(daily).sort(([a], [b]) => a.localeCompare(b));
-    return { counts, totalViews, totalClicks, top, trend };
-  }, [rows]);
-
   function changeRange(value: number) {
     setDays(value);
     void load(value);
   }
 
-  function exportCsv() {
+  async function exportCsv() {
+    setMessage("Preparing the complete CSV export...");
+    const since = new Date(Date.now() - days * 86400000).toISOString();
+    const rows: any[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase.from("engagement_events").select("entity_type,entity_id,entity_name,action_type,page_path,target_url,created_at").eq("site_id", site.id || "").gte("created_at", since).order("created_at", { ascending: false }).range(from, from + 999);
+      if (error) { setMessage(`Could not export engagement data: ${error.message}`); return; }
+      const page = data || []; rows.push(...page);
+      if (page.length < 1000) break;
+    }
     const header = ["Date", "Entity Type", "Entity ID", "Entity Name", "Action", "Page", "Target"];
     const lines = rows.map((row) => [row.created_at, row.entity_type, row.entity_id, row.entity_name, row.action_type, row.page_path, row.target_url].map(csvValue).join(","));
     const blob = new Blob([[header.map(csvValue).join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
@@ -94,18 +78,19 @@ export default function EngagementAnalyticsPage() {
     link.download = `${site.code}-engagement-${days}-days.csv`;
     link.click();
     URL.revokeObjectURL(url);
+    setMessage(`Exported ${rows.length.toLocaleString()} interactions.`);
   }
 
   const maxTrend = Math.max(1, ...metrics.trend.map(([, count]) => count));
 
   return <main className="min-h-screen bg-slate-950 text-white"><StudioHeader /><section className="mx-auto max-w-7xl px-4 py-8 md:px-6">
-    <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><p className="text-sm font-black uppercase tracking-[0.25em] text-pink-300">{site.name} Analytics</p><h1 className="mt-2 text-4xl font-black">Engagement Statistics</h1><p className="mt-2 max-w-3xl text-slate-300">Views and meaningful clicks for businesses, organizations and events in {site.city}. Tracking is asynchronous and does not block navigation.</p></div><div className="flex flex-wrap gap-2">{ranges.map((range) => <button key={range} onClick={() => changeRange(range)} className={`rounded-xl px-4 py-3 font-black ${days === range ? "bg-pink-600" : "bg-white/10"}`}>{range} days</button>)}<button onClick={exportCsv} disabled={!rows.length} className="rounded-xl bg-white px-4 py-3 font-black text-slate-950 disabled:opacity-40">Export CSV</button></div></div>
+    <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><p className="text-sm font-black uppercase tracking-[0.25em] text-pink-300">{site.name} Analytics</p><h1 className="mt-2 text-4xl font-black">Engagement Statistics</h1><p className="mt-2 max-w-3xl text-slate-300">Views and meaningful clicks for businesses, organizations and events in {site.city}. Tracking is asynchronous and does not block navigation.</p></div><div className="flex flex-wrap gap-2">{ranges.map((range) => <button key={range} onClick={() => changeRange(range)} className={`rounded-xl px-4 py-3 font-black ${days === range ? "bg-pink-600" : "bg-white/10"}`}>{range} days</button>)}<button onClick={() => void exportCsv()} disabled={!metrics.total} className="rounded-xl bg-white px-4 py-3 font-black text-slate-950 disabled:opacity-40">Export CSV</button></div></div>
     {message && <div className="mt-6 rounded-2xl bg-white/10 p-4 font-bold">{message}</div>}
     {loading && <div className="mt-6 rounded-2xl bg-white/10 p-8">Loading...</div>}
     {!loading && !allowed && <div className="mt-6 rounded-2xl bg-white p-8 text-slate-950">Admin access required.</div>}
     {!loading && allowed && <div className="mt-7 space-y-7">
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[
-        ["Total Interactions", rows.length], ["Profile Views", metrics.totalViews], ["Meaningful Clicks", metrics.totalClicks], ["Ticket / Registration", metrics.counts.ticket_click || 0],
+        ["Total Interactions", metrics.total], ["Profile Views", metrics.views], ["Meaningful Clicks", metrics.clicks], ["Ticket / Registration", metrics.counts.ticket_click || 0],
         ["Website Clicks", metrics.counts.website_click || 0], ["WhatsApp Clicks", metrics.counts.whatsapp_click || 0], ["Phone + Email", (metrics.counts.phone_click || 0) + (metrics.counts.email_click || 0)], ["Directions", metrics.counts.directions_click || 0]
       ].map(([label, value]) => <div key={String(label)} className="rounded-2xl bg-white p-5 text-slate-950 shadow-xl"><p className="text-xs font-black uppercase tracking-wide text-slate-500">{label}</p><p className="mt-2 text-4xl font-black text-pink-600">{value}</p></div>)}</section>
 
