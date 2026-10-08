@@ -76,34 +76,6 @@ export default function SiteFooter() {
         <SdtvContactButtons tone="light" />
       </div>
 
-      <div className="mx-auto mb-8 max-w-7xl overflow-hidden rounded-[2rem] border border-emerald-300/20 bg-gradient-to-br from-white/[0.09] via-white/[0.05] to-emerald-400/[0.08] shadow-2xl shadow-black/20">
-        <div className="grid items-center gap-6 p-6 md:grid-cols-[300px_minmax(0,1fr)] md:p-8">
-          <div className="rounded-2xl bg-white p-4 shadow-xl">
-            <img
-              src="/partners/nexus-law-pllc.png"
-              alt="Nexus Law, PLLC — Fluid thinking. Clear solutions."
-              width={750}
-              height={325}
-              loading="lazy"
-              className="h-auto w-full"
-            />
-          </div>
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-emerald-300">
-              Community Partnership
-            </p>
-            <h2 className="mt-2 text-2xl font-black md:text-3xl">
-              Our Legal Partner
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 md:text-base">
-              {site.name} proudly recognizes Nexus Law, PLLC as our legal
-              partner, supporting our nonprofit organization as we serve and
-              strengthen the community.
-            </p>
-          </div>
-        </div>
-      </div>
-
       <div className="max-w-7xl mx-auto grid gap-8 md:grid-cols-2 xl:grid-cols-4">
         <div>
           <h2 className="text-2xl font-black">{site.name}</h2>
@@ -184,6 +156,24 @@ export default function SiteFooter() {
             >
               abharathkumar@gmail.com
             </a>
+          </div>
+          <div className="mt-5 border-t border-white/10 pt-5">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">
+              Our Legal Partner
+            </p>
+            <div className="mt-3 overflow-hidden rounded-xl bg-white p-3 shadow-lg shadow-black/20">
+              <img
+                src="/partners/nexus-law-pllc.png"
+                alt="Nexus Law, PLLC — Fluid thinking. Clear solutions."
+                width={750}
+                height={325}
+                loading="lazy"
+                className="h-auto w-full"
+              />
+            </div>
+            <p className="mt-2 text-xs leading-5 text-slate-400">
+              Proud legal partner of {site.name}.
+            </p>
           </div>
         </div>
       </div>
