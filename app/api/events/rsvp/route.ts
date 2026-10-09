@@ -22,9 +22,15 @@ export async function POST(request: Request) {
     const attendeeName = String(body.name || "")
       .replace(/\s+/g, " ")
       .trim();
+    const attendeeEmail = String(body.email || "").trim().toLowerCase();
     if (!eventId || attendeeName.length < 1 || attendeeName.length > 100)
       return NextResponse.json(
         { error: "Please enter your name." },
+        { status: 400 },
+      );
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(attendeeEmail) || attendeeEmail.length > 254)
+      return NextResponse.json(
+        { error: "Please enter a valid email address." },
         { status: 400 },
       );
     const guestNames = (Array.isArray(body.guestNames) ? body.guestNames : [])
@@ -70,6 +76,7 @@ export async function POST(request: Request) {
         site_id: site.id,
         event_id: eventId,
         attendee_name: attendeeName,
+        attendee_email: attendeeEmail,
         guest_names: guestNames,
         party_size: 1 + guestNames.length,
         response: "attending",
