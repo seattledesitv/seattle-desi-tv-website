@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/ticket-reservations",
       "schedule": "15 16 * * *"
+    },
+    {
+      "path": "/api/cron/event-rsvp-reminders",
+      "schedule": "30 16 * * *"
     }
   ]
 }
