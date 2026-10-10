@@ -79,6 +79,7 @@ export async function listUnlistedEventRsvps(
   db: SupabaseClient,
   since: string,
   until: string,
+  siteId: string,
 ): Promise<DigestUnlistedEventRsvp[]> {
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Los_Angeles",
@@ -90,6 +91,7 @@ export async function listUnlistedEventRsvps(
   const { data: events, error: eventError } = await db
     .from("events")
     .select("id,title,date,end_date")
+    .eq("site_id", siteId)
     .eq("visibility", "unlisted")
     .eq("simple_rsvp_enabled", true)
     .eq("status", "approved")
@@ -103,6 +105,7 @@ export async function listUnlistedEventRsvps(
   const { data: rsvps, error: rsvpError } = await db
     .from("event_rsvps")
     .select("event_id,party_size,guest_names,guest_details,created_at")
+    .eq("site_id", siteId)
     .in("event_id", eventIds)
     .eq("response", "attending");
   if (rsvpError) throw rsvpError;
