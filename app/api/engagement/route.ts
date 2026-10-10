@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "crypto";
 import { resolveCurrentSite } from "../../lib/sites/siteResolver";
 
 const allowedEntities = new Set(["business", "organization", "event", "group", "contributor", "video", "radio", "newsletter", "page"]);
-const allowedActions = new Set(["page_view", "website_click", "phone_click", "email_click", "whatsapp_click", "directions_click", "ticket_click", "share_click", "calendar_click", "social_click", "profile_click", "manage_click", "other_click"]);
+const allowedActions = new Set(["page_view", "website_click", "phone_click", "email_click", "whatsapp_click", "directions_click", "ticket_click", "share_click", "calendar_click", "social_click", "profile_click", "manage_click", "media_view", "other_click"]);
 
 function clean(value: unknown, max = 500) {
   return String(value || "").trim().slice(0, max) || null;
@@ -24,6 +25,13 @@ export async function POST(request: Request) {
 
     const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
     const site = await resolveCurrentSite();
+    const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
+    const visitorHash = forwardedFor
+      ? createHash("sha256")
+          .update(`${forwardedFor}:${process.env.ANALYTICS_HASH_SALT || url}:${new Date().toISOString().slice(0, 10)}`)
+          .digest("hex")
+          .slice(0, 24)
+      : null;
     if (!site.id) return NextResponse.json({ ok: false }, { status: 503 });
     const { error } = await supabase.from("engagement_events").insert({
       site_id: site.id,
@@ -34,6 +42,9 @@ export async function POST(request: Request) {
       page_path: clean(body.pagePath, 500),
       target_url: clean(body.targetUrl, 1000),
       session_id: clean(body.sessionId, 120),
+      visitor_hash: visitorHash,
+      user_agent: clean(request.headers.get("user-agent"), 500),
+      referrer: clean(body.referrer, 1000),
     });
 
     if (error) return NextResponse.json({ ok: false }, { status: 202 });
