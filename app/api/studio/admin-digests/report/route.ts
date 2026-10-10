@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { requireDigestAdmin } from "../../../../lib/adminDigest/server";
 import { AdminDigestService } from "../../../../lib/adminDigest/services/adminDigestService";
+import { resolveCurrentSite } from "../../../../lib/sites/siteResolver";
 
 export async function GET(request: Request) {
   const user = await requireDigestAdmin(request);
@@ -16,7 +17,9 @@ export async function GET(request: Request) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "";
     if (!supabaseUrl || !serviceKey) throw new Error("Activity report data source is unavailable.");
     const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-    return NextResponse.json({ ok: true, report: await AdminDigestService.build(db, from, to) }, { headers: { "Cache-Control": "private, no-store" } });
+    const site = await resolveCurrentSite();
+    if (!site.id) throw new Error("Activity report site context could not be resolved.");
+    return NextResponse.json({ ok: true, report: await AdminDigestService.build(db, from, to, site.id) }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error: unknown) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not build the activity report." }, { status: 500 });
   }
