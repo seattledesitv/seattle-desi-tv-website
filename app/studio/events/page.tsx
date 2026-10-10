@@ -63,6 +63,7 @@ export default function StudioEventsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchText, setSearchText] = useState("");
   const [rsvpsByEvent, setRsvpsByEvent] = useState<Record<string, any[]>>({});
+  const [ticketingByEvent, setTicketingByEvent] = useState<Record<string, any>>({});
   const [openRsvpEventId, setOpenRsvpEventId] = useState("");
   const canAccess = Boolean(user && roleContainsAdmin(role));
 
@@ -84,28 +85,48 @@ export default function StudioEventsPage() {
     const eventIds = rows.map((event: any) => event.id);
     if (!eventIds.length) {
       setRsvpsByEvent({});
+      setTicketingByEvent({});
       return;
     }
-    const rsvpResult = await forSite(
-      supabase
-        .from("event_rsvps")
-        .select("id,event_id,attendee_name,attendee_email,guest_names,guest_details,party_size,created_at")
-        .in("event_id", eventIds)
-        .eq("response", "attending")
-        .order("created_at", { ascending: false }),
-      site.id,
-    );
+    const [rsvpResult, ticketingResult] = await Promise.all([
+      forSite(
+        supabase
+          .from("event_rsvps")
+          .select("id,event_id,attendee_name,attendee_email,guest_names,guest_details,party_size,created_at")
+          .in("event_id", eventIds)
+          .eq("response", "attending")
+          .order("created_at", { ascending: false }),
+        site.id,
+      ),
+      forSite(
+        supabase
+          .from("event_ticket_settings")
+          .select("id,event_id,status")
+          .in("event_id", eventIds),
+        site.id,
+      ),
+    ]);
     if (rsvpResult.error) {
       setRsvpsByEvent({});
       setActionMessage(`Events loaded, but RSVP details could not load: ${rsvpResult.error.message}`);
-      return;
+    } else {
+      const grouped: Record<string, any[]> = {};
+      for (const rsvp of rsvpResult.data || []) {
+        const key = String(rsvp.event_id);
+        grouped[key] = [...(grouped[key] || []), rsvp];
+      }
+      setRsvpsByEvent(grouped);
     }
-    const grouped: Record<string, any[]> = {};
-    for (const rsvp of rsvpResult.data || []) {
-      const key = String(rsvp.event_id);
-      grouped[key] = [...(grouped[key] || []), rsvp];
+    if (ticketingResult.error) {
+      setTicketingByEvent({});
+      setActionMessage(`Events loaded, but ticketing details could not load: ${ticketingResult.error.message}`);
+    } else {
+      const configured: Record<string, any> = {};
+      for (const setting of ticketingResult.data || []) {
+        configured[String(setting.event_id)] = setting;
+      }
+      setTicketingByEvent(configured);
     }
-    setRsvpsByEvent(grouped);
   }
 
   async function init() {
@@ -455,6 +476,14 @@ export default function StudioEventsPage() {
                       >
                         Open Event
                       </a>
+                      {ticketingByEvent[event.id] && (
+                        <a
+                          href={`/studio/ticketing?eventId=${encodeURIComponent(event.id)}`}
+                          className="border border-emerald-600 bg-emerald-50 text-emerald-800 px-3 py-2 rounded-lg font-bold text-sm"
+                        >
+                          Ticket Sales & Reports
+                        </a>
+                      )}
                       {(event.simple_rsvp_enabled || (rsvpsByEvent[event.id] || []).length > 0) && (
                         <button
                           type="button"
