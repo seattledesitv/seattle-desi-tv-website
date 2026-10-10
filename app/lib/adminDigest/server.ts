@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { isAdminRole, resolveUserRole } from "../roles";
 import { AdminDigestService } from "./services/adminDigestService";
+import { resolveCurrentSite } from "../sites/siteResolver";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -22,7 +23,9 @@ export async function sendDailyDigest(options: { type: "scheduled" | "test"; tri
   const to = new Date();
   const from = new Date(to.getTime() - 24 * 60 * 60 * 1000);
   const db = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-  const digest = await AdminDigestService.build(db, from, to);
+  const site = await resolveCurrentSite();
+  if (!site.id) throw new Error("Daily digest site context could not be resolved.");
+  const digest = await AdminDigestService.build(db, from, to, site.id);
   const subject = `${options.type === "test" ? "TEST — " : ""}${AdminDigestService.subject(digest)}`;
   const recipient = process.env.ADMIN_DIGEST_EMAIL || "seattledesitv@gmail.com";
   const counts = { registrations: digest.users.length, volunteerRequests: digest.volunteerRequests.length, teamMemberRequests: digest.teamMemberRequests.length, submissions: Object.fromEntries(digest.submissions.map((section) => [section.key, section.items.length])), unlistedEventRsvps: { events: digest.unlistedEventRsvps.length, rsvps: digest.unlistedEventRsvps.reduce((sum, event) => sum + event.rsvpCount, 0), people: digest.unlistedEventRsvps.reduce((sum, event) => sum + event.attendeeCount, 0), newRsvps: digest.unlistedEventRsvps.reduce((sum, event) => sum + event.newRsvpCount, 0) } };
