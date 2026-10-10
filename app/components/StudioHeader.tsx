@@ -6,6 +6,7 @@ import DirectoryManagementToolbar from "./DirectoryManagementToolbar";
 
 const primaryLinks = [
   ["Dashboard", "/studio"],
+  ["Event Management", "/studio/events"],
   ["Event Operations", "/studio/event-ops-v2"],
   ["Event Organizations", "/studio/event-organizations"],
   ["User Control", "/studio/users"],
@@ -13,7 +14,7 @@ const primaryLinks = [
 
 const groups = [
   { title: "Website", links: [["Homepage", "/studio/homepage"], ["Hero", "/studio/hero"], ["Featured Events", "/studio/featured-events"], ["Featured Social", "/studio/featured-social"], ["Social Media Stats", "/studio/social-stats"], ["Testimonials", "/studio/testimonials"], ["Team Page Management", "/studio/team-page"], ["Contributors", "/studio/sponsors"]] },
-  { title: "Operations", links: [["Event Operations", "/studio/event-ops-v2"], ["Event Organizations", "/studio/event-organizations"], ["Video Upload Folders", "/studio/event-upload-folders"]] },
+  { title: "Operations", links: [["Event Management", "/studio/events"], ["Event Operations", "/studio/event-ops-v2"], ["Event Organizations", "/studio/event-organizations"], ["Video Upload Folders", "/studio/event-upload-folders"]] },
   { title: "People", links: [["User Control", "/studio/users"], ["ID Badges", "/studio/id-badges"], ["Volunteers", "/studio/volunteers"], ["Team", "/studio/team"], ["Team Welcome", "/studio/team-welcome"], ["Recognition", "/studio/recognition"], ["Roles", "/studio/roles"], ["Influencer Management", "/studio/influencer-management"], ["Influencer Applications", "/studio/influencer-ops"], ["Influencer Directory", "/studio/influencers"]] },
   { title: "Media", links: [["Video Production", "/studio/video-production"], ["Community Content", "/studio/community-content"], ["Instagram Publisher", "/studio/instagram-publisher"], ["Publisher Access", "/studio/instagram-access"], ["Radio Team", "/studio/radio-team"], ["Radio Schedule", "/studio/radio-schedule"], ["Social Diagnostics", "/studio/social-diagnostics"]] },
   { title: "Communications", links: [["Quick Forms", "/studio/quick-forms"], ["Newsletter", "/studio/newsletter"], ["Publishing Platform", "/studio/publishing"], ["Daily Digest Archive", "/studio/admin-digests"]] },
