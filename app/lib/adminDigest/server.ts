@@ -25,7 +25,7 @@ export async function sendDailyDigest(options: { type: "scheduled" | "test"; tri
   const digest = await AdminDigestService.build(db, from, to);
   const subject = `${options.type === "test" ? "TEST — " : ""}${AdminDigestService.subject(digest)}`;
   const recipient = process.env.ADMIN_DIGEST_EMAIL || "seattledesitv@gmail.com";
-  const counts = { registrations: digest.users.length, volunteerRequests: digest.volunteerRequests.length, teamMemberRequests: digest.teamMemberRequests.length, submissions: Object.fromEntries(digest.submissions.map((section) => [section.key, section.items.length])) };
+  const counts = { registrations: digest.users.length, volunteerRequests: digest.volunteerRequests.length, teamMemberRequests: digest.teamMemberRequests.length, submissions: Object.fromEntries(digest.submissions.map((section) => [section.key, section.items.length])), unlistedEventRsvps: { events: digest.unlistedEventRsvps.length, rsvps: digest.unlistedEventRsvps.reduce((sum, event) => sum + event.rsvpCount, 0), people: digest.unlistedEventRsvps.reduce((sum, event) => sum + event.attendeeCount, 0), newRsvps: digest.unlistedEventRsvps.reduce((sum, event) => sum + event.newRsvpCount, 0) } };
   const idempotencyKey = options.type === "scheduled" ? `sdtv-daily-admin-digest-${to.toISOString().slice(0, 10)}` : `sdtv-admin-digest-test-${randomUUID()}`;
   const { data: archive, error: archiveError } = await db.from("admin_digest_deliveries").insert({ idempotency_key: idempotencyKey, delivery_type: options.type, recipient, subject, report_from: digest.from, report_to: digest.to, counts, triggered_by: options.triggeredBy }).select("id").single();
   if (archiveError || !archive) throw new Error(archiveError?.message || "Could not create digest archive record.");
