@@ -62,6 +62,8 @@ export default function StudioEventsPage() {
   const [events, setEvents] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchText, setSearchText] = useState("");
+  const [rsvpsByEvent, setRsvpsByEvent] = useState<Record<string, any[]>>({});
+  const [openRsvpEventId, setOpenRsvpEventId] = useState("");
   const canAccess = Boolean(user && roleContainsAdmin(role));
 
   async function loadEvents() {
@@ -69,7 +71,7 @@ export default function StudioEventsPage() {
       supabase
         .from("events")
         .select(
-          "id,title,date,local_start_time,local_end_time,event_timezone,location,description,status,image,image_urls,ticket_url,poc_email,poc_phone,created_at,featured,featured_order,media_partner_status,media_partner_flyer_url,media_partner_approved_at",
+          "id,title,date,local_start_time,local_end_time,event_timezone,location,description,status,image,image_urls,ticket_url,poc_email,poc_phone,created_at,featured,featured_order,media_partner_status,media_partner_flyer_url,media_partner_approved_at,visibility,simple_rsvp_enabled",
         ),
       site.id,
     ).order("date", { ascending: true });
@@ -77,7 +79,33 @@ export default function StudioEventsPage() {
       setActionMessage(`Could not load events: ${error.message}`);
       return;
     }
-    setEvents(data || []);
+    const rows = data || [];
+    setEvents(rows);
+    const eventIds = rows.map((event: any) => event.id);
+    if (!eventIds.length) {
+      setRsvpsByEvent({});
+      return;
+    }
+    const rsvpResult = await forSite(
+      supabase
+        .from("event_rsvps")
+        .select("id,event_id,attendee_name,attendee_email,guest_names,guest_details,party_size,created_at")
+        .in("event_id", eventIds)
+        .eq("response", "attending")
+        .order("created_at", { ascending: false }),
+      site.id,
+    );
+    if (rsvpResult.error) {
+      setRsvpsByEvent({});
+      setActionMessage(`Events loaded, but RSVP details could not load: ${rsvpResult.error.message}`);
+      return;
+    }
+    const grouped: Record<string, any[]> = {};
+    for (const rsvp of rsvpResult.data || []) {
+      const key = String(rsvp.event_id);
+      grouped[key] = [...(grouped[key] || []), rsvp];
+    }
+    setRsvpsByEvent(grouped);
   }
 
   async function init() {
@@ -420,6 +448,23 @@ export default function StudioEventsPage() {
                     </div>
                     <div className="flex flex-wrap gap-2 md:justify-end md:items-center">
                       <a
+                        href={`/events/${event.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="border border-slate-300 bg-white text-slate-900 px-3 py-2 rounded-lg font-bold text-sm"
+                      >
+                        Open Event
+                      </a>
+                      {(event.simple_rsvp_enabled || (rsvpsByEvent[event.id] || []).length > 0) && (
+                        <button
+                          type="button"
+                          onClick={() => setOpenRsvpEventId(openRsvpEventId === event.id ? "" : event.id)}
+                          className="border border-pink-600 text-pink-700 px-3 py-2 rounded-lg font-bold text-sm"
+                        >
+                          {openRsvpEventId === event.id ? "Hide RSVPs" : `View RSVPs (${(rsvpsByEvent[event.id] || []).length})`}
+                        </button>
+                      )}
+                      <a
                         href={`/studio/events/${event.id}`}
                         className="bg-slate-900 text-white px-3 py-2 rounded-lg font-bold text-sm"
                       >
@@ -492,6 +537,42 @@ export default function StudioEventsPage() {
                         Delete
                       </button>
                     </div>
+                    {openRsvpEventId === event.id && (
+                      <section className="md:col-span-3 rounded-xl border border-pink-200 bg-pink-50 p-4">
+                        <div className="flex flex-wrap items-end justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-black uppercase tracking-wide text-pink-700">Attendance confirmations</p>
+                            <h4 className="mt-1 text-lg font-black">
+                              {(rsvpsByEvent[event.id] || []).length} RSVP{(rsvpsByEvent[event.id] || []).length === 1 ? "" : "s"} · {(rsvpsByEvent[event.id] || []).reduce((total, rsvp) => total + Number(rsvp.party_size || 1), 0)} people
+                            </h4>
+                          </div>
+                          <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600">{event.visibility === "unlisted" ? "Unlisted event" : "Public event"}</span>
+                        </div>
+                        <div className="mt-4 grid gap-3">
+                          {(rsvpsByEvent[event.id] || []).map((rsvp) => {
+                            const guestDetails = Array.isArray(rsvp.guest_details) ? rsvp.guest_details : [];
+                            const guestNames = Array.isArray(rsvp.guest_names) ? rsvp.guest_names : [];
+                            return (
+                              <div key={rsvp.id} className="rounded-xl border bg-white p-4">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div>
+                                    <p className="font-black">{rsvp.attendee_name} <span className="text-sm text-pink-700">· party of {rsvp.party_size || 1}</span></p>
+                                    {rsvp.attendee_email && <a href={`mailto:${rsvp.attendee_email}`} className="mt-1 block text-sm font-bold text-pink-700">{rsvp.attendee_email}</a>}
+                                    {guestDetails.length > 0 ? (
+                                      <p className="mt-2 text-sm text-slate-600">Guests: {guestDetails.map((guest: any) => `${guest.name} (${guest.type === "kid" ? "Kid" : "Adult"})`).join(", ")}</p>
+                                    ) : guestNames.length > 0 ? (
+                                      <p className="mt-2 text-sm text-slate-600">Guests: {guestNames.join(", ")}</p>
+                                    ) : null}
+                                  </div>
+                                  <p className="text-xs text-slate-500">{new Date(rsvp.created_at).toLocaleString()}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {(rsvpsByEvent[event.id] || []).length === 0 && <p className="rounded-xl bg-white p-4 text-sm font-bold text-slate-500">No RSVPs have been received yet.</p>}
+                        </div>
+                      </section>
+                    )}
                   </article>
                 ))}
                 {filteredEvents.length === 0 && (
