@@ -77,7 +77,7 @@ as $$
       count(*)::bigint as activity_count,
       count(*) filter (where action_type = 'page_view')::bigint as page_views,
       count(*) filter (where action_type = 'media_view')::bigint as media_views,
-      count(distinct coalesce(nullif(session_id, ''), nullif(visitor_hash, '')))::bigint as visitors
+      count(distinct nullif(visitor_key, 'unknown'))::bigint as visitors
     from filtered
     where entity_id is not null
     group by entity_id
