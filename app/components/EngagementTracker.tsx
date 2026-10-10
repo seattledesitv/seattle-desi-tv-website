@@ -37,6 +37,7 @@ function actionFromElement(element: HTMLElement, href: string) {
   if (text.includes("ticket") || text.includes("register")) return "ticket_click";
   if (text.includes("calendar") || text.includes(".ics") || target.includes("calendar.google")) return "calendar_click";
   if (text.includes("share") || text.includes("copy link") || target.includes("sharer")) return "share_click";
+  if (element.querySelector("img") || ["flyer", "photo", "image", "document", "full screen", "download"].some((word) => text.includes(word))) return "media_view";
   if (["facebook.com", "instagram.com", "youtube.com", "youtu.be"].some((domain) => target.includes(domain))) return "social_click";
   if (text.includes("manage")) return "manage_click";
   if (/^https?:\/\//.test(target)) return "website_click";
@@ -51,7 +52,7 @@ function businessFromElement(element: HTMLElement) {
 
 function send(payload: Record<string, unknown>) {
   try {
-    const body = JSON.stringify({ ...payload, sessionId: sessionId() });
+    const body = JSON.stringify({ ...payload, sessionId: sessionId(), referrer: document.referrer || null });
     if (navigator.sendBeacon) {
       navigator.sendBeacon("/api/engagement", new Blob([body], { type: "application/json" }));
       return;
