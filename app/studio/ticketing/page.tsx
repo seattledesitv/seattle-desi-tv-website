@@ -91,6 +91,8 @@ export default function StudioTicketingPage() {
     setLoading(false);
   }
   useEffect(() => {
+    const eventId = new URLSearchParams(window.location.search).get("eventId");
+    if (eventId) setSearch(eventId);
     void load();
   }, [site.id]);
 
@@ -100,7 +102,7 @@ export default function StudioTicketingPage() {
         (row) =>
           (filter === "all" || row.status === filter) &&
           (!search.trim() ||
-            `${row.events?.title} ${row.community_organizations?.name} ${row.events?.location}`
+            `${row.event_id} ${row.events?.title} ${row.community_organizations?.name} ${row.events?.location}`
               .toLowerCase()
               .includes(search.trim().toLowerCase())),
       ),
