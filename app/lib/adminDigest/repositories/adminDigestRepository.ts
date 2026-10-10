@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "../../supabaseBrowser";
-import type { AdminDigestDelivery, DigestRoleRequest, DigestSubmissionSection, DigestUser } from "../types";
+import type { AdminDigestDelivery, DigestRoleRequest, DigestSubmissionSection, DigestUnlistedEventRsvp, DigestUser } from "../types";
 
 type AuthAdminClient = SupabaseClient["auth"]["admin"];
 
@@ -73,6 +73,77 @@ export async function listNewSubmissions(db: SupabaseClient, since: string, unti
       error: null,
     };
   }));
+}
+
+export async function listUnlistedEventRsvps(
+  db: SupabaseClient,
+  since: string,
+  until: string,
+): Promise<DigestUnlistedEventRsvp[]> {
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Los_Angeles",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+
+  const { data: events, error: eventError } = await db
+    .from("events")
+    .select("id,title,date,end_date")
+    .eq("visibility", "unlisted")
+    .eq("simple_rsvp_enabled", true)
+    .eq("status", "approved")
+    .or(`date.gte.${today},end_date.gte.${today}`)
+    .order("date", { ascending: true });
+  if (eventError) throw eventError;
+
+  const eventRows = events || [];
+  if (!eventRows.length) return [];
+  const eventIds = eventRows.map((event) => String(event.id));
+  const { data: rsvps, error: rsvpError } = await db
+    .from("event_rsvps")
+    .select("event_id,party_size,guest_names,guest_details,created_at")
+    .in("event_id", eventIds)
+    .eq("response", "attending");
+  if (rsvpError) throw rsvpError;
+
+  const byEvent = new Map<string, DigestUnlistedEventRsvp>();
+  for (const event of eventRows) {
+    byEvent.set(String(event.id), {
+      eventId: String(event.id),
+      title: String(event.title || "Unlisted event"),
+      eventDate: String(event.date || ""),
+      rsvpCount: 0,
+      attendeeCount: 0,
+      adultCount: 0,
+      kidCount: 0,
+      newRsvpCount: 0,
+      newAttendeeCount: 0,
+    });
+  }
+
+  for (const row of rsvps || []) {
+    const item = byEvent.get(String(row.event_id));
+    if (!item) continue;
+    const guestDetails = Array.isArray(row.guest_details) ? row.guest_details : [];
+    const legacyGuests = Array.isArray(row.guest_names) ? row.guest_names : [];
+    const kids = guestDetails.filter((guest: any) => guest?.type === "kid").length;
+    const adults = 1 + (guestDetails.length
+      ? guestDetails.filter((guest: any) => guest?.type !== "kid").length
+      : legacyGuests.length);
+    const partySize = Number(row.party_size || adults + kids || 1);
+    item.rsvpCount += 1;
+    item.attendeeCount += partySize;
+    item.adultCount += adults;
+    item.kidCount += kids;
+    const createdAt = String(row.created_at || "");
+    if (createdAt >= since && createdAt < until) {
+      item.newRsvpCount += 1;
+      item.newAttendeeCount += partySize;
+    }
+  }
+
+  return Array.from(byEvent.values());
 }
 
 export async function listDeliveries(): Promise<AdminDigestDelivery[]> {
