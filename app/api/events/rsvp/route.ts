@@ -33,10 +33,16 @@ export async function POST(request: Request) {
         { error: "Please enter a valid email address." },
         { status: 400 },
       );
-    const guestNames = (Array.isArray(body.guestNames) ? body.guestNames : [])
-      .map((name: unknown) => String(name || "").replace(/\s+/g, " ").trim())
-      .filter(Boolean);
-    if (guestNames.length > 10 || guestNames.some((name: string) => name.length > 100))
+    const rawGuestNames = Array.isArray(body.guestNames) ? body.guestNames : [];
+    const rawGuestTypes = Array.isArray(body.guestTypes) ? body.guestTypes : [];
+    const guestDetails = rawGuestNames
+      .map((name: unknown, index: number) => ({
+        name: String(name || "").replace(/\s+/g, " ").trim(),
+        type: rawGuestTypes[index] === "kid" ? "kid" : "adult",
+      }))
+      .filter((guest: { name: string }) => Boolean(guest.name));
+    const guestNames = guestDetails.map((guest: { name: string }) => guest.name);
+    if (guestDetails.length > 10 || guestDetails.some((guest: { name: string }) => guest.name.length > 100))
       return NextResponse.json(
         { error: "You can add up to 10 guests, and each guest name must be 100 characters or fewer." },
         { status: 400 },
@@ -78,7 +84,8 @@ export async function POST(request: Request) {
         attendee_name: attendeeName,
         attendee_email: attendeeEmail,
         guest_names: guestNames,
-        party_size: 1 + guestNames.length,
+        guest_details: guestDetails,
+        party_size: 1 + guestDetails.length,
         response: "attending",
         source: "website",
       });
