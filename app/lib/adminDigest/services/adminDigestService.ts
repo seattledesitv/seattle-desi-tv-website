@@ -43,12 +43,12 @@ function table(title: string, headings: string[], rows: string, count: number) {
 
 export const AdminDigestService = {
   listDeliveries: repository.listDeliveries,
-  async build(db: SupabaseClient, from: Date, to: Date): Promise<DailyAdminDigest> {
+  async build(db: SupabaseClient, from: Date, to: Date, siteId: string): Promise<DailyAdminDigest> {
     const [users, requests, submissions, unlistedEventRsvps] = await Promise.all([
       repository.listNewUsers(db.auth.admin, from.toISOString(), to.toISOString()),
       repository.listNewRoleRequests(db, from.toISOString(), to.toISOString()),
       repository.listNewSubmissions(db, from.toISOString(), to.toISOString()),
-      repository.listUnlistedEventRsvps(db, from.toISOString(), to.toISOString()),
+      repository.listUnlistedEventRsvps(db, from.toISOString(), to.toISOString(), siteId),
     ]);
     return {
       from: from.toISOString(),
