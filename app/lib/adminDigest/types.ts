@@ -29,6 +29,18 @@ export type DigestSubmissionSection = {
   error: string | null;
 };
 
+export type DigestUnlistedEventRsvp = {
+  eventId: string;
+  title: string;
+  eventDate: string;
+  rsvpCount: number;
+  attendeeCount: number;
+  adultCount: number;
+  kidCount: number;
+  newRsvpCount: number;
+  newAttendeeCount: number;
+};
+
 export type DailyAdminDigest = {
   from: string;
   to: string;
@@ -36,6 +48,7 @@ export type DailyAdminDigest = {
   volunteerRequests: DigestRoleRequest[];
   teamMemberRequests: DigestRoleRequest[];
   submissions: DigestSubmissionSection[];
+  unlistedEventRsvps: DigestUnlistedEventRsvp[];
 };
 
 export type AdminDigestDelivery = {
