@@ -177,7 +177,6 @@ export default function EventsPageClient({ initialEvents = [] }: { initialEvents
   const site = useCurrentSite();
   const [events, setEvents] = useState<EventRow[]>(initialEvents);
   const [internalTicketEvents, setInternalTicketEvents] = useState<Set<string>>(new Set());
-  const [eventOrganizationIds, setEventOrganizationIds] = useState<Record<string, string[]>>({});
   const [coverageByEvent, setCoverageByEvent] = useState<Record<string, any>>({});
   const [influencerByEvent, setInfluencerByEvent] = useState<Record<string, any>>({});
   const [message, setMessage] = useState(
@@ -200,7 +199,6 @@ export default function EventsPageClient({ initialEvents = [] }: { initialEvents
   const [monthFilter, setMonthFilter] = useState(String(new Date().getMonth()));
   const [yearFilter, setYearFilter] = useState(String(new Date().getFullYear()));
   const [eventSearch, setEventSearch] = useState("");
-  const [eventOrganizationFilter, setEventOrganizationFilter] = useState("");
   const [eventLocationFilter, setEventLocationFilter] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "calendar">("cards");
   const [eventPeriod, setEventPeriod] = useState<"upcoming" | "previous">("upcoming");
@@ -251,31 +249,16 @@ export default function EventsPageClient({ initialEvents = [] }: { initialEvents
     setEvents(data || []);
     const ids = (data || []).map((row) => row.id);
     if (ids.length) {
-      const [internal, organizationLinks] = await Promise.all([
-        forSite(
-          supabase
-            .from("event_ticket_settings")
-            .select("event_id")
-            .eq("status", "active")
-            .in("event_id", ids),
-          site.id,
-        ),
+      const internal = await forSite(
         supabase
-          .from("event_organizations")
-          .select("event_id,organization_id")
+          .from("event_ticket_settings")
+          .select("event_id")
+          .eq("status", "active")
           .in("event_id", ids),
-      ]);
+        site.id,
+      );
       setInternalTicketEvents(new Set((internal.data || []).map((row: any) => row.event_id)));
-      const linked: Record<string, string[]> = {};
-      for (const row of organizationLinks.data || []) {
-        const eventId = String(row.event_id);
-        linked[eventId] = [...(linked[eventId] || []), String(row.organization_id)];
-      }
-      setEventOrganizationIds(linked);
-    } else {
-      setInternalTicketEvents(new Set());
-      setEventOrganizationIds({});
-    }
+    } else setInternalTicketEvents(new Set());
     setMessage((data || []).length ? `Showing ${(data || []).length} approved event(s).` : "No approved events found.");
   }
 
@@ -642,16 +625,6 @@ export default function EventsPageClient({ initialEvents = [] }: { initialEvents
     return eventPeriod === "previous" ? matches.reverse() : matches;
   }, [events, eventPeriod]);
   const years = useMemo(() => Array.from(new Set(periodEvents.map((event) => parseDate(event.date)?.getFullYear()).filter(Boolean) as number[])).sort((a, b) => (eventPeriod === "previous" ? b - a : a - b)), [periodEvents, eventPeriod]);
-  const organizationById = useMemo(
-    () => new Map(organizations.map((organization) => [organization.id, organization])),
-    [organizations],
-  );
-  const eventFilterOrganizations = useMemo(() => {
-    const linkedIds = new Set(Object.values(eventOrganizationIds).flat());
-    return organizations
-      .filter((organization) => linkedIds.has(organization.id))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [organizations, eventOrganizationIds]);
   const filteredEvents = useMemo(
     () => {
       const search = eventSearch.trim().toLowerCase();
@@ -661,23 +634,17 @@ export default function EventsPageClient({ initialEvents = [] }: { initialEvents
         const monthEnd = new Date(Number(yearFilter), Number(monthFilter) + 1, 0);
         const start = parseDate(event.date);
         const end = effectiveEventEnd(event.date, event.end_date);
-        const organizationIds = eventOrganizationIds[event.id] || [];
-        const organizationNames = organizationIds
-          .map((id) => organizationById.get(id)?.name || "")
-          .filter(Boolean);
         const matchesMonth = Boolean(start && end && start <= monthEnd && end >= monthStart);
         const matchesSearch =
           !search ||
-          [event.title, event.description, event.location, ...organizationNames]
+          [event.title, event.description, event.location]
             .filter(Boolean)
             .join(" ")
             .toLowerCase()
             .includes(search);
         const matchesLocation =
           !location || String(event.location || "").toLowerCase().includes(location);
-        const matchesOrganization =
-          !eventOrganizationFilter || organizationIds.includes(eventOrganizationFilter);
-        return matchesMonth && matchesSearch && matchesLocation && matchesOrganization;
+        return matchesMonth && matchesSearch && matchesLocation;
       });
     },
     [
@@ -686,9 +653,6 @@ export default function EventsPageClient({ initialEvents = [] }: { initialEvents
       yearFilter,
       eventSearch,
       eventLocationFilter,
-      eventOrganizationFilter,
-      eventOrganizationIds,
-      organizationById,
     ],
   );
   const calendarCells = useMemo(() => {
