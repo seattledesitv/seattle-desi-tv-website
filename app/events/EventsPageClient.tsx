@@ -1021,7 +1021,7 @@ export default function EventsPageClient({ initialEvents = [] }: { initialEvents
                   type="search"
                   value={eventSearch}
                   onChange={(event) => setEventSearch(event.target.value)}
-                  placeholder="Event, organizer, venue, or keyword"
+                  placeholder="Event, venue, city, or keyword"
                   className="mt-1 w-full rounded-xl border p-3"
                 />
               </div>
