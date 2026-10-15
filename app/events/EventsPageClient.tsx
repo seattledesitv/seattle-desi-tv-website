@@ -1011,7 +1011,7 @@ export default function EventsPageClient({ initialEvents = [] }: { initialEvents
             </section>
           )}
           <section className="mb-6 rounded-2xl border bg-white p-4">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
               <div className="md:col-span-2 xl:col-span-2">
                 <label htmlFor="event-search" className="block text-sm font-black text-slate-900">
                   Search events
@@ -1024,24 +1024,6 @@ export default function EventsPageClient({ initialEvents = [] }: { initialEvents
                   placeholder="Event, organizer, venue, or keyword"
                   className="mt-1 w-full rounded-xl border p-3"
                 />
-              </div>
-              <div>
-                <label htmlFor="event-organization" className="block text-sm font-black text-slate-900">
-                  Organization
-                </label>
-                <select
-                  id="event-organization"
-                  value={eventOrganizationFilter}
-                  onChange={(event) => setEventOrganizationFilter(event.target.value)}
-                  className="mt-1 w-full rounded-xl border p-3"
-                >
-                  <option value="">All organizations</option>
-                  {eventFilterOrganizations.map((organization) => (
-                    <option key={organization.id} value={organization.id}>
-                      {organization.name}
-                    </option>
-                  ))}
-                </select>
               </div>
               <div>
                 <label htmlFor="event-location" className="block text-sm font-black text-slate-900">
@@ -1098,7 +1080,6 @@ export default function EventsPageClient({ initialEvents = [] }: { initialEvents
                   setMonthFilter(String(now.getMonth()));
                   setYearFilter(String(now.getFullYear()));
                   setEventSearch("");
-                  setEventOrganizationFilter("");
                   setEventLocationFilter("");
                 }}
                 className="rounded-xl border border-slate-300 bg-white px-4 py-3 font-bold text-slate-700"
