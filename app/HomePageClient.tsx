@@ -733,7 +733,7 @@ export default function HomePageClient({ initialData = {} }: { initialData?: Ini
         ),
       ),
     ]);
-    setEvents((eventsResult.data || []).filter((event: EventRow) => String(event.end_date || event.date || "") >= today).slice(0, 12));
+    setEvents((eventsResult.data || []).filter((event: EventRow) => String(event.end_date || event.date || "") >= today));
     setBusinesses(businessesResult.data || []);
     setTeam(teamResult.data || []);
     if (!featuredSocialResult.error && Array.isArray(featuredSocialResult.data))
