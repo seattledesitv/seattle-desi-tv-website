@@ -105,7 +105,7 @@ export async function getInitialHomepageData(siteId: string | null, timezone = "
       count(forSite(db.from("radio_team_members").select("id", { count: "exact", head: true }), siteId)),
     ]);
     return {
-      events: eventsResult.error ? [] : (eventsResult.data || []).filter((event: any) => String(event.end_date || event.date || "") >= today).slice(0, 12),
+      events: eventsResult.error ? [] : (eventsResult.data || []).filter((event: any) => String(event.end_date || event.date || "") >= today),
       businesses: businessesResult.error ? [] : businessesResult.data || [],
       socialRows: socialResult.error ? [] : socialResult.data || [],
       counts: { events, businesses, coverage, team, radio },
