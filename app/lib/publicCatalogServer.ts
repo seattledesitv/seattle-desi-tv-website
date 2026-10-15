@@ -80,7 +80,7 @@ export async function getInitialHomepageData(siteId: string | null, timezone = "
   try {
     const today = dateInTimeZone(timezone);
     const eventsQuery = forSite(
-      db.from("events").select("id,title,date,end_date,location,image,image_urls").eq("status", "approved").eq("visibility", "public").order("date", { ascending: true }).limit(250),
+      db.from("events").select("id,title,date,end_date,location,image,image_urls").eq("status", "approved").eq("visibility", "public").or(`date.gte.${today},end_date.gte.${today}`).order("date", { ascending: true }).limit(250),
       siteId,
     );
     const businessesQuery = forSite(
