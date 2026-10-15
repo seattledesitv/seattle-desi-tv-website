@@ -1046,13 +1046,57 @@ export default function EventsPageClient({ initialEvents = [] }: { initialEvents
               )}
             </section>
           )}
-          <section className="mb-6 bg-white border rounded-2xl p-4">
-            <div className="flex flex-col md:flex-row md:items-end gap-4">
+          <section className="mb-6 rounded-2xl border bg-white p-4">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+              <div className="md:col-span-2 xl:col-span-2">
+                <label htmlFor="event-search" className="block text-sm font-black text-slate-900">
+                  Search events
+                </label>
+                <input
+                  id="event-search"
+                  type="search"
+                  value={eventSearch}
+                  onChange={(event) => setEventSearch(event.target.value)}
+                  placeholder="Event, organizer, venue, or keyword"
+                  className="mt-1 w-full rounded-xl border p-3"
+                />
+              </div>
+              <div>
+                <label htmlFor="event-organization" className="block text-sm font-black text-slate-900">
+                  Organization
+                </label>
+                <select
+                  id="event-organization"
+                  value={eventOrganizationFilter}
+                  onChange={(event) => setEventOrganizationFilter(event.target.value)}
+                  className="mt-1 w-full rounded-xl border p-3"
+                >
+                  <option value="">All organizations</option>
+                  {eventFilterOrganizations.map((organization) => (
+                    <option key={organization.id} value={organization.id}>
+                      {organization.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="event-location" className="block text-sm font-black text-slate-900">
+                  Location
+                </label>
+                <input
+                  id="event-location"
+                  type="search"
+                  value={eventLocationFilter}
+                  onChange={(event) => setEventLocationFilter(event.target.value)}
+                  placeholder="City or venue"
+                  className="mt-1 w-full rounded-xl border p-3"
+                />
+              </div>
               <div>
                 <label htmlFor="event-month" className="block text-sm font-black text-slate-900">
                   Month
                 </label>
-                <select id="event-month" aria-label="Filter events by month" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} className="border rounded-xl p-3 mt-1">
+                <select id="event-month" aria-label="Filter events by month" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} className="mt-1 w-full rounded-xl border p-3">
                   {MONTHS.map((month, index) => (
                     <option key={month} value={String(index)}>
                       {month}
@@ -1064,7 +1108,7 @@ export default function EventsPageClient({ initialEvents = [] }: { initialEvents
                 <label htmlFor="event-year" className="block text-sm font-black text-slate-900">
                   Year
                 </label>
-                <select id="event-year" aria-label="Filter events by year" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="border rounded-xl p-3 mt-1">
+                <select id="event-year" aria-label="Filter events by year" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="mt-1 w-full rounded-xl border p-3">
                   {(years.length ? years : [new Date().getFullYear()]).map((year) => (
                     <option key={year} value={String(year)}>
                       {year}
@@ -1072,19 +1116,33 @@ export default function EventsPageClient({ initialEvents = [] }: { initialEvents
                   ))}
                 </select>
               </div>
-              <div>
-                <p className="block text-sm font-black text-slate-900 mb-1">View</p>
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => setViewMode("cards")} className={`px-4 py-3 rounded-xl font-bold ${viewMode === "cards" ? "bg-pink-600 text-white" : "bg-slate-100"}`}>
-                    Cards
-                  </button>
-                  <button type="button" onClick={() => setViewMode("calendar")} className={`px-4 py-3 rounded-xl font-bold ${viewMode === "calendar" ? "bg-pink-600 text-white" : "bg-slate-100"}`}>
-                    Calendar
-                  </button>
-                </div>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-3 border-t pt-4">
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setViewMode("cards")} className={`rounded-xl px-4 py-3 font-bold ${viewMode === "cards" ? "bg-pink-600 text-white" : "bg-slate-100"}`}>
+                  Cards
+                </button>
+                <button type="button" onClick={() => setViewMode("calendar")} className={`rounded-xl px-4 py-3 font-bold ${viewMode === "calendar" ? "bg-pink-600 text-white" : "bg-slate-100"}`}>
+                  Calendar
+                </button>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const now = new Date();
+                  setEventPeriod("upcoming");
+                  setMonthFilter(String(now.getMonth()));
+                  setYearFilter(String(now.getFullYear()));
+                  setEventSearch("");
+                  setEventOrganizationFilter("");
+                  setEventLocationFilter("");
+                }}
+                className="rounded-xl border border-slate-300 bg-white px-4 py-3 font-bold text-slate-700"
+              >
+                Reset filters
+              </button>
               <p className="text-sm text-gray-500 md:ml-auto">
-                Showing {filteredEvents.length} {eventPeriod === "previous" ? "previous" : "upcoming"} event(s) for the selected month.
+                Showing {filteredEvents.length} of {periodEvents.length} {eventPeriod === "previous" ? "previous" : "upcoming"} event(s).
               </p>
             </div>
           </section>
