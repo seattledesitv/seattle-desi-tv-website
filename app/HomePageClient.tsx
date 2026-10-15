@@ -646,6 +646,7 @@ export default function HomePageClient({ initialData = {} }: { initialData?: Ini
       )
         .eq("status", "approved")
         .eq("visibility", "public")
+        .or(`date.gte.${today},end_date.gte.${today}`)
         .order("date", { ascending: true })
         .limit(250),
       forSite(
