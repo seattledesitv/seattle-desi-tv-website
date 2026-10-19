@@ -38,11 +38,12 @@ export default function PrivacyPage() {
           ],
         },
         {
-          title: "Live365 streaming, measurement, and advertisements",
+          title: "Live365 streaming, measurement, and audio content",
           paragraphs: [
             "Live365 provides the radio stream and related streaming infrastructure. Live365's listener-analytics documentation explains that unique listeners are distinguished using IP-address and user-agent information and that listening sessions may include region, platform, device, and session-length information.",
-            "Live365 may insert audio advertisements into the stream. Live365 states that advertisements are supplied through an advertising partner and may vary by a listener's geolocation, including city, state, or region. Approximate location inferred from an IP address is different from the app requesting or accessing a device's precise GPS location. The Seattle Desi Radio app does not need precise GPS location for native listening or browsing.",
-            "Seattle Desi TV does not set or control Live365's independent data-retention periods, advertising-partner practices, or deletion procedures. Live365's public analytics and advertising documentation confirms collection and use for these functions but does not state a fixed listener-data retention period or a listener deletion process. Please review Live365's current privacy policy and contact Live365 for requests concerning information controlled solely by Live365.",
+            "Seattle Desi Radio does not currently use Live365-inserted advertising. Seattle Desi Radio may include station-selected sponsorship, promotional, underwriting, or advertising audio as part of its programming or stream. Playing that audio does not require the app to access a device's precise GPS location.",
+            "If Live365 advertising is enabled in the future, Live365 states that advertisements are supplied through an advertising partner and may vary by a listener's geolocation, including city, state, or region. Approximate location inferred from an IP address is different from the app requesting or accessing precise GPS location. This policy will be reviewed before that feature is enabled.",
+            "Seattle Desi TV does not set or control Live365's independent data-retention periods or deletion procedures. Live365's public analytics documentation confirms listening measurement but does not state a fixed listener-data retention period or a listener deletion process. Please review Live365's current privacy policy and contact Live365 for requests concerning information controlled solely by Live365.",
           ],
           links: [
             { label: "Live365 privacy policy", href: "https://live365.com/legal/privacy" },
@@ -67,7 +68,7 @@ export default function PrivacyPage() {
         {
           title: "Service providers and sharing",
           paragraphs: [
-            "Seattle Desi TV may use trusted hosting, database, authentication, email, analytics, storage, media, streaming, advertising, and operational service providers. Information may be shared with them only as reasonably needed to operate the website, app, and related services. For app listening, this includes sending requests to Live365 so it can deliver the stream, measure listening, and insert audio advertising as described above.",
+            "Seattle Desi TV may use trusted hosting, database, authentication, email, analytics, storage, media, streaming, and operational service providers. Information may be shared with them only as reasonably needed to operate the website, app, and related services. For app listening, this includes sending requests to Live365 so it can deliver the stream and measure listening as described above. Seattle Desi Radio does not currently use Live365-inserted advertising.",
             "We may also disclose information when required by law, to protect safety or rights, or during an organizational transition. Third-party providers may process technical information under their own terms and privacy policies.",
           ],
         },
@@ -78,9 +79,14 @@ export default function PrivacyPage() {
         {
           title: "Data retention, deletion, and security",
           paragraphs: [
-            "Seattle Desi TV may retain information it controls for as long as reasonably necessary for operations, records, safety, legal compliance, dispute handling, and legitimate community purposes. Website and API hosting providers may create technical request and security logs and retain them according to the provider configuration and applicable provider terms; this policy does not promise a fixed log-retention period where Seattle Desi TV has not established one.",
+            "Seattle Desi TV does not intentionally maintain a separate custom archive of every website or mobile-app API request. However, the services used to operate the platform generate operational logs automatically. Supabase states that its project services, including its API gateway, authentication, storage, database, realtime, and edge functions, generate logs. Vercel also creates runtime request logs for hosted functions and routes.",
+            "The period for which provider logs are available or retained depends on the provider, service plan, settings, and any configured log drains or exports. Because Seattle Desi TV has not confirmed a single fixed retention configuration across these services, this policy does not claim a specific retention period. Seattle Desi TV may retain other information it controls for as long as reasonably necessary for operations, records, safety, legal compliance, dispute handling, and legitimate community purposes.",
             "Live365 controls the listener and streaming information held in its systems. Seattle Desi TV cannot guarantee deletion of information controlled solely by Live365 or another external provider. Privacy and deletion requests will be reviewed to identify the systems involved and will be handled or directed to the relevant provider, subject to applicable law and legitimate legal, security, archival, and operational requirements.",
             "We use reasonable administrative and technical safeguards for information under our control, but no internet, mobile, or streaming service can guarantee absolute security.",
+          ],
+          links: [
+            { label: "Supabase logs documentation", href: "https://supabase.com/docs/guides/platform/manage-your-usage/logs-ingest" },
+            { label: "Vercel runtime-log retention documentation", href: "https://vercel.com/docs/logs/runtime" },
           ],
         },
         {
