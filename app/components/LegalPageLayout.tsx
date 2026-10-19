@@ -6,6 +6,10 @@ type LegalSection = {
   title: string;
   paragraphs?: string[];
   bullets?: string[];
+  links?: Array<{
+    label: string;
+    href: string;
+  }>;
 };
 
 export default function LegalPageLayout({
@@ -44,6 +48,22 @@ export default function LegalPageLayout({
               {section.bullets && (
                 <ul className="mt-4 list-disc space-y-2 pl-6 leading-7 text-slate-700">
                   {section.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}
+                </ul>
+              )}
+              {section.links && (
+                <ul className="mt-4 space-y-2 leading-7">
+                  {section.links.map((link) => (
+                    <li key={link.href}>
+                      <a
+                        className="font-black text-pink-700 underline"
+                        href={link.href}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {link.label}
+                      </a>
+                    </li>
+                  ))}
                 </ul>
               )}
             </article>
