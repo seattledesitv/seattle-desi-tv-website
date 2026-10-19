@@ -38,12 +38,13 @@ export default function PrivacyPage() {
           ],
         },
         {
-          title: "Live365 streaming, measurement, and audio content",
+          title: "Live365 streaming, measurement, and advertisements",
           paragraphs: [
             "Live365 provides the radio stream and related streaming infrastructure. Live365's listener-analytics documentation explains that unique listeners are distinguished using IP-address and user-agent information and that listening sessions may include region, platform, device, and session-length information.",
-            "Seattle Desi Radio does not currently use Live365-inserted advertising. Seattle Desi Radio may include station-selected sponsorship, promotional, underwriting, or advertising audio as part of its programming or stream. Playing that audio does not require the app to access a device's precise GPS location.",
-            "If Live365 advertising is enabled in the future, Live365 states that advertisements are supplied through an advertising partner and may vary by a listener's geolocation, including city, state, or region. Approximate location inferred from an IP address is different from the app requesting or accessing precise GPS location. This policy will be reviewed before that feature is enabled.",
-            "Seattle Desi TV does not set or control Live365's independent data-retention periods or deletion procedures. Live365's public analytics documentation confirms listening measurement but does not state a fixed listener-data retention period or a listener deletion process. Please review Live365's current privacy policy and contact Live365 for requests concerning information controlled solely by Live365.",
+            "The Seattle Desi Radio stream includes Live365 network audio advertisements. Live365 states that these ads are inserted by its advertising partner, that Live365 does not directly control their content, and that the ads delivered may vary by a listener's geolocation, including city, state, or region. Live365 also measures advertising impressions.",
+            "Approximate location inferred from an IP address is different from the app requesting or accessing a device's precise GPS location. The Seattle Desi Radio app does not need precise GPS location for native listening or browsing.",
+            "Seattle Desi Radio may also include station-selected sponsorship, promotional, underwriting, or advertising audio as part of its programming or stream.",
+            "Seattle Desi TV does not set or control Live365's independent data-retention periods, advertising-partner practices, or deletion procedures. Live365's public analytics and advertising documentation confirms listening measurement, geolocation-based ad delivery, and impression reporting, but it does not state a fixed listener-data retention period, identify every item shared with its advertising partner, or provide a listener deletion process. Please review Live365's current privacy policy and contact Live365 for requests concerning information controlled solely by Live365.",
           ],
           links: [
             { label: "Live365 privacy policy", href: "https://live365.com/legal/privacy" },
@@ -68,7 +69,7 @@ export default function PrivacyPage() {
         {
           title: "Service providers and sharing",
           paragraphs: [
-            "Seattle Desi TV may use trusted hosting, database, authentication, email, analytics, storage, media, streaming, and operational service providers. Information may be shared with them only as reasonably needed to operate the website, app, and related services. For app listening, this includes sending requests to Live365 so it can deliver the stream and measure listening as described above. Seattle Desi Radio does not currently use Live365-inserted advertising.",
+            "Seattle Desi TV may use trusted hosting, database, authentication, email, analytics, storage, media, streaming, advertising, and operational service providers. Information may be shared with them only as reasonably needed to operate the website, app, and related services. For app listening, this includes sending requests to Live365 so it can deliver the stream, measure listening and advertising impressions, and provide network audio advertisements through its advertising partner as described above.",
             "We may also disclose information when required by law, to protect safety or rights, or during an organizational transition. Third-party providers may process technical information under their own terms and privacy policies.",
           ],
         },
