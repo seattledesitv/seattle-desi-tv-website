@@ -6,7 +6,7 @@ export default function PrivacyPage() {
       eyebrow="Legal"
       title="Privacy Policy"
       summary="This policy explains how Seattle Desi TV may collect, use, store, and protect information when people use our website, the Seattle Desi Radio mobile app, accounts, submissions, listings, media, and community services."
-      updated="October 19, 2026"
+      updated="October 20, 2026"
       sections={[
         {
           title: "Information we may collect",
