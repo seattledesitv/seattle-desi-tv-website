@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       ]);
       return NextResponse.json({ form: form.data, submissions: submissions.data || [], blocks: blocks.data || [], superAdmin: context.superAdmin, eventOrganizer: context.eventOrganizer });
     }
-    let query = db.from("team_quick_forms").select("id,title,slug,description,status,fields,event_id,created_by,created_by_email,created_at,updated_at").eq("site_id", context.siteId);
+    let query = db.from("team_quick_forms").select("id,title,slug,description,status,fields,event_id,active_from,active_until,max_responses,created_by,created_by_email,created_at,updated_at").eq("site_id", context.siteId);
     if (eventId) query = query.eq("event_id", eventId);
     const forms = await query.order("updated_at", { ascending: false });
     if (forms.error) throw forms.error;
@@ -61,7 +61,9 @@ export async function POST(request: Request) {
       event = await eventFor(db, eventId, context.siteId);
       if (!context.admin && event.created_by !== context.user.id) throw new Error("Only the event organizer or an administrator can create this form.");
     }
-    const inserted = await db.from("team_quick_forms").insert({ site_id: context.siteId, event_id: eventId || null, title, slug: slugify(title), description: String(body.description || "").trim().slice(0, 2000), fields: normalizeFields(body.fields), status: "draft", created_by: context.user.id, created_by_email: context.user.email || null }).select("*").single();
+    const maxResponses = body.max_responses === null || body.max_responses === "" || body.max_responses === undefined ? null : Math.max(1, Math.floor(Number(body.max_responses)));
+    if (maxResponses !== null && !Number.isFinite(maxResponses)) throw new Error("Maximum responses must be a positive number.");
+    const inserted = await db.from("team_quick_forms").insert({ site_id: context.siteId, event_id: eventId || null, title, slug: slugify(title), description: String(body.description || "").trim().slice(0, 2000), fields: normalizeFields(body.fields), active_from: body.active_from || null, active_until: body.active_until || null, max_responses: maxResponses, status: "draft", created_by: context.user.id, created_by_email: context.user.email || null }).select("*").single();
     if (inserted.error) throw inserted.error; return NextResponse.json({ form: inserted.data });
   } catch (error) { return failure(error); }
 }
@@ -87,6 +89,13 @@ export async function PATCH(request: Request) {
     if (body.confirmation_message !== undefined) payload.confirmation_message = String(body.confirmation_message || "").trim().slice(0, 500);
     if (body.status !== undefined) { if (!["draft", "published", "closed"].includes(body.status)) throw new Error("Invalid form status."); payload.status = body.status; }
     if (body.fields !== undefined) payload.fields = normalizeFields(body.fields);
+    if (body.active_from !== undefined) payload.active_from = body.active_from || null;
+    if (body.active_until !== undefined) payload.active_until = body.active_until || null;
+    if (body.max_responses !== undefined) {
+      const maxResponses = body.max_responses === null || body.max_responses === "" ? null : Math.max(1, Math.floor(Number(body.max_responses)));
+      if (maxResponses !== null && !Number.isFinite(maxResponses)) throw new Error("Maximum responses must be a positive number.");
+      payload.max_responses = maxResponses;
+    }
     const updated = await db.from("team_quick_forms").update(payload).eq("id", formId).eq("site_id", context.siteId).select("*").single();
     if (updated.error) throw updated.error; return NextResponse.json({ form: updated.data });
   } catch (error) { return failure(error); }
