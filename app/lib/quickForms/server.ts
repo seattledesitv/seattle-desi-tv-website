@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
-import { cleanRole, isTeamRole, resolveUserRole } from "../roles";
+import { cleanRole, isAdminRole, isTeamRole, resolveUserRole } from "../roles";
 import { resolveSiteForHostname } from "../sites/siteResolver";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -19,10 +19,16 @@ export async function quickFormsContext(request: Request) {
   const user = result.data.user;
   if (!user) throw new Error("Login required.");
   const role = cleanRole(await resolveUserRole(auth, user));
-  if (!isTeamRole(role)) throw new Error("SDTV team-member access is required.");
   const site = await resolveSiteForHostname(request.headers.get("x-forwarded-host") || request.headers.get("host"));
   if (!site.id) throw new Error("Active site could not be resolved.");
-  return { user, role, siteId: site.id, superAdmin: role === "super_admin" };
+  const requestedEventId = new URL(request.url).searchParams.get("eventId") || "";
+  let eventOrganizer = false;
+  if (!isTeamRole(role) && requestedEventId) {
+    const event = await auth.from("events").select("id").eq("id", requestedEventId).eq("site_id", site.id).eq("created_by", user.id).maybeSingle();
+    eventOrganizer = Boolean(event.data?.id);
+  }
+  if (!isTeamRole(role) && !eventOrganizer) throw new Error("SDTV team-member or event-organizer access is required.");
+  return { user, role, siteId: site.id, superAdmin: role === "super_admin", admin: isAdminRole(role), eventOrganizer, requestedEventId };
 }
 
 export async function assertQuickFormAccess(db: any, formId: string, context: any) {

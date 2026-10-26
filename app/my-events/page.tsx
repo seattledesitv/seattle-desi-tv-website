@@ -727,6 +727,8 @@ export default function MyEventsPage() {
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <a href={`/events/media-partner?event=${selectedRow.id}`} className="rounded-xl border border-pink-600 px-5 py-3 font-black text-pink-700">Invite SDTV as Media Partner</a>
+                          <a href={`/studio/quick-forms?eventId=${encodeURIComponent(selectedRow.id)}`} className="rounded-xl border border-slate-900 px-5 py-3 font-black text-slate-900">Add / view custom form</a>
+                          <a href={`/events/${selectedRow.id}`} target="_blank" rel="noreferrer" className="rounded-xl border border-slate-300 px-5 py-3 font-black text-slate-700">Open event</a>
                           <button
                             onClick={() => startEdit(selectedRow)}
                             className="rounded-xl bg-pink-600 px-5 py-3 font-black text-white"
