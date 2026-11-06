@@ -1,5 +1,6 @@
 import * as repo from "../repositories/pressReleaseRepository";
 import type { PressReleaseInput, PressReleaseStatus } from "../types";
+import { isRichPressRelease, pressReleaseText, sanitizePressReleaseHtml } from "../richText";
 
 function clean(value: string | null) {
   return value?.trim() || null;
@@ -9,7 +10,7 @@ function validate(input: PressReleaseInput) {
     throw new Error("Title must be at least 5 characters.");
   if (input.summary.trim().length < 20)
     throw new Error("Summary must be at least 20 characters.");
-  if (input.body.trim().length < 100)
+  if (pressReleaseText(input.body).trim().length < 100)
     throw new Error("Press release text must be at least 100 characters.");
   if (input.image_urls.length > 12)
     throw new Error("A press release can include up to 12 images.");
@@ -24,7 +25,7 @@ function normalize(input: PressReleaseInput): PressReleaseInput {
     ...input,
     title: input.title.trim(),
     summary: input.summary.trim(),
-    body: input.body.trim(),
+    body: isRichPressRelease(input.body) ? sanitizePressReleaseHtml(input.body).trim() : input.body.trim(),
     organization_name: clean(input.organization_name),
     location: clean(input.location),
     contact_name: clean(input.contact_name),

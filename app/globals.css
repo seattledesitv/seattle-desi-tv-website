@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Shared typography for press release editing, review, and public reading. */
+.press-release-rich-text { overflow-wrap: anywhere; white-space: pre-wrap; font-weight: 400; line-height: 1.8; }
+.press-release-rich-text p { margin: 0 0 1em; }
+.press-release-rich-text h2 { margin: 1.2em 0 .5em; font-size: 1.5em; font-weight: 800; line-height: 1.3; }
+.press-release-rich-text h3 { margin: 1em 0 .5em; font-size: 1.25em; font-weight: 700; line-height: 1.4; }
+.press-release-rich-text ul { list-style: disc; padding-left: 1.5em; margin: 1em 0; }
+.press-release-rich-text ol { list-style: decimal; padding-left: 1.5em; margin: 1em 0; }
+.press-release-rich-text li p { margin-bottom: .25em; }
+.press-release-rich-text blockquote { border-left: 4px solid #db2777; padding-left: 1em; margin: 1em 0; color: #475569; }
+.press-release-rich-text a { color: #be185d; text-decoration: underline; text-underline-offset: 3px; }
+.press-release-rich-text a:hover { color: #831843; }
+.press-release-rich-text > :last-child { margin-bottom: 0; }
+
 * { box-sizing: border-box; }
 html, body { max-width: 100%; overflow-x: hidden; }
 body { margin: 0; background: #fff; color: #081024; }

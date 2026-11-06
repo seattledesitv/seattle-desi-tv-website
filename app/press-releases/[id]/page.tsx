@@ -6,6 +6,7 @@ import { useState } from "react";
 import SiteHeader from "../../components/SiteHeader";
 import SiteFooter from "../../components/SiteFooter";
 import PressReleaseDocuments from "../../components/pressReleases/PressReleaseDocuments";
+import PressReleaseBody from "../../components/pressReleases/PressReleaseBody";
 import { usePressReleaseDetail } from "../../hooks/usePressReleaseDetail";
 import { entityIdFromParam } from "../../lib/seo/urls";
 import { useCurrentSite } from "../../lib/sites/SiteContext";
@@ -69,9 +70,9 @@ export default function PressReleaseDetailPage() {
           </header>
           <section className="mx-auto grid max-w-7xl gap-8 px-6 py-12 lg:grid-cols-[minmax(0,1fr)_380px]">
             <article className="rounded-3xl bg-white p-7 shadow-sm md:p-10">
-              <p className="whitespace-pre-wrap text-lg leading-9 text-slate-700">
-                {release.body}
-              </p>
+              <div className="text-lg leading-9 text-slate-700">
+                <PressReleaseBody body={release.body} />
+              </div>
               {(release.contact_name || release.contact_email) && (
                 <div className="mt-10 border-t pt-6">
                   <h2 className="text-xl font-black">Media Contact</h2>
