@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- local upload previews use generated public URLs */
 import { useState } from "react";
+import PressReleaseEditor from "./PressReleaseEditor";
 import DirectoryImageCropper, {
   type DirectoryImageCrop,
 } from "../DirectoryImageCropper";
@@ -212,15 +213,7 @@ export default function PressReleaseForm({
             {form.summary.length}/600 characters
           </span>
         </label>
-        <label className="grid gap-1 font-bold md:col-span-2">
-          Full press release *
-          <textarea
-            value={form.body}
-            onChange={(e) => set("body", e.target.value)}
-            className="min-h-80 rounded-xl border p-4 font-normal leading-7"
-            placeholder="Paste or write the complete press release here..."
-          />
-        </label>
+        <PressReleaseEditor value={form.body} onChange={(value) => set("body", value)} />
         <label className="grid gap-1 font-bold">
           Organization
           <input

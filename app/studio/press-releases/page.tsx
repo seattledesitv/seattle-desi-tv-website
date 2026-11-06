@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import PressReleaseForm from "../../components/pressReleases/PressReleaseForm";
+import PressReleaseBody from "../../components/pressReleases/PressReleaseBody";
 import PressReleaseInstagramPublisher from "../../components/pressReleases/PressReleaseInstagramPublisher";
 import { usePressReleases } from "../../hooks/usePressReleases";
 import type { PressRelease } from "../../lib/pressReleases/types";
@@ -108,9 +109,9 @@ export default function StudioPressReleasesPage() {
                   <summary className="cursor-pointer font-black">
                     Read full text
                   </summary>
-                  <p className="mt-3 whitespace-pre-wrap leading-7 text-slate-700">
-                    {release.body}
-                  </p>
+                  <div className="mt-3 leading-7 text-slate-700">
+                    <PressReleaseBody body={release.body} />
+                  </div>
                 </details>
                 {release.documents?.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">

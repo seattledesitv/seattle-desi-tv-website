@@ -1,0 +1,31 @@
+name: Press release rich text
+on:
+  push:
+    branches: [codex/press-release-rich-text]
+  pull_request:
+    paths: ["app/**", "tests/**", "package*.json", "playwright.config.ts", ".github/workflows/press-release-rich-text.yml"]
+permissions:
+  contents: read
+concurrency:
+  group: press-release-rich-text-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run test:press-releases
+      - run: npx eslint app/components/pressReleases/PressReleaseEditor.tsx app/components/pressReleases/PressReleaseBody.tsx app/components/pressReleases/PressReleaseForm.tsx app/lib/pressReleases/richText.ts app/lib/pressReleases/services/pressReleaseService.ts app/press-releases/\[id\]/page.tsx app/studio/press-releases/page.tsx tests playwright.config.ts
+      - run: npx tsc --noEmit
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: press-release-test-results
+          path: test-results/
