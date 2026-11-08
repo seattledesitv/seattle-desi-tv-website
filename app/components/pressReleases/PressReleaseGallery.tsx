@@ -69,8 +69,8 @@ export default function PressReleaseGallery({ images, title, siteName }: { image
             <h2 id={headingId} className="min-w-0 truncate font-bold">{title} — image gallery</h2>
             <button type="button" autoFocus onClick={() => setSelected(null)} aria-label="Close image gallery" className="shrink-0 rounded-lg bg-white/10 px-4 py-2 font-bold hover:bg-white/20">Close ✕</button>
           </div>
-          <div className="flex min-h-0 flex-1 items-center justify-center bg-black p-2" style={{ height: "min(60dvh, 650px)" }}>
-            <img src={images[index]} alt={`${title} — image ${index + 1} of ${images.length}`} className="h-full w-full object-contain" />
+          <div className="relative min-h-0 flex-1 overflow-hidden bg-black" style={{ height: "min(60dvh, 650px)" }}>
+            <img src={images[index]} alt={`${title} — image ${index + 1} of ${images.length}`} className="absolute inset-0 h-full w-full object-contain p-2" />
           </div>
           <div className="flex shrink-0 items-center justify-between gap-3 px-4 py-3">
             <button type="button" disabled={images.length < 2} onClick={() => move(-1)} className="rounded-xl bg-white/10 px-4 py-3 font-bold hover:bg-white/20 disabled:opacity-40" aria-label="Previous image">← Previous</button>

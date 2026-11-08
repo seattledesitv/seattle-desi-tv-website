@@ -69,6 +69,7 @@ test("gallery fits mobile portrait and landscape, and traps keyboard focus", asy
     await next.click();
     await expect(dialog.getByRole("status")).toHaveText("2 / 30");
     await page.screenshot({ path: `test-results/release-gallery-${viewport.width}.png`, fullPage: true });
-    await page.keyboard.press("Escape");
+    await dialog.getByRole("button", { name: "Close image gallery" }).click();
+    await expect(dialog).not.toBeVisible();
   }
 });
