@@ -12,11 +12,27 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci-test-password
+          POSTGRES_DB: press_release_tests
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Test attachment migration boundaries and repeatability
+        env:
+          PGPASSWORD: ci-test-password
+        run: psql -h localhost -U postgres -d press_release_tests -v ON_ERROR_STOP=1 -f tests/press-release-attachments.sql
       - run: npm ci
       - run: npm run test:press-releases
       - run: npx eslint app/components/pressReleases/PressReleaseEditor.tsx app/components/pressReleases/PressReleaseBody.tsx app/components/pressReleases/PressReleaseForm.tsx app/lib/pressReleases/richText.ts app/lib/pressReleases/services/pressReleaseService.ts app/press-releases/\[id\]/page.tsx app/studio/press-releases/page.tsx tests playwright.config.ts
