@@ -298,7 +298,7 @@ Community organizations and groups are site-owned directories. Existing records 
 
 ## Press release attachments
 
-The shared PressReleaseForm and PressReleaseService allow up to 30 attachments per release, including images, PDFs, and Word files. Each file retains the existing 20 MB maximum. The separate image gallery remains limited to 12 images. Attachment selection rejects batches exceeding the remaining capacity before uploading and disables uploads while saving or another upload is in progress.
+The shared PressReleaseForm and PressReleaseService allow up to 30 attachments per release, including images, PDFs, and Word files. Each file retains the existing 20 MB maximum. The separate image gallery allows up to 30 images after the image-limit migration. Attachment selection rejects batches exceeding the remaining capacity before uploading and disables uploads while saving or another upload is in progress.
 
 Migration `20261108120000_increase_press_release_attachment_limit.sql` raises the existing `press_release_documents_shape` constraint to 30 while retaining its JSON-array check. Existing attachments, storage helpers, access policies, moderation, and rich text behavior are unchanged. Apply the migration before deploying the form update.
 

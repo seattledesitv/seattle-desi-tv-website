@@ -4,7 +4,7 @@
 
 - Press release gallery capacity increased to 30 images, with a modal image viewer, Previous/Next, thumbnail navigation, image counter, and keyboard controls. Primary-image replacement retains the 30-image maximum. Requires `20261108150000_increase_press_release_image_limit.sql` before deployment. The existing 30-attachment allowance and 20 MB per-file limit remain unchanged.
 
-- Press release attachment capacity increased from 6 to 30 images/PDFs/Word files, retaining 20 MB per file and the separate 12-image gallery limit. Requires `20261108120000_increase_press_release_attachment_limit.sql` before application deployment. Added boundary checks for 30/31 attachments in the upload form and database migration.
+- Press release attachment capacity increased from 6 to 30 images/PDFs/Word files, retaining 20 MB per file and a separate gallery allowance (now 30 images after the image-limit migration). Requires `20261108120000_increase_press_release_attachment_limit.sql` before application deployment. Added boundary checks for 30/31 attachments in the upload form and database migration.
 
 - Approved press releases can now be published to Instagram from Studio using selected release images, an editable generated caption, a preview, and a mandatory final approval step. The workflow reuses the protected shared Instagram API and credentials.
 - Public Team member cards now prefer the user profile/volunteer photo, fall back to the team-member image, and use the SDTV ID badge only as the final image fallback.
