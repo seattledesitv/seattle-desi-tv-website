@@ -5,7 +5,6 @@ import { useEffect, useId, useRef, useState } from "react";
 export default function PressReleaseGallery({ images, title, siteName }: { images: string[]; title: string; siteName: string }) {
   const [selected, setSelected] = useState<number | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
-  const thumbnails = useRef<(HTMLButtonElement | null)[]>([]);
   const headingId = useId();
   const open = selected !== null && images.length > 0;
   const index = Math.max(0, Math.min(selected ?? 0, images.length - 1));
@@ -21,10 +20,6 @@ export default function PressReleaseGallery({ images, title, siteName }: { image
       document.body.style.overflow = overflow;
     };
   }, [open]);
-
-  useEffect(() => {
-    if (open) thumbnails.current[index]?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [open, index]);
 
   function move(offset: number) {
     setSelected((current) => ((current ?? 0) + offset + images.length) % images.length);
@@ -62,28 +57,19 @@ export default function PressReleaseGallery({ images, title, siteName }: { image
           if (event.key === "Home") { event.preventDefault(); setSelected(0); }
           if (event.key === "End") { event.preventDefault(); setSelected(images.length - 1); }
         }}
-        className="fixed inset-0 m-auto max-w-6xl overflow-hidden rounded-2xl bg-slate-950 p-0 text-white shadow-2xl backdrop:bg-slate-950/90"
-        style={{ width: "min(1152px, calc(100vw - 2rem))", maxHeight: "calc(100dvh - 2rem)" }}>
-        {open && <div className="flex max-h-[calc(100dvh-2rem)] flex-col">
-          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-white/15 px-4 py-3">
-            <h2 id={headingId} className="min-w-0 truncate font-bold">{title} — image gallery</h2>
-            <button type="button" autoFocus onClick={() => setSelected(null)} aria-label="Close image gallery" className="shrink-0 rounded-lg bg-white/10 px-4 py-2 font-bold hover:bg-white/20">Close ✕</button>
-          </div>
-          <div className="relative min-h-0 flex-1 overflow-hidden bg-black" style={{ height: "min(60dvh, 650px)" }}>
-            <img src={images[index]} alt={`${title} — image ${index + 1} of ${images.length}`} className="absolute inset-0 h-full w-full object-contain p-2" />
-          </div>
-          <div className="flex shrink-0 items-center justify-between gap-3 px-4 py-3">
-            <button type="button" disabled={images.length < 2} onClick={() => move(-1)} className="rounded-xl bg-white/10 px-4 py-3 font-bold hover:bg-white/20 disabled:opacity-40" aria-label="Previous image">← Previous</button>
-            <p role="status" aria-live="polite" aria-atomic="true" className="text-center font-bold">{index + 1} / {images.length}</p>
-            <button type="button" disabled={images.length < 2} onClick={() => move(1)} className="rounded-xl bg-white/10 px-4 py-3 font-bold hover:bg-white/20 disabled:opacity-40" aria-label="Next image">Next →</button>
-          </div>
-          <div role="group" aria-label="Choose gallery image" className="flex shrink-0 gap-2 overflow-x-auto border-t border-white/15 p-3">
-            {images.map((url, photo) => (
-              <button key={`${url}-${photo}`} ref={(element) => { thumbnails.current[photo] = element; }} type="button" aria-label={`Go to image ${photo + 1}`} aria-current={index === photo ? "true" : undefined} onClick={() => setSelected(photo)} className={`h-14 w-16 shrink-0 overflow-hidden rounded-lg border-2 ${index === photo ? "border-pink-400" : "border-transparent opacity-60"}`}>
-                <img src={url} alt="" loading="lazy" className="h-full w-full object-cover" />
-              </button>
-            ))}
-          </div>
+        className="fixed inset-0 m-auto overflow-hidden rounded-xl border-0 bg-black p-0 text-white shadow-2xl backdrop:bg-slate-950/90"
+        style={{ width: "min(1600px, 96vw)", height: "92dvh", maxHeight: "92dvh", maxWidth: "96vw" }}>
+        {open && <div style={{ position: "relative", width: "100%", height: "100%" }}>
+          <h2 id={headingId} className="sr-only">{title} — image gallery</h2>
+          <img src={images[index]} alt={`${title} — image ${index + 1} of ${images.length}`}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }} />
+          <p role="status" aria-live="polite" aria-atomic="true" className="absolute left-3 top-3 z-20 rounded-lg bg-black/70 px-3 py-2 font-bold">{index + 1} / {images.length}</p>
+          <button type="button" autoFocus onClick={() => setSelected(null)} aria-label="Close image gallery"
+            className="absolute right-3 top-3 z-20 rounded-lg bg-black/70 px-4 py-3 font-bold hover:bg-black/90">Close ✕</button>
+          <button type="button" disabled={images.length < 2} onClick={() => move(-1)} aria-label="Previous image"
+            className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-xl bg-black/70 px-4 py-5 text-3xl font-bold hover:bg-black/90 disabled:opacity-30">‹</button>
+          <button type="button" disabled={images.length < 2} onClick={() => move(1)} aria-label="Next image"
+            className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-xl bg-black/70 px-4 py-5 text-3xl font-bold hover:bg-black/90 disabled:opacity-30">›</button>
         </div>}
       </dialog>
     </div>

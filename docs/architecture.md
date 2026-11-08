@@ -306,6 +306,12 @@ Migration `20261108120000_increase_press_release_attachment_limit.sql` raises th
 
 The shared release form and service allow up to 30 gallery images and retain the separate 30-attachment limit and existing 20 MB file validation. Image batches exceeding the remaining capacity are rejected before upload. Replacing the primary image replaces its slot instead of adding a 31st image.
 
-PressReleaseGallery replaces inline enlarged sidebar images with a native modal dialog. The sidebar shows six thumbnails and a View all action; the dialog provides full-image viewing, Previous/Next with wraparound, an image counter, a scrolling thumbnail strip, arrow keys, Home/End, Escape, focus containment/restoration, and background scroll locking. No additional gallery dependency is required.
+PressReleaseGallery replaces inline enlarged sidebar images with a native modal dialog that shows a single large image. The sidebar shows six thumbnails and a View all action; the dialog provides full-image viewing, Previous/Next with wraparound, an image counter, arrow keys, Home/End, Escape, focus containment/restoration, and background scroll locking. No additional gallery dependency is required.
 
 Apply `20261108150000_increase_press_release_image_limit.sql` before deploying the form: it raises only `press_release_image_limit` to 30. Existing attachments, access policies, moderation, image framing, and Instagram selection rules are unchanged.
+
+## Full-size release image viewer and share-preview verification
+
+The release gallery dialog uses an explicit 92dvh height and a full-height image container. Its selected image uses object-fit contain to maximize the view without cropping; overlaid Previous/Next arrows, Close, and the image counter remain accessible. The modal thumbnail strip and visual title bar are removed. Regression checks assert the selected image occupies the dialog bounds on desktop and mobile, preventing a zero-height flex item from hiding the image.
+
+The public anniversary release was audited with WhatsApp and Facebook crawler user agents: the HTML head already contains the first image_urls entry as og:image and twitter:image. The primary PNG responds publicly with HTTP 200 (1080×1350, 631,110 bytes). Existing metadata and bot handling remain unchanged because the audit found no missing website tags. A WhatsApp preview still depends on the sender's link-preview setting and platform behavior; do not claim an in-app preview was verified by an HTTP audit.

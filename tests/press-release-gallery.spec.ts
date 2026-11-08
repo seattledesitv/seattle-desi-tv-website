@@ -8,6 +8,13 @@ test("gallery opens at the clicked image and supports next, previous, keys, wrap
   await opener.click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
+  const viewer = await dialog.boundingBox();
+  const fullImage = await dialog.getByRole("img").boundingBox();
+  expect(fullImage!.height).toBeGreaterThan(viewer!.height * 0.9);
+  expect(fullImage!.width).toBeGreaterThan(viewer!.width * 0.9);
+  expect(viewer!.height).toBeGreaterThan(600);
+  await expect(dialog.getByRole("img")).toHaveJSProperty("naturalWidth", 1200);
+  await page.screenshot({ path: "test-results/release-gallery-desktop.png", fullPage: true });
   await expect(dialog.getByRole("status")).toHaveText("2 / 30");
   await dialog.getByRole("button", { name: "Next image", exact: true }).click();
   await expect(dialog.getByRole("img", { name: /image 3 of 30/ })).toBeVisible();
@@ -23,8 +30,8 @@ test("gallery opens at the clicked image and supports next, previous, keys, wrap
   await expect(dialog.getByRole("status")).toHaveText("30 / 30");
   await page.keyboard.press("Home");
   await expect(dialog.getByRole("status")).toHaveText("1 / 30");
-  await dialog.getByRole("button", { name: "Go to image 15", exact: true }).click();
-  await expect(dialog.getByRole("status")).toHaveText("15 / 30");
+  await expect(dialog.getByRole("img")).toHaveCount(1);
+  await expect(dialog.getByRole("group", { name: "Choose gallery image" })).toHaveCount(0);
   await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
   await page.keyboard.press("Escape");
   await expect(dialog).not.toBeVisible();
@@ -63,6 +70,10 @@ test("gallery fits mobile portrait and landscape, and traps keyboard focus", asy
     expect(bounds!.y).toBeGreaterThanOrEqual(0);
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(viewport.width);
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport.height);
+    const photoBounds = await dialog.getByRole("img").boundingBox();
+    expect(photoBounds!.height).toBeGreaterThan(bounds!.height * 0.9);
+    expect(photoBounds!.width).toBeGreaterThan(bounds!.width * 0.9);
+    await expect(dialog.getByRole("img")).toHaveJSProperty("naturalWidth", 1200);
     const next = dialog.getByRole("button", { name: "Next image", exact: true });
     const control = await next.boundingBox();
     expect(control!.y + control!.height).toBeLessThanOrEqual(viewport.height);

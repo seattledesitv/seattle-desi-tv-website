@@ -2,6 +2,8 @@
 
 ## Current status
 
+- Fixed the release viewer's collapsed image area by giving the modal and image container explicit heights. The popup now shows one large image with overlaid left/right arrows, counter and Close; no thumbnail strip. Added desktop/mobile image-size regression checks. Audited the public anniversary release: WhatsApp receives the correct, publicly accessible primary image in initial HTML metadata. No database migration or new dependency is needed.
+
 - Press release gallery capacity increased to 30 images, with a modal image viewer, Previous/Next, thumbnail navigation, image counter, and keyboard controls. Primary-image replacement retains the 30-image maximum. Requires `20261108150000_increase_press_release_image_limit.sql` before deployment. The existing 30-attachment allowance and 20 MB per-file limit remain unchanged.
 
 - Press release attachment capacity increased from 6 to 30 images/PDFs/Word files, retaining 20 MB per file and a separate gallery allowance (now 30 images after the image-limit migration). Requires `20261108120000_increase_press_release_attachment_limit.sql` before application deployment. Added boundary checks for 30/31 attachments in the upload form and database migration.
