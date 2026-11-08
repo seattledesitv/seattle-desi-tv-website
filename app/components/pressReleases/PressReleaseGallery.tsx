@@ -49,6 +49,13 @@ export default function PressReleaseGallery({ images, title, siteName }: { image
       <dialog ref={dialog} aria-labelledby={headingId} onClose={() => setSelected(null)}
         onClick={(event) => { if (event.target === event.currentTarget) setSelected(null); }}
         onKeyDown={(event) => {
+          if (event.key === "Tab") {
+            const controls = dialog.current?.querySelectorAll<HTMLButtonElement>("button:not([disabled])");
+            const first = controls?.[0];
+            const last = controls?.[controls.length - 1];
+            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+          }
           if (images.length < 2) return;
           if (event.key === "ArrowRight") { event.preventDefault(); move(1); }
           if (event.key === "ArrowLeft") { event.preventDefault(); move(-1); }

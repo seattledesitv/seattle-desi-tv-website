@@ -39,6 +39,9 @@ jobs:
       - run: npx tsc --noEmit
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test
+      - name: Show browser failure context
+        if: failure()
+        run: find test-results -name error-context.md -exec cat {} +
       - run: npm run build
       - uses: actions/upload-artifact@v4
         if: always()

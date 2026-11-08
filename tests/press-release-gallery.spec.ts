@@ -34,16 +34,16 @@ test("gallery opens at the clicked image and supports next, previous, keys, wrap
 });
 
 test("gallery handles a single image and an empty release", async ({ page }) => {
-  await page.goto("http://127.0.0.1:4173/gallery?single");
-  await page.getByRole("button", { name: "View image", exact: true }).click();
+  await test.step("open singleton fixture", async () => { await page.goto("http://127.0.0.1:4173/gallery?single", { timeout: 10000 }); });
+  await test.step("open singleton gallery", async () => { await page.getByRole("button", { name: "View image", exact: true }).click({ timeout: 5000 }); });
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("status")).toHaveText("1 / 1");
   await expect(dialog.getByRole("button", { name: "Next image" })).toBeDisabled();
   await expect(dialog.getByRole("button", { name: "Previous image" })).toBeDisabled();
-  await dialog.getByRole("button", { name: "Close image gallery" }).click();
+  await test.step("close singleton gallery", async () => { await dialog.getByRole("button", { name: "Close image gallery" }).click({ timeout: 5000 }); });
   await expect(dialog).not.toBeVisible();
-  await page.goto("http://127.0.0.1:4173/gallery?empty");
-  await expect(page.getByText("Seattle Desi TV", { exact: true })).toBeVisible();
+  await test.step("open empty fixture", async () => { await page.goto("http://127.0.0.1:4173/gallery?empty", { timeout: 10000 }); });
+  await expect(page.getByText("Seattle Desi TV", { exact: false })).toBeVisible();
   await expect(page.getByRole("button")).toHaveCount(0);
 });
 

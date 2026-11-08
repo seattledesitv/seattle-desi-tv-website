@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @next/next/no-img-element -- press release galleries contain user-uploaded media */
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import SiteHeader from "../../components/SiteHeader";
