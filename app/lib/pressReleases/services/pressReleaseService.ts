@@ -12,8 +12,8 @@ function validate(input: PressReleaseInput) {
     throw new Error("Summary must be at least 20 characters.");
   if (pressReleaseText(input.body).trim().length < 100)
     throw new Error("Press release text must be at least 100 characters.");
-  if (input.image_urls.length > 12)
-    throw new Error("A press release can include up to 12 images.");
+  if (input.image_urls.length > 30)
+    throw new Error("A press release can include up to 30 images.");
   if (input.documents.length > 30)
     throw new Error("A press release can include up to 30 documents.");
   if (input.source_url && !/^https?:\/\//i.test(input.source_url))

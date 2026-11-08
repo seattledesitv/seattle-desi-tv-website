@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import PressReleaseEditor from "../app/components/pressReleases/PressReleaseEditor";
 import PressReleaseBody from "../app/components/pressReleases/PressReleaseBody";
 import PressReleaseForm from "../app/components/pressReleases/PressReleaseForm";
+import PressReleaseGallery from "../app/components/pressReleases/PressReleaseGallery";
 import { SiteProvider } from "../app/lib/sites/SiteContext";
 
 function Preview() {
@@ -30,4 +31,9 @@ function AttachmentPreview() {
     <output data-testid="upload-count">{uploaded}</output>
   </SiteProvider>;
 }
-createRoot(document.getElementById("root")!).render(location.pathname === "/attachments" ? <AttachmentPreview /> : <Preview />);
+const galleryImages = Array.from({ length: 30 }, (_, i) => "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800"><rect width="1200" height="800" fill="hsl(${i * 12},45%,30%)"/><text x="600" y="420" text-anchor="middle" fill="white" font-size="72">Release photo ${i + 1}</text></svg>`));
+function GalleryPreview() {
+  const count = location.search === "?empty" ? 0 : location.search === "?single" ? 1 : 30;
+  return <main style={{ maxWidth: 380, margin: "30px auto" }}><PressReleaseGallery images={galleryImages.slice(0, count)} title="Seattle community celebration" siteName="Seattle Desi TV" /></main>;
+}
+createRoot(document.getElementById("root")!).render(location.pathname === "/attachments" ? <AttachmentPreview /> : location.pathname === "/gallery" ? <GalleryPreview /> : <Preview />);
