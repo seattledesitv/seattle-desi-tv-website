@@ -295,3 +295,9 @@ Local businesses use the same required site-ownership pattern. Existing listings
 Vercel preview deployments support a temporary market override for isolation testing. `/api/site-preview` validates a requested site code against the registry and stores it in an HTTP-only, secure, same-site cookie for one hour. The resolver honors that cookie only when `VERCEL_ENV=preview` and the request hostname ends in `.vercel.app`; production/custom domains cannot activate it. Clearing the cookie restores normal hostname resolution. Studio identifies this state as `Preview override`.
 
 Community organizations and groups are site-owned directories. Existing records are assigned to Seattle, and both community and administrator creation paths snapshot the resolved site. Public directories, organization profiles and SEO, sitemap entries, mobile organization/group resources, the event form's organization picker, and the shared Studio moderation UI filter by that site. Event-to-organization links remain relational; the UI only offers organizations from the event's current market.
+
+## Press release attachments
+
+The shared PressReleaseForm and PressReleaseService allow up to 30 attachments per release, including images, PDFs, and Word files. Each file retains the existing 20 MB maximum. The separate image gallery remains limited to 12 images. Attachment selection rejects batches exceeding the remaining capacity before uploading and disables uploads while saving or another upload is in progress.
+
+Migration `20261108120000_increase_press_release_attachment_limit.sql` raises the existing `press_release_documents_shape` constraint to 30 while retaining its JSON-array check. Existing attachments, storage helpers, access policies, moderation, and rich text behavior are unchanged. Apply the migration before deploying the form update.

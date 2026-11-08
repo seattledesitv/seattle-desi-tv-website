@@ -126,14 +126,19 @@ export default function PressReleaseForm({
     }
   }
   async function documents(selected: FileList | null) {
-    if (!selected) return;
+    if (!selected || uploading || saving) return;
+    const available = 30 - form.documents.length;
+    if (selected.length > available) {
+      setMessage(`You can add ${Math.max(0, available)} more ${available === 1 ? "attachment" : "attachments"} (30 per press release).`);
+      return;
+    }
     setUploading(true);
     setMessage("");
     try {
       const uploaded: PressReleaseDocument[] = [];
       for (const file of Array.from(selected).slice(
         0,
-        6 - form.documents.length,
+        30 - form.documents.length,
       )) {
         uploaded.push({
           url: await onUpload(file),
@@ -272,6 +277,7 @@ export default function PressReleaseForm({
             type="file"
             multiple
             accept="image/*"
+            disabled={saving || uploading}
             onChange={(e) => void files(e.target.files)}
             className="rounded-xl border p-3 font-normal"
           />
@@ -345,12 +351,13 @@ export default function PressReleaseForm({
           />
         </div>
         <label className="grid gap-2 font-bold md:col-span-2">
-          Attachments (up to 6 images, PDFs, or Word files, 20 MB each)
+          Attachments (up to 30 images, PDFs, or Word files, 20 MB each)
           <input
             type="file"
             multiple
             accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,image/jpeg,image/png,image/webp,image/gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            onChange={(e) => void documents(e.target.files)}
+            disabled={saving || uploading || form.documents.length >= 30}
+            onChange={(e) => { void documents(e.target.files); e.target.value = ""; }}
             className="rounded-xl border p-3 font-normal"
           />
         </label>
