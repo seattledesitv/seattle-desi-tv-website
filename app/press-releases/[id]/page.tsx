@@ -1,12 +1,11 @@
 "use client";
-/* eslint-disable @next/next/no-img-element -- press release galleries contain user-uploaded media */
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
 import SiteHeader from "../../components/SiteHeader";
 import SiteFooter from "../../components/SiteFooter";
 import PressReleaseDocuments from "../../components/pressReleases/PressReleaseDocuments";
 import PressReleaseBody from "../../components/pressReleases/PressReleaseBody";
+import PressReleaseGallery from "../../components/pressReleases/PressReleaseGallery";
 import { usePressReleaseDetail } from "../../hooks/usePressReleaseDetail";
 import { entityIdFromParam } from "../../lib/seo/urls";
 import { useCurrentSite } from "../../lib/sites/SiteContext";
@@ -22,7 +21,6 @@ export default function PressReleaseDetailPage() {
   const site = useCurrentSite();
   const id = entityIdFromParam(useParams<{ id: string }>().id);
   const { release, loading, error } = usePressReleaseDetail(id);
-  const [selected, setSelected] = useState<string | null>(null);
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
       <SiteHeader />
@@ -113,62 +111,7 @@ export default function PressReleaseDetailPage() {
               </div>
             </article>
             <aside className="lg:sticky lg:top-28 lg:self-start">
-              <div className="rounded-3xl border bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-black">Release Images</h2>
-                  {selected && (
-                    <button
-                      type="button"
-                      onClick={() => setSelected(null)}
-                      className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-black"
-                    >
-                      Close image
-                    </button>
-                  )}
-                </div>
-                {selected ? (
-                  <button
-                    type="button"
-                    onClick={() => setSelected(null)}
-                    className="mt-4 block w-full"
-                    aria-label="Close enlarged image"
-                  >
-                    <img
-                      src={selected}
-                      alt="Press release"
-                      className="max-h-[65vh] w-full rounded-2xl object-contain"
-                    />
-                  </button>
-                ) : (
-                  <p className="mt-3 text-sm leading-6 text-slate-500">
-                    Select an image to view it here. Close the image to return
-                    to the release information.
-                  </p>
-                )}
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  {release.image_urls.map((url, index) => (
-                    <button
-                      type="button"
-                      key={url}
-                      onClick={() => setSelected(url)}
-                      className={`overflow-hidden rounded-xl border-2 ${selected === url ? "border-pink-600" : "border-transparent"}`}
-                    >
-                      <img
-                        src={url}
-                        alt={`Press release image ${index + 1}`}
-                        className="aspect-square w-full object-cover"
-                      />
-                    </button>
-                  ))}
-                </div>
-                {!release.image_urls.length && (
-                  <div className="mt-4 rounded-2xl bg-slate-950 p-8 text-center font-black text-white">
-                    {site.name}
-                    <br />
-                    Press Release
-                  </div>
-                )}
-              </div>
+              <PressReleaseGallery images={release.image_urls} title={release.title} siteName={site.name} />
               <PressReleaseDocuments documents={release.documents || []} />
             </aside>
           </section>

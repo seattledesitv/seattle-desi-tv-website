@@ -38,5 +38,5 @@ test("31 attachments and batches exceeding remaining capacity are rejected befor
   await expect(page.getByTestId("upload-count")).toHaveText("29");
   await expect(page.getByText("You can add 1 more attachment (30 per press release).")).toBeVisible();
   await expect(page.getByRole("button", { name: /Remove document/ })).toHaveCount(29);
-  await expect(page.getByLabel("Images (up to 12)")).toBeEnabled();
+  await expect(page.getByLabel("Images (up to 30)")).toBeEnabled();
 });
