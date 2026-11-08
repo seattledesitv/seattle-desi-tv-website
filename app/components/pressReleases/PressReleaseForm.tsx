@@ -104,14 +104,19 @@ export default function PressReleaseForm({
       image_display_mode: value.mode || "cover",
     }));
   async function files(selected: FileList | null) {
-    if (!selected) return;
+    if (!selected || uploading || saving) return;
+    const available = 30 - form.image_urls.length;
+    if (selected.length > available) {
+      setMessage(`You can add ${Math.max(0, available)} more ${available === 1 ? "image" : "images"} (30 per press release).`);
+      return;
+    }
     setUploading(true);
     setMessage("");
     try {
       const urls: string[] = [];
       for (const file of Array.from(selected).slice(
         0,
-        12 - form.image_urls.length,
+        30 - form.image_urls.length,
       ))
         urls.push(await onUpload(file));
       set("image_urls", [...form.image_urls, ...urls]);
@@ -169,7 +174,7 @@ export default function PressReleaseForm({
           ...payload,
           image_urls: [
             url,
-            ...payload.image_urls.filter((item) => item !== url),
+            ...payload.image_urls.slice(1).filter((item) => item !== url),
           ],
         };
       }
@@ -272,13 +277,13 @@ export default function PressReleaseForm({
           />
         </label>
         <label className="grid gap-2 font-bold md:col-span-2">
-          Images (up to 12)
+          Images (up to 30)
           <input
             type="file"
             multiple
             accept="image/*"
-            disabled={saving || uploading}
-            onChange={(e) => void files(e.target.files)}
+            disabled={saving || uploading || form.image_urls.length >= 30}
+            onChange={(e) => { void files(e.target.files); e.target.value = ""; }}
             className="rounded-xl border p-3 font-normal"
           />
         </label>

@@ -43,3 +43,29 @@ begin
   end if;
 end;
 $$;
+
+-- The image migration expands only image_urls; attachments remain capped at 30.
+\ir ../supabase/migrations/20261108150000_increase_press_release_image_limit.sql
+\ir ../supabase/migrations/20261108150000_increase_press_release_image_limit.sql
+
+do $$
+begin
+  insert into public.press_releases (image_urls)
+    values (array_fill('https://example.com/photo.png'::text, array[30]));
+  begin
+    insert into public.press_releases (image_urls)
+      values (array_fill('https://example.com/photo.png'::text, array[31]));
+    raise exception '31 gallery images were incorrectly accepted';
+  exception when check_violation then null;
+  end;
+  if not exists (select 1 from public.press_releases where cardinality(image_urls) = 30) then
+    raise exception '30 gallery images were not accepted';
+  end if;
+  if not exists (select 1 from public.press_releases where documents = '[{"name":"existing.pdf"}]'::jsonb) then
+    raise exception 'Existing release data changed';
+  end if;
+  if not (select relrowsecurity from pg_class where oid = 'public.press_releases'::regclass) then
+    raise exception 'RLS was disabled';
+  end if;
+end;
+$$;
