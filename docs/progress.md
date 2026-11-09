@@ -2,6 +2,8 @@
 
 ## Current status
 
+- Added administrator Pin to top/Unpin controls for press releases. Multiple pins lead the public list while retaining release-date order within each group. Public cards identify pinned releases. Requires `20261109120000_add_press_release_pinning.sql` before deployment; includes database checks for admin-only pinning, direct API tampering, market scoping, ordering, unpinning and preserved moderation, plus browser checks for controls and failure handling.
+
 - Fixed the release viewer's collapsed image area by giving the modal and image container explicit heights. The popup now shows one large image with overlaid left/right arrows, counter and Close; no thumbnail strip. Added desktop/mobile image-size regression checks. Audited the public anniversary release: WhatsApp receives the correct, publicly accessible primary image in initial HTML metadata. No database migration or new dependency is needed.
 
 - Press release gallery capacity increased to 30 images, with a modal image viewer, Previous/Next, thumbnail navigation, image counter, and keyboard controls. Primary-image replacement retains the 30-image maximum. Requires `20261108150000_increase_press_release_image_limit.sql` before deployment. The existing 30-attachment allowance and 20 MB per-file limit remain unchanged.

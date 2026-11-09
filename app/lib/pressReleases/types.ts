@@ -11,6 +11,7 @@ export type PressReleaseDocument = {
 export type PressRelease = {
   id: string;
   site_id: string;
+  is_pinned: boolean;
   created_by: string;
   title: string;
   summary: string;
