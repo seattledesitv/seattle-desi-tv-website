@@ -93,6 +93,14 @@ export function usePressReleases(mode: "public" | "owner" | "admin") {
         if (!site.id) throw new Error("The active site could not be resolved.");
         return PressReleaseService.review(id, decision, notes, site.id);
       }),
+    setPinned: (id: string, pinned: boolean) =>
+      run(() => {
+        if (mode !== "admin") throw new Error("Admin access is required.");
+        if (!site.id) throw new Error("The active site could not be resolved.");
+        return PressReleaseService.setPinned(id, pinned, site.id).then(() => {
+          setReleases((current) => current.map((release) => release.id === id ? { ...release, is_pinned: pinned } : release));
+        });
+      }),
     upload: (file: File) => PressReleaseService.uploadFile(file, userId),
   };
 }

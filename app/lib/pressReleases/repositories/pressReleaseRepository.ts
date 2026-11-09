@@ -7,7 +7,7 @@ import type {
 
 const db = getSupabaseBrowserClient();
 const fields =
-  "id,site_id,created_by,title,summary,body,organization_name,location,release_date,image_urls,image_position_x,image_position_y,image_zoom,image_display_mode,documents,contact_name,contact_email,source_url,status,admin_notes,approved_at,published_at,instagram_permalink,instagram_media_id,instagram_published_at,instagram_published_by,created_at,updated_at";
+  "id,site_id,is_pinned,created_by,title,summary,body,organization_name,location,release_date,image_urls,image_position_x,image_position_y,image_zoom,image_display_mode,documents,contact_name,contact_email,source_url,status,admin_notes,approved_at,published_at,instagram_permalink,instagram_media_id,instagram_published_at,instagram_published_by,created_at,updated_at";
 
 export async function listPublic(siteId: string) {
   const { data, error } = await db
@@ -16,8 +16,10 @@ export async function listPublic(siteId: string) {
     .eq("site_id", siteId)
     .eq("status", "approved")
     .lte("published_at", new Date().toISOString())
+    .order("is_pinned", { ascending: false })
     .order("release_date", { ascending: false })
-    .order("published_at", { ascending: false });
+    .order("published_at", { ascending: false })
+    .order("id", { ascending: true });
   if (error) throw error;
   return (data || []) as PressRelease[];
 }
@@ -146,4 +148,11 @@ export async function uploadFile(file: File, userId: string) {
   });
   if (result.error) throw result.error;
   return db.storage.from("event-posters").getPublicUrl(path).data.publicUrl;
+}
+
+export async function setPinned(id: string, pinned: boolean, siteId: string) {
+  const { error } = await db.rpc("set_press_release_pinned", {
+    press_release_id: id, target_site_id: siteId, pin_value: pinned,
+  });
+  if (error) throw error;
 }

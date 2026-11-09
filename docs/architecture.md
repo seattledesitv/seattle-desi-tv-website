@@ -315,3 +315,11 @@ Apply `20261108150000_increase_press_release_image_limit.sql` before deploying t
 The release gallery dialog uses an explicit 92dvh height and a full-height image container. Its selected image uses object-fit contain to maximize the view without cropping; overlaid Previous/Next arrows, Close, and the image counter remain accessible. The modal thumbnail strip and visual title bar are removed. Regression checks assert the selected image occupies the dialog bounds on desktop and mobile, preventing a zero-height flex item from hiding the image.
 
 The public anniversary release was audited with WhatsApp and Facebook crawler user agents: the HTML head already contains the first image_urls entry as og:image and twitter:image. The primary PNG responds publicly with HTTP 200 (1080×1350, 631,110 bytes). Existing metadata and bot handling remain unchanged because the audit found no missing website tags. A WhatsApp preview still depends on the sender's link-preview setting and platform behavior; do not claim an in-app preview was verified by an HTTP audit.
+
+## Administrator-pinned press releases
+
+Press releases have a non-null is_pinned flag, default false. Public market-scoped queries order pinned releases first, then release_date descending, published_at descending, and id for deterministic ties. Existing approved/published filters remain in place, so a pin never publishes a draft or exposes a scheduled release early. Several releases may be pinned; newer release dates lead within the pinned group.
+
+Studio displays Pin to top/Unpin controls for approved or already pinned releases. Components call usePressReleases → PressReleaseService → repository → set_press_release_pinned RPC. The RPC checks administrator membership and binds the update to both release ID and market. A security-definer trigger also guards direct inserts/updates of is_pinned because owner RLS policies otherwise allow broad record edits. Owners cannot alter pins through direct API calls. Normal content edits can still return pinned releases to moderation. Existing RLS policies are retained.
+
+Apply 20261109120000_add_press_release_pinning.sql before deploying the app. It adds the flag, partial ordering index, protected RPC, and pin-change guard. No new dependency is required.
