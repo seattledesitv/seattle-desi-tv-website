@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import StudioHeader from "../../components/StudioHeader";
 import PressReleaseForm from "../../components/pressReleases/PressReleaseForm";
+import PressReleasePinControl from "../../components/pressReleases/PressReleasePinControl";
 import PressReleaseBody from "../../components/pressReleases/PressReleaseBody";
 import PressReleaseInstagramPublisher from "../../components/pressReleases/PressReleaseInstagramPublisher";
 import { usePressReleases } from "../../hooks/usePressReleases";
@@ -20,7 +21,9 @@ export default function StudioPressReleasesPage() {
       data.releases.filter(
         (release) =>
           filter === "all" ||
-          (filter === "open"
+          (filter === "pinned"
+            ? Boolean(release.is_pinned)
+            : filter === "open"
             ? ["pending", "changes_requested"].includes(release.status)
             : release.status === filter),
       ),
@@ -60,7 +63,7 @@ export default function StudioPressReleasesPage() {
               <h2 className="text-2xl font-black">Moderation Queue</h2>
               <p className="text-sm text-slate-500">
                 {visible.length} release{visible.length === 1 ? "" : "s"} in
-                this view
+                this view. Use Approved or All to pin releases to the top of the public list.
               </p>
             </div>
             <select
@@ -70,6 +73,7 @@ export default function StudioPressReleasesPage() {
             >
               <option value="open">Open review</option>
               <option value="all">All</option>
+              <option value="pinned">Pinned</option>
               <option value="pending">Pending</option>
               <option value="changes_requested">Changes requested</option>
               <option value="approved">Approved</option>
@@ -83,6 +87,7 @@ export default function StudioPressReleasesPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-black uppercase text-pink-600">
+                      {release.is_pinned && <span className="mr-2 rounded bg-pink-100 px-2 py-1 text-pink-900">Pinned</span>}
                       {release.status.replaceAll("_", " ")} ·{" "}
                       {release.release_date}
                     </p>
@@ -115,6 +120,7 @@ export default function StudioPressReleasesPage() {
                 </details>
                 {release.documents?.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
+                  {(release.status === "approved" || release.is_pinned) && <PressReleasePinControl pinned={Boolean(release.is_pinned)} saving={data.saving} onToggle={(value) => data.setPinned(release.id, value)} />}
                     {release.documents.map((document) => (
                       <a
                         key={document.url}

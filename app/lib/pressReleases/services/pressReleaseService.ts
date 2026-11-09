@@ -50,6 +50,7 @@ export const PressReleaseService = {
   updateAdmin: (id: string, input: PressReleaseInput, siteId: string) =>
     repo.updateAdmin(id, normalize(input), siteId),
   review: repo.review,
+  setPinned: repo.setPinned,
   uploadFile(file: File, userId: string) {
     const allowed = [
       "image/jpeg",

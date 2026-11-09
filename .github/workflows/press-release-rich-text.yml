@@ -33,9 +33,13 @@ jobs:
         env:
           PGPASSWORD: ci-test-password
         run: psql -h localhost -U postgres -d press_release_tests -v ON_ERROR_STOP=1 -f tests/press-release-attachments.sql
+      - name: Test pinning authorization and ordering
+        env:
+          PGPASSWORD: ci-test-password
+        run: psql -h localhost -U postgres -d press_release_tests -v ON_ERROR_STOP=1 -f tests/press-release-pinning.sql
       - run: npm ci
       - run: npm run test:press-releases
-      - run: npx eslint app/components/pressReleases/PressReleaseGallery.tsx app/components/pressReleases/PressReleaseEditor.tsx app/components/pressReleases/PressReleaseBody.tsx app/components/pressReleases/PressReleaseForm.tsx app/lib/pressReleases/richText.ts app/lib/pressReleases/services/pressReleaseService.ts app/press-releases/\[id\]/page.tsx app/studio/press-releases/page.tsx tests playwright.config.ts
+      - run: npx eslint app/components/pressReleases/PressReleasePinControl.tsx app/components/pressReleases/PressReleaseCard.tsx app/hooks/usePressReleases.ts app/lib/pressReleases/repositories/pressReleaseRepository.ts app/lib/pressReleases/types.ts app/components/pressReleases/PressReleaseGallery.tsx app/components/pressReleases/PressReleaseEditor.tsx app/components/pressReleases/PressReleaseBody.tsx app/components/pressReleases/PressReleaseForm.tsx app/lib/pressReleases/richText.ts app/lib/pressReleases/services/pressReleaseService.ts app/press-releases/\[id\]/page.tsx app/studio/press-releases/page.tsx tests playwright.config.ts
       - run: npx tsc --noEmit
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test

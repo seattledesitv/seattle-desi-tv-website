@@ -18,6 +18,7 @@ export default function PressReleaseCard({ release }: { release: PressRelease })
       {image ? <>{mode === "blur" && <img src={image} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-55 blur-xl" />}<img src={image} alt="" className={imageClass} style={imageStyle} /></> : <div className="flex h-full items-center justify-center px-6 text-center text-2xl font-black text-white">Seattle Desi TV<br/>Press Release</div>}
     </Link>
     <div className="p-6">
+      {release.is_pinned && <p className="mb-2 text-xs font-black uppercase tracking-wide text-pink-700">Pinned</p>}
       <p className="text-xs font-black uppercase tracking-widest text-pink-600">{date(release.release_date)}{release.location ? ` · ${release.location}` : ""}</p>
       <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950"><Link href={detailsPath}>{release.title}</Link></h2>
       {release.organization_name && <p className="mt-2 font-bold text-slate-500">{release.organization_name}</p>}
